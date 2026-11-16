@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>whenwho</title>
+<title>when-who</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231F5EFF'/%3E%3Crect x='7' y='9' width='18' height='16' rx='3' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 14h18M12 6.5v4M20 6.5v4' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='m12.5 19.5 2.5 2.3 4.5-4.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#0B1F3A">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -509,7 +509,7 @@ function inviteBox(id,title,deadline){
     <textarea id="inv_${esc(id)}" hidden></textarea></div>
     <div class="row">${srv?`<button type="button" class="btn primary" data-sendpoll="${esc(id)}">Send invites</button>`:''}
       <button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
-    <div class="help">${srv?`“Send invites” emails everyone the poll link from whenwho's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to your account email. “Open in my email app” sends it from your own address instead.`
+    <div class="help">${srv?`“Send invites” emails everyone the poll link from when-who's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to your account email. “Open in my email app” sends it from your own address instead.`
       :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></div>`;
 }
 // Email pills: the hidden textarea inv_<id> holds the addresses (one per line); the visible box shows them as pills.
@@ -573,6 +573,13 @@ const wdOf = k => (parseD(k).getDay()+6)%7;
 const isoL = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const addDaysL = (k,n) => { const d=parseD(k); d.setDate(d.getDate()+n); return isoL(d); };
 const addMonthsL = (k,n) => { const d=parseD(k); return isoL(new Date(d.getFullYear(), d.getMonth()+n, 1)); };
+// Weekly schedule polls: the one round is a fixed reference week (Mon 2001-01-01 to Sun 2001-01-07), shown by weekday name only.
+const WEEK0 = '2001-01-01';
+const WDL = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const isWeekly = () => !!(P.data && P.data.poll.kind==='weekly');
+const dLabel = k => isWeekly() ? WDL[wdOf(k)] : dayLabel(k);     // a day of the poll (not a deadline or meeting date)
+const dNum = k => isWeekly() ? '' : parseD(k).getDate();
+const firstOn = (from,wd) => addDaysL(from,(wd-wdOf(from)+7)%7); // first date >= from on weekday wd
 const seriesStart = (s,n) => s.unit==='month' ? addMonthsL(s.anchor, n*s.every) : addDaysL(s.anchor, n*7*s.every);
 function rangeLabel(unit, st, en){
   if(unit==='month' && st.endsWith('-01') && addDaysL(en,1).endsWith('-01')){
@@ -602,9 +609,9 @@ function patText(pat,hs,he,{allDayFrom,allDayTo,hours=true}={}){
 }
 // Picker state: PAT[id] = {wd:Set, dom:[a|'',b|''], hs, he, hmin, hmax, hours, count:()=>string}
 const PAT={};
-function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false}={}){
-  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, count:PAT[id]&&PAT[id].count};
-  else Object.assign(PAT[id],{hmin,hmax,hours});
+function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false}={}){
+  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, count:PAT[id]&&PAT[id].count};
+  else Object.assign(PAT[id],{hmin,hmax,hours,noDom});
   return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
 }
 function patInner(id){
@@ -612,7 +619,7 @@ function patInner(id){
   const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
   return `<div class="pat-row"><span class="pat-l">Days</span><div class="wdchips" role="group" aria-label="Weekdays">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="all">Every day</button><button type="button" data-patpre="${id}" data-v="wk">Weekdays</button><button type="button" data-patpre="${id}" data-v="we">Weekends</button></span></div>
-    <div class="pat-row"><span class="pat-l">Dates</span><span class="pat-in">Only the <input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="First day of the month">
+    <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">Dates</span><span class="pat-in">Only the <input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="First day of the month">
       to <input type="number" class="num-sm" min="1" max="31" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="Last day of the month"> of each month <span class="muted small">(optional)</span></span></div>
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">Time</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="From">${opt(st.hmin,st.hmax-1,st.hs)}</select> to
       <select class="inline" data-patto="${id}" aria-label="To">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
@@ -622,7 +629,7 @@ function patInner(id){
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
   const st=PAT[id], wd=[...st.wd].sort((a,b)=>a-b);
-  let [a,b]=st.dom.map(x=>x===''?null:Math.max(1,Math.min(31,Math.round(+x)||1)));
+  let [a,b]=(st.noDom?['','']:st.dom).map(x=>x===''?null:Math.max(1,Math.min(31,Math.round(+x)||1)));
   let dom=null; if(a!=null||b!=null){ a=a??1; b=b??31; if(b<a) [a,b]=[b,a]; if(!(a===1&&b===31)) dom=[a,b]; }
   const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
   return {pat, empty:!wd.length, hs:st.hs, he:st.he};
@@ -665,7 +672,7 @@ const ICON = {
 };
 // Navy app bar shown on every page: logo, optional "All polls" link, account menu or sign-in.
 function appbar(crumb){
-  return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>whenwho</a>
+  return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>when-who</a>
     ${crumb?`<a class="crumb" href="${esc(origin)}">${esc(crumb)}</a>`:''}<div class="acct">${accountBar()}</div></div></header>`;
 }
 // ---------- profile, avatars, poll icons ----------
@@ -760,7 +767,7 @@ function accountBar(){
     <a href="?account">Account &amp; profile</a><a href="${esc(origin)}">Your polls</a>
     <div class="menu-sep"></div><a href="#" data-logout>Sign out</a><a href="#" data-logout="all" title="Sign out on every device">Sign out everywhere</a></div></details>`;
   return `<details class="dd" id="signin"><summary>Sign in</summary><div class="ddp signin right">
-    <form class="codef"><h3>Sign in to whenwho</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
+    <form class="codef"><h3>Sign in to when-who</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
       <label for="si_email">Your email</label><input type="email" id="si_email" name="email" autocomplete="email" maxlength="200" placeholder="you@company.com" required>
       <div class="ts" id="si_ts" ${CONFIG.turnstileSiteKey?'':'hidden'}></div>
       <div class="err"></div><div class="row mt-3"><button class="btn primary">Email me a code</button></div>
@@ -836,13 +843,13 @@ function pollCard(p){
   const c=p.current, open=c&&c.status==='open';
   return `<div class="pcard">${pollTile(p)}
     <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>
-    <span class="pc-meta">${p.kind==='series'?'Recurring':'One-off'}${c?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
+    <span class="pc-meta">${p.kind==='series'?'Recurring':p.kind==='weekly'?'Weekly schedule':'One-off'}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?'Open':'Closed'}</span><span class="pc-n" title="Answers">${ICON.users}${c.answers}</span>
       ${open&&c.deadline?`<span class="pc-n" title="Reply by">${ICON.clock}${esc(dayLabel(c.deadline))}</span>`:''}`:''}</span>
     <button type="button" class="btn sm ghost pc-copy" data-copy="${esc(shareLink(p.id))}" title="Copy share link" aria-label="Copy share link">${ICON.link}</button></div>`;
 }
 function renderHome(){
-  document.title='whenwho';
+  document.title='when-who';
   const server = ME.user ? ME.polls : [], answered = ME.user ? ME.answered : [];
   const localOnly = ME.user ? [] : store.get('myPolls',[]).filter(p=>p.adminKey);
   const nOpen = server.filter(p=>p.current&&p.current.status==='open').length;
@@ -883,7 +890,7 @@ function choice(name,opts,cur){
     <span class="ch-t">${t}</span><span class="ch-d">${d}</span></label>`).join('')}</div>`;
 }
 function renderNew(){
-  document.title='New poll · whenwho';
+  document.title='New poll · when-who';
   const band=`<section class="band"><div class="wrap"><div class="eyebrow">New poll</div><h1>Create a poll</h1>
     <p class="lead">Pick the dates, choose how people answer, then share the link. Answering doesn't need an account.</p></div></section>`;
   if(!ME.user){
@@ -905,7 +912,9 @@ function renderNew(){
           <div id="iconBox" class="mt-3 hide">${picker('new',{text:'',seed:'new'})}</div></div>
       </div>
       <div class="section step"><h3>When</h3>
-        <div class="field">${choice('kind',[['single','One-off','One date range, like a trip or a single meeting'],['series','Recurring','A new poll every week or month, like rehearsals or a club night']],'single')}</div>
+        <div class="field">${choice('kind',[['single','One-off','One date range, like a trip or a single meeting'],['series','Recurring','A new poll every week or month, like a monthly club night'],['weekly','Weekly schedule','Find a regular weekly slot, like a band rehearsal']],'single')}</div>
+        <div id="weeklyBox" class="hide"><p class="help mt-0">People mark the days and hours that usually work for them in a typical week (Monday to Sunday, no dates). You then pick a slot and send it as a repeating calendar event.</p>
+          <div class="grid3"><div class="field"><label for="dlw">Reply by <span class="opt">optional</span></label><input type="date" id="dlw"></div></div></div>
         <div id="singleBox" class="grid3">
           <div class="field"><label for="start">From</label><input type="date" id="start"></div>
           <div class="field"><label for="end">To</label><input type="date" id="end"></div>
@@ -935,7 +944,7 @@ function renderNew(){
       ${mail?`<div class="section step"><h3>Email</h3>
         <label class="check hide" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
         <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
-        <div class="help">People only get emails if they leave their address when answering. Emails come from whenwho's address under your name; replies go to your account email${ME.user?` (${esc(ME.user.email)})`:''}.</div>
+        <div class="help">People only get emails if they leave their address when answering. Emails come from when-who's address under your name; replies go to your account email${ME.user?` (${esc(ME.user.email)})`:''}.</div>
       </div>`:''}
     </div>
     <aside class="card new-sum">
@@ -977,6 +986,7 @@ function renderNew(){
     if(kind==='single'){ const a=$('start').value, b=$('end').value, d=$('dl').value;
       rows.push(['Dates', a&&b?`${dayLabel(a)} – ${dayLabel(b)}`:'Pick a date range']);
       if(d) rows.push(['Reply by', dayLabel(d)]); }
+    else if(kind==='weekly'){ rows.push(['Dates','A typical week, repeating']); if($('dlw').value) rows.push(['Reply by', dayLabel($('dlw').value)]); }
     else { const s=seriesSettings(), u=s.unit==='month'?'month':'week';
       rows.push(['Repeats', s.every===1?`Every ${u}`:`Every ${s.every} ${u}s`]);
       if(/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)) rows.push(['First', rangeLabel(s.unit,seriesStart(s,0),addDaysL(seriesStart(s,1),-1))]); }
@@ -994,7 +1004,9 @@ function renderNew(){
   f.addEventListener('change',e=>{ const n=e.target.name;
     if(e.target.type==='radio') e.target.closest('.choice').querySelectorAll('.ch').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
     if(e.target.id==='unit') setUnit();
-    if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series'); }
+    if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('weeklyBox').classList.toggle('hide',v!=='weekly'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series');
+      PAT.np.noDom=v==='weekly'; patRefresh('np',true);
+      if(v==='weekly'&&getR('ans')==='days') document.querySelector('input[name="ans"][value="slots"]').click(); }
     if(n==='ans') patShowHours('np',getR('ans')!=='days');
     if(n==='kind') patRefresh('np');
     sum(); });
@@ -1003,7 +1015,8 @@ function renderNew(){
   // Days matching the pattern in [st,en], for the picker's count and warnings.
   const daysIn=(st,en,pat)=>{ let n=0; if(!st||!en||en<st) return 0; for(let k=st,i=0;k<=en&&i<400;k=addDaysL(k,1),i++) if(matchPat(k,pat)) n++; return n; };
   const firstRound=()=>{ const s=seriesSettings(); return /^\d{4}-\d{2}-\d{2}$/.test(s.anchor)?[seriesStart(s,0),addDaysL(seriesStart(s,1),-1)]:null; };
-  PAT.np.count=v=>{ if(getR('kind')==='single'){ const n=daysIn($('start').value,$('end').value,v.pat); return n?`${n} day${n===1?'':'s'} in this poll`:'no days in this range match'; }
+  PAT.np.count=v=>{ if(getR('kind')==='weekly'){ const n=v.pat&&v.pat.wd?v.pat.wd.length:7; return `${n} day${n===1?'':'s'} a week`; }
+    if(getR('kind')==='single'){ const n=daysIn($('start').value,$('end').value,v.pat); return n?`${n} day${n===1?'':'s'} in this poll`:'no days in this range match'; }
     const r=firstRound(); if(!r) return ''; const n=daysIn(r[0],r[1],v.pat); return n?`${n} day${n===1?'':'s'} in the first round`:'no days in the first round match'; };
   $('pat_np').addEventListener('patchange',sum);
   f.addEventListener('input',e=>{ if(['start','end','every','first'].includes(e.target.id)) patRefresh('np'); });
@@ -1024,7 +1037,7 @@ function renderNew(){
         if(!v('start')||!v('end')) return fail('Pick the first and last day.', v('start')?'end':'start');
         if(v('end')<v('start')) return fail('The last day is before the first day.','end');
         if(v('dl')&&v('dl')>v('end')) return fail('The reply-by date is after the last day.','dl');
-      } else if(!v('first')) return fail('Pick when the series starts.','first');
+      } else if(kind==='series'&&!v('first')) return fail('Pick when the series starts.','first');
       const pv=patValue('np'); if(pv.empty) return fail('Pick at least one day of the week.');
       if(kind==='single'&&!daysIn(v('start'),v('end'),pv.pat)) return fail('None of the days in this range match the chosen days.');
       return true; };
@@ -1033,6 +1046,7 @@ function renderNew(){
       hideResults:$('hide').checked, allowComments:$('comments').checked, password:v('pw')||undefined };
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
+    else if(kind==='weekly'){ body.deadline=v('dlw')||null; }
     else { body.startDate=v('start'); body.endDate=v('end'); body.deadline=v('dl')||null; }
     if(mail){ body.notifyOpen=kind==='series'&&$('notify').checked; body.remindDays=$('remind').checked&&v('remindDays')!==''?+v('remindDays'):null; }
     const btns=f.querySelectorAll('button[type=submit]'); btns.forEach(b=>b.disabled=true);
@@ -1045,7 +1059,7 @@ function renderNew(){
   };
 }
 function renderCreated(id, body, kind){
-  document.title=`${body.title} · whenwho`;
+  document.title=`${body.title} · when-who`;
   $app.innerHTML=`${appbar('All polls')}
     <section class="band"><div class="wrap"><div class="hero-me">${tile({img:body.image,emoji:body.icon,text:body.title,seed:id},'ptile-icon xl')}
       <div><div class="eyebrow">Poll created</div><h1>${esc(body.title)}</h1><p class="lead">Send people the link. They can answer straight away, no account needed.</p></div></div></div></section>
@@ -1060,7 +1074,7 @@ function renderCreated(id, body, kind){
 
 // ================= ACCOUNT =================
 function renderAccount(){
-  document.title='Account · whenwho';
+  document.title='Account · when-who';
   if(!ME.user){
     $app.innerHTML=`${appbar('All polls')}<section class="band"><div class="wrap"><div class="eyebrow">Account</div><h1>Your account</h1>
       <p class="lead">Sign in with your email to see your profile and polls.</p></div></section>
@@ -1116,7 +1130,7 @@ function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
 const inst = () => P.data.instance;
 const respKey = () => `resp:${P.id}:${inst().id}`;
 const ansMode = () => P.data.poll.answerMode;
-const instLabel = i => P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
+const instLabel = i => P.data.poll.kind==='weekly' ? 'A typical week' : P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
 
 async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.password=store.get('pw:'+id,null); await loadPoll(true); }
 async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
@@ -1125,11 +1139,11 @@ async function loadPoll(first){
   catch(e){
     if(e.status===401 && e.data && e.data.needPassword) return renderPassword(e.data.title, e.message);
     $app.innerHTML=`${appbar('All polls')}<section class="band"><div class="wrap"><div class="eyebrow">Poll</div><h1>Poll not available</h1><p class="lead">${esc(e.message)}</p></div></section>
-      <main class="wrap"><div class="card"><p class="m0">The link may be wrong, or the poll was deleted. Ask the organiser for a new link.</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">Go to whenwho</a></div></div></main>`; return;
+      <main class="wrap"><div class="card"><p class="m0">The link may be wrong, or the poll was deleted. Ask the organiser for a new link.</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">Go to when-who</a></div></div></main>`; return;
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.range=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
@@ -1294,7 +1308,7 @@ function render(){
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null;
-  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
+  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':p.kind==='weekly'?'Weekly schedule':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
     <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
@@ -1320,7 +1334,7 @@ function renderSeries(){
       <button class="btn" data-iedit="${x.id}">Edit</button>
       ${d.instances.length>1?`<button class="btn danger" data-idel="${x.id}">Delete</button>`:''}
       ${P.iedit===x.id?`<form class="sched full" id="ieditForm">
-        <div class="grid2"><div class="field"><label>From</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>To</label><input type="date" id="ie_e" value="${x.endDate}"></div>
+        <div class="grid2">${isWeekly()?'':`<div class="field"><label>From</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>To</label><input type="date" id="ie_e" value="${x.endDate}"></div>`}
         <div class="field"><label>Reply by</label><input type="date" id="ie_d" value="${x.deadline||''}"></div></div>
         <div class="field"><label>Note shown at the top of this poll</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
         <div class="row mt-3"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
@@ -1329,16 +1343,20 @@ function renderSeries(){
       <button class="btn" data-nextinst>Open next round now</button></div>
       ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open round.</p>`:''}
       <ul class="list">${rows}</ul></div>`
-    : `<div class="card"><div class="card-h"><h2>Dates</h2></div><ul class="list">${rows}</ul></div>`;
+    : `<div class="card"><div class="card-h"><h2>${isWeekly()?'Week':'Dates'}</h2></div><ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
-    try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{startDate:$('ie_s').value,endDate:$('ie_e').value,deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
+    try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{...(isWeekly()?{}:{startDate:$('ie_s').value,endDate:$('ie_e').value}),deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
       P.iedit=null; toast('Saved'); await loadPoll(false); }catch(ex){ toast(ex.message); } };
 }
 
 // ---- meetings ----
 const meetingDays = () => new Set(inst().meetings.map(m=>m.date));
 function icsUrl(mid,download){ const q=new URLSearchParams(); if(mid) q.set('m',mid); if(download) q.set('download','1'); if(P.password) q.set('pw',P.password); const s=q.toString(); return `${location.origin}/api/polls/${P.id}/calendar.ics${s?'?'+s:''}`; }
-function whenText(m){ return `${longDay(m.date)}${m.allDay?' · all day':` · ${hh(m.start)}–${hh(m.end)}`}`; }
+function repeatText(m){ const r=m.repeat, wd=WDL[wdOf(m.date)], first=firstOn(r.from,wdOf(m.date));
+  return `${r.every===1?`Every ${wd}`:r.every===2?`Every other ${wd}`:`Every ${r.every} weeks on ${wd}`}`+` · from ${dayLabel(first)}${r.until?` until ${dayLabel(r.until)}`:''}`; }
+function whenText(m){ const t=m.allDay?' · all day':` · ${hh(m.start)}–${hh(m.end)}`;
+  if(m.repeat){ const [a,...b]=repeatText(m).split(' · '); return [a+t,...b].join(' · '); }
+  return `${longDay(m.date)}${t}`; }
 function whoText(m){ return m.participants==='all'?'Everyone':m.participants.map(p=>p.name).join(', '); }
 function inviteText(m){
   const p=P.data.poll;
@@ -1374,6 +1392,8 @@ async function saveMeetings(list){
 function monthsOf(dates){ const g=[]; dates.forEach(k=>{ const ym=k.slice(0,7); let x=g[g.length-1]; if(!x||x.ym!==ym){ x={ym,days:[]}; g.push(x);} x.days.push(k); }); return g; }
 function calendar(dates, cell){
   const set=new Set(dates), groups=monthsOf(dates);
+  if(isWeekly()) return `<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}${WD.map((w,i)=>{ const k=addDaysL(WEEK0,i);
+    return set.has(k)?cell(k,''):'<div class="day off"><div class="n"></div></div>'; }).join('')}</div>`;
   return groups.map(g=>{
     const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
     let h=`${groups.length>1?`<div class="mlabel">${esc(monthLabel(g.ym))}</div>`:''}<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}`;
@@ -1406,10 +1426,10 @@ function renderMine(el){
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
       <button data-brush="n" class="${P.brush==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button>
       <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button></div>${quickFill()}
-      <div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
-      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>
+      ${isWeekly()?'':`<div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
+      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>`}
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
-    wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?parseD(k).getDate()+(md.has(k)?' ★':''):'&nbsp;'}</b></div>`; });
+    wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -1424,7 +1444,7 @@ function renderMine(el){
 function quickFill(){
   if(!P.qfOpen) return '';
   const p=P.data.poll, slots=ansMode()!=='days', st=P.qfs||'y';
-  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true};
+  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly()};
   // A new poll (or new hours) starts the quick-fill fresh.
   if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
   patternPicker('qf',o); PAT.qf.poll=P.id;
@@ -1522,7 +1542,7 @@ function renderGroup(el){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
     h+=`<div class="section">
-      <div class="row"><h3 class="grow">${esc(dayLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`${sr?'<button class="btn" data-clearrange>Clear time</button>':''}<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting${sr?` · ${esc(rg)}`:''}</button>`:''}</div>
+      <div class="row"><h3 class="grow">${esc(dLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`${sr?'<button class="btn" data-clearrange>Clear time</button>':''}<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting${sr?` · ${esc(rg)}`:''}</button>`:''}</div>
       <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best time ${esc(s.window)} (${s.peak} available)`:''}</div>
       ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time${sr?` (selected: <b>${esc(rg)}</b>)`:''}.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
@@ -1533,7 +1553,7 @@ function renderGroup(el){
   if(tot){
     const ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
     h+=`<div class="section"><h3>Best days</h3><ul class="list">${ranked.map(o=>
-      `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small ml-auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+      `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dLabel(o.k))}</span><span class="muted small ml-auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
     const withC=sel().filter(r=>r.comment);
     if(withC.length) h+=`<div class="section comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
     if(d.isAdmin) h+=`<div class="section"><h3>Manage responses (${all})</h3><ul class="list">${d.responses.map(r=>
@@ -1585,14 +1605,32 @@ function openSched(date){
 function autoPick(){
   const sc=P.sched; sc.picked=new Set(sel().filter(r=>windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay)!=='x').map(r=>r.id));
 }
+// Weekly polls: when the meeting series runs. Shared by the schedule form and the draft tray.
+function repState(){ return P.rep||(P.rep={from:isoL(new Date()), every:1, until:''}); }
+function repeatFields(){
+  if(!isWeekly()) return '';
+  const r=repState();
+  return `<div class="grid3"><div class="field"><label for="rp_from">Starting from</label><input type="date" id="rp_from" data-rp="from" value="${esc(r.from)}"></div>
+    <div class="field"><label for="rp_every">Repeats</label><select id="rp_every" data-rp="every">${[[1,'Every week'],[2,'Every other week'],[4,'Every 4 weeks']].map(([v,t])=>`<option value="${v}" ${r.every===v?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label for="rp_until">Until <span class="opt">optional</span></label><input type="date" id="rp_until" data-rp="until" value="${esc(r.until)}"></div></div>
+    <div class="help">Sent as one repeating calendar event, starting on the first matching weekday from this date.</div>`;
+}
+document.addEventListener('input',e=>{ const k=e.target.dataset&&e.target.dataset.rp; if(!k) return; const r=repState(); r[k]=k==='every'?+e.target.value:e.target.value; });
+function repeatValue(err){ // {repeat} for a weekly meeting, {} otherwise; null (and a message) when invalid
+  if(!isWeekly()) return {};
+  const r=repState(); if(!r.from){ err.textContent='Pick the date the meetings start from.'; return null; }
+  if(r.until&&r.until<r.from){ err.textContent='The “until” date is before the start date.'; return null; }
+  return {repeat:{from:r.from, every:r.every, until:r.until||null}};
+}
 function schedForm(){
   const sc=P.sched, rs=P.data.responses||[], H=hours(), opt=hourOpts;
-  return `<div class="sched"><div class="row"><h3 class="grow">★ Schedule a meeting · ${esc(dayLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
+  return `<div class="sched"><div class="row"><h3 class="grow">★ Schedule a ${isWeekly()?'weekly meeting':'meeting'} · ${esc(dLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
     <div class="grid2">
       <div class="field"><label>Title</label><input type="text" id="mt_title" maxlength="120" value="${esc(sc.title)}"></div>
       <div class="field"><label>Location (optional)</label><input type="text" id="mt_loc" maxlength="200" value="${esc(sc.location)}"></div></div>
     <div class="row field"><label class="check m0"><input type="checkbox" id="mt_allday" ${sc.allDay?'checked':''}> All day</label>
       <span class="${sc.allDay?'hide':''} row" id="mt_times"><select id="mt_start" class="inline">${opt(0,23,sc.start)}</select> to <select id="mt_end" class="inline">${opt(1,24,sc.end)}</select></span></div>
+    ${repeatFields()}
     <div class="field"><label>Note (optional)</label><textarea id="mt_note" maxlength="1000">${esc(sc.note)}</textarea></div>
     <div class="field"><label>Who's invited</label>
       <div class="seg" id="mt_who"><button type="button" data-v="all" class="${sc.who==='all'?'on':''}">Everyone</button><button type="button" data-v="some" class="${sc.who==='some'?'on':''}">Selected people</button></div>
@@ -1617,7 +1655,8 @@ async function saveSched(){
   const sc=P.sched, rs=P.data.responses||[];
   const participants = sc.who==='all' ? 'all' : rs.filter(r=>sc.picked.has(r.id)).map(r=>({id:r.id,name:r.name}));
   if(participants!=='all' && !participants.length){ $('mt_err').textContent='Select at least one person, or choose Everyone.'; return; }
-  const m={date:sc.date, allDay:sc.allDay, title:sc.title, location:sc.location, note:sc.note, participants};
+  const rv=repeatValue($('mt_err')); if(!rv) return;
+  const m={date:sc.date, allDay:sc.allDay, title:sc.title, location:sc.location, note:sc.note, participants, ...rv};
   if(!sc.allDay){ m.start=sc.start; m.end=sc.end; }
   if(await saveMeetings([...inst().meetings, m])){ P.sched=null; P.range=null; renderBody(); toast('Meeting saved'); }
 }
@@ -1642,11 +1681,11 @@ function renderPlanner(S){
       <button data-pview="avail" class="${P.pavail?'on':''}">Available days (${avail.length})</button><button data-pview="week" class="${P.pavail?'':'on'}">Full weeks</button></div></div>`;
     if(!pages.length){ h+=`<p class="help">None of the selected people has marked any hours as available yet.</p>`; return h+draftTray(); }
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
-    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">(${P[pk]+1}/${pages.length})</span>`:''}</span>
+    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''}>‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">(${P[pk]+1}/${pages.length})</span>`:''}</span>
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''}>›</button></div>
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.date===k&&x.allDay);
-      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dayLabel(k))}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?parseD(k).getDate():'&nbsp;'}</b></div>`; });
+      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dLabel(k))}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -1656,7 +1695,7 @@ function renderPlanner(S){
         if(c<tot&&m&&c+m>=tot) cls+=' mb';
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
         if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
-        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dayLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||(m?m+'?':'')}</div>`; }); });
+        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>';
     h+=`<div class="legend"><span style="--c:color-mix(in srgb,var(--yes) 45%,var(--card))">Some free (number = how many)</span><span style="--c:var(--yes-dark)">Everyone selected free</span><span style="--c:color-mix(in srgb,var(--maybe) 45%,var(--card))">Only “maybe” (n? = how many)</span><span style="--c:var(--maybe)">Rest are “maybe” (stripe)</span><span style="--c:var(--accent)">Draft / ★ scheduled (outline)</span></div>`;
   } else {
@@ -1671,7 +1710,7 @@ function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
   if(!P.drafts.length) return `<div class="sched"><h3>Meeting drafts</h3><p class="help">No drafts yet. Drag across the grid or tap a day to add one.</p></div>`;
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
-    return `<div class="dft"><span class="when">${esc(dayLabel(x.date))}</span>
+    return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
       <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
@@ -1681,6 +1720,7 @@ function draftTray(){
     <div class="grid2 mt-2">
       <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
       <div class="field"><label>Location (optional)</label><input type="text" id="dm_loc" maxlength="200" value="${esc(dm.location)}"></div></div>
+    ${repeatFields()}
     <div class="field"><label>Note (optional)</label><textarea id="dm_note" maxlength="1000">${esc(dm.note)}</textarea></div>
     <div class="err" id="dm_err"></div>
     <div class="row mt-4"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
@@ -1716,7 +1756,8 @@ async function saveDrafts(btn){
   const dm=P.dmeta||{title:'',location:'',note:''}, ms=inst().meetings, err=$('dm_err');
   if(!P.drafts.length) return;
   if(ms.length+P.drafts.length>100){ err.textContent=`A poll can have at most 100 meetings (${ms.length} already scheduled).`; return; }
-  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:dm.note, participants:x.participants};
+  const rv=repeatValue(err); if(!rv) return;
+  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:dm.note, participants:x.participants, ...rv};
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
   if(await saveMeetings([...ms, ...list])){ P.drafts=[]; renderBody(); toast(`${n} ${n===1?'meeting':'meetings'} created`); }
@@ -1725,7 +1766,7 @@ async function saveDrafts(btn){
 
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
-const adminTabList = () => [['answers','Answers'],['rounds',P.data.poll.kind==='series'?'Rounds':'Dates'],['participants','Participants'],['share','Share'],['settings','Settings']];
+const adminTabList = () => [['answers','Answers'],['rounds',P.data.poll.kind==='series'?'Rounds':P.data.poll.kind==='weekly'?'Week':'Dates'],['participants','Participants'],['share','Share'],['settings','Settings']];
 function adminTabs(){
   return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}</button>`).join('')}</nav>`;
 }
@@ -1758,7 +1799,7 @@ function adminPanes(){
     <div class="section"><h3>Answering</h3>
       <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
-      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days'})}
+      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly'})}
         <div class="help">Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.</div></div>
       <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label></div>
     <div class="section"><h3>Privacy</h3>
@@ -1766,7 +1807,7 @@ function adminPanes(){
       <div class="field"><label for="s_pw">Password ${p.hasPassword?'(currently set)':'(none)'}</label>
         <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div></div>
     <div class="section"><h3>Email</h3>
-      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from whenwho's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from when-who's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span><button type="button" class="btn" id="testMail">Send test email</button></div></div>
         ${series?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new round opens</label>`:''}
         <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
       :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}</div>
@@ -1891,7 +1932,7 @@ document.addEventListener('click',async e=>{
       catch(ex){ toast(ex.message); t.disabled=false; } return; }
     const to=invited(m).filter(r=>r.email).map(r=>r.email);
     if(!to.length) toast('Nobody invited left an email. Opening a blank email.');
-    location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent((m.title||P.data.poll.title)+' · '+dayLabel(m.date))}&body=${encodeURIComponent(inviteText(m))}`;
+    location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent((m.title||P.data.poll.title)+' · '+(m.repeat?repeatText(m).split(' · ')[0]:dayLabel(m.date)))}&body=${encodeURIComponent(inviteText(m))}`;
     return;
   }
   if(ds.delresp){ if(!confirm('Delete this response?')) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
