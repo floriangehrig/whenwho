@@ -104,7 +104,7 @@
   /* ---------- forms ---------- */
   label{font-weight:600;font-size:13px;display:block;margin-bottom:6px;color:var(--ink-2)}
   .field{margin-top:var(--s4)}
-  input[type=text],input[type=email],input[type=password],input[type=date],input[type=month],input[type=number],textarea,select{
+  input[type=text],input[type=email],input[type=url],input[type=password],input[type=date],input[type=month],input[type=number],textarea,select{
     font:inherit;font-size:14px;min-height:40px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);width:100%;
     transition:border-color .12s,box-shadow .12s}
   input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 80%,transparent)}
@@ -139,6 +139,11 @@
   .pat-pre button:hover{text-decoration:underline}
   .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
   .qf{margin-top:12px}
+  .cal-in{flex:1 1 260px;min-width:0}
+  .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
+  .pat-chips .em-pill.pop{animation:chipIn .16s ease-out}
+  @keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){ .pat-chips .em-pill{animation:none} }
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
   .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
@@ -200,6 +205,9 @@
   .notice:empty{display:none}
   .notice.warn{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 30%,transparent);border-left-color:var(--maybe)}
   .notice.neutral{background:var(--sunken);border-color:var(--line);border-left-color:var(--line-strong)}
+  .savebar{position:sticky;bottom:0;z-index:30;display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:var(--s4);padding:12px 16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+  .savebar.dirty{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .savebar #status{margin-right:auto}
   .namehint{margin-top:8px;padding:10px 12px;border-radius:var(--r);background:var(--maybe-bg);border-left:3px solid var(--maybe);font-size:13px}
   .namehint .btn{margin-left:8px}
   .err{margin-top:10px;color:var(--no);font-size:13.5px;font-weight:500}
@@ -243,13 +251,12 @@
   .day .t{font-size:11px;margin-top:5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .day.y{background:var(--yes-bg);border-color:color-mix(in srgb,var(--yes) 55%,transparent)} .day.y .t{color:var(--yes-dark)}
   .day.m{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 60%,transparent)} .day.m .t{color:var(--maybe-ink)}
-  .day.no{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,transparent)} .day.no .t{color:var(--no)}
   .day.sel{outline:2px solid var(--accent);outline-offset:2px}
   .day .star{position:absolute;top:6px;right:8px;color:var(--accent);font-size:13px}
   .day.heat .t{color:var(--ink)}
   .ratio{display:flex;height:6px;border-radius:999px;overflow:hidden;margin-top:9px;background:var(--empty)}
   .ratio i{display:block;height:100%}
-  .ratio .ry{background:var(--yes)} .ratio .rm{background:var(--maybe)} .ratio .rn{background:var(--no)}
+  .ratio .ry{background:var(--yes)} .ratio .rm{background:var(--maybe)}
   .blank{min-height:66px}
   .wknav{display:flex;align-items:center;gap:10px;margin-top:16px}
   .wknav .btn{min-width:36px;padding:0 10px;font-size:16px}
@@ -262,9 +269,18 @@
   .slot:hover{background:color-mix(in srgb,var(--accent) 8%,var(--card))}
   .slot.top{border-top:1px solid var(--line);border-radius:8px 8px 0 0}
   .slot.bot{border-radius:0 0 8px 8px}
+  /* "Show others" hints in My availability */
+  .day .oth{font-size:11px;font-weight:650;margin-top:4px;color:var(--ink);white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+  .day .oth .om{color:var(--maybe-ink);margin-left:3px}
+  .day.hashint{padding-bottom:10px}
+  .day .othbar{position:absolute;left:0;right:0;bottom:0;height:4px;display:flex;background:color-mix(in srgb,var(--line) 70%,transparent);pointer-events:none}
+  .day .othbar i{display:block;height:100%} .day .othbar .ry{background:var(--yes)} .day .othbar .rm{background:var(--maybe)}
+  .slot.oh{background:color-mix(in srgb,var(--yes) var(--a),var(--card));position:relative}
+  .slot.omb{box-shadow:inset 3px 0 0 var(--maybe)}
+  .slot[data-n]::after{content:attr(data-n);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:650;color:var(--ink);opacity:.75;pointer-events:none;font-variant-numeric:tabular-nums}
+  .slot.sy[data-n]::after,.slot.sm[data-n]::after{color:#fff;opacity:.95}
   .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 75%,#000)}
   .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 75%,#000)}
-  .slot.sn{background:var(--no);border-color:color-mix(in srgb,var(--no) 75%,#000)}
   .slot.na{background:var(--sunken);cursor:default;opacity:.5}
 
   /* ---------- overview ---------- */
@@ -611,9 +627,9 @@ function patText(pat,hs,he,{allDayFrom,allDayTo,hours=true}={}){
 }
 // Picker state: PAT[id] = {wd:Set, dom:[a|'',b|''], hs, he, hmin, hmax, hours, count:()=>string}
 const PAT={};
-function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false}={}){
-  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, count:PAT[id]&&PAT[id].count};
-  else Object.assign(PAT[id],{hmin,hmax,hours,noDom});
+function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false,chips=false}={}){
+  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, chips, count:PAT[id]&&PAT[id].count};
+  else Object.assign(PAT[id],{hmin,hmax,hours,noDom,chips});
   return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
 }
 function patInner(id){
@@ -626,7 +642,19 @@ function patInner(id){
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">Time</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="From">${opt(st.hmin,st.hmax-1,st.hs)}</select> to
       <select class="inline" data-patto="${id}" aria-label="To">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">All day</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">Evening 18–22</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">From 17:00</button>`:''}</span></div>
-    <div class="pat-sum" id="patsum_${id}">${esc(patSummary(id))}</div>`;
+    <div class="pat-sum${st.chips?' pat-chips':''}" id="patsum_${id}">${st.chips?patChips(id):esc(patSummary(id))}</div>`;
+}
+// Chip view of the summary: each active criterion is a rectangle with × that resets it to the default.
+function patChips(id){
+  const st=PAT[id], v=patValue(id); if(v.empty) return 'Pick at least one day.';
+  const seen=st.seenChips||new Set(), now=new Set();
+  const chip=(t,k)=>{ now.add(k+t); return `<span class="em-pill${seen.has(k+t)?'':' pop'}"><span>${esc(t)}</span><button type="button" data-patchip="${id}" data-k="${k}" aria-label="Remove ${esc(t)}">×</button></span>`; };
+  const out=[];
+  if(v.pat&&v.pat.wd) out.push(chip(wdText(v.pat.wd),'wd'));
+  if(v.pat&&v.pat.dom) out.push(chip(`${ord(v.pat.dom[0])}–${ord(v.pat.dom[1])} of the month`,'dom'));
+  if(st.hours&&!(v.hs<=st.hmin&&v.he>=st.hmax)) out.push(chip(v.he===24?`from ${hh24(v.hs)}`:`${hh24(v.hs)}–${hh24(v.he)}`,'time'));
+  st.seenChips=now; const c=st.count?st.count(v):'';
+  return (out.length?out.join(''):'<span class="muted">Every day'+(st.hours?' · all day':'')+'</span>')+(c?`<span class="muted small">${esc(c)}</span>`:'');
 }
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
@@ -640,9 +668,13 @@ function patSummary(id){
   const st=PAT[id], v=patValue(id); if(v.empty) return 'Pick at least one day.';
   const c=st.count?st.count(v):''; return patText(v.pat,v.hs,v.he,{allDayFrom:st.hmin,allDayTo:st.hmax,hours:st.hours})+(c?` · ${c}`:'');
 }
-function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.textContent=patSummary(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
+function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s){ if(PAT[id].chips) s.innerHTML=patChips(id); else s.textContent=patSummary(id); } } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
 function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
 document.addEventListener('click',e=>{
+  const x=e.target.closest('[data-patchip]');
+  if(x){ const id=x.dataset.patchip, st=PAT[id], k=x.dataset.k;
+    if(k==='wd') st.wd=new Set([0,1,2,3,4,5,6]); if(k==='dom') st.dom=['','']; if(k==='time'){ st.hs=st.hmin; st.he=st.hmax; }
+    patRefresh(id,true); return; }
   const c=e.target.closest('[data-patwd]'), p=e.target.closest('[data-patpre]'); if(!c&&!p) return;
   if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
   const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
@@ -1163,11 +1195,17 @@ function renderAccount(){
           <div class="stat"><b>${answers}</b><span>answers in current rounds</span></div>
           <a class="stat" href="${esc(origin)}"><b>${(ME.answered||[]).length}</b><span>polls answered</span></a>
         </div>
+        <div class="section"><h3>Calendar</h3>${u.calendar
+            ?`<p class="help">Saved iCal link on <b>${esc(u.calendar)}</b>. Use it on any poll with <i>From calendar…</i>. Only you can use it; it is never shown to others.</p>
+              <div class="row mt-3"><button type="button" class="btn sm danger" data-calremove>Remove calendar</button></div>`
+            :`<p class="help">Save your calendar’s iCal link to fill in polls from it with one click. Add it from <i>From calendar…</i> on any poll you answer.</p>`}</div>
         <div class="section"><h3>Sessions</h3><p class="help">Signed in on a shared computer? End every session, on all devices.</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>Sign out</a><a href="#" class="btn sm danger" data-logout="all">Sign out everywhere</a></div></div>
       </div>
     </div></main>`;
   $('pf_name').addEventListener('input',e=>pickerSetText('avatar',e.target.value||u.email));
+  const cr=document.querySelector('[data-calremove]');
+  if(cr) cr.onclick=async()=>{ cr.disabled=true; try{ await api('PATCH','/me',{icalUrl:''}); Object.assign(ME, await api('GET','/me')); renderAccount(); toast('Calendar removed'); }catch(ex){ toast(ex.message); cr.disabled=false; } };
   $('pf').onsubmit=async e=>{
     e.preventDefault(); const err=$('pf_err'), btn=$('pf_save'); err.textContent=''; btn.disabled=true;
     const pk=pickerValue('avatar'), b={name:$('pf_name').value.trim(), avatar:pk.emoji};
@@ -1180,7 +1218,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false,
-  who:null, whoOpen:false, gview:'overview', pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null, atab:'answers' };
+  hint:store.get('showOthers',false), who:null, whoOpen:false, gview:'overview', pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -1206,7 +1244,7 @@ async function loadPoll(first){
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
-      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:r.entries||{}}; }
+      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; }
       catch(e){ if(e.status===404||e.status===403){ store.del(respKey()); P.myResp=null; } }
     }
   }
@@ -1214,7 +1252,7 @@ async function loadPoll(first){
   pruneWho();
   render();
 }
-async function switchInstance(id){ if(P.dirty){ clearTimeout(saveT); await save(); } P.iid=id; await loadPoll(false); window.scrollTo({top:0,behavior:'smooth'}); }
+async function switchInstance(id){ if(P.dirty && !confirm('Your changes haven’t been sent yet. Switch anyway and discard them?')) return; P.dirty=false; P.iid=id; await loadPoll(false); window.scrollTo({top:0,behavior:'smooth'}); }
 
 function renderPassword(title,msg){
   $app.innerHTML=`${appbar('All polls')}<section class="band"><div class="wrap"><div class="eyebrow">${ICON.lock.replace('<svg','<svg width="14" height="14"')} Protected poll</div><h1>${esc(title||'Poll')}</h1></div></section>
@@ -1224,38 +1262,40 @@ function renderPassword(title,msg){
   $('pwf').onsubmit=e=>{ e.preventDefault(); P.password=$('pwi').value; store.set('pw:'+P.id,P.password); loadPoll(true); };
 }
 
-// ---- entry helpers: 'y' | 'm' | 'n' | {y:[h],m:[h],n:[h]} ----
+// ---- entry helpers: 'y' | 'm' | {y:[h],m:[h]}. Anything not marked counts as not available.
+// Old answers may still hold 'n' / {n:[h]} (an explicit "can't"); it is treated like blank.
 function hours(){ const p=P.data.poll; return Array.from({length:p.hourEnd-p.hourStart},(_,i)=>p.hourStart+i); }
 function hourMap(v){
   const H=hours(), map=new Map();
-  if(v==='y'||v==='m'||v==='n') H.forEach(h=>map.set(h,v));
+  if(v==='y'||v==='m') H.forEach(h=>map.set(h,v));
   else if(Array.isArray(v)) v.forEach(h=>map.set(h,'y'));
-  else if(v&&typeof v==='object') ['n','m','y'].forEach(s=>(v[s]||[]).forEach(h=>map.set(h,s)));
+  else if(v&&typeof v==='object') ['m','y'].forEach(s=>(v[s]||[]).forEach(h=>map.set(h,s)));
   return map;
 }
 function fromMap(map){
-  const H=hours(), o={y:[],m:[],n:[]};
-  H.forEach(h=>{ const s=map.get(h); if(s) o[s].push(h); });
-  for(const s of ['y','m','n']) if(o[s].length===H.length) return s;
-  if(!o.y.length&&!o.m.length&&!o.n.length) return null;
+  const H=hours(), o={y:[],m:[]};
+  H.forEach(h=>{ const s=map.get(h); if(s==='y'||s==='m') o[s].push(h); });
+  for(const s of ['y','m']) if(o[s].length===H.length) return s;
+  if(!o.y.length&&!o.m.length) return null;
   return o;
 }
 const isPartial = v => Array.isArray(v)||(v&&typeof v==='object');
-function counts(v){ const H=hours(), c={y:0,m:0,n:0,e:0}; const map=hourMap(v); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
-function ratioBar(v){ const c=counts(v), t=hours().length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.n}h not available">${['y','m','n'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
+// Drops old explicit "can't" marks from my own answer, so saving rewrites it without them.
+function cleanEntries(en){ const o={}; for(const k in en||{}){ const x=fromMap(hourMap(en[k])); if(x!=null) o[k]=x; } return o; }
+function counts(v){ const H=hours(), c={y:0,m:0,e:0}; const map=hourMap(v); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
+function ratioBar(v){ const c=counts(v), t=hours().length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.e}h not available">${['y','m'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
 function hoursOf(v,s){ return [...hourMap(v)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
 function partialText(v){ const y=hoursOf(v,'y'), m=hoursOf(v,'m'); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
 function statusOf(v){
   if(v==='y') return {t:'Available',c:'var(--yes-dark)',cls:'y'};
   if(v==='m') return {t:'Maybe',c:'var(--maybe-ink)',cls:'m'};
-  if(v==='n') return {t:"Can't",c:'var(--no)',cls:'no'};
-  if(isPartial(v)) return {t:partialText(v),c:'var(--ink)',cls:'part'};
+  if(isPartial(v)&&fromMap(hourMap(v))!=null) return {t:partialText(v),c:'var(--ink)',cls:'part'};
   return {t:'',c:'var(--muted)',cls:''};
 }
 // availability of a person for a window [start,end) on a day: 'y' all hours available, 'm' none unavailable but some maybe/blank-maybe, 'x' otherwise
 function windowStatus(v,start,end,allDay){
   if(v==null) return 'x';
-  if(v==='y'||v==='m') return v; if(v==='n') return 'x';
+  if(v==='y'||v==='m') return v; if(!isPartial(v)) return 'x';
   const map=hourMap(v), H=hours(); const span=allDay?H:H.filter(h=>h>=start&&h<end);
   if(!span.length) return 'x';
   const st=span.map(h=>map.get(h));
@@ -1265,34 +1305,59 @@ function windowStatus(v,start,end,allDay){
 }
 
 // ---- saving ----
-let saveT=null;
 function editable(){ return P.data && inst().status==='open'; }
-function status(t){ const el=$('status'); if(el) el.textContent=t; }
+function status(t){ saveBar(t); }
+// The send/update bar under the calendar. Answers are only sent when the button is pressed.
+function saveBar(msg){
+  const bar=$('savebar'); if(!bar) return;
+  bar.classList.toggle('hide', P.tab!=='mine' && !P.dirty && !P.saving);
+  bar.classList.toggle('dirty', P.dirty);
+  const btn=$('saveBtn');
+  btn.textContent = P.saving ? 'Sending…' : P.myResp ? 'Update answer' : 'Send answer';
+  btn.disabled = P.saving || !P.dirty;
+  $('status').textContent = msg!=null ? msg
+    : P.dirty ? (P.mine.name.trim() ? (P.myResp?'You have changes that aren’t sent yet':'Not sent yet') : 'Enter your name, then send')
+    : P.myResp ? 'Saved ✓' : 'Mark your availability, then send your answer';
+}
 function changed(){
   if(!editable()) return;
-  P.dirty=true; clearTimeout(saveT);
-  if(!P.mine.name.trim()){ status('Enter your name to save'); return; }
-  status('Saving…'); saveT=setTimeout(save,800);
+  P.dirty=true; saveBar();
 }
-async function save(){
-  if(P.saving||!P.dirty||!P.mine.name.trim()) return;
-  P.saving=true; P.dirty=false;
-  const em=(P.mine.email||'').trim(), key=respKey();
+async function save(retried){
+  if(P.saving||!P.dirty) return false;
+  if(!P.mine.name.trim()){ saveBar('Enter your name first'); const nm=$('name'); if(nm) nm.focus(); return false; }
+  P.saving=true; P.dirty=false; saveBar();
+  const em=(P.mine.email||'').trim(), key=respKey(), had=!!P.myResp;
   const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries};
+  let msg, retry=false, ok=false;
   try{
     if(P.myResp){ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
       if(!P.myResp.account && !P.myResp.editKey && r.name){ P.myResp.name=r.name; store.set(key,P.myResp); } }
     else { const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/responses`,body,headers());
       if(ME.user) P.myResp={id:r.id,account:true}; else { P.myResp={id:r.id,editKey:r.editKey,name:r.name}; store.set(key,P.myResp); } nameHint(); }
     if(!ME.user){ store.set('myName',P.mine.name); if(body.email) store.set('myEmail',body.email); }
-    status(em&&!body.email?'Saved, but that email doesn’t look right':'Saved ✓'); refreshResults();
+    ok=true; msg = em&&!body.email ? 'Saved, but that email doesn’t look right' : 'Saved ✓';
+    toast(had?'Answer updated':'Answer sent'); refreshResults();
   }catch(e){
-    if(e.status===404 && P.myResp){ store.del(key); P.myResp=null; P.dirty=true; }
-    else if(e.status===409 && e.data && e.data.code==='name_taken'){ status('Not saved'); nameHint(true); }
-    else if(e.status===409 && e.data && e.data.code==='own_answer'){ P.myResp={id:e.data.responseId,account:true}; P.dirty=true; } // answered on another device
-    else status('Not saved: '+e.message);
+    P.dirty=true;
+    if(e.status===404 && P.myResp){ store.del(key); P.myResp=null; retry=true; }
+    else if(e.status===409 && e.data && e.data.code==='name_taken'){ msg='Not sent'; nameHint(true); }
+    else if(e.status===409 && e.data && e.data.code==='own_answer'){ P.myResp={id:e.data.responseId,account:true}; retry=true; } // answered on another device
+    else msg='Not sent: '+e.message;
   }
-  P.saving=false; if(P.dirty) save();
+  P.saving=false;
+  if(retry && !retried) return save(true);
+  saveBar(P.dirty&&ok ? undefined : msg);
+  if(ok) updateHelp();
+  return ok;
+}
+// The help line under "Your answer" depends on whether an answer exists.
+function updateHelp(){ const h=$('ansHelp'); if(h) h.innerHTML=ansHelp(); wireDel(); }
+function ansHelp(){
+  if(ME.user) return P.myResp?'Your answer is saved. Change it any time and press <b>Update answer</b>. <a href="#" id="delMine">Remove my answer</a>'
+    :'Mark your availability below, then press <b>Send answer</b>.';
+  return P.myResp?'Your answer is saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update answer</b>. <a href="#" id="delMine">Remove my answer</a>'
+    :'Enter your name, mark your availability below, then press <b>Send answer</b>.';
 }
 // "Is that you?": shown when the typed name already belongs to someone in this poll.
 function nameHint(force){
@@ -1311,13 +1376,20 @@ async function recallMine(){
       const nm=$('name'); if(nm) nm.value=r.name; changed(); return; }
     P.myResp={id:r.responseId,editKey:null,name:r.name};
     const a=await api('GET',`/polls/${P.id}/responses/${r.responseId}`,null,headers());
-    store.set(respKey(),P.myResp); P.dirty=false; clearTimeout(saveT);
-    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:a.entries||{}};
+    store.set(respKey(),P.myResp); P.dirty=false;
+    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:cleanEntries(a.entries)};
     render(); toast('Your answer is loaded');
   }catch(e){ P.myResp=null; toast(e.message); }
 }
 let refT=null;
-function refreshResults(){ clearTimeout(refT); refT=setTimeout(async()=>{ try{ const d=await fetchPoll(); if(d.instance.id!==P.iid) return; P.data=d; pruneWho(); renderHeader(); renderSeries(); if(P.tab==='group') renderBody(); }catch(e){} },400); }
+function refreshResults(){ clearTimeout(refT); refT=setTimeout(async()=>{ try{ const d=await fetchPoll(); if(d.instance.id!==P.iid) return; P.data=d; pruneWho(); renderHeader(); renderSeries(); if(P.tab==='group'||(P.tab==='mine'&&P.hint)) renderBody(); }catch(e){} },400); }
+
+function wireDel(){
+  const dm=$('delMine');
+  if(dm) dm.onclick=async e=>{ e.preventDefault(); if(!confirm('Remove your answer from this poll?')) return;
+    try{ await api('DELETE',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); }catch(err){}
+    store.del(respKey()); P.myResp=null; P.mine={name:P.mine.name,email:P.mine.email,comment:'',entries:{}}; P.mineFor=null; await loadPoll(false); };
+}
 
 // ---- render ----
 function render(){
@@ -1333,33 +1405,33 @@ function render(){
     ${d.isAdmin?adminTabs():''}
     <div id="pane-answers" class="${d.isAdmin&&P.atab!=='answers'?'hide':''}">
     <div id="meetings"></div>
-    ${editable()&&ME.user?`<div class="card"><div class="card-h">${avatarOf(ME.user)}<h2>Your answer</h2><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div>
+    ${editable()&&ME.user?`<div class="card"><div class="card-h">${avatarOf(ME.user)}<h2>Your answer</h2></div>
       <div class="grid2"><div class="field">${ME.user.name?`<label>Name shown to others</label><div><b>${esc(ME.user.name)}</b> <a href="?account" class="small">Change in your profile</a></div>`
           :`<label for="name">Name shown to others</label><input type="text" id="name" maxlength="60" autocomplete="name"><div class="help mt-1"><a href="?account">Set a name in your profile</a> to use it in every poll.</div>`}
         <div class="help mt-1">Signed in as <b>${esc(ME.user.email)}</b>. Your answer is linked to your account, so it follows you to every device.</div></div></div>
       ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
-      <p class="help">${P.myResp?`Your answer is saved. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically as you mark your availability.'}</p></div>`
-    :editable()?`<div class="card"><div class="card-h"><h2>Your details</h2><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div><div class="grid2">
+      <p class="help" id="ansHelp">${ansHelp()}</p></div>`
+    :editable()?`<div class="card"><div class="card-h"><h2>Your details</h2></div><div class="grid2">
         <div class="field"><label for="name">Your name <span class="tag">unique in this poll</span></label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are" list="pnames" autocomplete="off">
           <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
           <div class="help mt-1">Use the same name every round and on any device to get back to your answer.</div><div id="nameHint"></div></div>
         <div class="field"><label for="email">Email (optional)</label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
       ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
-      <p class="help">${P.myResp?`Your answer is saved. To change it later, open the poll here or enter the same name on any device. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</p>
+      <p class="help" id="ansHelp">${ansHelp()}</p>
       <p class="help"><a href="#" data-opensignin>Sign in</a> to keep your answers in an account instead.</p></div>`
       :`<div class="notice warn mt-4">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
     <div class="tabs"><button data-tab="mine" class="${P.tab==='mine'?'on':''}" ${editable()?'':'disabled'}>My availability</button>
       <button data-tab="group" class="${P.tab==='group'?'on':''}">Group overview</button></div>
-    <div class="card" id="body"></div></div>
+    <div class="card" id="body"></div>
+    ${editable()?`<div class="savebar" id="savebar"><span class="small muted" id="status"></span><button type="button" class="btn primary" id="saveBtn">Send answer</button></div>`:''}</div>
     ${d.isAdmin?adminPanes():''}</main>`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
   const cm=$('comment'); if(cm){ cm.value=P.mine.comment||''; cm.oninput=e=>{ P.mine.comment=e.target.value; changed(); }; }
-  const dm=$('delMine');
-  if(dm) dm.onclick=async e=>{ e.preventDefault(); if(!confirm('Remove your answer from this poll?')) return;
-    try{ await api('DELETE',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); }catch(err){}
-    store.del(respKey()); P.myResp=null; P.mine={name:P.mine.name,email:P.mine.email,comment:'',entries:{}}; P.mineFor=null; await loadPoll(false); };
+  wireDel();
+  const sb=$('saveBtn'); if(sb) sb.onclick=()=>save();
+  [nm,em].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }); });
   if(d.isAdmin) wireAdmin();
   renderBody();
 }
@@ -1378,6 +1450,7 @@ function renderBody(){
   const b=$('body'); if(!b) return;
   document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===P.tab));
   if(P.tab==='mine') renderMine(b); else renderGroup(b);
+  saveBar();
 }
 
 // ---- series (admin) ----
@@ -1397,11 +1470,10 @@ function renderSeries(){
         <div class="field"><label>Note shown at the top of this poll</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
         <div class="row mt-3"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
     </li>`).join('');
-  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="card-h"><h2>Rounds</h2><span class="muted small">every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</span>
+  el.innerHTML = `<div class="card"><div class="card-h"><h2>Rounds</h2><span class="muted small">every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</span>
       <button class="btn" data-nextinst>Open next round now</button></div>
       ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open round.</p>`:''}
-      <ul class="list">${rows}</ul></div>`
-    : `<div class="card"><div class="card-h"><h2>${isWeekly()?'Week':'Dates'}</h2></div><ul class="list">${rows}</ul></div>`;
+      <ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
     try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{...(isWeekly()?{}:{startDate:$('ie_s').value,endDate:$('ie_e').value}),deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
       P.iedit=null; toast('Saved'); await loadPoll(false); }catch(ex){ toast(ex.message); } };
@@ -1468,22 +1540,32 @@ function weeks(dates){
 
 function renderMine(el){
   const d=P.data, me=P.mine.entries, md=meetingDays(), am=ansMode();
+  // "Show others": overlay how many other people said yes / maybe (only when results are visible).
+  const oth=d.responses?others():[], on=P.hint&&oth.length>0, n=oth.length;
+  const names=(a,b)=>[a.length?'Available: '+a.join(', '):'',b.length?'Maybe: '+b.join(', '):''].filter(Boolean).join(' · ');
   let h=`<div class="card-h"><h2>Your availability</h2>${am==='both'?`<div class="seg ml-auto">
-      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}</div>`;
+      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}
+      ${n?`<button type="button" class="btn sm${on?' primary':''}${am==='both'?'':' ml-auto'}" data-hint aria-pressed="${on}" title="Show where the others are available">👥 ${on?'Hide':'Show'} others (${n})</button>`:''}</div>`;
+  if(on) h+=`<p class="help othhelp">👥 Shows how many of the ${n} other ${n===1?'person':'people'} are available${P.mode==='days'?' at the best time':''} (and how many more said “maybe”). Hover or long-press for names.</p>`;
   if(P.mode==='days'){
-    h+=`<p class="help">Tap a day to cycle: <b>available</b> → <b>maybe</b> → <b>not available</b> → blank.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}</p>
+    const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
+    h+=`<p class="help">Tap a day to cycle: <b>available</b> → <b>maybe</b> → blank. Days and hours you leave blank count as not available.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}</p>
       <div class="row mt-3"><button class="btn sm" data-bulk="all">All available</button><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>
-      <button class="btn sm" data-bulk="blank">Fill blanks as not available</button><button class="btn sm" data-bulk="clear">Clear all</button></div>${quickFill()}`;
-    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v);
-      return `<div class="day ${s.cls}" data-day="${k}"><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+      ${calButton()}<button class="btn sm" data-bulk="clear">Clear all</button></div>${quickFill()}${calPanel()}`;
+    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v), o=S[k];
+      let hint='', tip='';
+      if(o&&(o.peak||o.peakMaybe||o.part)){
+        const ys=o.list.filter(x=>fromMap(hourMap(x.v))==='y').map(x=>x.name), ps=o.list.filter(x=>{ const f=fromMap(hourMap(x.v)); return f&&f!=='y'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fromMap(hourMap(x.v))==='m').map(x=>x.name);
+        tip=names([...ys,...ps],ms);
+        hint=`<div class="oth">👥 ${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div><div class="othbar"><i class="ry" style="width:${o.peak/n*100}%"></i><i class="rm" style="width:${o.peakMaybe/n*100}%"></i></div>`; }
+      return `<div class="day ${s.cls}${hint?' hashint':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
-    h+=`<p class="help">Pick a brush, then drag (or tap) across hours. Dragging over hours that already have that colour clears them.</p>
+    h+=`<p class="help">Pick a brush, then drag (or tap) across the hours you can make. Dragging over hours that already have that colour clears them. Hours you leave blank count as not available.</p>
       <div class="row mt-3"><span class="muted small">Brush:</span><div class="seg">
       <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
-      <button data-brush="n" class="${P.brush==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button>
-      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button></div>${quickFill()}
+      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>${calButton()}</div>${quickFill()}${calPanel()}
       ${isWeekly()?'':`<div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>`}
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
@@ -1491,10 +1573,14 @@ function renderMine(el){
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
-        const st=hourMap(me[k]).get(hr); h+=`<div class="slot${pos}${st?' s'+st:''}" data-k="${k}" data-h="${hr}"></div>`; }); });
+        const st=hourMap(me[k]).get(hr);
+        let extra='';
+        if(on){ const ys=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k]).get(hr); if(s==='y') ys.push(r.name||'Someone'); else if(s==='m') ms.push(r.name||'Someone'); });
+          if(ys.length||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${ys.length?Math.round(6+ys.length/n*30):0}%" data-n="${ys.length?ys.length:''}${ms.length?(ys.length?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,ms))}`; }
+        h+=`<div class="slot${pos}${st?' s'+st:''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  h+=`<div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--maybe)">Maybe</span><span style="--c:var(--no)">Not available</span><span style="--c:var(--empty)">No answer</span><span style="--c:var(--accent)">★ Scheduled</span></div>`;
+  h+=`<div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--maybe)">Maybe</span><span style="--c:var(--empty)">Blank = not available</span><span style="--c:var(--accent)">★ Scheduled</span>${on?`<span style="--c:color-mix(in srgb,var(--yes) 45%,var(--card))">👥 Others available (+maybe)</span>`:''}</div>`;
   el.innerHTML=h;
   if(P.mode==='slots') wireGrid();
 }
@@ -1502,7 +1588,7 @@ function renderMine(el){
 function quickFill(){
   if(!P.qfOpen) return '';
   const p=P.data.poll, slots=ansMode()!=='days', st=P.qfs||'y';
-  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly()};
+  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly(),chips:true};
   // A new poll (or new hours) starts the quick-fill fresh.
   if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
   patternPicker('qf',o); PAT.qf.poll=P.id;
@@ -1511,7 +1597,7 @@ function quickFill(){
   return `<div class="qf">${box}<div class="row mt-3"><span class="muted small">Mark as:</span><div class="seg">
     <button type="button" data-qfs="y" class="${st==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
     <button type="button" data-qfs="m" class="${st==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
-    <button type="button" data-qfs="n" class="${st==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button></div>
+    <button type="button" data-qfs="x" class="${st==='x'?'on':''}">Clear</button></div>
     <button type="button" class="btn sm primary" data-qfapply>Apply</button></div></div>`;
 }
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
@@ -1519,14 +1605,194 @@ function applyQuickFill(){
   const v=patValue('qf'); if(v.empty){ toast('Pick at least one day'); return; }
   const H=hours(), st=P.qfs||'y', whole=!PAT.qf.hours||(v.hs<=H[0]&&v.he>=H[H.length-1]+1), en=Object.assign({},P.mine.entries);
   const ks=P.data.dates.filter(k=>matchPat(k,v.pat));
-  ks.forEach(k=>{ if(whole){ en[k]=st; return; }
-    const m=hourMap(en[k]); H.forEach(h=>{ if(h>=v.hs&&h<v.he) m.set(h,st); }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; });
-  P.mine.entries=en; changed(); renderBody(); toast(ks.length?`Marked ${ks.length} day${ks.length===1?'':'s'}`:'No days in this poll match');
+  ks.forEach(k=>{ if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
+    const m=hourMap(en[k]); H.forEach(h=>{ if(h>=v.hs&&h<v.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; });
+  P.mine.entries=en; changed(); renderBody(); toast(ks.length?`${st==='x'?'Cleared':'Marked'} ${ks.length} day${ks.length===1?'':'s'}`:'No days in this poll match');
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; renderBody(); return; }
+  if(e.target.closest('[data-hint]')){ P.hint=!P.hint; store.set('showOthers',P.hint); renderBody(); return; }
   const s=e.target.closest('[data-qfs]'); if(s){ P.qfs=s.dataset.qfs; s.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===s)); return; }
   if(e.target.closest('[data-qfapply]')){ if(typeof editable==='function'&&!editable()) return; applyQuickFill(); }
+});
+// ---------- calendar import (iCal feed or .ics file) ----------
+// The Worker only fetches a feed (browsers can't, because of CORS); parsing happens here.
+// Busy events become absolute times, then the poll's hours (floating local time) are checked in this browser's time zone.
+const WIN_TZ={'UTC':'UTC','GMT Standard Time':'Europe/London','W. Europe Standard Time':'Europe/Berlin','Romance Standard Time':'Europe/Paris',
+  'Central Europe Standard Time':'Europe/Budapest','Central European Standard Time':'Europe/Warsaw','E. Europe Standard Time':'Europe/Bucharest',
+  'FLE Standard Time':'Europe/Helsinki','GTB Standard Time':'Europe/Athens','Russian Standard Time':'Europe/Moscow',
+  'Eastern Standard Time':'America/New_York','Central Standard Time':'America/Chicago','Mountain Standard Time':'America/Denver',
+  'Pacific Standard Time':'America/Los_Angeles','India Standard Time':'Asia/Kolkata','China Standard Time':'Asia/Shanghai',
+  'Tokyo Standard Time':'Asia/Tokyo','AUS Eastern Standard Time':'Australia/Sydney'};
+const TZF={};
+function tzOffset(ms,tz){ // tz's UTC offset (ms) at instant ms; throws for an unknown zone
+  const f=TZF[tz]||(TZF[tz]=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric'}));
+  const o={}; f.formatToParts(new Date(ms)).forEach(x=>{ o[x.type]=+x.value; });
+  return Date.UTC(o.year,o.month-1,o.day,o.hour%24,o.minute,o.second)-Math.floor(ms/1000)*1000;
+}
+// A time is kept as wall-clock fields {w: Date.UTC(fields), tz: 'Z'|zone|'' (floating), date: all-day}; toMs makes it absolute.
+function icsTime(value,params){
+  const m=/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec((value||'').trim()); if(!m) return null;
+  const date=!m[4]||params.VALUE==='DATE';
+  let tz=m[7]?'Z':(params.TZID||'').replace(/^\//,''); tz=WIN_TZ[tz]||tz;
+  if(tz&&tz!=='Z'){ try{ tzOffset(0,tz); }catch(e){ tz=''; } }
+  return {w:Date.UTC(+m[1],m[2]-1,+m[3],date?0:+m[4],date?0:+m[5],date?0:+(m[6]||0)), tz:date?'':tz, date};
+}
+function toMs(w,tz){
+  if(tz==='Z') return w;
+  if(tz){ let t=w-tzOffset(w,tz); const o2=tzOffset(t,tz); if(w-o2!==t) t=w-o2; return t; }
+  const d=new Date(w); return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),d.getUTCHours(),d.getUTCMinutes(),d.getUTCSeconds()).getTime();
+}
+function icsDuration(v){
+  const m=/^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec((v||'').trim()); if(!m) return null;
+  return (m[1]==='-'?-1:1)*((+(m[2]||0)*7+ +(m[3]||0))*86400000+ +(m[4]||0)*3600000+ +(m[5]||0)*60000+ +(m[6]||0)*1000);
+}
+function icsProp(line){
+  let q=false,i=0; for(;i<line.length;i++){ const c=line[i]; if(c==='"') q=!q; else if(c===':'&&!q) break; }
+  const segs=line.slice(0,i).split(';'), params={};
+  segs.slice(1).forEach(x=>{ const j=x.indexOf('='); if(j>0) params[x.slice(0,j).toUpperCase()]=x.slice(j+1).replace(/^"|"$/g,''); });
+  return {name:segs[0].toUpperCase(), params, value:line.slice(i+1)};
+}
+const ICS_WD={MO:0,TU:1,WE:2,TH:3,FR:4,SA:5,SU:6}, DAY=86400000;
+const uwd=w=>(new Date(w).getUTCDay()+6)%7;
+// Start times (wall-clock ms) of a recurring event that may fall before `toW`.
+function expandRule(rule,st,toW,fromW){
+  const r={}; rule.split(';').forEach(x=>{ const [k,v]=x.split('='); if(k&&v) r[k.toUpperCase()]=v; });
+  const freq=r.FREQ, iv=Math.max(1,+r.INTERVAL||1), count=r.COUNT?+r.COUNT:Infinity;
+  const until=r.UNTIL?icsTime(r.UNTIL,{}):null, untilMs=until?toMs(until.w,until.tz||st.tz):Infinity;
+  const byday=(r.BYDAY||'').split(',').filter(Boolean).map(x=>{ const m=/^([+-]?\d+)?([A-Z]{2})$/.exec(x.toUpperCase()); return m&&m[2] in ICS_WD?{n:m[1]?+m[1]:0,wd:ICS_WD[m[2]]}:null; }).filter(Boolean);
+  const bymd=(r.BYMONTHDAY||'').split(',').filter(Boolean).map(Number);
+  const tod=st.w%DAY, d0=new Date(st.w), out=[]; let n=0, guard=0;
+  const take=list=>{ for(const w of list.sort((a,b)=>a-b)){ if(w<st.w) continue; if(n>=count||toMs(w,st.tz)>untilMs) return false; n++; if(w>=toW) return false; if(w>=fromW) out.push(w); } return true; };
+  if(freq==='DAILY'||freq==='WEEKLY'){
+    const step=(freq==='DAILY'?1:7)*iv*DAY; let base=freq==='DAILY'?st.w:st.w-uwd(st.w)*DAY;
+    if(count===Infinity&&fromW-base>2*step) base+=Math.floor((fromW-base)/step-1)*step; // skip periods long before the window
+    for(;guard<20000&&base<toW+7*DAY;guard++,base+=step){
+      let list;
+      if(freq==='DAILY') list=(!byday.length||byday.some(b=>b.wd===uwd(base)))&&(!bymd.length||bymd.includes(new Date(base).getUTCDate()))?[base]:[];
+      else list=(byday.length?byday.map(b=>b.wd):[uwd(st.w)]).map(wd=>base+wd*DAY);
+      if(!take(list)) break;
+    }
+  } else if(freq==='MONTHLY'||freq==='YEARLY'){
+    for(let k=0;guard<5000;guard++,k+=iv){
+      const y=d0.getUTCFullYear()+(freq==='YEARLY'?k:0), mo=d0.getUTCMonth()+(freq==='MONTHLY'?k:0);
+      const first=Date.UTC(y,mo,1)+tod, len=new Date(Date.UTC(y,mo+1,0)).getUTCDate(); if(first-tod>toW) break;
+      let days=[];
+      if(freq==='YEARLY'&&!byday.length&&!bymd.length) days=[d0.getUTCDate()];
+      else if(bymd.length) days=bymd.map(x=>x<0?len+1+x:x);
+      else if(byday.length) byday.forEach(b=>{ const all=[]; for(let d=1;d<=len;d++) if(uwd(Date.UTC(y,mo,d))===b.wd) all.push(d);
+        if(!b.n) days.push(...all); else { const x=b.n>0?all[b.n-1]:all[all.length+b.n]; if(x) days.push(x); } });
+      else days=[d0.getUTCDate()];
+      if(!take(days.filter(d=>d>=1&&d<=len).map(d=>first+(d-1)*DAY))) break;
+    }
+  }
+  return out;
+}
+// Busy intervals [startMs, endMs) between fromMs and toMs.
+function parseIcs(text,fromMs,toMsX){
+  const lines=String(text).replace(/\r?\n[ \t]/g,'').split(/\r?\n/), evs=[]; let ev=null, depth=0;
+  for(const line of lines){
+    if(/^BEGIN:VEVENT$/i.test(line)){ ev={exdates:[]}; depth=0; continue; }
+    if(!ev) continue;
+    if(/^BEGIN:/i.test(line)){ depth++; continue; }   // VALARM etc.
+    if(/^END:VEVENT$/i.test(line)){ evs.push(ev); ev=null; continue; }
+    if(/^END:/i.test(line)){ depth--; continue; }
+    if(depth) continue;
+    const p=icsProp(line);
+    if(p.name==='DTSTART') ev.start=icsTime(p.value,p.params);
+    else if(p.name==='DTEND') ev.end=icsTime(p.value,p.params);
+    else if(p.name==='DURATION') ev.dur=icsDuration(p.value);
+    else if(p.name==='RRULE') ev.rrule=p.value;
+    else if(p.name==='EXDATE') p.value.split(',').forEach(v=>{ const t=icsTime(v,p.params); if(t) ev.exdates.push(t); });
+    else if(p.name==='RECURRENCE-ID') ev.rid=icsTime(p.value,p.params);
+    else if(p.name==='UID') ev.uid=p.value;
+    else if(p.name==='STATUS') ev.status=p.value.trim().toUpperCase();
+    else if(p.name==='TRANSP') ev.transp=p.value.trim().toUpperCase();
+  }
+  const moved={}; // uid -> start times (ms) of occurrences that were changed or cancelled one by one
+  evs.forEach(e=>{ if(e.rid&&e.uid&&e.start) (moved[e.uid]||(moved[e.uid]=new Set())).add(toMs(e.rid.w,e.rid.tz||e.start.tz)); });
+  const busy=[], margin=2*DAY;
+  for(const e of evs){
+    if(!e.start||e.status==='CANCELLED'||e.transp==='TRANSPARENT') continue;
+    const st=e.start, tz=st.tz;
+    // Length: all-day events end on a (wall-clock) day, timed ones after a fixed number of ms.
+    let days=0, ms=0;
+    if(st.date){ days=e.end?Math.round((e.end.w-st.w)/DAY):e.dur!=null?Math.round(e.dur/DAY):1; if(days<=0) continue; }
+    else { ms=e.end?toMs(e.end.w,e.end.tz||tz)-toMs(st.w,tz):e.dur||0; if(ms<=0) continue; }
+    const span=w=>st.date?[toMs(w,''),toMs(w+days*DAY,'')]:[toMs(w,tz),toMs(w,tz)+ms];
+    let starts=[st.w];
+    if(e.rrule&&!e.rid){
+      const fromW=fromMs-margin-Math.max(days*DAY,ms)+(st.w-toMs(st.w,tz)), toW=toMsX+margin+(st.w-toMs(st.w,tz));
+      const ex=new Set(e.exdates.map(t=>toMs(t.date?st.w%DAY+t.w:t.w,t.tz||tz))), mv=moved[e.uid];
+      starts=expandRule(e.rrule,st,toW,fromW).filter(w=>{ const t=toMs(w,tz); return !ex.has(t)&&!(mv&&mv.has(t)); });
+    }
+    for(const w of starts){ const [a,b]=span(w); if(a<toMsX&&b>fromMs) busy.push([a,b]); }
+  }
+  return busy;
+}
+// Free hours (in blank cells only) become "available"; busy hours stay blank, which means not available.
+function calendarFill(busy){
+  const H=hours(), days=ansMode()==='days', en=Object.assign({},P.mine.entries); let changedDays=0;
+  const busyAt=(k,h)=>{ const a=parseD(k); a.setHours(h); const s=a.getTime(), e=s+3600000; return busy.some(([x,y])=>x<e&&y>s); };
+  // Weekly schedule polls have no real dates: look at the next 4 weeks, busy if busy in at least 2 of them.
+  const mon=(()=>{ const t=new Date(); return addDaysL(isoL(t),-((t.getDay()+6)%7)); })();
+  const isBusy=(k,h)=>isWeekly()?[0,1,2,3].filter(w=>busyAt(addDaysL(mon,wdOf(k)+7*w),h)).length>=2:busyAt(k,h);
+  P.data.dates.forEach(k=>{
+    const m=hourMap(en[k]); if(days&&m.size) return;
+    const free=H.filter(h=>!m.has(h)&&!isBusy(k,h)); if(!free.length) return;
+    if(days){ en[k]=free.length===H.length?'y':'m'; changedDays++; return; }
+    free.forEach(h=>m.set(h,'y')); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; changedDays++;
+  });
+  P.mine.entries=en; return changedDays;
+}
+function calWindow(){
+  if(isWeekly()){ const t=new Date(), mon=addDaysL(isoL(t),-((t.getDay()+6)%7)); return [parseD(mon).getTime(), parseD(addDaysL(mon,28)).getTime()]; }
+  const ds=P.data.dates; return [parseD(ds[0]).getTime(), parseD(addDaysL(ds[ds.length-1],1)).getTime()];
+}
+function applyCalendar(text){
+  if(!editable()) return;
+  if(!/BEGIN:VCALENDAR/i.test(String(text).slice(0,2000))){ toast("That isn't a calendar (.ics) file"); return; }
+  const [a,b]=calWindow(); let n;
+  try{ n=calendarFill(parseIcs(text,a,b)); }catch(e){ console.error(e); toast("Couldn't read that calendar"); return; }
+  P.calOpen=false; if(n) changed(); renderBody();
+  toast(n?`Filled ${n} day${n===1?'':'s'} from your calendar. Check, then send.`:'Nothing to fill: no free time in blank days');
+}
+async function importCalendar(useSaved){
+  const inp=$('cal_url'), url=useSaved?'':(inp?inp.value.trim():''), save=!useSaved&&$('cal_save')&&$('cal_save').checked;
+  if(!useSaved&&!url){ toast('Paste your calendar’s iCal link first'); inp&&inp.focus(); return; }
+  const btns=document.querySelectorAll('[data-calimport],[data-calsaved]'); btns.forEach(b=>b.disabled=true);
+  try{
+    const res=await fetch('/api/me/calendar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(useSaved?{}:{url})});
+    if(!res.ok){ let d={}; try{ d=await res.json(); }catch(e){} throw new Error(d.error||`Couldn't load the calendar (${res.status})`); }
+    const text=await res.text();
+    if(save){ try{ await api('PATCH','/me',{icalUrl:url}); Object.assign(ME, await api('GET','/me')); }catch(e){ toast(e.message); } }
+    applyCalendar(text);
+  }catch(e){ toast(e.message); btns.forEach(b=>b.disabled=false); }
+}
+function calButton(){ return `<button class="btn sm${P.calOpen?' primary':''}" data-cal aria-expanded="${!!P.calOpen}">From calendar…</button>`; }
+function calPanel(){
+  if(!P.calOpen) return '';
+  const u=ME.user, saved=u&&u.calendar;
+  return `<div class="qf">
+    ${saved?`<div class="row"><button type="button" class="btn sm primary" data-calsaved>Use my saved calendar</button><span class="muted small">${esc(saved)}</span></div>
+      <p class="help mt-2">Or use another one:</p>`:''}
+    <div class="row mt-2"><input type="url" id="cal_url" class="cal-in" placeholder="iCal link (https://… or webcal://…)" autocomplete="off" spellcheck="false" aria-label="iCal link">
+      <button type="button" class="btn sm${saved?'':' primary'}" data-calimport>Import</button>
+      <label class="btn sm">Choose .ics file<input type="file" id="cal_file" accept=".ics,text/calendar" hidden></label></div>
+    ${u?`<label class="check"><input type="checkbox" id="cal_save"${saved?'':' checked'}> ${saved?'Save this link on my account instead':'Remember this link on my account'}</label>`:''}
+    <p class="help">Free hours on blank days are marked available; busy times stay blank. Nothing is sent until you press Send.
+      Find the link in Google Calendar (Settings › your calendar › <i>Secret address in iCal format</i>), Outlook (Settings › Calendar › Shared calendars › Publish) or Apple Calendar (share as a public calendar).</p></div>`;
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-cal]')){ P.calOpen=!P.calOpen; renderBody(); return; }
+  if(e.target.closest('[data-calsaved]')) importCalendar(true);
+  else if(e.target.closest('[data-calimport]')) importCalendar(false);
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='cal_url'){ e.preventDefault(); importCalendar(false); } });
+document.addEventListener('change',e=>{
+  if(e.target.id!=='cal_file') return; const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(f.size>3*1024*1024){ toast('That file is too large (over 3 MB)'); return; }
+  const rd=new FileReader(); rd.onload=()=>applyCalendar(rd.result); rd.onerror=()=>toast("Couldn't read that file"); rd.readAsText(f);
 });
 function setEntry(k,v){ const e=Object.assign({},P.mine.entries); if(v==null) delete e[k]; else e[k]=v; P.mine.entries=e; }
 
@@ -1534,10 +1800,10 @@ function wireGrid(){
   const grid=$('grid'); if(!grid) return;
   let paint=null, touched=new Map();
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
-  const stateOf=el=>['y','m','n'].find(s=>el.classList.contains('s'+s))||null;
+  const stateOf=el=>['y','m'].find(s=>el.classList.contains('s'+s))||null;
   const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k]));
     const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
-    ['y','m','n'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
+    ['y','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
   const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map))); touched=new Map(); changed(); renderBody(); };
   grid.addEventListener('pointerdown',e=>{ const el=cellAt(e.clientX,e.clientY); if(!el) return; e.preventDefault();
     paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el);
@@ -1564,10 +1830,12 @@ function wireWho(){
 }
 document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open&&!dd.contains(e.target)){ dd.open=false; P.whoOpen=false; } });
 
-function stats(k){
-  const H=hours(), rs=sel(), cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
+// Everyone's saved answers except my own (for the "Show others" hints in My availability).
+function others(){ return (P.data.responses||[]).filter(r=>!P.myResp||r.id!==P.myResp.id); }
+function stats(k, rs=sel()){
+  const H=hours(), cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
   const list=rs.map(r=>{ const v=(r.entries||{})[k];
-    if(v==='y') full++; else if(v==='n') no++; else if(v==='m') maybe++; else if(isPartial(v)) part++;
+    const x=fromMap(hourMap(v)); if(x==='y') full++; else if(x==='m') maybe++; else if(x) part++; else no++;
     hourMap(v).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
     return {id:r.id,name:r.name||'Someone',v}; });
   const peak=Math.max(0,...cy), bestHours=peak?H.filter((h,i)=>cy[i]===peak):[];
@@ -1606,7 +1874,7 @@ function renderGroup(el){
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
       <div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--yes-dark)">Best hours</span><span style="--c:var(--maybe)">Maybe</span></div>`:''}
       ${P.sched&&P.sched.date===P.ovDay?schedForm():''}
-      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'No answer')}</span></div>${st.cls==='part'?ratioBar(x.v):''}</div>`; }).join('')}</div></div>`;
+      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v):''}</div>`; }).join('')}</div></div>`;
   }
   if(tot){
     const ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
@@ -1824,8 +2092,10 @@ async function saveDrafts(btn){
 
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
-const adminTabList = () => [['answers','Answers'],['rounds',P.data.poll.kind==='series'?'Rounds':P.data.poll.kind==='weekly'?'Week':'Dates'],['participants','Participants'],['share','Share'],['settings','Settings']];
+// Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
+const adminTabList = () => [['answers','Answers'],...(P.data.poll.kind==='series'?[['rounds','Rounds']]:[]),['participants','Participants'],['share','Share'],['settings','Settings']];
 function adminTabs(){
+  if(!adminTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
   return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}</button>`).join('')}</nav>`;
 }
 function setAdminTab(k){
@@ -1837,13 +2107,13 @@ function setAdminTab(k){
 }
 function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide';
-  return `<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
-    ${series?`<div class="card"><div class="card-h"><h2>Schedule for new rounds</h2></div><form id="rf">
+  return `${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
+    <div class="card"><div class="card-h"><h2>Schedule for new rounds</h2></div><form id="rf">
       <div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
         <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
       <div class="help">Applies to rounds opened from now on. To change the dates of an existing round, use “Edit” above. To change how often it repeats, create a new series.</div>
       <div class="err" id="rerr"></div>
-      <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div>`:''}</div>
+      <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div></div>`:''}
   <div id="pane-participants" class="${hid('participants')}"><div class="card"><div class="card-h"><h2>Participants</h2></div><div id="parts"><p class="help">Loading…</p></div></div></div>
   <div id="pane-share" class="${hid('share')}"><div class="card"><div class="card-h"><h2>Share</h2><span class="muted small">Send this link to people</span></div>
     <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
@@ -1854,6 +2124,7 @@ function adminPanes(){
       <div class="field"><label for="s_title">Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
       <div class="field"><label for="s_desc">Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
       <div class="field"><label>Icon or picture</label>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div></div>
+    ${series?'':datesSection()}
     <div class="section"><h3>Answering</h3>
       <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
@@ -1874,6 +2145,18 @@ function adminPanes(){
     <div class="card danger-zone"><div class="card-h"><h2>Delete</h2></div>
       <div class="row"><p class="help m0 grow">Deletes ${series?'the whole series, all its rounds':'this poll'} and every answer. This can’t be undone.</p>
       <button type="button" class="btn danger" id="delPoll">Delete ${series?'whole series':'poll'}</button></div></div></div>`;
+}
+// Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
+function datesSection(){
+  const i=inst(), open=i.status==='open';
+  return `<div class="section"><h3>Dates</h3>
+    <div class="row field"><span class="grow">${open?'<span class="tag y">open</span> People can answer.':`<span class="tag x">closed</span> Answers can't be changed.`}</span>
+      ${i.manualStatus==='open'?`<button type="button" class="btn" data-istatus="${i.id}" data-to="closed">Close poll</button>`:`<button type="button" class="btn" data-istatus="${i.id}" data-to="open">Reopen poll</button>`}</div>
+    ${isWeekly()?'':`<div class="grid2"><div class="field"><label for="s_from">From</label><input type="date" id="s_from" value="${i.startDate}"></div>
+      <div class="field"><label for="s_to">To</label><input type="date" id="s_to" value="${i.endDate}"></div></div>`}
+    <div class="field"><label for="s_dl">Reply by (optional)</label><input type="date" id="s_dl" value="${i.deadline||''}">
+      <div class="help">The poll closes after this day.</div></div>
+    ${i.note?`<div class="field"><label for="s_note">Note shown at the top of this poll</label><textarea id="s_note" maxlength="1000">${esc(i.note)}</textarea></div>`:''}</div>`;
 }
 async function loadParts(){
   const el=$('parts'); if(!el) return;
@@ -1910,7 +2193,13 @@ function wireAdmin(){
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
     if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
-    try{ await api('PATCH',`/polls/${P.id}`,b,headers());
+    // Settings → Dates edits the poll's single round; only sent when something there changed.
+    const i=inst(), ib={};
+    if($('s_from') && (v('s_from')!==i.startDate || v('s_to')!==i.endDate)) Object.assign(ib,{startDate:v('s_from'), endDate:v('s_to')});
+    if($('s_dl') && (v('s_dl')||null)!==(i.deadline||null)) ib.deadline=v('s_dl')||null;
+    if($('s_note') && v('s_note')!==i.note) ib.note=v('s_note');
+    try{ if(Object.keys(ib).length) await api('PATCH',`/polls/${P.id}/instances/${i.id}`,ib,headers());
+      await api('PATCH',`/polls/${P.id}`,b,headers());
       if(b.password!==undefined){ if(b.password) store.set('pw:'+P.id,b.password); else store.del('pw:'+P.id); P.password=b.password||null; }
       if(b.answerMode==='slots') P.mode='slots'; else if(b.answerMode==='days') P.mode='days';
       toast('Settings saved'); await loadPoll(false);
@@ -1995,11 +2284,10 @@ document.addEventListener('click',async e=>{
   }
   if(ds.delresp){ if(!confirm('Delete this response?')) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
-  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==null?'y':v==='y'?'m':v==='m'?'n':v==='n'?null:'y'); changed(); renderBody(); return; }
+  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==='y'?'m':v==='m'?null:'y'); changed(); renderBody(); return; }
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
     if(ds.bulk==='all') dates.forEach(k=>en[k]='y');
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
-    if(ds.bulk==='blank') dates.forEach(k=>{ if(en[k]==null) en[k]='n'; });
     if(ds.bulk==='clear') Object.keys(en).forEach(k=>delete en[k]);
     P.mine.entries=en; changed(); renderBody(); }
 });

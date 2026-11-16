@@ -103,6 +103,7 @@ async function route(request, env, ctx, url) {
     if (!parts[2] && m === 'GET') return me(request, env);
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
+    if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
     throw new HttpError(404, 'Not found');
   }
   if (parts[1] !== 'polls') throw new HttpError(404, 'Not found');
@@ -532,15 +533,18 @@ async function me(request, env) {
   const u = userOf(request);
   if (!u) return json({ user: null });
   const img = u.hasImg ? await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(u.id).first('avatar_img') : '';
-  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created } });
+  const ical = await env.DB.prepare('SELECT ical_url FROM users WHERE id = ?').bind(u.id).first('ical_url');
+  // The feed URL is a secret: the page only learns which host it points at.
+  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created, calendar: ical ? new URL(ical).host : '' } });
 }
-// Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or '') }. A new name also renames the account's answers.
+// Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
   const user = requireUser(request);
   const b = await body(request), u = {};
   if (b.name !== undefined) u.name = b.name === '' ? '' : personName(b.name);
   if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
   if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
+  if (b.icalUrl !== undefined) u.ical_url = b.icalUrl === '' || b.icalUrl === null ? null : icalUrl(b.icalUrl);
   const cols = Object.keys(u);
   if (!cols.length) return json({ ok: true });
   const stmts = [env.DB.prepare(`UPDATE users SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), user.id)];
@@ -550,6 +554,59 @@ async function updateProfile(request, env) {
   await env.DB.batch(stmts);
   return json({ ok: true });
 }
+// ---------- external calendar (iCal feed) ----------
+// The page parses the calendar itself; the Worker only fetches the feed (browsers can't, because of CORS).
+// Waiting on the fetch costs no CPU time, so this stays within the Free plan.
+const ICAL_MAX_BYTES = 3 * 1024 * 1024;
+const ICAL_PER_WINDOW = 20; // feed fetches per IP within FAIL_WINDOW_MIN
+function icalUrl(raw) {
+  const bad = () => new HttpError(400, 'Enter an iCal link (https:// or webcal://)');
+  if (typeof raw !== 'string') throw bad();
+  let s = raw.trim();
+  if (!s || s.length > 2000) throw bad();
+  s = s.replace(/^webcals?:\/\//i, 'https://');
+  let u;
+  try { u = new URL(s); } catch (e) { throw bad(); }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol !== 'https:' || u.username || u.password || !host.includes('.') || host === 'localhost' || host.endsWith('.localhost')
+    || host.endsWith('.local') || host.endsWith('.internal') || /^[\d.]+$/.test(host) || host.startsWith('[')) throw bad();
+  return u.toString();
+}
+// Body: { url? }. Without a url, a signed-in person's saved feed is used. Returns the feed as text/calendar.
+async function fetchCalendar(request, env) {
+  const b = await body(request), user = userOf(request);
+  let url;
+  if (b.url) url = icalUrl(b.url);
+  else {
+    if (!user) throw new HttpError(400, 'Enter an iCal link (https:// or webcal://)');
+    url = await env.DB.prepare('SELECT ical_url FROM users WHERE id = ?').bind(user.id).first('ical_url');
+    if (!url) throw new HttpError(404, 'No calendar is saved on your account');
+  }
+  await checkThrottle(env, request, 'ical', { max: ICAL_PER_WINDOW, msg: `Too many calendar imports. Try again in ${FAIL_WINDOW_MIN} minutes.` });
+  await recordFail(env, request, 'ical');
+  let res;
+  try {
+    res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { accept: 'text/calendar, */*;q=0.5', 'user-agent': 'when-who calendar import' } });
+  } catch (e) { throw new HttpError(502, 'Could not reach that calendar'); }
+  if (!res.ok) throw new HttpError(502, `The calendar link answered with an error (${res.status})`);
+  // Read with a size cap, so a huge or endless response can't run us out of memory.
+  const reader = res.body.getReader(), chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > ICAL_MAX_BYTES) { reader.cancel(); throw new HttpError(413, 'That calendar is too large (over 3 MB)'); }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) { buf.set(c, at); at += c.byteLength; }
+  const text = new TextDecoder().decode(buf);
+  if (!/BEGIN:VCALENDAR/i.test(text.slice(0, 2000))) throw new HttpError(422, "That link didn't return a calendar (.ics)");
+  return new Response(text, { headers: { 'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store' } });
+}
+
 // Polls the account owns (with their current round) and polls it answered.
 async function myPolls(request, env) {
   const user = requireUser(request);

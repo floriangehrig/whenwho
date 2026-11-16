@@ -16,6 +16,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `participants`: one per person per poll, shared across all instances of a series. `responses.participant_id` links to it.
   Guests are unique by name (`name_key` = lower-cased name). Signed-in people are unique by account (`user_id`; `name_key` = "\u0001" + user id), so names may repeat.
 - `users`: accounts, one per (lower-cased) email, with profile `name` and `avatar` (emoji) / `avatar_img` (data URL).
+  `ical_url` (optional) is the person's secret iCal feed: the page never gets it back (`GET /api/me` returns only its host);
+  `POST /api/me/calendar` fetches it (or a pasted link) and the page parses it to pre-fill free hours.
   Sign-in is a 6-digit code emailed to the address (`login_codes`, hashed, 10 min, 5 tries). There is no password login.
   Only the owning account can manage a poll.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
