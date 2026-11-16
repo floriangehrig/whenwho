@@ -223,7 +223,36 @@ function checkRange(s, e) {
   if (e < s) throw new HttpError(400, 'The end date is before the start date');
   if (daysBetween(s, e) + 1 > MAX_RANGE_DAYS) throw new HttpError(400, `A poll can cover at most ${MAX_RANGE_DAYS} days`);
 }
-function datesOf(inst) { const out = []; for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) out.push(d); return out; }
+// Day pattern: which days of a round are offered. {wd:[0..6]|null (0 = Monday), dom:[from,to]|null}; null = every day.
+function parsePattern(v) {
+  if (v == null || v === '') return null;
+  if (typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Invalid day pattern');
+  let wd = null, dom = null;
+  if (v.wd != null) {
+    if (!Array.isArray(v.wd) || !v.wd.length) throw new HttpError(400, 'Pick at least one weekday');
+    if (v.wd.some((x) => !Number.isInteger(x) || x < 0 || x > 6)) throw new HttpError(400, 'Invalid weekday');
+    wd = [...new Set(v.wd)].sort((a, b) => a - b);
+    if (wd.length === 7) wd = null;
+  }
+  if (v.dom != null) {
+    if (!Array.isArray(v.dom) || v.dom.length !== 2) throw new HttpError(400, 'Invalid days of the month');
+    const a = int(v.dom[0], 1, 31, 'First day of the month'), b = int(v.dom[1], 1, 31, 'Last day of the month');
+    if (b < a) throw new HttpError(400, 'The last day of the month is before the first');
+    dom = a === 1 && b === 31 ? null : [a, b];
+  }
+  return wd || dom ? { wd, dom } : null;
+}
+function patternOf(poll) { try { return poll.day_pattern ? JSON.parse(poll.day_pattern) : null; } catch (e) { return null; } }
+function matchesPattern(d, pat) {
+  if (!pat) return true;
+  const x = new Date(d + 'T00:00:00Z');
+  return (!pat.wd || pat.wd.includes((x.getUTCDay() + 6) % 7)) && (!pat.dom || (x.getUTCDate() >= pat.dom[0] && x.getUTCDate() <= pat.dom[1]));
+}
+function datesOf(inst, poll) {
+  const pat = poll ? patternOf(poll) : null, out = [];
+  for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) if (matchesPattern(d, pat)) out.push(d);
+  return out;
+}
 const effStatus = (inst) => (inst.status === 'closed' || inst.end_date < today() ? 'closed' : 'open');
 
 // ---------- series periods ----------
@@ -288,11 +317,11 @@ function publicPoll(poll, admin) {
   const p = {
     id: poll.id, title: poll.title, description: poll.description, kind: poll.kind,
     unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
-    answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end,
+    answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end, dayPattern: patternOf(poll),
     hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, hasPassword: !!poll.password_hash,
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
-  if (admin) Object.assign(p, { adminEmail: poll.admin_email, notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
+  if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
   return p;
 }
 function publicInstance(inst, extra = {}) {
@@ -568,9 +597,9 @@ function readPollSettings(b, existing) {
     if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
     p.hour_start = hs; p.hour_end = he;
   }
+  if (!existing || has('dayPattern')) { const pat = parsePattern(b.dayPattern); p.day_pattern = pat ? JSON.stringify(pat) : null; }
   if (!existing || has('hideResults')) p.hide_results = b.hideResults ? 1 : 0;
   if (!existing || has('allowComments')) p.allow_comments = b.allowComments === false ? 0 : 1;
-  if (!existing || has('adminEmail')) p.admin_email = email(b.adminEmail, 'Your email');
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
   if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
@@ -595,6 +624,7 @@ async function createPoll(request, env) {
     checkRange(b.startDate, b.endDate);
     if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date');
     first = { start_date: b.startDate, end_date: b.endDate, deadline: b.deadline || null };
+    if (!datesOf(first, p).length) throw new HttpError(400, 'None of the days in this range match the chosen days');
   }
   const cols = Object.keys(p);
   await env.DB.prepare(`INSERT INTO polls (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => p[c])).run();
@@ -625,7 +655,7 @@ async function getPoll(request, env, ctx, url, id) {
   const out = {
     poll: publicPoll(poll, admin), isAdmin: admin, emailEnabled: emailEnabled(env),
     instances: listed.map((i) => publicInstance(i, admin ? { responses: counts[i.id] || 0 } : {})),
-    instance: publicInstance(sel), dates: datesOf(sel),
+    instance: publicInstance(sel), dates: datesOf(sel, poll),
   };
   if (admin && poll.kind === 'series') {
     const n = Math.max(...all.map((i) => i.seq)) + 1;
@@ -840,14 +870,18 @@ async function mailQuota(env, poll, count) {
   if (used + count > max) throw new HttpError(429, `Daily email limit reached (${max} recipients). Try again tomorrow.`);
   await env.DB.prepare('INSERT INTO mail_log (user_id, n, at) VALUES (?, ?, ?)').bind(key, count, now()).run();
 }
+const ownerOf = (env, poll) => poll.owner_id ? env.DB.prepare('SELECT name, email FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
 async function sendMail(env, poll, { to, subject, text, attachments, quota = false, fromName, replyTo }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
   if (quota) await mailQuota(env, poll, list.length);
   // Sender name = the owner's account name, so people see who the email is from (poll title only without one).
-  const owner = poll.owner_id ? await env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
+  // The owner's (verified) account email gets the copy and the replies. polls.admin_email is a legacy
+  // fallback for old polls nobody has claimed; it can no longer be set.
+  const owner = await ownerOf(env, poll);
   const sender = fromName || (owner && owner.name) || poll.title;
-  const reply = replyTo || poll.admin_email;
+  const ownerMail = (owner && owner.email) || poll.admin_email || '';
+  const reply = replyTo || ownerMail;
   const pollLink = (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
   const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
     preheader: subject, button: pollLink ? { href: pollLink, label: 'Open poll' } : null, site: siteUrl(env, ''),
@@ -855,7 +889,7 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   let sent = 0;
   for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
     const bcc = list.slice(i, i + 49);
-    const to = (poll.admin_email || env.MAIL_FROM).toLowerCase();
+    const to = (ownerMail || env.MAIL_FROM).toLowerCase();
     await sendEmail(env, {
       fromName: sender,
       to: [to],
@@ -919,8 +953,9 @@ async function invitePoll(request, env, url, id) {
 async function testEmail(request, env, url, id) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
-  if (!poll.admin_email) throw new HttpError(400, 'Add your email in the poll settings first');
-  await sendMail(env, poll, { to: [poll.admin_email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}`, quota: true });
+  const owner = await ownerOf(env, poll);
+  if (!owner || !owner.email) throw new HttpError(400, 'This poll has no owner account');
+  await sendMail(env, poll, { to: [owner.email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}`, quota: true });
   return json({ ok: true });
 }
 
@@ -1015,7 +1050,7 @@ async function createResponse(request, env, id, iid) {
   const name = user && user.name ? user.name : personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
   const mail = user ? user.email : email(b.email);
-  const entries = validateEntries(b.entries, poll, datesOf(inst));
+  const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
@@ -1101,7 +1136,7 @@ async function updateResponse(request, env, id, rid) {
   let name = b.name !== undefined ? personName(b.name) : r.name;
   let mail = b.email !== undefined ? email(b.email) : r.email;
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
-  const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst))) : r.entries;
+  const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst, poll))) : r.entries;
   let partId = r.participant_id;
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
