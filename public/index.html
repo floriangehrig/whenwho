@@ -184,13 +184,15 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--brand);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:calc(100vw - 32px)}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   /* ---------- easter egg: Pigeon Post ---------- */
-  .pigeon-ov{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;background:var(--bg);outline:none}
+  .pigeon-ov{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(6,12,26,.58);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);outline:none}
+  .pigeon-win{position:relative;display:flex;flex-direction:column;width:min(920px,calc(100vw - 32px));height:min(620px,calc(100vh - 32px));height:min(620px,calc(100dvh - 32px));border-radius:20px;overflow:hidden;background:var(--bg);box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08)}
+  @media (max-width:560px){ .pigeon-win{width:calc(100vw - 16px);height:calc(100vh - 16px);height:calc(100dvh - 16px);border-radius:16px} }
   .pigeon-bar{flex:none;display:flex;align-items:center;gap:14px;height:48px;padding:0 8px 0 16px;background:var(--brand);color:#fff;font-size:14px}
   .pigeon-bar .pg-title{margin-right:auto;font-weight:700;white-space:nowrap}
   .pigeon-bar .pg-stat{color:var(--on-brand-muted);white-space:nowrap} .pigeon-bar .pg-stat b{color:#fff;font-variant-numeric:tabular-nums}
   .pg-btn{width:36px;height:36px;border-radius:8px;border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;font-family:inherit}
   .pg-btn:hover{background:rgba(255,255,255,.12)}
-  .pigeon-ov canvas{flex:1;width:100%;min-height:0;display:block;touch-action:none;cursor:pointer}
+  .pigeon-win canvas{flex:1;width:100%;min-height:0;display:block;touch-action:none;cursor:pointer}
   .pg-credit{position:absolute;right:8px;bottom:4px;font-size:10px;line-height:14px;color:var(--on-brand-muted);opacity:.8}
   .pigeon-bar{animation:pg-bar .55s .3s both cubic-bezier(.3,1.5,.5,1)}
   @keyframes pg-bar{from{transform:translateY(-100%)}}
@@ -1575,7 +1577,7 @@ const Pigeon=(()=>{
   const CAPS=["Tuesday works for everyone! …except Tuesday","Group chat: 47 unread","Dinner moved to 7:30. No wait, 8","Brunch at 11 means 12","Who's bringing snacks?","Sorry, I have a thing","Time zones are a social construct","Rain check accepted","\"Any day but that one\"","Your dentist says hi"];
   const OVER=["Plans cancelled. Rain check?","Double-booked!","Stuck in a time zone","Overslept. Again.","Nobody is free. Ever.","Rescheduled to \"sometime\"","Fashionably late (very)"];
   const pick=a=>a[Math.random()*a.length|0];
-  const GROUND=22, R=13, OW=72, PH=58, SPACING=270, INTRO=1.9;
+  const GROUND=22, R=17, OW=72, PH=58, SPACING=270, INTRO=1.9;
   const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const spring=t=>t<=0?0:1-Math.exp(-6*t)*Math.cos(11*t);
   let ov=null,cv,cx,raf=0,last=0,W=0,H=0,C={},s=null,audio=null,muted=true,lastTap=0,prevOverflow='',spr=null,org=null,closing=false;
@@ -1583,10 +1585,10 @@ const Pigeon=(()=>{
   const sprOk=()=>spr&&spr.complete&&spr.naturalWidth>0;
   function tokens(){ const cs=getComputedStyle(document.documentElement), g=k=>cs.getPropertyValue(k).trim();
     C={sky:g('--accent-weak'),card:g('--card'),line:g('--line-strong'),ink:g('--ink'),muted:g('--muted'),accent:g('--accent'),no:g('--no'),yes:g('--yes'),maybe:g('--maybe'),brand:g('--brand'),empty:g('--empty')}; }
-  function size(){ const dpr=Math.min(window.devicePixelRatio||1,2), r=cv.getBoundingClientRect(); W=r.width; H=r.height;
+  function size(){ const dpr=Math.min(window.devicePixelRatio||1,2); W=cv.clientWidth; H=cv.clientHeight;
     cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cx.setTransform(dpr,0,0,dpr,0,0); if(s) s.x=Math.min(W*.28,170); }
   function spawn(x){ const big=s.score>3&&Math.random()<.04;
-    const gap=big?Math.max(H*.55,260):Math.max(140,Math.min(210,H*.32)-s.score*2.2);
+    const gap=big?Math.max(H*.55,280):Math.max(165,Math.min(235,H*.38)-s.score*2.2);
     const top=40+Math.random()*Math.max(10,H-GROUND-80-gap);
     s.obs.push({x,top,gap,big,passed:false,busy:false,day:1+(Math.random()*28|0),seed:Math.random()*100|0});
     if(!big&&Math.random()<.45) s.crumbs.push({x:x+OW/2+SPACING/2,y:top+gap/2+(Math.random()-.5)*gap*.5}); }
@@ -1607,7 +1609,7 @@ const Pigeon=(()=>{
     if(s.state==='intro'){ toReady(); return; }
     if(s.state==='over'){ if(s.t-s.dead>.6) reset(false); return; }
     if(s.state==='ready') s.state='play'; s.vy=-430; s.wing=1; s.frame=0; coo(); }
-  function poop(){ if(s&&s.state==='play'&&!s.paused) s.poops.push({x:s.x-6,y:s.y+12,vy:Math.max(0,s.vy*.3)}); }
+  function poop(){ if(s&&s.state==='play'&&!s.paused) s.poops.push({x:s.x-8,y:s.y+16,vy:Math.max(0,s.vy*.3)}); }
   function die(){ if(s.state!=='play') return; s.state='over'; s.dead=s.t; s.msg=pick(OVER); feathers(s.x,s.y,10,160);
     s.isBest=s.score>store.get('ww_pigeon_best',0); if(s.isBest) store.set('ww_pigeon_best',s.score); hud(); }
   function hitRect(px,py,r,x,y,w,h){ const nx=Math.max(x,Math.min(px,x+w)), ny=Math.max(y,Math.min(py,y+h)); return (px-nx)**2+(py-ny)**2<r*r; }
@@ -1633,13 +1635,13 @@ const Pigeon=(()=>{
     const sp=Math.min(170+s.score*5,330);
     s.vy=Math.min(s.vy+1500*dt,720); s.y+=s.vy*dt; if(s.y<R){ s.y=R; s.vy=0; }
     for(const o of s.obs){ o.x-=sp*dt;
-      if(hitRect(s.x,s.y,R-2,o.x,-500,OW,o.top+500)||hitRect(s.x,s.y,R-2,o.x,o.top+o.gap,OW,floor-o.top-o.gap)) die();
+      if(hitRect(s.x,s.y,R-2,o.x-4,-500,OW+8,o.top+500)||hitRect(s.x,s.y,R-2,o.x-4,o.top+o.gap,OW+8,floor-o.top-o.gap)) die();
       if(!o.passed&&o.x+OW<s.x){ o.passed=true; const before=s.score; s.score+=o.big?5:1;
         if(o.big) s.pops.push({x:s.x,y:s.y-24,t:1.4,txt:'+5 everyone came!'});
         if(Math.floor(s.score/10)>Math.floor(before/10)){ s.cap=pick(CAPS); s.capT=2.6; s.capAge=0; confetti(); } hud(); } }
     s.obs=s.obs.filter(o=>o.x>-OW-10);
     const lastO=s.obs[s.obs.length-1]; if(!lastO||lastO.x<W+20-SPACING) spawn(lastO?lastO.x+SPACING:W+20);
-    for(const c of s.crumbs){ c.x-=sp*dt; if(!c.got&&(c.x-s.x)**2+(c.y-s.y)**2<22*22){ c.got=true; s.score++; s.pops.push({x:c.x,y:c.y,t:.8,txt:'+1 crumb'}); hud(); } }
+    for(const c of s.crumbs){ c.x-=sp*dt; if(!c.got&&(c.x-s.x)**2+(c.y-s.y)**2<27*27){ c.got=true; s.score++; s.pops.push({x:c.x,y:c.y,t:.8,txt:'+1 crumb'}); hud(); } }
     s.crumbs=s.crumbs.filter(c=>!c.got&&c.x>-10);
     for(const p of s.poops){ p.vy+=900*dt; p.y+=p.vy*dt; p.x-=sp*dt*.2;
       for(const o of s.obs) if(p.x>o.x&&p.x<o.x+OW&&(p.y<o.top||p.y>o.top+o.gap)){ o.busy=true; p.done=true; }
@@ -1651,25 +1653,33 @@ const Pigeon=(()=>{
   const F='Inter,system-ui,sans-serif';
   function rr(x,y,w,h,r){ cx.beginPath(); if(cx.roundRect) cx.roundRect(x,y,w,h,r); else cx.rect(x,y,w,h); }
   function txt(t,x,y,font,color,max){ cx.font=font; cx.fillStyle=color; cx.textAlign='center'; cx.textBaseline='middle'; max?cx.fillText(t,x,y,max):cx.fillText(t,x,y); }
-  function tile(x,y){ rr(x+2,y+2,OW-4,PH-4,6); cx.fillStyle=C.card; cx.fill(); cx.strokeStyle=C.line; cx.lineWidth=1; cx.stroke(); }
-  function calPage(x,y,o,n){ tile(x,y); rr(x+2,y+2,OW-4,13,[6,6,0,0]); cx.fillStyle=o.big?C.yes:C.no; cx.fill();
-    txt(n,x+OW/2,y+PH/2+7,`600 20px ${F}`,C.ink); }
-  function clockTile(x,y,n){ tile(x,y); const ox=x+OW/2, oy=y+PH/2+3, hr=(n*5)%12, mn=(n*17)%60;
-    cx.fillStyle=C.maybe; [-1,1].forEach(sd=>{ cx.beginPath(); cx.arc(ox+sd*12,oy-14,6,Math.PI,0); cx.fill(); });
-    cx.beginPath(); cx.arc(ox,oy,17,0,7); cx.fillStyle=C.card; cx.fill(); cx.strokeStyle=C.ink; cx.lineWidth=2; cx.stroke();
-    const hand=(a,l,w)=>{ cx.lineWidth=w; cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(a)*l,oy+Math.sin(a)*l); cx.stroke(); };
-    cx.lineCap='round'; hand((hr+mn/60)/12*Math.PI*2-Math.PI/2,9,2.4); hand(mn/60*Math.PI*2-Math.PI/2,13,1.6); cx.lineCap='butt';
-    cx.fillStyle=C.no; cx.beginPath(); cx.arc(ox,oy,2,0,7); cx.fill(); }
-  function stack(o,y,i,n){ (o.seed+i)%4===1&&!o.big?clockTile(o.x,y,n):calPage(o.x,y,o,n); }
+  const tint=(hex,a)=>/^#[0-9a-f]{6}$/i.test(hex)?hex+a:hex;
+  const rgbOf=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const mix=(h,t,a)=>{ const A=rgbOf(h), B=rgbOf(t); return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*a)).join(',')})`; };
+  function shadow(col,blur,dy){ cx.shadowColor=col||'transparent'; cx.shadowBlur=blur||0; cx.shadowOffsetY=dy||0; }
+  const hue=o=>o.big?'#12A150':TINTS[o.seed%TINTS.length];
+  function pillar(o,y0,y1){ if(y1-y0<2) return; const x=o.x, base=hue(o);
+    rr(x,y0,OW,y1-y0,22); shadow(tint(base,'55'),18,6);
+    const g=cx.createLinearGradient(x,0,x+OW,0); g.addColorStop(0,mix(base,'#ffffff',.2)); g.addColorStop(.55,base); g.addColorStop(1,mix(base,'#000000',.25));
+    cx.fillStyle=g; cx.fill(); shadow();
+    if(y1-y0>40){ rr(x+10,y0+14,7,y1-y0-28,4); cx.fillStyle='rgba(255,255,255,.22)'; cx.fill(); } }
+  function cap(o,y,n){ const x=o.x-7, w=OW+14, h=32, base=hue(o), mx=x+w/2;
+    rr(x,y,w,h,12); shadow('rgba(0,0,0,.2)',10,3); cx.fillStyle=mix(base,'#ffffff',.14); cx.fill(); shadow();
+    const g=cx.createLinearGradient(0,y,0,y+h); g.addColorStop(0,'rgba(255,255,255,.3)'); g.addColorStop(1,'rgba(255,255,255,0)'); cx.fillStyle=g; cx.fill();
+    if(o.big){ txt('FREE',mx,y+h/2+1,`800 13px ${F}`,'#fff'); return; }
+    const clock=o.seed%3===1, ix=mx-20, iy=y+h/2, label=clock?`${(n*5)%12+1}:${String((n*15)%60).padStart(2,'0')}`:String(n);
+    cx.strokeStyle='#fff'; cx.fillStyle='#fff'; cx.lineWidth=1.6;
+    if(clock){ cx.beginPath(); cx.arc(ix,iy,6,0,7); cx.stroke(); cx.lineCap='round'; cx.beginPath(); cx.moveTo(ix,iy); cx.lineTo(ix,iy-3.6); cx.moveTo(ix,iy); cx.lineTo(ix+2.8,iy+1); cx.stroke(); cx.lineCap='butt'; }
+    else { rr(ix-6,iy-5.5,12,11,2.5); cx.stroke(); cx.fillRect(ix-6,iy-5.5,12,3.2); cx.fillRect(ix-3.6,iy-8,1.6,3); cx.fillRect(ix+2,iy-8,1.6,3); }
+    cx.font=`800 14px ${F}`; cx.textAlign='left'; cx.textBaseline='middle'; cx.fillStyle='#fff'; cx.fillText(label,ix+11,iy+1); }
   function obstacle(o,floor){
-    for(let y=o.top-PH,i=0;y>-PH;y-=PH,i++) stack(o,y,i,(o.day+i)%31+1);
-    for(let y=o.top+o.gap,i=0;y<floor;y+=PH,i++) stack(o,y,i+7,(o.day+i+4)%31+1);
-    if(o.busy){ cx.save(); cx.translate(o.x+OW/2,o.top+o.gap+PH/2+4); cx.rotate(-.22); rr(-30,-11,60,22,4);
-      cx.fillStyle=C.card; cx.globalAlpha=.9; cx.fill(); cx.globalAlpha=1; cx.strokeStyle=C.no; cx.lineWidth=2; cx.stroke();
-      txt('✗ BUSY',0,1,`800 12px ${F}`,C.no); cx.restore(); }
+    pillar(o,-30,o.top-16); cap(o,o.top-32,o.day);
+    pillar(o,o.top+o.gap+16,floor+30); cap(o,o.top+o.gap,(o.day+3)%31+1);
+    if(o.busy){ cx.save(); cx.translate(o.x+OW/2,o.top+o.gap+66); cx.rotate(-.18); rr(-31,-11,62,22,11);
+      shadow('rgba(0,0,0,.2)',6,2); cx.fillStyle='#fff'; cx.fill(); shadow(); txt('✗ BUSY',0,1,`800 11px ${F}`,'#D64545'); cx.restore(); }
     if(o.big){ txt("EVERYONE'S",o.x+OW/2,o.top+o.gap/2-9,`800 12px ${F}`,C.yes); txt('FREE',o.x+OW/2,o.top+o.gap/2+9,`800 12px ${F}`,C.yes); }
   }
-  function envelope(x,y,rot){ cx.save(); cx.translate(x,y); cx.rotate(rot||0); cx.fillStyle='#fff'; cx.strokeStyle=C.accent; cx.lineWidth=1.2;
+  function envelope(x,y,rot,sc){ cx.save(); cx.translate(x,y); cx.rotate(rot||0); if(sc) cx.scale(sc,sc); cx.fillStyle='#fff'; cx.strokeStyle=C.accent; cx.lineWidth=1.2;
     cx.fillRect(-6,-4,13,9); cx.strokeRect(-6,-4,13,9); cx.beginPath(); cx.moveTo(-6,-4); cx.lineTo(.5,1); cx.lineTo(7,-4); cx.stroke(); cx.restore(); }
   function vecBird(){ // fallback drawing while the sprite loads
     cx.fillStyle='#9aa3b2'; cx.beginPath(); cx.ellipse(0,2,15,11,0,0,7); cx.fill();
@@ -1680,12 +1690,12 @@ const Pigeon=(()=>{
     let rot=s.state==='play'?Math.max(-.5,Math.min(1.2,s.vy/600)):s.state==='intro'?s.rot:0;
     if(over) rot=Math.min(2.6,1+(s.t-s.dead)*5);
     cx.save(); cx.translate(s.x,s.y); cx.rotate(rot);
-    if(sprOk()){ const dh=60, dw=dh*SPR.w/SPR.h, f=Math.floor(s.frame)%SPR.n;
+    if(sprOk()){ const dh=88, dw=dh*SPR.w/SPR.h, f=Math.floor(s.frame)%SPR.n;
       cx.drawImage(spr,f*SPR.w,0,SPR.w,SPR.h,-dw*.5,-dh*.62,dw,dh); } else vecBird();
-    if(!over) envelope(3,14,.1);
+    if(!over) envelope(4,20,.1,1.35);
     cx.restore();
-    if(over){ for(let k=0;k<3;k++){ const a=s.t*5+k*2.09; txt('★',s.x+Math.cos(a)*16,s.y-26+Math.sin(a)*5,`700 12px ${F}`,C.maybe); }
-      const k=Math.min(1,(s.t-s.dead)/1.2); if(k<1){ cx.save(); cx.globalAlpha=1-k; envelope(s.x+20+k*60,s.y-20-k*90,k*4); cx.restore(); } }
+    if(over){ for(let k=0;k<3;k++){ const a=s.t*5+k*2.09; txt('★',s.x+Math.cos(a)*20,s.y-38+Math.sin(a)*6,`700 12px ${F}`,C.maybe); }
+      const k=Math.min(1,(s.t-s.dead)/1.2); if(k<1){ cx.save(); cx.globalAlpha=1-k; envelope(s.x+24+k*60,s.y-24-k*90,k*4,1.35); cx.restore(); } }
   }
   function title(){ if(s.titleA<=0) return; const sc=s.state==='intro'?spring(s.it-.25):1; if(sc<=0) return;
     const size=Math.max(26,Math.min(56,W/9,H/11)), y=Math.max(48,H*.15);
@@ -1716,10 +1726,10 @@ const Pigeon=(()=>{
       rr(W/2-w/2,y,w,36,18); cx.fillStyle=C.brand; cx.fill(); txt(s.cap,W/2,y+18,`600 14px ${F}`,'#fff',w-24); cx.restore(); }
     if(s.state==='ready'){
       const t=`Coo! ${touch()?'Tap':'Press space'} and I'll deliver the invites.`, sc=spring(s.t-s.readyAt); cx.font=`600 14px ${F}`;
-      const w=Math.min(W-s.x-16,cx.measureText(t).width+28), bx=Math.min(s.x+24,W-w-8), by=s.y-66;
+      const w=Math.min(W-s.x-16,cx.measureText(t).width+28), bx=Math.min(s.x+30,W-w-8), by=s.y-84;
       cx.save(); cx.translate(s.x+24,by+40); cx.scale(sc,sc); cx.translate(-(s.x+24),-(by+40));
       rr(bx,by,w,34,12); cx.fillStyle=C.card; cx.fill(); cx.strokeStyle=C.line; cx.lineWidth=1; cx.stroke();
-      cx.beginPath(); cx.moveTo(s.x+30,by+34); cx.lineTo(s.x+22,by+46); cx.lineTo(s.x+44,by+34); cx.fillStyle=C.card; cx.fill();
+      cx.beginPath(); cx.moveTo(s.x+30,by+34); cx.lineTo(s.x+20,by+48); cx.lineTo(s.x+46,by+34); cx.fillStyle=C.card; cx.fill();
       txt(t,bx+w/2,by+17,`600 14px ${F}`,C.ink,w-16); cx.restore();
       txt(touch()?'Tap to flap · double-tap to drop a little gift':'Space / ↑ flap · D drop a little gift · P pause · Esc leave',W/2,floor-18,`500 12px ${F}`,C.muted,W-24);
     }
@@ -1744,31 +1754,37 @@ const Pigeon=(()=>{
   function onPtr(e){ e.preventDefault(); if(s.paused){ s.paused=false; return; }
     const now=performance.now(); if(now-lastTap<260) poop(); lastTap=now; flap(); }
   function onVis(){ if(document.hidden&&s&&s.state==='play') s.paused=true; }
+  const darkMq=matchMedia('(prefers-color-scheme: dark)');
+  function onScheme(){ tokens(); }
   function onResize(){ size(); if(s&&s.state==='ready') s.y=H*.5; }
-  function reveal(grow,done){ // circular wipe from where the game was opened
-    const x=org.x, y=org.y, r=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y)), a=`circle(0px at ${x}px ${y}px)`, b=`circle(${r}px at ${x}px ${y}px)`;
+  function reveal(grow,done){ // window pops out of (and back into) the spot the game was opened from
     if(RM||!ov.animate){ if(done) done(); return; }
-    const an=ov.animate([{clipPath:grow?a:b},{clipPath:grow?b:a}],grow?{duration:700,easing:'cubic-bezier(.2,.8,.2,1)'}:{duration:380,easing:'cubic-bezier(.6,0,.8,.3)',fill:'forwards'});
+    const win=$('pgWin'), r=win.getBoundingClientRect(); win.style.transformOrigin=`${org.x-r.left}px ${org.y-r.top}px`;
+    const an=win.animate(grow
+      ?[{transform:'scale(.12) rotate(-8deg)',opacity:0},{transform:'scale(1.04) rotate(1deg)',opacity:1,offset:.62},{transform:'scale(.99) rotate(0deg)',opacity:1,offset:.82},{transform:'scale(1) rotate(0deg)',opacity:1}]
+      :[{transform:'scale(1) rotate(0deg)',opacity:1},{transform:'scale(.15) rotate(-8deg)',opacity:0}],
+      grow?{duration:620,easing:'cubic-bezier(.2,.8,.25,1)'}:{duration:280,easing:'cubic-bezier(.6,0,.8,.3)',fill:'forwards'});
+    ov.animate(grow?[{opacity:0},{opacity:1}]:[{opacity:1},{opacity:0}],{duration:grow?260:280,fill:'forwards'});
     if(done) an.onfinish=done; }
   function open(from){
     if(ov) return; tokens(); muted=store.get('ww_pigeon_muted',true); closing=false;
     if(!spr){ spr=new Image(); spr.src=SPR.src; }
     org=from||{x:innerWidth/2,y:innerHeight/2};
     ov=document.createElement('div'); ov.className='pigeon-ov'; ov.tabIndex=-1; ov.setAttribute('role','dialog'); ov.setAttribute('aria-label','Pigeon Post game');
-    ov.innerHTML=`<div class="pigeon-bar"><span class="pg-title">🐦<span> Pigeon Post</span></span><span class="pg-stat">Delivered <b id="pgScore">0</b></span><span class="pg-stat">Best <b id="pgBest">0</b></span>
+    ov.innerHTML=`<div class="pigeon-win" id="pgWin"><div class="pigeon-bar"><span class="pg-title">🐦<span> Pigeon Post</span></span><span class="pg-stat">Delivered <b id="pgScore">0</b></span><span class="pg-stat">Best <b id="pgBest">0</b></span>
       <button type="button" class="pg-btn" id="pgSnd" aria-label="Toggle sound"></button><button type="button" class="pg-btn" id="pgX" aria-label="Close game">✕</button></div><canvas id="pgCv"></canvas>
-      <a class="pg-credit" href="https://commons.wikimedia.org/wiki/File:Bird-in-flight.gif" target="_blank" rel="noopener">Pigeon: Gadgetroid, CC BY-SA 3.0 (edited)</a>`;
+      <a class="pg-credit" href="https://commons.wikimedia.org/wiki/File:Bird-in-flight.gif" target="_blank" rel="noopener">Pigeon: Gadgetroid, CC BY-SA 3.0 (edited)</a></div>`;
     document.body.appendChild(ov); prevOverflow=document.body.style.overflow; document.body.style.overflow='hidden';
     cv=$('pgCv'); cx=cv.getContext('2d'); s=null; size(); reset(true); sndLabel(); reveal(true);
     $('pgX').onclick=close;
     $('pgSnd').onclick=()=>{ muted=!muted; store.set('ww_pigeon_muted',muted); sndLabel(); coo(); ov.focus(); };
-    cv.addEventListener('pointerdown',onPtr);
-    window.addEventListener('keydown',onKey,true); window.addEventListener('resize',onResize); document.addEventListener('visibilitychange',onVis);
+    cv.addEventListener('pointerdown',onPtr); ov.addEventListener('pointerdown',e=>{ if(e.target===ov) close(); });
+    window.addEventListener('keydown',onKey,true); window.addEventListener('resize',onResize); document.addEventListener('visibilitychange',onVis); darkMq.addEventListener('change',onScheme);
     ov.focus(); last=0; raf=requestAnimationFrame(frame);
   }
   function close(){
     if(!ov||closing) return; closing=true;
-    window.removeEventListener('keydown',onKey,true); window.removeEventListener('resize',onResize); document.removeEventListener('visibilitychange',onVis);
+    window.removeEventListener('keydown',onKey,true); window.removeEventListener('resize',onResize); document.removeEventListener('visibilitychange',onVis); darkMq.removeEventListener('change',onScheme);
     reveal(false,()=>{ cancelAnimationFrame(raf); raf=0; ov.remove(); ov=null; s=null; closing=false; document.body.style.overflow=prevOverflow; });
     if(location.hash==='#pigeon') history.replaceState(null,'',location.pathname+location.search);
   }
