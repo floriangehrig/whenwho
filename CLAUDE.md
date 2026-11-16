@@ -1,4 +1,4 @@
-# whenwho
+# when-who
 
 Availability polls ("when is everyone free?") with recurring poll series, meeting scheduling,
 .ics calendar export, sign-in by emailed code and optional emails (Resend). Runs on Cloudflare Workers + D1. No framework and no build step.

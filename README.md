@@ -1,4 +1,4 @@
-# whenwho
+# when-who
 
 Find out when everyone's free, and who can make it. A small website for availability polls. Respondents don't need an account. It runs free on Cloudflare Workers + D1.
 
@@ -54,4 +54,4 @@ Who gets what:
 - **Guests (no account): names are unique within a poll** and stay the same across all rounds of a series. Typing the same name again (on any device) brings back that person's answer. Anyone who knows a name can change that answer, so this suits groups that trust each other. If a guest later signs in and edits their answer, it moves into their account. The owner manages people under **Participants** (edit, merge duplicates, remove, add people in advance).
 - Meeting times are floating local times (18:00 shows as 18:00 for everyone), which is fine for a group in one time zone.
 - Failed sign-in codes and name lookups are limited to 10 per 15 minutes per IP.
-# whenwho
+# when-who

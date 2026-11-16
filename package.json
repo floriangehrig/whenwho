@@ -1,5 +1,5 @@
 {
-  "name": "whenwho",
+  "name": "when-who",
   "private": true,
   "description": "Find out when everyone's free: availability polls, recurring poll series and meeting scheduling on Cloudflare Workers + D1.",
   "scripts": {
