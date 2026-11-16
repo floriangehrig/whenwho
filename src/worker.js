@@ -6,11 +6,17 @@
 //   EMAIL     (optional) Email Service "send_email" binding. Turns on server-sent emails
 //   MAIL_FROM (optional) sender address on a domain onboarded to Email Service, e.g. polls@example.com
 //   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
+//   ADMIN_PASSWORD (secret) password of the built-in "admin" account. Only a signed-in admin can create polls.
+//                  Set it with `npx wrangler secret put ADMIN_PASSWORD` (and in .dev.vars locally). Unset = login disabled.
 
 const MAX_RANGE_DAYS = 92;
 const MAX_RESPONSES = 300;
 const MAX_MEETINGS = 100;
 const ID_RE = /^[A-Za-z0-9]{6,20}$/;
+const MAX_PARTICIPANTS = 500;
+const SESSION_DAYS = 30;
+const MAX_FAILS = 10;          // failed logins / name lookups per IP ...
+const FAIL_WINDOW_MIN = 15;    // ... within this many minutes
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,13 +44,28 @@ function servePage(request, env) {
 class HttpError extends Error {
   constructor(status, message, extra = {}) { super(message); this.status = status; this.extra = extra; }
 }
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+const json = (data, status = 200, headers = {}) =>
+  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
 
 async function route(request, env, ctx, url) {
   const parts = url.pathname.split('/').filter(Boolean); // ['api','polls',id,...]
   const m = request.method;
+  const cookies = parseCookies(request);
+  // A request that carries the session cookie and changes something must come from this site (CSRF guard).
+  if (cookies.ww_session && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
+    throw new HttpError(403, 'Request from another site was blocked');
+  USERS.set(request, await getUser(env, cookies));
   if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env) });
+  if (parts[1] === 'auth') {
+    if (parts[2] === 'login' && m === 'POST') return login(request, env, url);
+    if (parts[2] === 'logout' && m === 'POST') return logout(env, cookies, url);
+    throw new HttpError(404, 'Not found');
+  }
+  if (parts[1] === 'me') {
+    if (!parts[2] && m === 'GET') return json({ user: userOf(request) ? { name: userOf(request).id } : null, loginEnabled: !!env.ADMIN_PASSWORD });
+    if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
+    throw new HttpError(404, 'Not found');
+  }
   if (parts[1] !== 'polls') throw new HttpError(404, 'Not found');
   const id = parts[2];
   if (!id) {
@@ -60,11 +81,20 @@ async function route(request, env, ctx, url) {
   }
   if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
   if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
+  if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
+  if (a === 'participants') {
+    if (!b && m === 'GET') return listParticipants(request, env, id);
+    if (!b && m === 'POST') return addParticipants(request, env, id);
+    if (b && !c && m === 'PATCH') return updateParticipant(request, env, id, b);
+    if (b && !c && m === 'DELETE') return deleteParticipant(request, env, url, id, b);
+    if (b && c === 'merge' && m === 'POST') return mergeParticipant(request, env, id, b);
+  }
   if (a === 'instances') {
     if (!b && m === 'POST') return createNextInstance(request, env, ctx, url, id);
     if (b && !c && m === 'PATCH') return updateInstance(request, env, id, b);
     if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
     if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
+    if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
   if (a === 'responses' && b) {
@@ -172,9 +202,14 @@ async function loadInstance(env, pollId, iid) {
   if (!inst) throw new HttpError(404, 'This poll no longer exists');
   return inst;
 }
-async function isAdmin(request, poll) {
+async function adminKeyOk(request, poll) {
   const key = request.headers.get('x-admin-key');
   return !!key && safeEqual(await sha256('admin:' + key), poll.admin_hash);
+}
+// Admin of a poll: whoever has its admin link, or the signed-in user who owns it.
+async function isAdmin(request, poll) {
+  const user = userOf(request);
+  return (!!user && !!poll.owner_id && poll.owner_id === user.id) || adminKeyOk(request, poll);
 }
 async function requireAdmin(request, poll) {
   if (!(await isAdmin(request, poll))) throw new HttpError(403, 'Admin link required');
@@ -246,6 +281,75 @@ function validateMeetings(list) {
   }).sort((x, y) => (x.date + pad(x.start ?? 0)).localeCompare(y.date + pad(y.start ?? 0)));
 }
 
+// ---------- admin login (sessions) ----------
+const USERS = new WeakMap(); // request -> signed-in user (or null), set once per request in route()
+const userOf = (request) => USERS.get(request) || null;
+function parseCookies(request) {
+  const out = {};
+  for (const part of (request.headers.get('cookie') || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  }
+  return out;
+}
+function sessionCookie(url, token, maxAge) {
+  return `ww_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${url.protocol === 'https:' ? '; Secure' : ''}`;
+}
+async function getUser(env, cookies) {
+  const token = cookies.ww_session;
+  if (!token || token.length > 100) return null;
+  const s = await env.DB.prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(await sha256('session:' + token), now()).first();
+  return s ? { id: s.user_id } : null;
+}
+const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
+async function checkThrottle(env, request, kind) {
+  const since = new Date(Date.now() - FAIL_WINDOW_MIN * 60000).toISOString();
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(clientIp(request), kind, since).first('n');
+  if (n >= MAX_FAILS) throw new HttpError(429, `Too many failed attempts. Try again in ${FAIL_WINDOW_MIN} minutes.`);
+}
+const recordFail = (env, request, kind) =>
+  env.DB.prepare('INSERT INTO login_attempts (ip, kind, at) VALUES (?, ?, ?)').bind(clientIp(request), kind, now()).run();
+
+async function login(request, env, url) {
+  if (!env.ADMIN_PASSWORD) throw new HttpError(400, 'Login isn’t set up on this site (ADMIN_PASSWORD is missing)');
+  await checkThrottle(env, request, 'login');
+  const b = await body(request);
+  const user = typeof b.username === 'string' ? b.username.trim().toLowerCase() : '';
+  const pwOk = typeof b.password === 'string' && b.password.length <= 200 &&
+    safeEqual(await sha256('pw:' + b.password), await sha256('pw:' + env.ADMIN_PASSWORD));
+  if (user !== 'admin' || !pwOk) {
+    await recordFail(env, request, 'login');
+    throw new HttpError(401, 'Wrong username or password');
+  }
+  const token = secret(), t = now();
+  const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
+  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await sha256('session:' + token), 'admin', expires, t).run();
+  return json({ user: { name: 'admin' } }, 200, { 'set-cookie': sessionCookie(url, token, SESSION_DAYS * 86400) });
+}
+async function logout(env, cookies, url) {
+  if (cookies.ww_session) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256('session:' + cookies.ww_session)).run();
+  return json({ ok: true }, 200, { 'set-cookie': sessionCookie(url, '', 0) });
+}
+function requireUser(request) {
+  const user = userOf(request);
+  if (!user) throw new HttpError(401, 'Please sign in first');
+  return user;
+}
+async function myPolls(request, env) {
+  const user = requireUser(request);
+  const { results } = await env.DB.prepare('SELECT id, title, kind, created_at FROM polls WHERE owner_id = ? ORDER BY created_at DESC').bind(user.id).all();
+  return json({ polls: results.map((p) => ({ id: p.id, title: p.title, kind: p.kind, createdAt: p.created_at })) });
+}
+// Move a poll that was only reachable by its admin link into the signed-in account.
+async function claimPoll(request, env, id) {
+  const user = requireUser(request);
+  const poll = await loadPoll(env, id);
+  if (!(await adminKeyOk(request, poll))) throw new HttpError(403, 'Admin link required');
+  if (poll.owner_id && poll.owner_id !== user.id) throw new HttpError(409, 'This poll already belongs to another account');
+  await env.DB.prepare('UPDATE polls SET owner_id = ? WHERE id = ?').bind(user.id, id).run();
+  return json({ ok: true });
+}
+
 // ---------- polls ----------
 function readPollSettings(b, existing) {
   const p = {}, has = (k) => b[k] !== undefined;
@@ -293,10 +397,12 @@ function readPollSettings(b, existing) {
 }
 
 async function createPoll(request, env) {
+  const user = userOf(request);
+  if (!user) throw new HttpError(401, 'Only the organiser can create polls. Sign in first.');
   const b = await body(request);
   const p = readPollSettings(b, null);
   const id = randomId(10), adminKey = secret(), t = now();
-  p.id = id; p.admin_hash = await sha256('admin:' + adminKey);
+  p.id = id; p.admin_hash = await sha256('admin:' + adminKey); p.owner_id = user.id;
   p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
   p.created_at = t; p.updated_at = t;
   let first;
@@ -343,6 +449,9 @@ async function getPoll(request, env, ctx, url, id) {
   if (admin || !poll.hide_results) {
     const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at, ...(admin ? { email: r.email } : {}) }));
+    // Names already used in this poll (any round), so people can pick themselves.
+    const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
+    out.participants = ps;
   }
   return json(out);
 }
@@ -364,6 +473,7 @@ async function deletePoll(request, env, id) {
   await requireAdmin(request, poll);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM responses WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM participants WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM instances WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id),
   ]);
@@ -560,6 +670,12 @@ async function remind(env, poll, inst) {
   await sendMail(env, poll, { to, subject: `Reminder: ${poll.title} (${period})`, text });
 }
 async function runScheduled(env) {
+  try {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now()),
+      env.DB.prepare('DELETE FROM login_attempts WHERE at < ?').bind(new Date(Date.now() - 86400000).toISOString()),
+    ]);
+  } catch (e) { console.error('cleanup', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
   for (const poll of polls) {
@@ -576,6 +692,23 @@ async function runScheduled(env) {
 }
 
 // ---------- responses ----------
+// Names are unique within a poll (case-insensitive) and identify a person across all rounds of a series.
+const nameKey = (name) => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const findParticipant = (env, pollId, key) =>
+  env.DB.prepare('SELECT * FROM participants WHERE poll_id = ? AND name_key = ?').bind(pollId, key).first();
+const answerIn = (env, participantId, iid) =>
+  env.DB.prepare('SELECT id FROM responses WHERE participant_id = ? AND instance_id = ? ORDER BY updated_at DESC LIMIT 1').bind(participantId, iid).first('id');
+async function newParticipant(env, pollId, name, mail = '') {
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(pollId).first('n');
+  if (n >= MAX_PARTICIPANTS) throw new HttpError(409, 'This poll has reached its maximum number of participants');
+  const p = { id: randomId(12), poll_id: pollId, name, name_key: nameKey(name), email: mail, created_at: now() };
+  await env.DB.prepare('INSERT INTO participants (id, poll_id, name, name_key, email, created_at) VALUES (?,?,?,?,?,?)')
+    .bind(p.id, p.poll_id, p.name, p.name_key, p.email, p.created_at).run();
+  return p;
+}
+const nameTaken = (name, participantId, responseId) =>
+  new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
+
 async function createResponse(request, env, id, iid) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, poll);
@@ -589,10 +722,17 @@ async function createResponse(request, env, id, iid) {
   const entries = validateEntries(b.entries, poll, datesOf(inst));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
+  // Same name as an existing participant: that's this person (e.g. the next round of a series),
+  // unless they already answered this round.
+  let part = await findParticipant(env, id, nameKey(name));
+  if (part) {
+    const existing = await answerIn(env, part.id, iid);
+    if (existing) throw nameTaken(part.name, part.id, existing);
+  } else part = await newParticipant(env, id, name);
   const rid = randomId(12), editKey = secret(), t = now();
-  await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .bind(rid, id, iid, name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), t, t).run();
-  return json({ id: rid, editKey }, 201);
+  await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
+  return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
   if (!ID_RE.test(rid)) throw new HttpError(404, 'Response not found');
@@ -600,14 +740,34 @@ async function loadResponse(env, id, rid) {
   if (!r) throw new HttpError(404, 'Response not found');
   return r;
 }
-async function canEditResponse(request, r) {
+// The person may edit with the secret edit key from their browser, or by giving the response's name (x-edit-name).
+async function canEditResponse(request, env, r) {
   const key = request.headers.get('x-edit-key');
-  return !!key && safeEqual(await sha256('edit:' + key), r.edit_hash);
+  if (key && safeEqual(await sha256('edit:' + key), r.edit_hash)) return true;
+  const raw = request.headers.get('x-edit-name');
+  if (!raw || !r.participant_id) return false;
+  await checkThrottle(env, request, 'name');
+  let given; try { given = nameKey(decodeURIComponent(raw)); } catch { return false; }
+  const part = await env.DB.prepare('SELECT name_key FROM participants WHERE id = ?').bind(r.participant_id).first();
+  if (part && part.name_key === given) return true;
+  await recordFail(env, request, 'name');
+  return false;
+}
+// "Is that me?": find the participant for a name and their answer in this round.
+async function recall(request, env, id, iid) {
+  const poll = await loadPoll(env, id);
+  if (!(await isAdmin(request, poll))) await checkPassword(request, poll);
+  await loadInstance(env, id, iid);
+  await checkThrottle(env, request, 'name');
+  const b = await body(request);
+  const part = await findParticipant(env, id, nameKey(str(b.name, 60, 'Name', true)));
+  if (!part) { await recordFail(env, request, 'name'); throw new HttpError(404, 'Nobody has answered under that name yet'); }
+  return json({ participantId: part.id, name: part.name, responseId: (await answerIn(env, part.id, iid)) || null });
 }
 async function getOwnResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
-  if (!(await canEditResponse(request, r)) && !(await isAdmin(request, poll))) throw new HttpError(403, 'Not your response');
+  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
   return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries) });
 }
 async function updateResponse(request, env, id, rid) {
@@ -615,22 +775,133 @@ async function updateResponse(request, env, id, rid) {
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
   if (!(await isAdmin(request, poll))) {
-    if (!(await canEditResponse(request, r))) throw new HttpError(403, 'Not your response');
+    if (!(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
     await checkPassword(request, poll);
     if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
   }
   const b = await body(request);
-  const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : r.name;
+  let name = b.name !== undefined ? str(b.name, 60, 'Name', true) : r.name;
   const mail = b.email !== undefined ? email(b.email) : r.email;
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
   const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst))) : r.entries;
-  await env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, now(), rid).run();
-  return json({ ok: true });
+  let partId = r.participant_id;
+  const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
+  const stmts = [];
+  if (!cur || cur.name_key !== nameKey(name)) {
+    const other = await findParticipant(env, id, nameKey(name));
+    if (other) {
+      // The new name belongs to someone else: allowed only if they haven't answered this round (e.g. fixing a typo).
+      const theirs = await answerIn(env, other.id, inst.id);
+      if (theirs && theirs !== rid) throw nameTaken(other.name, other.id, theirs);
+      partId = other.id; name = other.name;
+      if (cur) { // drop the old participant if this was their only answer
+        const left = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE participant_id = ? AND id != ?').bind(cur.id, rid).first('n');
+        if (!left) stmts.push(env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(cur.id));
+      }
+    } else if (cur) {
+      // Rename this person in every round.
+      stmts.push(env.DB.prepare('UPDATE participants SET name = ?, name_key = ? WHERE id = ?').bind(name, nameKey(name), cur.id));
+      stmts.push(env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
+    } else partId = (await newParticipant(env, id, name)).id;
+  }
+  if (cur && cur.name_key === nameKey(name) && cur.name !== name) { // only the spelling changed
+    stmts.push(env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, cur.id));
+    stmts.push(env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
+  }
+  stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
+  await env.DB.batch(stmts);
+  return json({ ok: true, name });
 }
 async function deleteResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
-  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, r))) throw new HttpError(403, 'Not allowed');
+  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not allowed');
   await env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid).run();
   return json({ ok: true });
+}
+
+// ---------- participants (admin) ----------
+async function adminPoll(request, env, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  return poll;
+}
+async function loadParticipant(env, id, pid) {
+  if (!ID_RE.test(pid)) throw new HttpError(404, 'Participant not found');
+  const p = await env.DB.prepare('SELECT * FROM participants WHERE id = ? AND poll_id = ?').bind(pid, id).first();
+  if (!p) throw new HttpError(404, 'Participant not found');
+  return p;
+}
+async function listParticipants(request, env, id) {
+  await adminPoll(request, env, id);
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.name, p.email, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+       (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email
+     FROM participants p LEFT JOIN responses r ON r.participant_id = p.id
+     WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(id).all();
+  return json({ participants: results.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', rounds: p.rounds, lastAnswered: p.last })) });
+}
+// Body: { lines: "Anna\nBen, ben@example.com" }
+async function addParticipants(request, env, id) {
+  await adminPoll(request, env, id);
+  const b = await body(request);
+  const text = str(b.lines, 20000, 'Names', true);
+  const added = [], skipped = [];
+  for (const line of text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
+    const [rawName, ...rest] = line.split(',');
+    const name = str(rawName, 60, 'Name', true);
+    const mail = email(rest.join(',').trim(), `Email for ${name}`);
+    if (await findParticipant(env, id, nameKey(name))) { skipped.push(name); continue; }
+    await newParticipant(env, id, name, mail);
+    added.push(name);
+  }
+  return json({ added, skipped });
+}
+async function updateParticipant(request, env, id, pid) {
+  await adminPoll(request, env, id);
+  const p = await loadParticipant(env, id, pid);
+  const b = await body(request);
+  const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : p.name;
+  const mail = b.email !== undefined ? email(b.email) : p.email;
+  if (nameKey(name) !== p.name_key && (await findParticipant(env, id, nameKey(name))))
+    throw new HttpError(409, `“${name}” already exists in this poll. Use “Merge” to combine the two.`);
+  await env.DB.batch([
+    env.DB.prepare('UPDATE participants SET name = ?, name_key = ?, email = ? WHERE id = ?').bind(name, nameKey(name), mail, pid),
+    env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, pid),
+  ]);
+  return json({ ok: true });
+}
+// ?answers=1 also deletes their answers; otherwise the answers stay, no longer linked to a name.
+async function deleteParticipant(request, env, url, id, pid) {
+  await adminPoll(request, env, id);
+  await loadParticipant(env, id, pid);
+  await env.DB.batch([
+    url.searchParams.get('answers') === '1'
+      ? env.DB.prepare('DELETE FROM responses WHERE participant_id = ?').bind(pid)
+      : env.DB.prepare('UPDATE responses SET participant_id = NULL WHERE participant_id = ?').bind(pid),
+    env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(pid),
+  ]);
+  return json({ ok: true });
+}
+// Body: { into: participantId }. Moves all answers of :pid to `into`; where both answered the same round, the newer answer wins.
+async function mergeParticipant(request, env, id, pid) {
+  await adminPoll(request, env, id);
+  const src = await loadParticipant(env, id, pid);
+  const b = await body(request);
+  if (typeof b.into !== 'string' || b.into === pid) throw new HttpError(400, 'Pick someone else to merge into');
+  const dst = await loadParticipant(env, id, b.into);
+  const { results } = await env.DB.prepare('SELECT id, instance_id, participant_id, updated_at FROM responses WHERE participant_id IN (?, ?)').bind(src.id, dst.id).all();
+  const byRound = {}, drop = [];
+  for (const r of results) {
+    const keep = byRound[r.instance_id];
+    if (!keep) { byRound[r.instance_id] = r; continue; }
+    if (r.updated_at > keep.updated_at) { drop.push(keep.id); byRound[r.instance_id] = r; } else drop.push(r.id);
+  }
+  await env.DB.batch([
+    ...drop.map((rid) => env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid)),
+    env.DB.prepare('UPDATE responses SET participant_id = ?, name = ? WHERE participant_id IN (?, ?)').bind(dst.id, dst.name, src.id, dst.id),
+    env.DB.prepare("UPDATE participants SET email = CASE WHEN email = '' THEN ? ELSE email END WHERE id = ?").bind(src.email, dst.id),
+    env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(src.id),
+  ]);
+  return json({ ok: true, removedAnswers: drop.length });
 }

@@ -24,8 +24,10 @@ npm install
 npx wrangler login
 npx wrangler d1 create whenwho        # put the database_id into wrangler.toml
 npm run db:migrate:remote
+npx wrangler secret put ADMIN_PASSWORD   # password of the built-in "admin" login
 npx wrangler deploy
 ```
+Only the signed-in admin can create polls (top right: **Admin login**, username `admin`). Locally, put `ADMIN_PASSWORD=...` in `.dev.vars`.
 Then connect the GitHub repo in Cloudflare (Worker → Settings → Builds) so every push to `main` deploys.
 
 ### Optional: email (Cloudflare Email Service)
@@ -44,7 +46,7 @@ Who gets what:
 
 ## Notes
 - Each poll has a **share link** (for respondents) and an **admin link** (keep it private: it can change or delete the poll).
-- People's "edit my answer" key lives in their browser. In another browser, they'd answer again.
+- **Names are unique within a poll** and stay the same across all rounds of a series. Typing the same name again (on any device) brings back that person's answer. Anyone who knows a name can change that answer, so this suits groups that trust each other. The admin manages names under **Participants** (edit, merge duplicates, remove, add people in advance).
 - Meeting times are floating local times (18:00 shows as 18:00 for everyone), which is fine for a group in one time zone.
-- There's no rate limiting. That's fine for small groups, but don't post links publicly.
+- Failed admin logins and name lookups are limited to 10 per 15 minutes per IP.
 # whenwho

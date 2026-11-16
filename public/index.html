@@ -22,6 +22,9 @@
   .wrap{max-width:880px;margin:0 auto;padding:22px 16px 70px}
   .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .top a.home{font-weight:700;text-decoration:none;color:var(--ink);font-size:14px}
+  .top .acct{margin-left:auto;margin-top:0}
+  .namehint{margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--maybe-bg);font-size:13px}
+  .namehint .btn{margin-left:6px;padding:4px 9px}
   h1{font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
   h2{font-size:17px;margin:0} h3{font-size:15px;margin:0}
   .sub{color:var(--muted);font-size:14px}
@@ -116,6 +119,30 @@
   .plist input{width:auto}
   .tag{font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px}
   .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.m{background:var(--maybe-bg);color:var(--maybe)} .tag.x{background:var(--empty);color:var(--muted)}
+  /* participant dropdown */
+  .dd{position:relative;display:inline-block;margin-top:8px}
+  .dd>summary{list-style:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:14px}
+  .dd>summary::-webkit-details-marker{display:none}
+  .dd>summary::after{content:'▾';color:var(--muted)}
+  .dd .ddp{position:absolute;z-index:20;top:calc(100% + 4px);left:0;min-width:230px;max-width:min(320px,calc(100vw - 32px));max-height:320px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.15)}
+  .dd .ddp label{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;margin:0;padding:5px 4px;border-radius:6px;cursor:pointer}
+  .dd .ddp label:hover{background:var(--bg)}
+  .dd .ddp input{width:auto}
+  .dd .ddb{display:flex;gap:6px;margin-bottom:6px}
+  /* planner */
+  .pgrid .slot{position:relative;cursor:crosshair;font-size:10px;line-height:24px;text-align:center;color:var(--ink);overflow:hidden}
+  .pgrid .slot.hm{background:color-mix(in srgb,var(--yes) var(--a),var(--card))}
+  .pgrid .slot.mb{box-shadow:inset 3px 0 0 var(--maybe)}
+  .pgrid .slot.allfree{background:var(--yes-dark);color:#fff}
+  .pgrid .slot.mt{outline:2px solid var(--accent);outline-offset:-2px}
+  .pgrid .slot.dr{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .pgrid .hd{cursor:pointer;border-radius:6px} .pgrid .hd:hover{background:var(--bg)}
+  .pgrid .hd.dr{background:var(--accent);color:#fff} .pgrid .hd.dr b{color:#fff}
+  .day.dr{outline:3px solid var(--accent);outline-offset:-1px}
+  .drafts .dft{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .drafts .dft:first-child{border-top:0}
+  .drafts .dft .when{font-weight:700;min-width:110px}
+  .drafts .dft .who{flex-basis:100%;font-size:12px;color:var(--muted)}
   .hide{display:none!important}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
@@ -184,6 +211,29 @@ function rangeLabel(unit, st, en){
   return `${f(st)} – ${f(en)} ${parseD(en).getFullYear()}`;
 }
 let CONFIG={emailEnabled:false};
+let ME={user:null,loginEnabled:false,polls:[]};
+const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+function accountBar(){
+  if(ME.user) return `<span class="acct small muted">Signed in as <b>${esc(ME.user.name)}</b> · <a href="#" data-logout>Sign out</a></span>`;
+  if(!ME.loginEnabled) return '';
+  return `<details class="acct dd"><summary class="small">Admin login</summary><div class="ddp" style="left:auto;right:0">
+    <form class="loginf"><div><label>Username</label><input type="text" name="u" autocomplete="username" value="admin"></div>
+    <div class="field"><label>Password</label><input type="password" name="pw" autocomplete="current-password" required></div>
+    <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Sign in</button></div></form></div></details>`;
+}
+// After signing in, move polls this browser has admin links for into the account.
+async function claimLocalPolls(){
+  for(const p of store.get('myPolls',[])){
+    if(ME.polls.some(x=>x.id===p.id)) continue;
+    try{ await api('POST',`/polls/${p.id}/claim`,{},{'x-admin-key':p.adminKey}); }catch(e){}
+  }
+}
+document.addEventListener('submit',async e=>{
+  const f=e.target.closest('.loginf'); if(!f) return; e.preventDefault();
+  const err=f.querySelector('.err'); err.textContent='';
+  try{ await api('POST','/auth/login',{username:f.u.value,password:f.pw.value}); ME.user={name:'admin'}; await claimLocalPolls(); location.reload(); }
+  catch(ex){ err.textContent=ex.message; }
+});
 const hh = h => `${pad(h%24)}:00`;
 function hoursText(arr){
   const a=[...arr].sort((x,y)=>x-y), parts=[]; let s=null,p=null;
@@ -199,11 +249,14 @@ function wireSeg(id, onChange){ $(id).onclick=e=>{ const b=e.target.closest('but
 function renderHome(){
   document.title='whenwho';
   const mine = store.get('myPolls',[]);
+  const server = ME.user ? ME.polls : [];
+  const localOnly = mine.filter(p=>!server.some(x=>x.id===p.id));
   $app.innerHTML = `
+    <div class="top">${accountBar()}</div>
     <h1>whenwho</h1>
-    <div class="sub">Find out when everyone's free, and who can make it. Create a poll and send the link. Nobody needs an account.</div>
+    <div class="sub">Find out when everyone's free, and who can make it. The organiser creates a poll and sends the link. Answering doesn't need an account.</div>
     <div class="card" id="created" hidden></div>
-    <div class="card">
+    ${ME.user?`<div class="card">
       <h2>New poll</h2>
       <form id="f">
         <div class="field"><label for="title">Title</label><input type="text" id="title" maxlength="120" placeholder="e.g. Band rehearsals, Summer trip" required></div>
@@ -241,14 +294,20 @@ function renderHome(){
         <div class="err" id="ferr"></div>
         <div class="row" style="margin-top:16px"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
       </form>
-    </div>
+    </div>`:`<div class="card"><h2>New poll</h2>
+      <p class="help">Only the organiser can create polls. ${ME.loginEnabled?'Sign in with “Admin login” at the top right.':'Login isn’t set up on this site yet (ADMIN_PASSWORD is missing).'}</p></div>`}
     <div class="card"><h2>Your polls</h2>
-      ${mine.length?`<ul class="list">${mine.map(p=>`<li><span class="grow"><a href="${esc(adminLink(p.id,p.adminKey))}">${esc(p.title)}</a></span>
+      ${ME.user?(server.length?`<ul class="list">${server.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a> <span class="muted small">${p.kind==='series'?'series':p.kind==='single'?'one-off':''}</span></span>
+        <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button></li>`).join('')}</ul>`
+        :`<p class="help">Polls you create show up here, on every device you sign in on.</p>`):''}
+      ${localOnly.length?`${ME.user?'<h3 style="margin-top:14px">Only in this browser</h3>':''}<ul class="list">${localOnly.map(p=>`<li><span class="grow"><a href="${esc(adminLink(p.id,p.adminKey))}">${esc(p.title)}</a></span>
+        ${ME.user?`<button class="btn" data-claim="${esc(p.id)}">Add to my account</button>`:''}
         <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button>
         <button class="btn" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)">✕</button></li>`).join('')}</ul>
-        <p class="help">This list is saved in this browser only. Keep your admin links somewhere safe.</p>`
-      : `<p class="help">Polls you create in this browser show up here.</p>`}
+        <p class="help">${ME.user?'These are saved in this browser only.':'This list is saved in this browser only. Sign in to see your polls on every device.'}</p>`
+      : (ME.user?'':`<p class="help">Sign in to see your polls.</p>`)}
     </div>`;
+  if(!ME.user) return;
   let kind='series', ans='both';
   const ansHelp={days:'Each day: available, maybe or not available.', slots:'People paint the hours they can make on a week grid.', both:'People can answer whole days, and switch to the time grid when they only have certain hours.'};
   $('ansHelp').textContent=ansHelp[ans];
@@ -278,7 +337,7 @@ function renderHome(){
     const btn=$('createBtn'); btn.disabled=true;
     try{
       const r=await api('POST','/polls',body);
-      const list=store.get('myPolls',[]); list.unshift({id:r.id,adminKey:r.adminKey,title:body.title,created:Date.now()}); store.set('myPolls',list);
+      ME.polls.unshift({id:r.id,title:body.title,kind});
       store.set('admin:'+r.id, r.adminKey); if(body.password) store.set('pw:'+r.id, body.password);
       const c=$('created'); c.hidden=false;
       c.innerHTML=`<h2>✓ “${esc(body.title)}” is ready</h2>
@@ -295,9 +354,12 @@ function renderHome(){
 
 // ================= POLL =================
 const P = { id:null, data:null, adminKey:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
-  tab:'mine', mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false };
+  tab:'mine', mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false,
+  who:null, whoOpen:false, gview:'overview', pweek:0, drafts:[], dmeta:null };
 
-function headers(){ const h={}; if(P.adminKey) h['x-admin-key']=P.adminKey; if(P.password) h['x-poll-password']=P.password; if(P.myResp) h['x-edit-key']=P.myResp.editKey; return h; }
+function headers(){ const h={}; if(P.adminKey) h['x-admin-key']=P.adminKey; if(P.password) h['x-poll-password']=P.password;
+  if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
+  return h; }
 const inst = () => P.data.instance;
 const respKey = () => `resp:${P.id}:${inst().id}`;
 const ansMode = () => P.data.poll.answerMode;
@@ -315,7 +377,7 @@ async function loadPoll(first){
   if(!P.data.isAdmin && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.ovDay=null; P.week=0;
+    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.drafts=[]; P.dmeta=null;
     P.myResp = store.get(respKey(), null);
     P.mine = { name: store.get('myName',''), email: store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
@@ -324,6 +386,7 @@ async function loadPoll(first){
     }
   }
   if(first) P.mode = ansMode()==='slots' ? 'slots' : 'days';
+  pruneWho();
   render();
 }
 async function switchInstance(id){ if(P.dirty){ clearTimeout(saveT); await save(); } P.iid=id; await loadPoll(false); window.scrollTo({top:0,behavior:'smooth'}); }
@@ -392,18 +455,41 @@ async function save(){
   const em=(P.mine.email||'').trim(), key=respKey();
   const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries};
   try{
-    if(P.myResp) await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
-    else { const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/responses`,body,headers()); P.myResp={id:r.id,editKey:r.editKey}; store.set(key,P.myResp); }
+    if(P.myResp){ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
+      if(!P.myResp.editKey && r.name){ P.myResp.name=r.name; store.set(key,P.myResp); } }
+    else { const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/responses`,body,headers()); P.myResp={id:r.id,editKey:r.editKey,name:r.name}; store.set(key,P.myResp); nameHint(); }
     store.set('myName',P.mine.name); if(body.email) store.set('myEmail',body.email);
     status(em&&!body.email?'Saved, but that email doesn’t look right':'Saved ✓'); refreshResults();
   }catch(e){
     if(e.status===404 && P.myResp){ store.del(key); P.myResp=null; P.dirty=true; }
+    else if(e.status===409 && e.data && e.data.code==='name_taken'){ status('Not saved'); nameHint(true); }
     else status('Not saved: '+e.message);
   }
   P.saving=false; if(P.dirty) save();
 }
+// "Is that you?": shown when the typed name already belongs to someone in this poll.
+function nameHint(force){
+  const el=$('nameHint'); if(!el) return;
+  const k=nameKey(P.mine.name), p=(P.data.participants||[]).find(x=>nameKey(x.name)===k);
+  if(!k || P.myResp || (!p && !force)){ el.innerHTML=''; return; }
+  const shown=p?p.name:P.mine.name.trim();
+  el.innerHTML=`<div class="namehint">“${esc(shown)}” is already in this poll. If that's you, load your answer.<button type="button" class="btn" data-recall>That's me</button><br><span class="muted">Otherwise, pick a different name.</span></div>`;
+}
+async function recallMine(){
+  try{
+    const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/recall`,{name:P.mine.name},headers());
+    if(!r.responseId){ // known person, no answer yet this round: their new answer is linked to the same name
+      P.mine.name=r.name; $('nameHint').innerHTML=`<div class="namehint">Welcome back, ${esc(r.name)}! Mark your availability below; it's saved under your name.</div>`;
+      const nm=$('name'); if(nm) nm.value=r.name; changed(); return; }
+    P.myResp={id:r.responseId,editKey:null,name:r.name};
+    const a=await api('GET',`/polls/${P.id}/responses/${r.responseId}`,null,headers());
+    store.set(respKey(),P.myResp); P.dirty=false; clearTimeout(saveT);
+    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:a.entries||{}};
+    render(); toast('Your answer is loaded');
+  }catch(e){ P.myResp=null; toast(e.message); }
+}
 let refT=null;
-function refreshResults(){ clearTimeout(refT); refT=setTimeout(async()=>{ try{ const d=await fetchPoll(); if(d.instance.id!==P.iid) return; P.data=d; renderHeader(); renderSeries(); if(P.tab==='group') renderBody(); }catch(e){} },400); }
+function refreshResults(){ clearTimeout(refT); refT=setTimeout(async()=>{ try{ const d=await fetchPoll(); if(d.instance.id!==P.iid) return; P.data=d; pruneWho(); renderHeader(); renderSeries(); if(P.tab==='group') renderBody(); }catch(e){} },400); }
 
 // ---- render ----
 function render(){
@@ -411,22 +497,24 @@ function render(){
   document.title=p.title;
   if(!editable()) P.tab='group';
   $app.innerHTML=`
-    <div class="top"><a class="home" href="${esc(origin)}">← whenwho</a>${d.isAdmin?'<span class="muted small">· You are the admin</span>':''}</div>
+    <div class="top"><a class="home" href="${esc(origin)}">← whenwho</a>${d.isAdmin?'<span class="muted small">· You are the admin</span>':''}${accountBar()}</div>
     <div id="hdr"></div>
     ${!d.isAdmin&&d.instances.length>1?`<div class="field"><div class="seg">${d.instances.map(x=>`<button data-inst="${x.id}" class="${x.id===i.id?'on':''}">${esc(instLabel(x))}</button>`).join('')}</div></div>`:''}
     <div id="meetings"></div>
     ${d.isAdmin?adminPanel():''}
     ${editable()?`<div class="card"><div class="grid2">
-        <div><label for="name">Your name</label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are"></div>
+        <div><label for="name">Your name <span class="tag m">unique in this poll</span></label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are" list="pnames" autocomplete="off">
+          <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
+          <div class="help" style="margin-top:4px">Use the same name every round and on any device to get back to your answer.</div><div id="nameHint"></div></div>
         <div><label for="email">Email (optional)</label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
       ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
-      <div class="row" style="margin-top:8px"><span class="small muted grow">${P.myResp?`Your answer is saved in this browser. Open the poll here again to change it. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</span><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div></div>`
+      <div class="row" style="margin-top:8px"><span class="small muted grow">${P.myResp?`Your answer is saved. To change it later, open the poll here or enter the same name on any device. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</span><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div></div>`
       :`<div class="notice">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
     <div class="tabs"><button data-tab="mine" class="${P.tab==='mine'?'on':''}" ${editable()?'':'disabled'}>My availability</button>
       <button data-tab="group" class="${P.tab==='group'?'on':''}">Group overview</button></div>
     <div class="card" id="body"></div>`;
   renderHeader(); renderSeries();
-  const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; changed(); }; }
+  const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
   const cm=$('comment'); if(cm){ cm.value=P.mine.comment||''; cm.oninput=e=>{ P.mine.comment=e.target.value; changed(); }; }
   const dm=$('delMine');
@@ -581,8 +669,27 @@ function wireGrid(){
   grid.addEventListener('pointermove',e=>{ if(paint===null) return; const el=cellAt(e.clientX,e.clientY); if(el) apply(el); });
 }
 
+// ---- participant filter ----
+function pruneWho(){ if(!P.who||!P.data||!P.data.responses) return; const ids=new Set(P.data.responses.map(r=>r.id)); P.who=new Set([...P.who].filter(id=>ids.has(id))); }
+function sel(){ const rs=P.data.responses||[]; return P.who?rs.filter(r=>P.who.has(r.id)):rs; }
+function selParticipants(){ return P.who?sel().map(r=>({id:r.id,name:r.name})):'all'; }
+function whoDropdown(){
+  const rs=P.data.responses||[], n=sel().length;
+  const lbl=!P.who?`Everyone (${rs.length})`:`${n} of ${rs.length} ${rs.length===1?'person':'people'}`;
+  return `<details class="dd" id="whodd" ${P.whoOpen?'open':''}><summary><span class="muted small">Participants:</span> <b>${esc(lbl)}</b></summary><div class="ddp">
+    <div class="ddb"><button type="button" class="btn" data-whoall>All</button><button type="button" class="btn" data-whonone>None</button></div>
+    ${rs.map(r=>`<label><input type="checkbox" data-who="${esc(r.id)}" ${!P.who||P.who.has(r.id)?'checked':''}> ${esc(r.name||'Someone')}</label>`).join('')}</div></details>`;
+}
+function setWho(set){ const rs=P.data.responses||[]; P.who=(set.size===rs.length)?null:set; P.whoOpen=true; renderBody(); }
+function wireWho(){
+  const dd=$('whodd'); if(!dd) return;
+  dd.addEventListener('toggle',()=>{ P.whoOpen=dd.open; });
+  dd.querySelectorAll('[data-who]').forEach(cb=>cb.onchange=()=>{ const s=new Set(P.who||(P.data.responses||[]).map(r=>r.id)); if(cb.checked) s.add(cb.dataset.who); else s.delete(cb.dataset.who); setWho(s); });
+}
+document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open&&!dd.contains(e.target)){ dd.open=false; P.whoOpen=false; } });
+
 function stats(k){
-  const H=hours(), rs=P.data.responses||[], cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
+  const H=hours(), rs=sel(), cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
   const list=rs.map(r=>{ const v=(r.entries||{})[k];
     if(v==='y') full++; else if(v==='n') no++; else if(v==='m') maybe++; else if(isPartial(v)) part++;
     hourMap(v).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
@@ -601,10 +708,14 @@ function bestBlock(s){ // longest contiguous run of best hours
 function renderGroup(el){
   const d=P.data, p=d.poll;
   if(!d.responses){ el.innerHTML=`<h2>Group overview</h2><p class="help">The organiser has chosen to keep answers private.</p>`; return; }
-  const tot=d.responses.length, md=meetingDays(), H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
-  const slotsOn = p.answerMode!=='days';
-  let h=`<div class="row"><h2>Group overview</h2><span class="muted small" style="margin-left:auto">${tot} responded</span></div>`;
-  if(!tot) h+=`<p class="help">No answers yet. Once people respond, the best days show up here.</p>`;
+  const all=d.responses.length, tot=sel().length, md=meetingDays(), H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
+  const slotsOn = p.answerMode!=='days', plan = d.isAdmin && P.gview==='plan';
+  let h=`<div class="row"><h2>Group overview</h2>${d.isAdmin?`<div class="seg"><button data-gview="overview" class="${plan?'':'on'}">Overview</button><button data-gview="plan" class="${plan?'on':''}">★ Plan meetings</button></div>`:''}
+    <span class="muted small" style="margin-left:auto">${P.who?`${tot} of ${all} selected`:`${all} responded`}</span></div>`;
+  if(!all){ el.innerHTML=h+`<p class="help">No answers yet. Once people respond, the best days show up here.</p>`; return; }
+  h+=whoDropdown();
+  if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person in the Participants list to see when they're free.</p>`; wireWho(); return; }
+  if(plan){ el.innerHTML=h+renderPlanner(S); wireWho(); wirePlanner(); return; }
   h+=`<p class="help">Each day shows how many people are available at the best time (and how many more are “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.</p>`;
   h+=calendar(d.dates,(k,day)=>{ const s=S[k], r=tot?s.peak/tot:0;
     const bg=s.peak?`background:color-mix(in srgb,var(--yes) ${Math.round(10+r*55)}%,var(--card));border-color:var(--yes)`:'';
@@ -624,12 +735,13 @@ function renderGroup(el){
     const ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
     h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><h3>Best days</h3><ul class="list">${ranked.map(o=>
       `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small" style="margin-left:auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
-    const withC=d.responses.filter(r=>r.comment);
+    const withC=sel().filter(r=>r.comment);
     if(withC.length) h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px" class="comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
-    if(d.isAdmin) h+=`<details style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><summary>Manage responses (${tot})</summary><ul class="list">${d.responses.map(r=>
+    if(d.isAdmin) h+=`<details style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
       `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></details>`;
   }
   el.innerHTML=h;
+  wireWho();
   if(P.sched&&P.sched.date===P.ovDay) wireSched();
 }
 
@@ -641,11 +753,10 @@ function openSched(date){
   autoPick(); renderBody();
 }
 function autoPick(){
-  const sc=P.sched; sc.picked=new Set((P.data.responses||[]).filter(r=>windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay)!=='x').map(r=>r.id));
+  const sc=P.sched; sc.picked=new Set(sel().filter(r=>windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay)!=='x').map(r=>r.id));
 }
 function schedForm(){
-  const sc=P.sched, rs=P.data.responses||[], H=hours();
-  const opt=(lo,hi,sel)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===sel?'selected':''}>${hh(h)}</option>`; return o; };
+  const sc=P.sched, rs=P.data.responses||[], H=hours(), opt=hourOpts;
   return `<div class="sched"><div class="row"><h3 class="grow">Schedule a meeting · ${esc(dayLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
     <div class="grid2">
       <div class="field"><label>Title</label><input type="text" id="mt_title" maxlength="120" value="${esc(sc.title)}"></div>
@@ -681,6 +792,101 @@ async function saveSched(){
   if(await saveMeetings([...inst().meetings, m])){ P.sched=null; renderBody(); toast('Meeting saved'); }
 }
 
+function hourOpts(lo,hi,cur){ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh(h)}</option>`; return o; }
+
+// ---- planner (admin): pick people, drag slots, create several meetings at once ----
+let draftSeq=0;
+function addDraft(date,allDay,start,end){ P.drafts.push({key:++draftSeq,date,allDay,start,end,participants:selParticipants()}); P.drafts.sort((a,b)=>a.date.localeCompare(b.date)||(a.allDay?-1:b.allDay?1:a.start-b.start)); }
+function inMeeting(m,k,hr){ return m.date===k && (m.allDay || (hr>=m.start && hr<m.end)); }
+function draftInvited(dr){ const rs=P.data.responses||[]; return dr.participants==='all'?rs:rs.filter(r=>dr.participants.some(p=>p.id===r.id)); }
+function renderPlanner(S){
+  const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
+  let h=`<p class="help">${slotsOn?'Darker green = more of the selected people are free; dark cells mean <b>everyone selected</b> is free. <b>Drag down a day</b> to add a meeting draft, tap a day name for an all-day one, tap a draft to remove it.':'Darker green = more of the selected people are free. <b>Tap a day</b> to add or remove an all-day meeting draft.'}
+    Each draft invites the people selected when you drew it, so you can switch the Participants list and plan meetings for another group.</p>
+    <div class="row" style="margin-top:8px"><button class="btn" data-suggest>Suggest best times</button>${P.drafts.length?'<button class="btn" data-cleardrafts>Clear drafts</button>':''}</div>`;
+  if(slotsOn){
+    const wks=weeks(d.dates); P.pweek=Math.min(Math.max(0,P.pweek),wks.length-1); const wk=wks[P.pweek], real=wk.filter(Boolean);
+    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P.pweek===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
+      <button class="btn" data-pwk="1" ${P.pweek===wks.length-1?'disabled':''}>›</button></div>
+      <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
+    wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.date===k&&x.allDay);
+      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dayLabel(k))}"`:''}>${WD[i]}<b>${k?parseD(k).getDate():'&nbsp;'}</b></div>`; });
+    H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
+      wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
+        if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
+        const c=S[k].cy[ri], m=S[k].cm[ri];
+        let cls='slot'+pos;
+        if(c===tot) cls+=' allfree'; else if(c) cls+=' hm';
+        if(c<tot&&m&&c+m>=tot) cls+=' mb';
+        if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
+        if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
+        h+=`<div class="${cls}" style="--a:${Math.round(12+c/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dayLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||''}</div>`; }); });
+    h+='</div>';
+    h+=`<div class="legend"><span style="--c:color-mix(in srgb,var(--yes) 45%,var(--card))">Some free (number = how many)</span><span style="--c:var(--yes-dark)">Everyone selected free</span><span style="--c:var(--maybe)">Rest are “maybe”</span><span style="--c:var(--accent)">Draft / ★ scheduled (outline)</span></div>`;
+  } else {
+    const md=meetingDays();
+    h+=calendar(d.dates,(k,day)=>{ const s=S[k], r=tot?s.peak/tot:0, dr=P.drafts.some(x=>x.date===k);
+      const bg=s.peak?`background:color-mix(in srgb,var(--yes) ${Math.round(10+r*55)}%,var(--card));border-color:var(--yes)`:'';
+      return `<div class="day heat${dr?' dr':''}" style="${bg}" data-pday="${k}"><div class="n">${day}</div><div class="t">${s.peak||s.peakMaybe?`${s.peak}/${tot}${s.peakMaybe?` · +${s.peakMaybe}?`:''}`:''}</div>${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+  }
+  return h+draftTray();
+}
+function draftTray(){
+  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
+  if(!P.drafts.length) return `<div class="sched"><h3>Meeting drafts</h3><p class="help">No drafts yet. Drag across the grid or tap a day to add one.</p></div>`;
+  const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
+    return `<div class="dft"><span class="when">${esc(dayLabel(x.date))}</span>
+      <label class="check" style="margin:0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
+      ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
+      <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
+      <button class="btn danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
+      <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span></div>`; }).join('');
+  return `<div class="sched"><h3>Meeting drafts (${P.drafts.length})</h3><div class="drafts">${rows}</div>
+    <div class="grid2" style="margin-top:8px">
+      <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
+      <div class="field"><label>Location (optional)</label><input type="text" id="dm_loc" maxlength="200" value="${esc(dm.location)}"></div></div>
+    <div class="field"><label>Note (optional)</label><textarea id="dm_note" maxlength="1000">${esc(dm.note)}</textarea></div>
+    <div class="err" id="dm_err"></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
+}
+function wirePlanner(){
+  const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
+  [['dm_title','title'],['dm_loc','location'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
+  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onchange=()=>{ const x=find(cb.dataset.dall); x.allDay=cb.checked; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
+  document.querySelectorAll('[data-dstart]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dstart); x.start=+se.value; if(x.end<=x.start) x.end=Math.min(24,x.start+1); renderBody(); });
+  document.querySelectorAll('[data-dend]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dend); x.end=+se.value; if(x.end<=x.start) x.start=Math.max(0,x.end-1); renderBody(); });
+  const grid=$('pgrid'); if(!grid) return;
+  let drag=null;
+  const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
+  const paint=()=>{ const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b);
+    grid.querySelectorAll(`.slot[data-k="${drag.k}"]`).forEach(c=>{ const hr=+c.dataset.h; c.classList.toggle('dr', drag.orig.has(c)||(hr>=lo&&hr<=hi)); }); };
+  const end=()=>{ if(!drag) return; const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b), k=drag.k; drag=null; addDraft(k,false,lo,hi+1); renderBody(); };
+  grid.addEventListener('pointerdown',e=>{ const el=cellAt(e.clientX,e.clientY); if(!el) return; e.preventDefault();
+    const k=el.dataset.k, hr=+el.dataset.h, hit=P.drafts.find(x=>!x.allDay&&inMeeting(x,k,hr));
+    if(hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return; }
+    drag={k,a:hr,b:hr,orig:new Set(grid.querySelectorAll(`.slot.dr[data-k="${k}"]`))}; paint();
+    window.addEventListener('pointerup',end,{once:true}); window.addEventListener('pointercancel',()=>{ drag=null; renderBody(); },{once:true}); });
+  grid.addEventListener('pointermove',e=>{ if(!drag) return; const el=cellAt(e.clientX,e.clientY); if(el&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; paint(); } });
+}
+function suggestDrafts(){
+  const slotsOn=P.data.poll.answerMode!=='days', tot=sel().length, taken=new Set(P.drafts.map(x=>x.date));
+  const ranked=P.data.dates.filter(k=>!taken.has(k)).map(k=>({k,s:stats(k)})).filter(o=>o.s.peak>0)
+    .sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,3);
+  if(!ranked.length){ toast('No free times found for the selected people'); return; }
+  ranked.forEach(o=>{ if(slotsOn&&o.s.full<tot){ const [st,en]=bestBlock(o.s); addDraft(o.k,false,st,Math.min(en,24)); } else addDraft(o.k,true,null,null); });
+  renderBody(); toast(`Added ${ranked.length} ${ranked.length===1?'draft':'drafts'}`);
+}
+async function saveDrafts(btn){
+  const dm=P.dmeta||{title:'',location:'',note:''}, ms=inst().meetings, err=$('dm_err');
+  if(!P.drafts.length) return;
+  if(ms.length+P.drafts.length>100){ err.textContent=`A poll can have at most 100 meetings (${ms.length} already scheduled).`; return; }
+  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:dm.note, participants:x.participants};
+    if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
+  btn.disabled=true; const n=list.length;
+  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; renderBody(); toast(`${n} ${n===1?'meeting':'meetings'} created`); }
+  else btn.disabled=false;
+}
+
 // ---- admin ----
 function adminPanel(){
   const d=P.data, p=d.poll;
@@ -706,10 +912,35 @@ function adminPanel(){
       :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}
       <div class="err" id="serr"></div>
       <div class="row" style="margin-top:12px"><button class="btn primary">Save settings</button><span class="grow"></span><button type="button" class="btn danger" id="delPoll">Delete ${p.kind==='series'?'whole series':'poll'}</button></div>
-    </form></details></div>
+    </form></details>
+    <details class="field" id="partsBox"><summary>Participants</summary><div id="parts"><p class="help">Loading…</p></div></details></div>
     <div id="series"></div>`;
 }
+async function loadParts(){
+  const el=$('parts'); if(!el) return;
+  try{ const r=await api('GET',`/polls/${P.id}/participants`,null,headers()); P.parts=r.participants; }
+  catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
+  const ps=P.parts;
+  el.innerHTML=`<p class="help">Names are unique in this poll and stay the same across all rounds. People get back to their answer by typing their name again.</p>
+    ${ps.length?`<ul class="list">${ps.map(p=>`<li><span class="grow"><b>${esc(p.name)}</b>${p.email?` <span class="muted small">· ${esc(p.email)}</span>`:''}<br>
+      <span class="muted small">${p.rounds?`${p.rounds} ${p.rounds===1?'answer':'answers'} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
+      <button class="btn" data-pedit="${esc(p.id)}">Edit</button>
+      ${ps.length>1?`<select class="inline" data-pmerge="${esc(p.id)}"><option value="">Merge into…</option>${ps.filter(x=>x.id!==p.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
+      <button class="btn danger" data-pdel="${esc(p.id)}">Remove</button></li>`).join('')}</ul>`:'<p class="help">Nobody yet.</p>'}
+    <div class="field"><label for="p_add">Add people in advance (one per line: Name or Name, email)</label>
+      <textarea id="p_add" maxlength="20000" placeholder="Anna&#10;Ben, ben@example.com"></textarea></div>
+    <div class="row" style="margin-top:8px"><button class="btn" data-padd>Add</button></div>`;
+}
+async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); const b=$('partsBox'); if(b){ b.open=true; loadParts(); } }
+document.addEventListener('change',async e=>{
+  const sel=e.target.closest('[data-pmerge]'); if(!sel||!sel.value) return;
+  const src=P.parts.find(x=>x.id===sel.dataset.pmerge), dst=P.parts.find(x=>x.id===sel.value);
+  if(!confirm(`Merge “${src.name}” into “${dst.name}”? All answers move to “${dst.name}”. Where both answered the same round, the newer answer is kept.`)){ sel.value=''; return; }
+  try{ const r=await api('POST',`/polls/${P.id}/participants/${src.id}/merge`,{into:dst.id},headers()); partsChanged(`Merged${r.removedAnswers?` (${r.removedAnswers} older ${r.removedAnswers===1?'answer':'answers'} removed)`:''}`); }
+  catch(ex){ toast(ex.message); sel.value=''; }
+});
 function wireAdmin(){
+  const pb=$('partsBox'); if(pb) pb.ontoggle=()=>{ if(pb.open) loadParts(); };
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
@@ -732,13 +963,27 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-claim],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
   const ds=t.dataset;
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.invitepoll){ const box=$('inv_'+ds.invitepoll), r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, box&&box.value);
     if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
     else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
     location.href=r.href; return; }
+  if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{}); }catch(ex){} location.reload(); return; }
+  if(ds.claim){ const p=store.get('myPolls',[]).find(x=>x.id===ds.claim); if(!p) return;
+    try{ await api('POST',`/polls/${p.id}/claim`,{},{'x-admin-key':p.adminKey}); ME.polls.unshift({id:p.id,title:p.title,kind:''}); toast('Added to your account'); renderHome(); }catch(ex){ toast(ex.message); } return; }
+  if(ds.recall!==undefined){ recallMine(); return; }
+  if(ds.padd!==undefined){ const v=$('p_add').value; if(!v.trim()) return;
+    try{ const r=await api('POST',`/polls/${P.id}/participants`,{lines:v},headers());
+      partsChanged(`Added ${r.added.length}${r.skipped.length?` · already there: ${r.skipped.join(', ')}`:''}`); }catch(ex){ toast(ex.message); } return; }
+  if(ds.pedit){ const p=P.parts.find(x=>x.id===ds.pedit); if(!p) return;
+    const name=prompt('Name', p.name); if(name===null) return; const mail=prompt(`Email for ${name} (optional)`, p.email||''); if(mail===null) return;
+    try{ await api('PATCH',`/polls/${P.id}/participants/${p.id}`,{name,email:mail},headers()); partsChanged('Saved'); }catch(ex){ toast(ex.message); } return; }
+  if(ds.pdel){ const p=P.parts.find(x=>x.id===ds.pdel); if(!p) return;
+    if(!confirm(`Remove “${p.name}” from this poll?`)) return;
+    const answers = p.rounds ? confirm(`Also delete ${p.name}'s ${p.rounds} ${p.rounds===1?'answer':'answers'}?\n\nOK = delete them\nCancel = keep them (no longer linked to the name)`) : false;
+    try{ await api('DELETE',`/polls/${P.id}/participants/${p.id}${answers?'?answers=1':''}`,null,headers()); partsChanged('Removed'); }catch(ex){ toast(ex.message); } return; }
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
   if(ds.inst){ switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
@@ -748,6 +993,15 @@ document.addEventListener('click',async e=>{
     try{ await api('DELETE',`/polls/${P.id}/instances/${ds.idel}`,null,headers()); if(P.iid===ds.idel) P.iid=null; toast('Deleted'); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
   if(ds.nextinst!==undefined){ if(!P.data.next||!confirm(`Open the poll for ${rangeLabel(P.data.poll.unit,P.data.next.startDate,P.data.next.endDate)} now?`)) return;
     try{ const r=await api('POST',`/polls/${P.id}/instances`,{},headers()); toast('Opened'); await switchInstance(r.id); }catch(ex){ toast(ex.message); } return; }
+  if(ds.gview){ P.gview=ds.gview; P.sched=null; renderBody(); return; }
+  if(ds.whoall!==undefined){ setWho(new Set((P.data.responses||[]).map(r=>r.id))); return; }
+  if(ds.whonone!==undefined){ setWho(new Set()); return; }
+  if(ds.pwk){ P.pweek+=+ds.pwk; renderBody(); return; }
+  if(ds.pday){ const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
+  if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
+  if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
+  if(ds.suggest!==undefined){ suggestDrafts(); return; }
+  if(ds.savedrafts!==undefined){ saveDrafts(t); return; }
   if(ds.tab){ if(t.disabled) return; P.tab=ds.tab; renderBody(); return; }
   if(ds.mode){ P.mode=ds.mode; renderBody(); return; }
   if(ds.brush){ P.brush=ds.brush; renderBody(); return; }
@@ -784,6 +1038,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 // ---- boot ----
 (async()=>{
   try{ CONFIG = await api('GET','/config'); }catch(e){}
+  try{ Object.assign(ME, await api('GET','/me')); if(ME.user) ME.polls=(await api('GET','/me/polls')).polls; }catch(e){}
   const qs=new URLSearchParams(location.search), pid=qs.get('p');
   if(pid){
     const ak=qs.get('admin');

@@ -12,6 +12,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 ## Data model (see migrations/0001_initial.sql)
 - `polls`: one row per poll or series (kind `single` | `series`), with settings and a hashed admin key and password.
 - `instances`: one row per round of a poll (a series gets a new one each period). Holds dates, deadline, status and meetings (JSON).
+- `participants`: names, unique per poll (`name_key` = lower-cased), shared across all instances of a series. `responses.participant_id` links to it.
+- `sessions` / `login_attempts`: admin login (cookie `ww_session`, password from the `ADMIN_PASSWORD` secret) and throttling. `polls.owner_id` = owning user.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
 
 ## Commands
