@@ -121,6 +121,7 @@ async function route(request, env, ctx, url) {
   if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
   if (a === 'image' && m === 'GET') return pollImage(request, env, url, id);
   if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
+  if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
   if (a === 'participants') {
     if (!b && m === 'GET') return listParticipants(request, env, id);
@@ -839,10 +840,14 @@ async function mailQuota(env, poll, count) {
   if (used + count > max) throw new HttpError(429, `Daily email limit reached (${max} recipients). Try again tomorrow.`);
   await env.DB.prepare('INSERT INTO mail_log (user_id, n, at) VALUES (?, ?, ?)').bind(key, count, now()).run();
 }
-async function sendMail(env, poll, { to, subject, text, attachments, quota = false }) {
+async function sendMail(env, poll, { to, subject, text, attachments, quota = false, fromName, replyTo }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
   if (quota) await mailQuota(env, poll, list.length);
+  // Sender name = the owner's account name, so people see who the email is from (poll title only without one).
+  const owner = poll.owner_id ? await env.DB.prepare('SELECT name FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
+  const sender = fromName || (owner && owner.name) || poll.title;
+  const reply = replyTo || poll.admin_email;
   const pollLink = (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
   const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
     preheader: subject, button: pollLink ? { href: pollLink, label: 'Open poll' } : null, site: siteUrl(env, ''),
@@ -852,10 +857,10 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
     const bcc = list.slice(i, i + 49);
     const to = (poll.admin_email || env.MAIL_FROM).toLowerCase();
     await sendEmail(env, {
-      fromName: poll.title,
+      fromName: sender,
       to: [to],
       bcc: bcc.filter((e) => e !== to), subject, text, html,
-      ...(poll.admin_email ? { replyTo: poll.admin_email } : {}),
+      ...(reply ? { replyTo: reply } : {}),
       ...(attachments ? { attachments } : {}),
     });
     sent += bcc.length;
@@ -885,6 +890,30 @@ async function sendInvite(request, env, url, id, iid, mid) {
   mt.sentAt = now();
   await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ?').bind(JSON.stringify(meetings), iid).run();
   return json({ ok: true, sent, missing: invited.filter((r) => !r.email).map((r) => r.name) });
+}
+
+// "Invite by email" for the poll itself: sent from MAIL_FROM (the site's domain), everyone in BCC, replies go to the organiser.
+async function invitePoll(request, env, url, id) {
+  const poll = await loadPoll(env, id);
+  requireAdmin(request, poll);
+  const b = await body(request);
+  if (!Array.isArray(b.emails)) throw new HttpError(400, 'emails must be a list');
+  const emails = [...new Set(b.emails.filter((e) => typeof e === 'string').map((e) => e.trim().toLowerCase()).filter((e) => e.length <= 200 && EMAIL_RE.test(e)))];
+  if (!emails.length) throw new HttpError(400, 'Enter at least one email address');
+  if (emails.length > 200) throw new HttpError(400, 'At most 200 addresses at once');
+  const message = str(b.message, 1000, 'Message');
+  const user = userOf(request);
+  const inst = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 1').bind(id).first();
+  const deadline = inst && inst.status === 'open' && inst.deadline ? inst.deadline.slice(0, 10) : null;
+  const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
+  const who = user.name || 'The organiser';
+  const text = [message || `${who} would like to know when you're free for “${poll.title}”.`, '',
+    poll.description ? poll.description + '\n' : null,
+    'Mark your availability here (no account needed):', link,
+    deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
+    + `\n\n—\nYou're getting this because ${who} invited you to a poll on whenwho.`;
+  const sent = await sendMail(env, poll, { to: emails, subject: `When are you free? ${poll.title}`, text, quota: true });
+  return json({ ok: true, sent });
 }
 
 async function testEmail(request, env, url, id) {
@@ -981,9 +1010,10 @@ async function createResponse(request, env, id, iid) {
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
-  const name = personName(b.name);
-  const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
   const user = userOf(request);
+  // Signed in: the name shown to others is the account's profile name (typed name only while the profile has none).
+  const name = user && user.name ? user.name : personName(b.name);
+  const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
   const mail = user ? user.email : email(b.email);
   const entries = validateEntries(b.entries, poll, datesOf(inst));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
@@ -1082,8 +1112,9 @@ async function updateResponse(request, env, id, rid) {
     cur.user_id = user.id; cur.name_key = acctKey(user.id);
   }
   if (cur && cur.user_id) {
-    // Account answer: the name is only a label (it may repeat); the email is the account's.
-    if (user && user.id === cur.user_id) mail = user.email;
+    // Account answer: the name is the account's profile name (it may repeat); the email is the account's.
+    if (user && user.id === cur.user_id) { mail = user.email; if (user.name) name = user.name; }
+    else name = cur.name; // the owner editing someone else's account answer can't rename them
     if (name !== cur.name) stmts.push(
       env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, cur.id),
       env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));

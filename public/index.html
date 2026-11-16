@@ -416,13 +416,17 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show
 async function copy(text){ try{ await navigator.clipboard.writeText(text); toast('Copied'); }catch(e){ prompt('Copy this:', text); } }
 const origin = location.origin + location.pathname.replace(/index\.html$/,'');
 const shareLink = id => `${origin}?p=${id}`;
-// "Invite by email": opens the organiser's own email app with the share link (addresses in BCC). No server email needed.
+// "Invite by email": with email set up, the site sends it from its own domain (replies go to the organiser).
+// Otherwise (or as a fallback) it opens the organiser's own email app with the share link (addresses in BCC).
 function inviteBox(id,title,deadline){
+  const srv=CONFIG.emailEnabled;
   return `<details class="field"><summary>Invite by email</summary>
     <div class="field"><label for="inv_${esc(id)}">Email addresses (separate with commas, spaces or new lines)</label>
     <textarea id="inv_${esc(id)}" maxlength="5000" placeholder="anna@example.com, ben@example.com"></textarea></div>
-    <div class="row"><button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
-    <div class="help">Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.</div></details>`;
+    <div class="row">${srv?`<button type="button" class="btn primary" data-sendpoll="${esc(id)}">Send invites</button>`:''}
+      <button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
+    <div class="help">${srv?`“Send invites” emails everyone the poll link from whenwho's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to “Your email” in Settings, if set. “Open in my email app” sends it from your own address instead.`
+      :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></details>`;
 }
 function pollInviteMail(id,title,deadline,raw){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
@@ -939,7 +943,8 @@ function render(){
     <div id="meetings"></div>
     ${d.isAdmin?adminPanel():''}
     ${editable()&&ME.user?`<div class="card"><div class="card-h">${avatarOf(ME.user)}<h2>Your answer</h2><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div>
-      <div class="grid2"><div class="field"><label for="name">Name shown to others</label><input type="text" id="name" maxlength="60" autocomplete="name">
+      <div class="grid2"><div class="field">${ME.user.name?`<label>Name shown to others</label><div><b>${esc(ME.user.name)}</b> <a href="?account" class="small">Change in your profile</a></div>`
+          :`<label for="name">Name shown to others</label><input type="text" id="name" maxlength="60" autocomplete="name"><div class="help mt-1"><a href="?account">Set a name in your profile</a> to use it in every poll.</div>`}
         <div class="help mt-1">Signed in as <b>${esc(ME.user.email)}</b>. Your answer is linked to your account, so it follows you to every device.</div></div></div>
       ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
       <p class="help">${P.myResp?`Your answer is saved. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically as you mark your availability.'}</p></div>`
@@ -1445,9 +1450,17 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-newpoll],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-newpoll],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
   const ds=t.dataset;
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
+  if(ds.sendpoll){ const box=$('inv_'+ds.sendpoll), r=pollInviteMail(ds.sendpoll,'',null,box&&box.value);
+    if(r.bad.length){ toast(`Doesn't look like an email: ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`); return; }
+    if(!r.ok.length){ toast('Enter at least one email address'); return; }
+    t.disabled=true;
+    try{ const x=await api('POST',`/polls/${ds.sendpoll}/invite`,{emails:r.ok});
+      toast(`Invite sent to ${x.sent} ${x.sent===1?'person':'people'}`); box.value=''; }
+    catch(ex){ toast(ex.message); }
+    t.disabled=false; return; }
   if(ds.invitepoll){ const box=$('inv_'+ds.invitepoll), r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, box&&box.value);
     if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
     else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
