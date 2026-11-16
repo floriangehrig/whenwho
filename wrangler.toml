@@ -1,0 +1,26 @@
+name = "whenwho"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+# The web app (public/index.html) is served as a static asset.
+# Requests that aren't a file (e.g. /api/...) go to the Worker.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "whenwho"
+database_id = "f485894f-738a-4ac7-be68-bec6aeb8d13e"
+
+# Runs every hour: opens new polls in a series on time and sends notification/reminder emails.
+[triggers]
+crons = ["17 * * * *"]
+
+# ---- Optional: email via Cloudflare Email Service (Workers Paid plan + your own domain) ----
+# [[send_email]]
+# name = "EMAIL"
+#
+# [vars]
+# MAIL_FROM = "whenwho@your-domain.com"
+# SITE_URL = "https://whenwho.your-subdomain.workers.dev"
