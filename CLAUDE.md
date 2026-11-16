@@ -10,12 +10,15 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `wrangler.toml`: Worker name `whenwho`, D1 binding `DB` (database `whenwho`), cron trigger, optional email config.
 
 ## Data model (see migrations/0001_initial.sql)
-- `polls`: one row per poll or series (kind `single` | `series`), with settings and a hashed admin key and password.
+- `polls`: one row per poll or series (kind `single` | `series`), with settings, owner (`owner_id`), optional password, and an icon
+  (`icon` emoji, or `image` = small data URL served by `GET /api/polls/:id/image`). `admin_hash` is legacy: old admin keys only work to claim a poll.
 - `instances`: one row per round of a poll (a series gets a new one each period). Holds dates, deadline, status and meetings (JSON).
-- `participants`: names, unique per poll (`name_key` = lower-cased), shared across all instances of a series. `responses.participant_id` links to it.
-- `users`: accounts, one per (lower-cased) email. Sign-in is a 6-digit code emailed to the address (`login_codes`, hashed, 10 min, 5 tries).
-  Optional built-in `admin` account (password from the `ADMIN_PASSWORD` secret).
-- `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id` or `'admin'`) and rate limiting. `polls.owner_id` = owning user.
+- `participants`: one per person per poll, shared across all instances of a series. `responses.participant_id` links to it.
+  Guests are unique by name (`name_key` = lower-cased name). Signed-in people are unique by account (`user_id`; `name_key` = "\u0001" + user id), so names may repeat.
+- `users`: accounts, one per (lower-cased) email, with profile `name` and `avatar` (emoji) / `avatar_img` (data URL).
+  Sign-in is a 6-digit code emailed to the address (`login_codes`, hashed, 10 min, 5 tries). There is no password login.
+  Only the owning account can manage a poll.
+- `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
 
@@ -35,6 +38,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - Cost guard: the site is meant to run on the Workers Free plan (hard limits, no usage billing) + Resend free tier.
 - Secrets (API tokens, email settings) never go in the repo. Use `wrangler secret put` or the dashboard, and `.dev.vars` locally (git-ignored).
 - Keep the app dependency-free: one HTML file, inline CSS/JS. Escape all user content with `esc()` in the page and validate all input in the Worker.
-- Secrets in requests: admin key in `x-admin-key`, respondent edit key in `x-edit-key`, poll password in `x-poll-password`.
+- Secrets in requests: respondent edit key in `x-edit-key`, poll password in `x-poll-password` (`?pw=` for calendar and image URLs).
+  `x-admin-key` is only accepted by `POST /api/polls/:id/claim` (moving an old admin-link poll into an account).
 - Before committing, test the changed flow locally with `npm run dev` (create a poll, answer it in a private window, check the group overview).
 - Commit messages: short imperative summary ("Add reminder emails"), with a body if it isn't obvious.

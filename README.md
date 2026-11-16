@@ -24,11 +24,10 @@ npm install
 npx wrangler login
 npx wrangler d1 create whenwho        # put the database_id into wrangler.toml
 npm run db:migrate:remote
-npx wrangler secret put ADMIN_PASSWORD   # password of the built-in "admin" login
 npx wrangler deploy
 ```
 Anyone can sign in with their email (top right: **Sign in**, a 6-digit code is emailed) and create polls. Answering never needs an account.
-Optionally set `ADMIN_PASSWORD` for a built-in `admin` account (locally in `.dev.vars`).
+Each account has a profile page (name and avatar: an emoji or a picture) under the avatar menu → **Account & profile**.
 Then connect the GitHub repo in Cloudflare (Worker → Settings → Builds) so every push to `main` deploys.
 
 ### Email (Resend)
@@ -49,8 +48,10 @@ Who gets what:
 - **Reminder:** people who answered last time but not yet this time, N days before the reply-by date, if turned on.
 
 ## Notes
-- Each poll has a **share link** (for respondents) and an **admin link** (keep it private: it can change or delete the poll).
-- **Names are unique within a poll** and stay the same across all rounds of a series. Typing the same name again (on any device) brings back that person's answer. Anyone who knows a name can change that answer, so this suits groups that trust each other. The admin manages names under **Participants** (edit, merge duplicates, remove, add people in advance).
+- Each poll has a **share link** for respondents. Only the account that created a poll can change or delete it. Polls get an emoji icon or a picture (resized in the browser and stored in D1).
+  Old admin links (`?admin=…`) no longer manage a poll: opening one while signed in moves that poll into your account.
+- **People who answer while signed in** are identified by their account's email, so their answer follows them to every device and their name doesn't have to be unique.
+- **Guests (no account): names are unique within a poll** and stay the same across all rounds of a series. Typing the same name again (on any device) brings back that person's answer. Anyone who knows a name can change that answer, so this suits groups that trust each other. If a guest later signs in and edits their answer, it moves into their account. The owner manages people under **Participants** (edit, merge duplicates, remove, add people in advance).
 - Meeting times are floating local times (18:00 shows as 18:00 for everyone), which is fine for a group in one time zone.
-- Failed admin logins and name lookups are limited to 10 per 15 minutes per IP.
+- Failed sign-in codes and name lookups are limited to 10 per 15 minutes per IP.
 # whenwho

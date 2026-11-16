@@ -7,12 +7,12 @@
 //   MAIL_FROM (optional) sender address on a domain verified in Resend, e.g. noreply@example.com
 //   MAIL_PER_DAY (optional) recipients of invites / test emails per account (or per poll without one) per day, default 50
 //   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
-//   ADMIN_PASSWORD (optional secret) password of the built-in "admin" account. Unset = admin login hidden.
-//                  Set it with `npx wrangler secret put ADMIN_PASSWORD` (and in .dev.vars locally).
 //   TURNSTILE_SITE_KEY (optional var) + TURNSTILE_SECRET (secret): bot check before a sign-in code is emailed.
 //
 // Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
-// Only signed-in users can create polls. Without them, codes are written to the log (local development only).
+// Only signed-in users can create polls, and only the account that owns a poll can manage it.
+// Without RESEND_API_KEY + MAIL_FROM, codes are written to the log (local development only).
+// Answers given while signed in belong to the account (its email), so names don't have to be unique for them.
 
 const MAX_RANGE_DAYS = 92;
 const MAX_RESPONSES = 300;
@@ -96,15 +96,12 @@ async function route(request, env, ctx, url) {
   if (parts[1] === 'auth') {
     if (parts[2] === 'code' && m === 'POST') return sendLoginCode(request, env, url);
     if (parts[2] === 'verify' && m === 'POST') return verifyLoginCode(request, env, url);
-    if (parts[2] === 'login' && m === 'POST') return login(request, env, url);
     if (parts[2] === 'logout' && m === 'POST') return logout(request, env, cookies, url);
     throw new HttpError(404, 'Not found');
   }
   if (parts[1] === 'me') {
-    if (!parts[2] && m === 'GET') {
-      const u = userOf(request);
-      return json({ user: u ? { name: u.email || u.id, email: u.email || '' } : null, loginEnabled: !!env.ADMIN_PASSWORD });
-    }
+    if (!parts[2] && m === 'GET') return me(request, env);
+    if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
     throw new HttpError(404, 'Not found');
   }
@@ -122,6 +119,7 @@ async function route(request, env, ctx, url) {
     if (m === 'DELETE') return deletePoll(request, env, id);
   }
   if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
+  if (a === 'image' && m === 'GET') return pollImage(request, env, url, id);
   if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
   if (a === 'participants') {
@@ -189,6 +187,26 @@ const email = (v, field = 'Email') => {
   if (e && !EMAIL_RE.test(e)) throw new HttpError(400, `${field}: that address doesn’t look right`);
   return e;
 };
+// Names of people: no control characters (account answers use one as a marker in name_key).
+const personName = (v) => {
+  const n = str(v, 60, 'Name', true).replace(/\s+/g, ' ');
+  if (/[\u0000-\u001f\u007f]/.test(n)) throw new HttpError(400, 'Name contains characters that aren’t allowed');
+  return n;
+};
+// Icons and avatars are a single emoji (or empty). Pictures are small data URLs resized in the browser.
+const EMOJI_RE = /^[\p{Extended_Pictographic}\p{Emoji_Component}\u200d\ufe0f\u20e3]{1,16}$/u;
+const emojiIcon = (v, field) => {
+  if (v == null || v === '') return '';
+  if (typeof v !== 'string' || !EMOJI_RE.test(v) || !/[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(v)) throw new HttpError(400, `${field}: pick an emoji`);
+  return v;
+};
+const IMG_MAX = 150_000; // characters of the data URL (about 110 KB of picture)
+const IMG_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/;
+const imageData = (v, field) => {
+  if (v == null || v === '') return null;
+  if (typeof v !== 'string' || v.length > IMG_MAX || !IMG_RE.test(v)) throw new HttpError(400, `${field}: use a JPEG, PNG or WebP picture of up to 100 KB`);
+  return v;
+};
 const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
 const int = (v, lo, hi, field) => {
   const n = Number(v);
@@ -244,17 +262,18 @@ async function loadInstance(env, pollId, iid) {
   if (!inst) throw new HttpError(404, 'This poll no longer exists');
   return inst;
 }
+// Old polls may still have an admin key. It is only used to move such a poll into an account (claimPoll).
 async function adminKeyOk(request, poll) {
   const key = request.headers.get('x-admin-key');
   return !!key && safeEqual(await sha256('admin:' + key), poll.admin_hash);
 }
-// Admin of a poll: whoever has its admin link, or the signed-in user who owns it.
-async function isAdmin(request, poll) {
+// Admin of a poll: the signed-in account that owns it.
+function isAdmin(request, poll) {
   const user = userOf(request);
-  return (!!user && !!poll.owner_id && poll.owner_id === user.id) || adminKeyOk(request, poll);
+  return !!user && !!poll.owner_id && poll.owner_id === user.id;
 }
-async function requireAdmin(request, poll) {
-  if (!(await isAdmin(request, poll))) throw new HttpError(403, 'Admin link required');
+function requireAdmin(request, poll) {
+  if (!isAdmin(request, poll)) throw new HttpError(403, 'Only the poll’s owner can do this. Sign in with the account that created it.');
 }
 async function passwordOk(poll, pw) {
   return !poll.password_hash || (!!pw && safeEqual(await sha256(poll.id + ':pw:' + pw), poll.password_hash));
@@ -270,6 +289,7 @@ function publicPoll(poll, admin) {
     unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
     answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end,
     hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, hasPassword: !!poll.password_hash,
+    icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { adminEmail: poll.admin_email, notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
   return p;
@@ -323,7 +343,7 @@ function validateMeetings(list) {
   }).sort((x, y) => (x.date + pad(x.start ?? 0)).localeCompare(y.date + pad(y.start ?? 0)));
 }
 
-// ---------- admin login (sessions) ----------
+// ---------- accounts and sessions ----------
 const USERS = new WeakMap(); // request -> signed-in user (or null), set once per request in route()
 const userOf = (request) => USERS.get(request) || null;
 function parseCookies(request) {
@@ -340,9 +360,11 @@ function sessionCookie(url, token, maxAge) {
 async function getUser(env, cookies) {
   const token = cookies.ww_session;
   if (!token || token.length > 100) return null;
-  const s = await env.DB.prepare('SELECT s.user_id, u.email FROM sessions s LEFT JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?')
+  const s = await env.DB.prepare(
+    `SELECT u.id, u.email, u.name, u.avatar, u.created_at, u.avatar_img IS NOT NULL AS has_img
+     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`)
     .bind(await sha256('session:' + token), now()).first();
-  return s ? { id: s.user_id, email: s.email || '' } : null;
+  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', hasImg: !!s.has_img, created: s.created_at } : null;
 }
 const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
 // login_attempts doubles as a rate-limit log; `key` is an IP or 'e:' + hash of an email address.
@@ -438,21 +460,7 @@ async function verifyLoginCode(request, env, url) {
   await env.DB.prepare('INSERT INTO users (id, email, created_at, last_login_at) VALUES (?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at')
     .bind('u_' + randomId(16), addr, t, t).run();
   const user = await env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(addr).first();
-  return json({ user: { name: user.email, email: user.email } }, 200, { 'set-cookie': await startSession(env, url, user.id) });
-}
-
-async function login(request, env, url) {
-  if (!env.ADMIN_PASSWORD) throw new HttpError(400, 'Login isn’t set up on this site (ADMIN_PASSWORD is missing)');
-  await checkThrottle(env, request, 'login');
-  const b = await body(request);
-  const user = typeof b.username === 'string' ? b.username.trim().toLowerCase() : '';
-  const pwOk = typeof b.password === 'string' && b.password.length <= 200 &&
-    safeEqual(await sha256('pw:' + b.password), await sha256('pw:' + env.ADMIN_PASSWORD));
-  if (user !== 'admin' || !pwOk) {
-    await recordFail(env, request, 'login');
-    throw new HttpError(401, 'Wrong username or password');
-  }
-  return json({ user: { name: 'admin' } }, 200, { 'set-cookie': await startSession(env, url, 'admin') });
+  return json({ user: { email: user.email } }, 200, { 'set-cookie': await startSession(env, url, user.id) });
 }
 // { everywhere: true } ends all sessions of this account (e.g. after using a shared computer).
 async function logout(request, env, cookies, url) {
@@ -467,12 +475,51 @@ function requireUser(request) {
   if (!user) throw new HttpError(401, 'Please sign in first');
   return user;
 }
+// ---------- profile ----------
+async function me(request, env) {
+  const u = userOf(request);
+  if (!u) return json({ user: null });
+  const img = u.hasImg ? await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(u.id).first('avatar_img') : '';
+  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created } });
+}
+// Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or '') }. A new name also renames the account's answers.
+async function updateProfile(request, env) {
+  const user = requireUser(request);
+  const b = await body(request), u = {};
+  if (b.name !== undefined) u.name = b.name === '' ? '' : personName(b.name);
+  if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
+  if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
+  const cols = Object.keys(u);
+  if (!cols.length) return json({ ok: true });
+  const stmts = [env.DB.prepare(`UPDATE users SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), user.id)];
+  if (u.name) stmts.push(
+    env.DB.prepare('UPDATE participants SET name = ? WHERE user_id = ?').bind(u.name, user.id),
+    env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id IN (SELECT id FROM participants WHERE user_id = ?)').bind(u.name, user.id));
+  await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+// Polls the account owns (with their current round) and polls it answered.
 async function myPolls(request, env) {
   const user = requireUser(request);
-  const { results } = await env.DB.prepare('SELECT id, title, kind, created_at FROM polls WHERE owner_id = ? ORDER BY created_at DESC').bind(user.id).all();
-  return json({ polls: results.map((p) => ({ id: p.id, title: p.title, kind: p.kind, createdAt: p.created_at })) });
+  const pic = (p) => (p.has_image ? p.image_at || '1' : '');
+  const { results: owned } = await env.DB.prepare(
+    `SELECT p.id, p.title, p.kind, p.icon, p.image_at, p.image IS NOT NULL AS has_image, p.created_at,
+       i.start_date, i.end_date, i.status, i.deadline, (SELECT COUNT(*) FROM responses r WHERE r.instance_id = i.id) AS answers
+     FROM polls p LEFT JOIN instances i ON i.id = (SELECT id FROM instances WHERE poll_id = p.id ORDER BY seq DESC LIMIT 1)
+     WHERE p.owner_id = ? ORDER BY p.created_at DESC`).bind(user.id).all();
+  const { results: answered } = await env.DB.prepare(
+    `SELECT p.id, p.title, p.kind, p.icon, p.image_at, p.image IS NOT NULL AS has_image, pa.name,
+       (SELECT MAX(r.updated_at) FROM responses r WHERE r.participant_id = pa.id) AS last
+     FROM participants pa JOIN polls p ON p.id = pa.poll_id
+     WHERE pa.user_id = ? AND (p.owner_id IS NULL OR p.owner_id != ?) ORDER BY last DESC`).bind(user.id, user.id).all();
+  return json({
+    polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at,
+      current: p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
+        status: effStatus({ status: p.status, end_date: p.end_date }) } : null })),
+    answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last })),
+  });
 }
-// Move a poll that was only reachable by its admin link into the signed-in account.
+// Move a poll that was only reachable by its (old) admin link into the signed-in account.
 async function claimPoll(request, env, id) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
@@ -525,6 +572,8 @@ function readPollSettings(b, existing) {
   if (!existing || has('adminEmail')) p.admin_email = email(b.adminEmail, 'Your email');
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
+  if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
+  if (!existing || has('image')) { p.image = imageData(b.image, 'Picture'); p.image_at = p.image ? now() : null; }
   return p;
 }
 
@@ -535,8 +584,9 @@ async function createPoll(request, env) {
   if (owned >= MAX_POLLS_PER_USER) throw new HttpError(429, `You can have at most ${MAX_POLLS_PER_USER} polls. Delete an old one first.`);
   const b = await body(request);
   const p = readPollSettings(b, null);
-  const id = randomId(10), adminKey = secret(), t = now();
-  p.id = id; p.admin_hash = await sha256('admin:' + adminKey); p.owner_id = user.id;
+  const id = randomId(10), t = now();
+  p.id = id; p.owner_id = user.id;
+  p.admin_hash = await sha256('admin:' + secret()); // column is required; admin links are no longer handed out
   p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
   p.created_at = t; p.updated_at = t;
   let first;
@@ -550,7 +600,7 @@ async function createPoll(request, env) {
   // The first poll of a series opens right away (it's the period currently due, or the first one if that's later).
   const seq = p.kind === 'series' ? currentSeq(p) : 0;
   await insertInstance(env, p, seq, first || seriesFields(p, seq), true);
-  return json({ id, adminKey }, 201);
+  return json({ id }, 201);
 }
 
 async function getPoll(request, env, ctx, url, id) {
@@ -583,9 +633,15 @@ async function getPoll(request, env, ctx, url, id) {
   if (admin || !poll.hide_results) {
     const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at, ...(admin ? { email: r.email } : {}) }));
-    // Names already used in this poll (any round), so people can pick themselves.
-    const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
+    // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
+    const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
+  }
+  const user = userOf(request);
+  if (user) { // signed in: their answers are linked to the account
+    const part = await accountParticipant(env, id, user.id);
+    out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null,
+      responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
   }
   return json(out);
 }
@@ -600,6 +656,17 @@ async function updatePoll(request, env, id) {
   const cols = Object.keys(p);
   await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
   return json({ ok: true });
+}
+
+// The poll's picture. <img> can't send headers, so a password travels as ?pw= (like calendar.ics).
+async function pollImage(request, env, url, id) {
+  const poll = await env.DB.prepare('SELECT id, owner_id, password_hash, image FROM polls WHERE id = ?').bind(id).first();
+  if (!poll || !poll.image) throw new HttpError(404, 'No picture');
+  if (!isAdmin(request, poll) && !(await passwordOk(poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
+  const m = poll.image.match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/);
+  if (!m) throw new HttpError(404, 'No picture');
+  const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+  return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=31536000, immutable' } });
 }
 
 async function deletePoll(request, env, id) {
@@ -886,18 +953,22 @@ async function runScheduled(env) {
 }
 
 // ---------- responses ----------
-// Names are unique within a poll (case-insensitive) and identify a person across all rounds of a series.
+// Guests: names are unique within a poll (case-insensitive) and identify a person across all rounds of a series.
+// Signed-in people: the account identifies them; their name_key is acctKey(user id), so names may repeat.
 const nameKey = (name) => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const acctKey = (userId) => '\u0001' + userId;
+const accountParticipant = (env, pollId, userId) =>
+  env.DB.prepare('SELECT * FROM participants WHERE poll_id = ? AND user_id = ?').bind(pollId, userId).first();
 const findParticipant = (env, pollId, key) =>
   env.DB.prepare('SELECT * FROM participants WHERE poll_id = ? AND name_key = ?').bind(pollId, key).first();
 const answerIn = (env, participantId, iid) =>
   env.DB.prepare('SELECT id FROM responses WHERE participant_id = ? AND instance_id = ? ORDER BY updated_at DESC LIMIT 1').bind(participantId, iid).first('id');
-async function newParticipant(env, pollId, name, mail = '') {
+async function newParticipant(env, pollId, name, mail = '', userId = null) {
   const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(pollId).first('n');
   if (n >= MAX_PARTICIPANTS) throw new HttpError(409, 'This poll has reached its maximum number of participants');
-  const p = { id: randomId(12), poll_id: pollId, name, name_key: nameKey(name), email: mail, created_at: now() };
-  await env.DB.prepare('INSERT INTO participants (id, poll_id, name, name_key, email, created_at) VALUES (?,?,?,?,?,?)')
-    .bind(p.id, p.poll_id, p.name, p.name_key, p.email, p.created_at).run();
+  const p = { id: randomId(12), poll_id: pollId, name, name_key: userId ? acctKey(userId) : nameKey(name), email: mail, user_id: userId, created_at: now() };
+  await env.DB.prepare('INSERT INTO participants (id, poll_id, name, name_key, email, user_id, created_at) VALUES (?,?,?,?,?,?,?)')
+    .bind(p.id, p.poll_id, p.name, p.name_key, p.email, p.user_id, p.created_at).run();
   return p;
 }
 const nameTaken = (name, participantId, responseId) =>
@@ -910,19 +981,35 @@ async function createResponse(request, env, id, iid) {
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
-  const name = str(b.name, 60, 'Name', true);
+  const name = personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
-  const mail = email(b.email);
+  const user = userOf(request);
+  const mail = user ? user.email : email(b.email);
   const entries = validateEntries(b.entries, poll, datesOf(inst));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
-  // Same name as an existing participant: that's this person (e.g. the next round of a series),
-  // unless they already answered this round.
-  let part = await findParticipant(env, id, nameKey(name));
-  if (part) {
-    const existing = await answerIn(env, part.id, iid);
-    if (existing) throw nameTaken(part.name, part.id, existing);
-  } else part = await newParticipant(env, id, name);
+  let part;
+  if (user) { // signed in: one participant per account, whatever name they give
+    part = await accountParticipant(env, id, user.id);
+    if (part) {
+      const existing = await answerIn(env, part.id, iid);
+      if (existing) throw new HttpError(409, 'You have already answered this poll', { code: 'own_answer', responseId: existing });
+      if (part.name !== name) {
+        await env.DB.batch([
+          env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, part.id),
+          env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, part.id)]);
+        part.name = name;
+      }
+    } else part = await newParticipant(env, id, name, user.email, user.id);
+  } else {
+    // Same name as an existing guest: that's this person (e.g. the next round of a series),
+    // unless they already answered this round.
+    part = await findParticipant(env, id, nameKey(name));
+    if (part) {
+      const existing = await answerIn(env, part.id, iid);
+      if (existing) throw nameTaken(part.name, part.id, existing);
+    } else part = await newParticipant(env, id, name);
+  }
   const rid = randomId(12), editKey = secret(), t = now();
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
@@ -934,8 +1021,14 @@ async function loadResponse(env, id, rid) {
   if (!r) throw new HttpError(404, 'Response not found');
   return r;
 }
-// The person may edit with the secret edit key from their browser, or by giving the response's name (x-edit-name).
+// The person may edit while signed in to the account that gave the answer, with the secret edit key from their
+// browser, or (guests only) by giving the response's name (x-edit-name).
 async function canEditResponse(request, env, r) {
+  const user = userOf(request);
+  if (user && r.participant_id) {
+    const owner = await env.DB.prepare('SELECT user_id FROM participants WHERE id = ?').bind(r.participant_id).first('user_id');
+    if (owner && owner === user.id) return true;
+  }
   const key = request.headers.get('x-edit-key');
   if (key && safeEqual(await sha256('edit:' + key), r.edit_hash)) return true;
   const raw = request.headers.get('x-edit-name');
@@ -954,7 +1047,7 @@ async function recall(request, env, id, iid) {
   await loadInstance(env, id, iid);
   await checkThrottle(env, request, 'name');
   const b = await body(request);
-  const part = await findParticipant(env, id, nameKey(str(b.name, 60, 'Name', true)));
+  const part = await findParticipant(env, id, nameKey(personName(b.name)));
   if (!part) { await recordFail(env, request, 'name'); throw new HttpError(404, 'Nobody has answered under that name yet'); }
   return json({ participantId: part.id, name: part.name, responseId: (await answerIn(env, part.id, iid)) || null });
 }
@@ -968,20 +1061,33 @@ async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
-  if (!(await isAdmin(request, poll))) {
-    if (!(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
+  const admin = isAdmin(request, poll), own = await canEditResponse(request, env, r);
+  if (!own && !admin) throw new HttpError(403, 'Not your response');
+  if (!admin) {
     await checkPassword(request, poll);
     if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
   }
   const b = await body(request);
-  let name = b.name !== undefined ? str(b.name, 60, 'Name', true) : r.name;
-  const mail = b.email !== undefined ? email(b.email) : r.email;
+  let name = b.name !== undefined ? personName(b.name) : r.name;
+  let mail = b.email !== undefined ? email(b.email) : r.email;
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
   const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst))) : r.entries;
   let partId = r.participant_id;
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
-  if (!cur || cur.name_key !== nameKey(name)) {
+  const user = userOf(request);
+  // A guest who signs in and edits their own answer: link that person to the account (if it has none in this poll yet).
+  if (user && own && cur && !cur.user_id && !(await accountParticipant(env, id, user.id))) {
+    stmts.push(env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(user.id, acctKey(user.id), user.email, cur.id));
+    cur.user_id = user.id; cur.name_key = acctKey(user.id);
+  }
+  if (cur && cur.user_id) {
+    // Account answer: the name is only a label (it may repeat); the email is the account's.
+    if (user && user.id === cur.user_id) mail = user.email;
+    if (name !== cur.name) stmts.push(
+      env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, cur.id),
+      env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
+  } else if (!cur || cur.name_key !== nameKey(name)) {
     const other = await findParticipant(env, id, nameKey(name));
     if (other) {
       // The new name belongs to someone else: allowed only if they haven't answered this round (e.g. fixing a typo).
@@ -996,9 +1102,10 @@ async function updateResponse(request, env, id, rid) {
       // Rename this person in every round.
       stmts.push(env.DB.prepare('UPDATE participants SET name = ?, name_key = ? WHERE id = ?').bind(name, nameKey(name), cur.id));
       stmts.push(env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
-    } else partId = (await newParticipant(env, id, name)).id;
+    } else partId = (user && own && !(await accountParticipant(env, id, user.id))
+      ? await newParticipant(env, id, name, user.email, user.id) : await newParticipant(env, id, name)).id;
   }
-  if (cur && cur.name_key === nameKey(name) && cur.name !== name) { // only the spelling changed
+  if (cur && !cur.user_id && cur.name_key === nameKey(name) && cur.name !== name) { // only the spelling changed
     stmts.push(env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, cur.id));
     stmts.push(env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
   }
@@ -1029,11 +1136,11 @@ async function loadParticipant(env, id, pid) {
 async function listParticipants(request, env, id) {
   await adminPoll(request, env, id);
   const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+    `SELECT p.id, p.name, p.email, p.user_id, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
        (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email
      FROM participants p LEFT JOIN responses r ON r.participant_id = p.id
      WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(id).all();
-  return json({ participants: results.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', rounds: p.rounds, lastAnswered: p.last })) });
+  return json({ participants: results.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id, rounds: p.rounds, lastAnswered: p.last })) });
 }
 // Body: { lines: "Anna\nBen, ben@example.com" }
 async function addParticipants(request, env, id) {
@@ -1043,7 +1150,7 @@ async function addParticipants(request, env, id) {
   const added = [], skipped = [];
   for (const line of text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
     const [rawName, ...rest] = line.split(',');
-    const name = str(rawName, 60, 'Name', true);
+    const name = personName(rawName);
     const mail = email(rest.join(',').trim(), `Email for ${name}`);
     if (await findParticipant(env, id, nameKey(name))) { skipped.push(name); continue; }
     await newParticipant(env, id, name, mail);
@@ -1055,12 +1162,12 @@ async function updateParticipant(request, env, id, pid) {
   await adminPoll(request, env, id);
   const p = await loadParticipant(env, id, pid);
   const b = await body(request);
-  const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : p.name;
-  const mail = b.email !== undefined ? email(b.email) : p.email;
-  if (nameKey(name) !== p.name_key && (await findParticipant(env, id, nameKey(name))))
+  const name = b.name !== undefined ? personName(b.name) : p.name;
+  const mail = p.user_id ? p.email : b.email !== undefined ? email(b.email) : p.email; // an account keeps its own email
+  if (!p.user_id && nameKey(name) !== p.name_key && (await findParticipant(env, id, nameKey(name))))
     throw new HttpError(409, `“${name}” already exists in this poll. Use “Merge” to combine the two.`);
   await env.DB.batch([
-    env.DB.prepare('UPDATE participants SET name = ?, name_key = ?, email = ? WHERE id = ?').bind(name, nameKey(name), mail, pid),
+    env.DB.prepare('UPDATE participants SET name = ?, name_key = ?, email = ? WHERE id = ?').bind(name, p.user_id ? p.name_key : nameKey(name), mail, pid),
     env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, pid),
   ]);
   return json({ ok: true });
@@ -1084,6 +1191,7 @@ async function mergeParticipant(request, env, id, pid) {
   const b = await body(request);
   if (typeof b.into !== 'string' || b.into === pid) throw new HttpError(400, 'Pick someone else to merge into');
   const dst = await loadParticipant(env, id, b.into);
+  if (src.user_id && dst.user_id) throw new HttpError(409, 'Both are signed-in accounts, so they can’t be merged');
   const { results } = await env.DB.prepare('SELECT id, instance_id, participant_id, updated_at FROM responses WHERE participant_id IN (?, ?)').bind(src.id, dst.id).all();
   const byRound = {}, drop = [];
   for (const r of results) {
@@ -1094,8 +1202,11 @@ async function mergeParticipant(request, env, id, pid) {
   await env.DB.batch([
     ...drop.map((rid) => env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid)),
     env.DB.prepare('UPDATE responses SET participant_id = ?, name = ? WHERE participant_id IN (?, ?)').bind(dst.id, dst.name, src.id, dst.id),
-    env.DB.prepare("UPDATE participants SET email = CASE WHEN email = '' THEN ? ELSE email END WHERE id = ?").bind(src.email, dst.id),
     env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(src.id),
+    // If the merged one was an account, the remaining person now belongs to that account.
+    src.user_id
+      ? env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(src.user_id, src.name_key, src.email, dst.id)
+      : env.DB.prepare("UPDATE participants SET email = CASE WHEN email = '' THEN ? ELSE email END WHERE id = ?").bind(src.email, dst.id),
   ]);
   return json({ ok: true, removedAnswers: drop.length });
 }

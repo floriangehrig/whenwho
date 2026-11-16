@@ -26,7 +26,6 @@ crons = ["17 * * * *"]
 # Secrets (never in this file), already set in production:
 #   RESEND_API_KEY     (Resend → API Keys, "Sending access" for mail.when-who.app only)
 #   TURNSTILE_SECRET   (Cloudflare → Turnstile)
-#   ADMIN_PASSWORD     (optional)
 [vars]
 MAIL_FROM = "noreply@mail.when-who.app"     # on the domain verified in Resend
 SITE_URL = "https://when-who.app"
