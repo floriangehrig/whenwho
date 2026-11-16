@@ -129,8 +129,6 @@
   details>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px}
   details[open]>summary::before{transform:rotate(45deg)}
   details>summary:hover{color:var(--accent)}
-  details.field{margin-top:var(--s3);border-top:1px solid var(--line)}
-  details.field[open]{padding-bottom:6px}
 
   /* ---------- buttons ---------- */
   .btn{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);min-height:36px;padding:7px 14px;border-radius:8px;cursor:pointer;
@@ -156,6 +154,14 @@
   .tabs button.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
   .tabs button:disabled{opacity:.4;cursor:default}
   .tabs+.card{margin-top:var(--s4)}
+  /* organiser sections: a tab row in its own card, above the panes */
+  .card.atabs{margin-top:0;padding:4px 10px 0;border-bottom:0;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+  .card.atabs::-webkit-scrollbar{display:none}
+  .card.atabs button{white-space:nowrap;padding-bottom:14px}
+  .card.atabs button.on::after{bottom:0}
+  .card-h+.section{margin-top:var(--s2);padding-top:0;border-top:0}
+  .section>h3{margin-bottom:var(--s2)}
+  .card.danger-zone{border-color:color-mix(in srgb,var(--no) 30%,var(--line))}
   .seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:var(--empty);border:1px solid var(--line);padding:3px;border-radius:10px}
   .seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;display:inline-flex;align-items:center}
   .seg button:hover{color:var(--ink)}
@@ -396,6 +402,7 @@
     .day{min-height:54px;padding:5px;border-radius:9px} .day .t{font-size:10px} .blank{min-height:54px}
     .dd .ddp.signin{width:calc(100vw - 24px);padding:18px 16px}
     .tabs button{padding:12px 10px;font-size:14px}
+    .card.atabs{padding:4px 2px 0;gap:0} .card.atabs button{padding:12px 6px 14px;font-size:13px} .card.atabs button.on::after{left:4px;right:4px}
   }
 </style>
 </head>
@@ -424,13 +431,13 @@ const shareLink = id => `${origin}?p=${id}`;
 // Otherwise (or as a fallback) it opens the organiser's own email app with the share link (addresses in BCC).
 function inviteBox(id,title,deadline){
   const srv=CONFIG.emailEnabled;
-  return `<details class="field"><summary>Invite by email</summary>
+  return `<div class="section"><h3>Invite by email</h3>
     <div class="field"><label for="inv_${esc(id)}">Email addresses (separate with commas, spaces or new lines)</label>
     <textarea id="inv_${esc(id)}" maxlength="5000" placeholder="anna@example.com, ben@example.com"></textarea></div>
     <div class="row">${srv?`<button type="button" class="btn primary" data-sendpoll="${esc(id)}">Send invites</button>`:''}
       <button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
     <div class="help">${srv?`“Send invites” emails everyone the poll link from whenwho's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to “Your email” in Settings, if set. “Open in my email app” sends it from your own address instead.`
-      :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></details>`;
+      :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></div>`;
 }
 function pollInviteMail(id,title,deadline,raw){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
@@ -669,17 +676,17 @@ function renderHome(){
         <div class="field"><label>People answer with</label>${seg('ansSeg',[['days','Whole days'],['slots','Time slots'],['both','Both (they choose)']],'both')}
           <div class="help" id="ansHelp"></div></div>
         <div id="hoursBox" class="row field"><label class="m0">Hours from</label><input type="number" id="hs" min="0" max="23" value="8"><label class="m0">to</label><input type="number" id="he" min="1" max="24" value="24"></div>
-        <details class="field"><summary>Privacy options</summary>
+        <div class="section"><h3>Privacy</h3>
           <div class="field"><label for="pw">Password (optional)</label><input type="password" id="pw" maxlength="100" placeholder="Only people with the password can open the poll" autocomplete="new-password"></div>
           <label class="check"><input type="checkbox" id="hide"> Hide everyone's answers from respondents (only you see results)</label>
           <label class="check"><input type="checkbox" id="comments" checked> Let people add a comment</label>
-        </details>
-        <details class="field ${CONFIG.emailEnabled?'':'hide'}" id="mailBox"><summary>Email</summary>
+        </div>
+        <div class="section ${CONFIG.emailEnabled?'':'hide'}" id="mailBox"><h3>Email</h3>
           <div class="field"><label for="aemail">Your email (optional)</label><input type="email" id="aemail" maxlength="200" placeholder="Replies to invites go here"></div>
           <label class="check" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
           <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
           <div class="help">People only get emails if they leave their address when answering.</div>
-        </details>
+        </div>
         <div class="err" id="ferr"></div>
         <div class="row mt-4"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
       </form>
@@ -794,7 +801,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false,
-  who:null, whoOpen:false, gview:'overview', pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null };
+  who:null, whoOpen:false, gview:'overview', pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -804,7 +811,7 @@ const respKey = () => `resp:${P.id}:${inst().id}`;
 const ansMode = () => P.data.poll.answerMode;
 const instLabel = i => P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
 
-async function openPoll(id){ P.id=id; P.password=store.get('pw:'+id,null); await loadPoll(true); }
+async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.password=store.get('pw:'+id,null); await loadPoll(true); }
 async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
 async function loadPoll(first){
   try{ P.data = await fetchPoll(); }
@@ -944,8 +951,9 @@ function render(){
     ${!d.isAdmin&&d.instances.length>1?`<div class="field"><div class="seg">${d.instances.map(x=>`<button data-inst="${x.id}" class="${x.id===i.id?'on':''}">${esc(instLabel(x))}</button>`).join('')}</div></div>`:''}
     </div></section>
     <main class="wrap">
+    ${d.isAdmin?adminTabs():''}
+    <div id="pane-answers" class="${d.isAdmin&&P.atab!=='answers'?'hide':''}">
     <div id="meetings"></div>
-    ${d.isAdmin?adminPanel():''}
     ${editable()&&ME.user?`<div class="card"><div class="card-h">${avatarOf(ME.user)}<h2>Your answer</h2><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div>
       <div class="grid2"><div class="field">${ME.user.name?`<label>Name shown to others</label><div><b>${esc(ME.user.name)}</b> <a href="?account" class="small">Change in your profile</a></div>`
           :`<label for="name">Name shown to others</label><input type="text" id="name" maxlength="60" autocomplete="name"><div class="help mt-1"><a href="?account">Set a name in your profile</a> to use it in every poll.</div>`}
@@ -963,7 +971,8 @@ function render(){
       :`<div class="notice warn mt-4">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
     <div class="tabs"><button data-tab="mine" class="${P.tab==='mine'?'on':''}" ${editable()?'':'disabled'}>My availability</button>
       <button data-tab="group" class="${P.tab==='group'?'on':''}">Group overview</button></div>
-    <div class="card" id="body"></div></main>`;
+    <div class="card" id="body"></div></div>
+    ${d.isAdmin?adminPanes():''}</main>`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
@@ -980,7 +989,7 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null;
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">Only the organiser can see everyone\'s answers.</div>':''}`;
@@ -1009,11 +1018,11 @@ function renderSeries(){
         <div class="field"><label>Note shown at the top of this poll</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
         <div class="row mt-3"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
     </li>`).join('');
-  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="card-h"><h2>Series · every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</h2>
-      <button class="btn" data-nextinst>Open next poll now</button></div>
-      ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open poll.</p>`:''}
+  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="card-h"><h2>Rounds</h2><span class="muted small">every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</span>
+      <button class="btn" data-nextinst>Open next round now</button></div>
+      ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open round.</p>`:''}
       <ul class="list">${rows}</ul></div>`
-    : `<div class="card"><div class="card-h"><h2>Poll</h2></div><ul class="list">${rows}</ul></div>`;
+    : `<div class="card"><div class="card-h"><h2>Dates</h2></div><ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
     try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{startDate:$('ie_s').value,endDate:$('ie_e').value,deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
       P.iedit=null; toast('Saved'); await loadPoll(false); }catch(ex){ toast(ex.message); } };
@@ -1190,8 +1199,8 @@ function renderGroup(el){
       `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small ml-auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
     const withC=sel().filter(r=>r.comment);
     if(withC.length) h+=`<div class="section comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
-    if(d.isAdmin) h+=`<details class="section"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
-      `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></details>`;
+    if(d.isAdmin) h+=`<div class="section"><h3>Manage responses (${all})</h3><ul class="list">${d.responses.map(r=>
+      `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></div>`;
   }
   el.innerHTML=h;
   wireWho();
@@ -1378,34 +1387,56 @@ async function saveDrafts(btn){
 }
 
 // ---- admin ----
-function adminPanel(){
-  const d=P.data, p=d.poll;
-  return `<div class="card"><div class="card-h"><h2>Share</h2><span class="muted small">Send this link to people</span></div>
-    <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
-    ${inviteBox(p.id, p.title, inst()&&inst().status==='open'?inst().deadline:null)}
-    <details class="field"><summary>Settings</summary><form id="sf">
-      <div class="field"><label>Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
-      <div class="field"><label>Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
-      <div class="field"><label>Icon or picture</label>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div>
-      ${p.kind==='series'?`<div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
+// The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
+const adminTabList = () => [['answers','Answers'],['rounds',P.data.poll.kind==='series'?'Rounds':'Dates'],['participants','Participants'],['share','Share'],['settings','Settings']];
+function adminTabs(){
+  return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}</button>`).join('')}</nav>`;
+}
+function setAdminTab(k){
+  if(!adminTabList().some(x=>x[0]===k)) k='answers';
+  P.atab=k; store.set('atab:'+P.id,k);
+  document.querySelectorAll('[data-atab]').forEach(x=>x.classList.toggle('on',x.dataset.atab===k));
+  ['answers',...adminTabList().map(x=>x[0])].forEach(t=>{ const el=$('pane-'+t); if(el) el.classList.toggle('hide',t!==k); });
+  if(k==='participants') loadParts();
+}
+function adminPanes(){
+  const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide';
+  return `<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
+    ${series?`<div class="card"><div class="card-h"><h2>Schedule for new rounds</h2></div><form id="rf">
+      <div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
         <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
-        <div class="help">Applies to polls opened from now on. To edit dates of an existing poll, use “Edit” in the list. To change how often it repeats, create a new series.</div>`:''}
-      <div class="row field"><label class="m0">People answer with</label><select id="s_ans" class="inline">
+      <div class="help">Applies to rounds opened from now on. To change the dates of an existing round, use “Edit” above. To change how often it repeats, create a new series.</div>
+      <div class="err" id="rerr"></div>
+      <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div>`:''}</div>
+  <div id="pane-participants" class="${hid('participants')}"><div class="card"><div class="card-h"><h2>Participants</h2></div><div id="parts"><p class="help">Loading…</p></div></div></div>
+  <div id="pane-share" class="${hid('share')}"><div class="card"><div class="card-h"><h2>Share</h2><span class="muted small">Send this link to people</span></div>
+    <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
+    ${series?'<p class="help">The link always shows the newest open round, so you can share it once for the whole series.</p>':''}
+    ${inviteBox(p.id, p.title, inst()&&inst().status==='open'?inst().deadline:null)}</div></div>
+  <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>Settings</h2></div>
+    <div class="section"><h3>Details</h3>
+      <div class="field"><label for="s_title">Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
+      <div class="field"><label for="s_desc">Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
+      <div class="field"><label>Icon or picture</label>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div></div>
+    <div class="section"><h3>Answering</h3>
+      <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
       <div class="row field"><label class="m0">Hours from</label><input type="number" id="s_hs" min="0" max="23" value="${p.hourStart}"><label class="m0">to</label><input type="number" id="s_he" min="1" max="24" value="${p.hourEnd}"></div>
+      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label></div>
+    <div class="section"><h3>Privacy</h3>
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> Hide answers from respondents</label>
-      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label>
-      <div class="field"><label>Password ${p.hasPassword?'(currently set)':'(none)'}</label>
-        <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div>
-      ${d.emailEnabled?`<div class="field"><label>Your email</label><div class="row"><input type="email" id="s_mail" class="grow" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
-        ${p.kind==='series'?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new poll opens</label>`:''}
+      <div class="field"><label for="s_pw">Password ${p.hasPassword?'(currently set)':'(none)'}</label>
+        <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div></div>
+    <div class="section"><h3>Email</h3>
+      ${d.emailEnabled?`<div class="field"><label for="s_mail">Your email</label><div class="row"><input type="email" id="s_mail" class="grow" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+        ${series?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new round opens</label>`:''}
         <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
-      :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}
-      <div class="err" id="serr"></div>
-      <div class="row mt-4"><button class="btn primary">Save settings</button><span class="grow"></span><button type="button" class="btn danger" id="delPoll">Delete ${p.kind==='series'?'whole series':'poll'}</button></div>
-    </form></details>
-    <details class="field" id="partsBox"><summary>Participants</summary><div id="parts"><p class="help">Loading…</p></div></details></div>
-    <div id="series"></div>`;
+      :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}</div>
+    <div class="err" id="serr"></div>
+    <div class="row mt-4"><button class="btn primary">Save settings</button></div></form>
+    <div class="card danger-zone"><div class="card-h"><h2>Delete</h2></div>
+      <div class="row"><p class="help m0 grow">Deletes ${series?'the whole series, all its rounds':'this poll'} and every answer. This can’t be undone.</p>
+      <button type="button" class="btn danger" id="delPoll">Delete ${series?'whole series':'poll'}</button></div></div></div>`;
 }
 async function loadParts(){
   const el=$('parts'); if(!el) return;
@@ -1422,7 +1453,7 @@ async function loadParts(){
       <textarea id="p_add" maxlength="20000" placeholder="Anna&#10;Ben, ben@example.com"></textarea></div>
     <div class="row mt-3"><button class="btn" data-padd>Add</button></div>`;
 }
-async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); const b=$('partsBox'); if(b){ b.open=true; loadParts(); } }
+async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); }
 document.addEventListener('change',async e=>{
   const sel=e.target.closest('[data-pmerge]'); if(!sel||!sel.value) return;
   const src=P.parts.find(x=>x.id===sel.dataset.pmerge), dst=P.parts.find(x=>x.id===sel.value);
@@ -1431,13 +1462,15 @@ document.addEventListener('change',async e=>{
   catch(ex){ toast(ex.message); sel.value=''; }
 });
 function wireAdmin(){
-  const pb=$('partsBox'); if(pb) pb.ontoggle=()=>{ if(pb.open) loadParts(); };
+  if(P.atab==='participants') loadParts();
+  const rf=$('rf'); if(rf) rf.onsubmit=async e=>{ e.preventDefault(); const err=$('rerr'); err.textContent='';
+    try{ await api('PATCH',`/polls/${P.id}`,{openDays:+$('s_open').value, deadlineDays:$('s_dld').value===''?null:+$('s_dld').value},headers());
+      toast('Schedule saved'); await loadPoll(false); }catch(ex){ err.textContent=ex.message; } };
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans'), hourStart:+v('s_hs'), hourEnd:+v('s_he') };
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
-    if(p.kind==='series'){ b.openDays=+v('s_open'); b.deadlineDays=v('s_dld')===''?null:+v('s_dld'); }
     if(P.data.emailEnabled){ b.adminEmail=v('s_mail'); if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
     try{ await api('PATCH',`/polls/${P.id}`,b,headers());
@@ -1454,8 +1487,9 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-newpoll],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-newpoll],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-atab]'); if(!t) return;
   const ds=t.dataset;
+  if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.sendpoll){ const box=$('inv_'+ds.sendpoll), r=pollInviteMail(ds.sendpoll,'',null,box&&box.value);
     if(r.bad.length){ toast(`Doesn't look like an email: ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`); return; }
@@ -1483,7 +1517,7 @@ document.addEventListener('click',async e=>{
     const answers = p.rounds ? confirm(`Also delete ${p.name}'s ${p.rounds} ${p.rounds===1?'answer':'answers'}?\n\nOK = delete them\nCancel = keep them (no longer linked to the name)`) : false;
     try{ await api('DELETE',`/polls/${P.id}/participants/${p.id}${answers?'?answers=1':''}`,null,headers()); partsChanged('Removed'); }catch(ex){ toast(ex.message); } return; }
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
-  if(ds.inst){ switchInstance(ds.inst); return; }
+  if(ds.inst){ if(P.data.isAdmin){ P.atab='answers'; store.set('atab:'+P.id,'answers'); } switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
   if(ds.istatus){ try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?'Poll closed':'Poll reopened'); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
   if(ds.idel){ const x=P.data.instances.find(y=>y.id===ds.idel);
