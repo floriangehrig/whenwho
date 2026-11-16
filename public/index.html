@@ -490,6 +490,7 @@
     .hide-sm{display:none!important}
     .cal{gap:4px}
     .day{min-height:54px;padding:5px;border-radius:9px} .day .t{font-size:10px} .blank{min-height:54px}
+    .day .oth{font-size:10px;letter-spacing:-.2px} .day .oth .oi{display:none} .day .oth .om{margin-left:2px}
     .dd .ddp.signin{width:calc(100vw - 24px);padding:18px 16px}
     .tabs button{padding:12px 10px;font-size:14px}
     .card.atabs{padding:4px 2px 0;gap:0} .card.atabs button{padding:12px 6px 14px;font-size:13px} .card.atabs button.on::after{left:4px;right:4px}
@@ -1557,7 +1558,7 @@ function renderMine(el){
       if(o&&(o.peak||o.peakMaybe||o.part)){
         const ys=o.list.filter(x=>fromMap(hourMap(x.v))==='y').map(x=>x.name), ps=o.list.filter(x=>{ const f=fromMap(hourMap(x.v)); return f&&f!=='y'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fromMap(hourMap(x.v))==='m').map(x=>x.name);
         tip=names([...ys,...ps],ms);
-        hint=`<div class="oth">👥 ${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div><div class="othbar"><i class="ry" style="width:${o.peak/n*100}%"></i><i class="rm" style="width:${o.peakMaybe/n*100}%"></i></div>`; }
+        hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div><div class="othbar"><i class="ry" style="width:${o.peak/n*100}%"></i><i class="rm" style="width:${o.peakMaybe/n*100}%"></i></div>`; }
       return `<div class="day ${s.cls}${hint?' hashint':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
