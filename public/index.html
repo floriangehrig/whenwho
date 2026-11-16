@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>whenwho</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#f7f6f3; --card:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e2dc; --empty:#e9e7e1;
+    --yes:#2f9e62; --yes-dark:#1d6e42; --yes-bg:#dff3e8; --maybe:#d99a1c; --maybe-bg:#fbefd2;
+    --no:#c4554c; --no-bg:#f6e0de; --accent:#7c4dff; --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17171a; --card:#212125; --ink:#f2f2f4; --muted:#a0a0a8; --line:#34343a; --empty:#2e2e33;
+      --yes-bg:#1d3a2a; --yes-dark:#7fd6a5; --maybe-bg:#3d3015; --no-bg:#3f2222; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+  a{color:var(--accent)}
+  .wrap{max-width:880px;margin:0 auto;padding:22px 16px 70px}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .top a.home{font-weight:700;text-decoration:none;color:var(--ink);font-size:14px}
+  h1{font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
+  h2{font-size:17px;margin:0} h3{font-size:15px;margin:0}
+  .sub{color:var(--muted);font-size:14px}
+  .desc{margin-top:8px;white-space:pre-wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:16px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .grow{flex:1}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  label{font-weight:600;font-size:13px;display:block;margin-bottom:4px}
+  .field{margin-top:12px}
+  input[type=text],input[type=email],input[type=password],input[type=date],input[type=number],textarea,select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+  textarea{min-height:60px;resize:vertical}
+  input[type=number]{width:90px}
+  select.inline{width:auto}
+  .check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;margin-top:8px}
+  .check input{width:auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){ .grid2{grid-template-columns:1fr} }
+  .btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{border-color:var(--muted)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{color:var(--no)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .tabs{display:flex;gap:4px;margin-top:18px;background:var(--line);padding:4px;border-radius:10px;width:fit-content}
+  .tabs button,.seg button{font:inherit;font-size:14px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer}
+  .tabs button.on,.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:var(--bg);border:1px solid var(--line);padding:3px;border-radius:9px}
+  .seg button{padding:5px 11px;font-size:13px}
+  .seg .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:6px}
+  .notice{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--maybe-bg);font-size:14px}
+  .err{margin-top:10px;color:var(--no);font-size:14px}
+  .help{color:var(--muted);font-size:13px;margin:10px 0 0}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+  .linkbox{display:flex;gap:6px;margin-top:4px} .linkbox input{font-size:13px}
+  .mlabel{font-weight:700;margin:16px 0 0;font-size:14px}
+  /* calendars */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px}
+  .wd{font-size:12px;color:var(--muted);text-align:center;font-weight:600}
+  .day{position:relative;min-height:62px;border:1px solid var(--line);border-radius:10px;padding:6px 7px;cursor:pointer;background:var(--card);user-select:none;overflow:hidden}
+  .day:active{transform:scale(.97)}
+  .day.off{cursor:default;background:transparent;border-style:dashed;opacity:.35}
+  .day .n{font-weight:700;font-size:14px}
+  .day .t{font-size:11px;margin-top:4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day.y{background:var(--yes-bg);border-color:var(--yes)} .day.y .t{color:var(--yes-dark)}
+  .day.m{background:var(--maybe-bg);border-color:var(--maybe)} .day.m .t{color:var(--maybe)}
+  .day.no{background:var(--no-bg);border-color:var(--no)} .day.no .t{color:var(--no)}
+  .day.sel{outline:2px solid var(--ink);outline-offset:1px}
+  .day .star{position:absolute;top:5px;right:7px;color:var(--accent);font-size:13px}
+  .day.heat .t{color:var(--ink)}
+  .ratio{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:8px;background:var(--empty)}
+  .ratio i{display:block;height:100%}
+  .ratio .ry{background:var(--yes)} .ratio .rm{background:var(--maybe)} .ratio .rn{background:var(--no)}
+  .blank{min-height:62px}
+  .wknav{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .wknav .lbl{font-weight:600;font-size:14px}
+  .grid{display:grid;margin-top:10px;user-select:none;touch-action:none}
+  .grid .hd{font-size:12px;font-weight:600;text-align:center;padding:4px 2px;color:var(--muted)}
+  .grid .hd b{display:block;color:var(--ink);font-size:14px}
+  .grid .hr{font-size:11px;color:var(--muted);text-align:right;padding-right:6px;line-height:26px}
+  .slot{height:26px;border:1px solid var(--line);border-top:0;background:var(--card);cursor:pointer;margin:0 2px}
+  .slot.top{border-top:1px solid var(--line);border-radius:6px 6px 0 0}
+  .slot.bot{border-radius:0 0 6px 6px}
+  .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 70%,#000)}
+  .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 70%,#000)}
+  .slot.sn{background:var(--no);border-color:color-mix(in srgb,var(--no) 70%,#000)}
+  .slot.na{background:var(--bg);cursor:default;opacity:.4}
+  /* overview */
+  .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-top:8px}
+  .p{font-size:13px;padding:6px 9px;border-radius:8px;background:var(--bg)}
+  .p .pr{display:flex;justify-content:space-between;gap:8px}
+  .p .st{font-weight:600;text-align:right}
+  .p .ratio{margin-top:5px;height:6px}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:12px}
+  .stack{flex:1;height:100%;display:flex;flex-direction:column-reverse}
+  .bar{background:var(--yes)} .bar.best{background:var(--yes-dark)} .bar.mbar{background:var(--maybe);opacity:.8}
+  .barl{display:flex;gap:3px;font-size:10px;color:var(--muted)} .barl span{flex:1;text-align:center}
+  .list{margin:8px 0 0;padding:0;list-style:none}
+  .list li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
+  .list li:first-child{border-top:0}
+  .list li.click{cursor:pointer}
+  .sc{font-weight:700;min-width:44px}
+  .comments .c{padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .comments .c:first-child{border-top:0}
+  details summary{cursor:pointer;font-weight:600}
+  .meet{padding:10px 0;border-top:1px solid var(--line)} .meet:first-of-type{border-top:0}
+  .meet .when{font-weight:700}
+  .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .sched{margin-top:14px;padding:14px;border:1px dashed var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 5%,var(--card))}
+  .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px;margin-top:6px}
+  .plist label{font-weight:500;display:flex;gap:6px;align-items:center;font-size:13px;margin:0}
+  .plist input{width:auto}
+  .tag{font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px}
+  .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.m{background:var(--maybe-bg);color:var(--maybe)} .tag.x{background:var(--empty);color:var(--muted)}
+  .hide{display:none!important}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media (max-width:560px){ .day{min-height:52px;padding:5px} .day .t{font-size:10px} .blank{min-height:52px} }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">Loading…</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+'use strict';
+const $app = document.getElementById('app');
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const WD = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),1800); }
+async function copy(text){ try{ await navigator.clipboard.writeText(text); toast('Copied'); }catch(e){ prompt('Copy this:', text); } }
+const origin = location.origin + location.pathname.replace(/index\.html$/,'');
+const shareLink = id => `${origin}?p=${id}`;
+const adminLink = (id,key) => `${origin}?p=${id}&admin=${encodeURIComponent(key)}`;
+
+async function api(method, path, body, headers={}){
+  const res = await fetch('/api'+path, { method, headers:Object.assign({'content-type':'application/json'},headers), body: body?JSON.stringify(body):undefined });
+  let data={}; try{ data=await res.json(); }catch(e){}
+  if(!res.ok){ const err=new Error(data.error||('Request failed ('+res.status+')')); err.status=res.status; err.data=data; throw err; }
+  return data;
+}
+
+// ---------- dates ----------
+const parseD = k => { const [y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d); };
+const dayLabel = k => parseD(k).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+const longDay = k => parseD(k).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const monthLabel = ym => { const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString(undefined,{month:'long',year:'numeric'}); };
+const wdOf = k => (parseD(k).getDay()+6)%7;
+const isoL = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDaysL = (k,n) => { const d=parseD(k); d.setDate(d.getDate()+n); return isoL(d); };
+const addMonthsL = (k,n) => { const d=parseD(k); return isoL(new Date(d.getFullYear(), d.getMonth()+n, 1)); };
+const seriesStart = (s,n) => s.unit==='month' ? addMonthsL(s.anchor, n*s.every) : addDaysL(s.anchor, n*7*s.every);
+function rangeLabel(unit, st, en){
+  if(unit==='month' && st.endsWith('-01') && addDaysL(en,1).endsWith('-01')){
+    const a=monthLabel(st.slice(0,7)), b=monthLabel(en.slice(0,7)); return a===b?a:`${a} – ${b}`; }
+  const f=k=>parseD(k).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+  return `${f(st)} – ${f(en)} ${parseD(en).getFullYear()}`;
+}
+let CONFIG={emailEnabled:false};
+const hh = h => `${pad(h%24)}:00`;
+function hoursText(arr){
+  const a=[...arr].sort((x,y)=>x-y), parts=[]; let s=null,p=null;
+  a.forEach(h=>{ if(s===null){s=p=h;} else if(h===p+1){p=h;} else {parts.push([s,p]); s=p=h;} });
+  if(s!==null) parts.push([s,p]);
+  return parts.map(([a,b])=>`${a}–${b+1}`).join(', ');
+}
+
+// ================= HOME =================
+function seg(id, options, current){ return `<div class="seg" id="${id}">${options.map(([v,l])=>`<button type="button" data-v="${v}" class="${v===current?'on':''}">${l}</button>`).join('')}</div>`; }
+function wireSeg(id, onChange){ $(id).onclick=e=>{ const b=e.target.closest('button'); if(!b) return; [...$(id).children].forEach(x=>x.classList.toggle('on',x===b)); onChange(b.dataset.v); }; }
+
+function renderHome(){
+  document.title='whenwho';
+  const mine = store.get('myPolls',[]);
+  $app.innerHTML = `
+    <h1>whenwho</h1>
+    <div class="sub">Find out when everyone's free, and who can make it. Create a poll and send the link. Nobody needs an account.</div>
+    <div class="card" id="created" hidden></div>
+    <div class="card">
+      <h2>New poll</h2>
+      <form id="f">
+        <div class="field"><label for="title">Title</label><input type="text" id="title" maxlength="120" placeholder="e.g. Band rehearsals, Summer trip" required></div>
+        <div class="field"><label for="desc">Description (optional)</label><textarea id="desc" maxlength="1000" placeholder="Anything people should know"></textarea></div>
+        <div class="field"><label>Type</label>${seg('kindSeg',[['series','Recurring series'],['single','One-off']],'series')}</div>
+        <div id="seriesBox">
+          <div class="row field"><label style="margin:0">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
+            <select id="unit" class="inline"><option value="month">month(s)</option><option value="week">week(s)</option></select></div>
+          <div class="grid2">
+            <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
+            <div class="field"><label for="openDays">Open each poll … days before it starts</label><input type="number" id="openDays" min="0" max="90" value="11"></div>
+            <div class="field"><label for="dlDays">Reply by … days before it starts (optional)</label><input type="number" id="dlDays" min="0" max="90" value="4"></div>
+          </div>
+          <div class="help" id="seriesPreview"></div>
+        </div>
+        <div id="singleBox" class="grid2 hide">
+          <div class="field"><label for="start">From</label><input type="date" id="start"></div>
+          <div class="field"><label for="end">To</label><input type="date" id="end"></div>
+          <div class="field"><label for="dl">Reply by (optional)</label><input type="date" id="dl"></div>
+        </div>
+        <div class="field"><label>People answer with</label>${seg('ansSeg',[['days','Whole days'],['slots','Time slots'],['both','Both (they choose)']],'both')}
+          <div class="help" id="ansHelp"></div></div>
+        <div id="hoursBox" class="row field"><label style="margin:0">Hours from</label><input type="number" id="hs" min="0" max="23" value="8"><label style="margin:0">to</label><input type="number" id="he" min="1" max="24" value="24"></div>
+        <details class="field"><summary>Privacy options</summary>
+          <div class="field"><label for="pw">Password (optional)</label><input type="password" id="pw" maxlength="100" placeholder="Only people with the password can open the poll" autocomplete="new-password"></div>
+          <label class="check"><input type="checkbox" id="hide"> Hide everyone's answers from respondents (only you see results)</label>
+          <label class="check"><input type="checkbox" id="comments" checked> Let people add a comment</label>
+        </details>
+        <details class="field ${CONFIG.emailEnabled?'':'hide'}" id="mailBox"><summary>Email</summary>
+          <div class="field"><label for="aemail">Your email (optional)</label><input type="email" id="aemail" maxlength="200" placeholder="Replies to invites go here"></div>
+          <label class="check" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
+          <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" style="width:60px"> days before the reply-by date to people who haven't answered yet</label>
+          <div class="help">People only get emails if they leave their address when answering.</div>
+        </details>
+        <div class="err" id="ferr"></div>
+        <div class="row" style="margin-top:16px"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
+      </form>
+    </div>
+    <div class="card"><h2>Your polls</h2>
+      ${mine.length?`<ul class="list">${mine.map(p=>`<li><span class="grow"><a href="${esc(adminLink(p.id,p.adminKey))}">${esc(p.title)}</a></span>
+        <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button>
+        <button class="btn" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)">✕</button></li>`).join('')}</ul>
+        <p class="help">This list is saved in this browser only. Keep your admin links somewhere safe.</p>`
+      : `<p class="help">Polls you create in this browser show up here.</p>`}
+    </div>`;
+  let kind='series', ans='both';
+  const ansHelp={days:'Each day: available, maybe or not available.', slots:'People paint the hours they can make on a week grid.', both:'People can answer whole days, and switch to the time grid when they only have certain hours.'};
+  $('ansHelp').textContent=ansHelp[ans];
+  const today=new Date(), iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  $('start').value=iso(today); $('end').value=iso(new Date(today.getFullYear(),today.getMonth(),today.getDate()+13));
+  const nextMonth=new Date(today.getFullYear(),today.getMonth()+1,1); $('first').value=iso(nextMonth).slice(0,7);
+  const setUnit=()=>{ const u=$('unit').value, f=$('first');
+    if(u==='month'){ f.type='month'; f.value=iso(nextMonth).slice(0,7); $('firstLbl').textContent='First month'; }
+    else { f.type='date'; const mon=new Date(today); mon.setDate(mon.getDate()+((8-mon.getDay())%7||7)); f.value=iso(mon); $('firstLbl').textContent='First period starts on'; }
+    preview(); };
+  const preview=()=>{
+    const s={unit:$('unit').value, every:Math.max(1,+$('every').value||1), anchor:$('unit').value==='month'?($('first').value||'').slice(0,7)+'-01':$('first').value, openDays:+$('openDays').value||0, deadlineDays:$('dlDays').value===''?null:+$('dlDays').value};
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)){ $('seriesPreview').textContent=''; return; }
+    const lines=[0,1,2].map(n=>{ const st=seriesStart(s,n), en=addDaysL(seriesStart(s,n+1),-1), op=addDaysL(st,-s.openDays), dl=s.deadlineDays==null?null:addDaysL(st,-s.deadlineDays);
+      return `${rangeLabel(s.unit,st,en)}: opens ${n===0?'right away':dayLabel(op)}${dl?`, reply by ${dayLabel(dl)}`:''}`; });
+    $('seriesPreview').innerHTML='Schedule: '+lines.map(esc).join(' · ')+' …<br>The share link always shows the current poll.'; };
+  ['every','unit','first','openDays','dlDays'].forEach(id=>$(id).addEventListener('input',id==='unit'?setUnit:preview)); preview();
+  wireSeg('kindSeg',v=>{ kind=v; $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('notifyRow').classList.toggle('hide',v!=='series'); });
+  wireSeg('ansSeg',v=>{ ans=v; $('ansHelp').textContent=ansHelp[v]; $('hoursBox').classList.toggle('hide',v==='days'); });
+  $('f').onsubmit=async e=>{
+    e.preventDefault(); const v=id=>$(id).value, err=$('ferr'); err.textContent='';
+    const body={ title:v('title'), description:v('desc'), kind, answerMode:ans, hourStart:+v('hs'), hourEnd:+v('he'),
+      hideResults:$('hide').checked, allowComments:$('comments').checked, password:v('pw')||undefined };
+    if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
+    else { body.startDate=v('start'); body.endDate=v('end'); body.deadline=v('dl')||null; }
+    if(CONFIG.emailEnabled){ body.adminEmail=v('aemail'); body.notifyOpen=kind==='series'&&$('notify').checked; body.remindDays=$('remind').checked&&v('remindDays')!==''?+v('remindDays'):null; }
+    const btn=$('createBtn'); btn.disabled=true;
+    try{
+      const r=await api('POST','/polls',body);
+      const list=store.get('myPolls',[]); list.unshift({id:r.id,adminKey:r.adminKey,title:body.title,created:Date.now()}); store.set('myPolls',list);
+      store.set('admin:'+r.id, r.adminKey); if(body.password) store.set('pw:'+r.id, body.password);
+      const c=$('created'); c.hidden=false;
+      c.innerHTML=`<h2>✓ “${esc(body.title)}” is ready</h2>
+        <div class="field"><label>Share link: send this to people</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(r.id))}"><button class="btn" data-copy="${esc(shareLink(r.id))}">Copy</button></div></div>
+        <div class="field"><label>Admin link: keep this private</label><div class="linkbox"><input type="text" readonly value="${esc(adminLink(r.id,r.adminKey))}"><button class="btn" data-copy="${esc(adminLink(r.id,r.adminKey))}">Copy</button></div>
+        <div class="help">Anyone with the admin link can edit or delete the poll. It's saved in this browser, but copy it somewhere safe too.</div></div>
+        <div class="row" style="margin-top:12px"><a class="btn primary" href="${esc(adminLink(r.id,r.adminKey))}">Open poll</a></div>`;
+      c.scrollIntoView({behavior:'smooth'}); $('f').reset();
+    }catch(ex){ err.textContent=ex.message; }
+    btn.disabled=false;
+  };
+}
+
+// ================= POLL =================
+const P = { id:null, data:null, adminKey:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
+  tab:'mine', mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false };
+
+function headers(){ const h={}; if(P.adminKey) h['x-admin-key']=P.adminKey; if(P.password) h['x-poll-password']=P.password; if(P.myResp) h['x-edit-key']=P.myResp.editKey; return h; }
+const inst = () => P.data.instance;
+const respKey = () => `resp:${P.id}:${inst().id}`;
+const ansMode = () => P.data.poll.answerMode;
+const instLabel = i => P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
+
+async function openPoll(id){ P.id=id; P.adminKey=store.get('admin:'+id,null); P.password=store.get('pw:'+id,null); await loadPoll(true); }
+async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
+async function loadPoll(first){
+  try{ P.data = await fetchPoll(); }
+  catch(e){
+    if(e.status===401 && e.data && e.data.needPassword) return renderPassword(e.data.title, e.message);
+    if(e.status===403 && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; return loadPoll(first); }
+    $app.innerHTML=`<div class="top"><a class="home" href="${esc(origin)}">← whenwho</a></div><h1>Poll not available</h1><p class="sub">${esc(e.message)}</p>`; return;
+  }
+  if(!P.data.isAdmin && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; }
+  P.iid = inst().id;
+  if(P.mineFor!==P.iid){
+    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.ovDay=null; P.week=0;
+    P.myResp = store.get(respKey(), null);
+    P.mine = { name: store.get('myName',''), email: store.get('myEmail',''), comment:'', entries:{} };
+    if(P.myResp){
+      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:r.entries||{}}; }
+      catch(e){ if(e.status===404||e.status===403){ store.del(respKey()); P.myResp=null; } }
+    }
+  }
+  if(first) P.mode = ansMode()==='slots' ? 'slots' : 'days';
+  render();
+}
+async function switchInstance(id){ if(P.dirty){ clearTimeout(saveT); await save(); } P.iid=id; await loadPoll(false); window.scrollTo({top:0,behavior:'smooth'}); }
+
+function renderPassword(title,msg){
+  $app.innerHTML=`<div class="top"><a class="home" href="${esc(origin)}">← whenwho</a></div><h1>${esc(title||'Poll')}</h1>
+    <div class="card"><form id="pwf"><label for="pwi">This poll is password-protected</label>
+    <div class="row"><input type="password" id="pwi" class="grow" style="width:auto" autofocus><button class="btn primary">Open</button></div>
+    ${msg==='Wrong password'?'<div class="err">Wrong password.</div>':''}</form></div>`;
+  $('pwf').onsubmit=e=>{ e.preventDefault(); P.password=$('pwi').value; store.set('pw:'+P.id,P.password); loadPoll(true); };
+}
+
+// ---- entry helpers: 'y' | 'm' | 'n' | {y:[h],m:[h],n:[h]} ----
+function hours(){ const p=P.data.poll; return Array.from({length:p.hourEnd-p.hourStart},(_,i)=>p.hourStart+i); }
+function hourMap(v){
+  const H=hours(), map=new Map();
+  if(v==='y'||v==='m'||v==='n') H.forEach(h=>map.set(h,v));
+  else if(Array.isArray(v)) v.forEach(h=>map.set(h,'y'));
+  else if(v&&typeof v==='object') ['n','m','y'].forEach(s=>(v[s]||[]).forEach(h=>map.set(h,s)));
+  return map;
+}
+function fromMap(map){
+  const H=hours(), o={y:[],m:[],n:[]};
+  H.forEach(h=>{ const s=map.get(h); if(s) o[s].push(h); });
+  for(const s of ['y','m','n']) if(o[s].length===H.length) return s;
+  if(!o.y.length&&!o.m.length&&!o.n.length) return null;
+  return o;
+}
+const isPartial = v => Array.isArray(v)||(v&&typeof v==='object');
+function counts(v){ const H=hours(), c={y:0,m:0,n:0,e:0}; const map=hourMap(v); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
+function ratioBar(v){ const c=counts(v), t=hours().length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.n}h not available">${['y','m','n'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
+function hoursOf(v,s){ return [...hourMap(v)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
+function partialText(v){ const y=hoursOf(v,'y'), m=hoursOf(v,'m'); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
+function statusOf(v){
+  if(v==='y') return {t:'Available',c:'var(--yes-dark)',cls:'y'};
+  if(v==='m') return {t:'Maybe',c:'var(--maybe)',cls:'m'};
+  if(v==='n') return {t:"Can't",c:'var(--no)',cls:'no'};
+  if(isPartial(v)) return {t:partialText(v),c:'var(--ink)',cls:'part'};
+  return {t:'',c:'var(--muted)',cls:''};
+}
+// availability of a person for a window [start,end) on a day: 'y' all hours available, 'm' none unavailable but some maybe/blank-maybe, 'x' otherwise
+function windowStatus(v,start,end,allDay){
+  if(v==null) return 'x';
+  if(v==='y'||v==='m') return v; if(v==='n') return 'x';
+  const map=hourMap(v), H=hours(); const span=allDay?H:H.filter(h=>h>=start&&h<end);
+  if(!span.length) return 'x';
+  const st=span.map(h=>map.get(h));
+  if(st.every(s=>s==='y')) return 'y';
+  if(st.every(s=>s==='y'||s==='m')) return 'm';
+  return 'x';
+}
+
+// ---- saving ----
+let saveT=null;
+function editable(){ return P.data && inst().status==='open'; }
+function status(t){ const el=$('status'); if(el) el.textContent=t; }
+function changed(){
+  if(!editable()) return;
+  P.dirty=true; clearTimeout(saveT);
+  if(!P.mine.name.trim()){ status('Enter your name to save'); return; }
+  status('Saving…'); saveT=setTimeout(save,800);
+}
+async function save(){
+  if(P.saving||!P.dirty||!P.mine.name.trim()) return;
+  P.saving=true; P.dirty=false;
+  const em=(P.mine.email||'').trim(), key=respKey();
+  const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries};
+  try{
+    if(P.myResp) await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
+    else { const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/responses`,body,headers()); P.myResp={id:r.id,editKey:r.editKey}; store.set(key,P.myResp); }
+    store.set('myName',P.mine.name); if(body.email) store.set('myEmail',body.email);
+    status(em&&!body.email?'Saved, but that email doesn’t look right':'Saved ✓'); refreshResults();
+  }catch(e){
+    if(e.status===404 && P.myResp){ store.del(key); P.myResp=null; P.dirty=true; }
+    else status('Not saved: '+e.message);
+  }
+  P.saving=false; if(P.dirty) save();
+}
+let refT=null;
+function refreshResults(){ clearTimeout(refT); refT=setTimeout(async()=>{ try{ const d=await fetchPoll(); if(d.instance.id!==P.iid) return; P.data=d; renderHeader(); renderSeries(); if(P.tab==='group') renderBody(); }catch(e){} },400); }
+
+// ---- render ----
+function render(){
+  const d=P.data, p=d.poll, i=inst();
+  document.title=p.title;
+  if(!editable()) P.tab='group';
+  $app.innerHTML=`
+    <div class="top"><a class="home" href="${esc(origin)}">← whenwho</a>${d.isAdmin?'<span class="muted small">· You are the admin</span>':''}</div>
+    <div id="hdr"></div>
+    ${!d.isAdmin&&d.instances.length>1?`<div class="field"><div class="seg">${d.instances.map(x=>`<button data-inst="${x.id}" class="${x.id===i.id?'on':''}">${esc(instLabel(x))}</button>`).join('')}</div></div>`:''}
+    <div id="meetings"></div>
+    ${d.isAdmin?adminPanel():''}
+    ${editable()?`<div class="card"><div class="grid2">
+        <div><label for="name">Your name</label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are"></div>
+        <div><label for="email">Email (optional)</label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
+      ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
+      <div class="row" style="margin-top:8px"><span class="small muted grow">${P.myResp?`Your answer is saved in this browser. Open the poll here again to change it. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</span><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div></div>`
+      :`<div class="notice">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
+    <div class="tabs"><button data-tab="mine" class="${P.tab==='mine'?'on':''}" ${editable()?'':'disabled'}>My availability</button>
+      <button data-tab="group" class="${P.tab==='group'?'on':''}">Group overview</button></div>
+    <div class="card" id="body"></div>`;
+  renderHeader(); renderSeries();
+  const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; changed(); }; }
+  const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
+  const cm=$('comment'); if(cm){ cm.value=P.mine.comment||''; cm.oninput=e=>{ P.mine.comment=e.target.value; changed(); }; }
+  const dm=$('delMine');
+  if(dm) dm.onclick=async e=>{ e.preventDefault(); if(!confirm('Remove your answer from this poll?')) return;
+    try{ await api('DELETE',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); }catch(err){}
+    store.del(respKey()); P.myResp=null; P.mine={name:P.mine.name,email:P.mine.email,comment:'',entries:{}}; P.mineFor=null; await loadPoll(false); };
+  if(d.isAdmin) wireAdmin();
+  renderBody();
+}
+function renderHeader(){
+  const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
+  const n=d.responses?d.responses.length:null;
+  el.innerHTML=`<h1>${esc(p.title)}</h1>
+    <div class="sub">${esc(instLabel(i))}${i.deadline?` · please answer by ${esc(dayLabel(i.deadline))}`:''}${n!=null?` · ${n} ${n===1?'response':'responses'}`:''}${i.status==='closed'?' · closed':''}</div>
+    ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
+    ${i.note?`<div class="notice" style="background:var(--bg);border:1px solid var(--line)">${esc(i.note)}</div>`:''}
+    ${p.hideResults&&!d.isAdmin?'<div class="notice">Only the organiser can see everyone\'s answers.</div>':''}`;
+  renderMeetings();
+}
+function renderBody(){
+  const b=$('body'); if(!b) return;
+  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab===P.tab));
+  if(P.tab==='mine') renderMine(b); else renderGroup(b);
+}
+
+// ---- series (admin) ----
+function renderSeries(){
+  const el=$('series'); if(!el) return;
+  const d=P.data, p=d.poll, cur=inst();
+  const rows=[...d.instances].reverse().map(x=>`<li>
+      <span class="grow" style="min-width:170px">${x.id===cur.id?'<b>':''}${esc(instLabel(x))}${x.id===cur.id?'</b> <span class="muted small">(viewing)</span>':''}
+        <div class="muted small">${x.status==='open'?'<span class="tag y">open</span>':'<span class="tag x">closed</span>'} ${x.responses} ${x.responses===1?'answer':'answers'}${x.meetings.length?` · ★ ${x.meetings.length}`:''}${x.deadline?` · reply by ${esc(dayLabel(x.deadline))}`:''}</div></span>
+      ${x.id!==cur.id?`<button class="btn" data-inst="${x.id}">View</button>`:''}
+      ${x.manualStatus==='open'?`<button class="btn" data-istatus="${x.id}" data-to="closed">Close</button>`:`<button class="btn" data-istatus="${x.id}" data-to="open">Reopen</button>`}
+      <button class="btn" data-iedit="${x.id}">Edit</button>
+      ${d.instances.length>1?`<button class="btn danger" data-idel="${x.id}">Delete</button>`:''}
+      ${P.iedit===x.id?`<form class="sched" id="ieditForm" style="flex-basis:100%;margin-top:6px">
+        <div class="grid2"><div class="field"><label>From</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>To</label><input type="date" id="ie_e" value="${x.endDate}"></div>
+        <div class="field"><label>Reply by</label><input type="date" id="ie_d" value="${x.deadline||''}"></div></div>
+        <div class="field"><label>Note shown at the top of this poll</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
+        <div class="row" style="margin-top:10px"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
+    </li>`).join('');
+  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="row"><h2 class="grow">Series · every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</h2>
+      <button class="btn" data-nextinst>Open next poll now</button></div>
+      ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open poll.</p>`:''}
+      <ul class="list">${rows}</ul></div>`
+    : `<div class="card"><h2>Poll</h2><ul class="list">${rows}</ul></div>`;
+  const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
+    try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{startDate:$('ie_s').value,endDate:$('ie_e').value,deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
+      P.iedit=null; toast('Saved'); await loadPoll(false); }catch(ex){ toast(ex.message); } };
+}
+
+// ---- meetings ----
+const meetingDays = () => new Set(inst().meetings.map(m=>m.date));
+function icsUrl(mid,download){ const q=new URLSearchParams(); if(mid) q.set('m',mid); if(download) q.set('download','1'); if(P.password) q.set('pw',P.password); const s=q.toString(); return `${location.origin}/api/polls/${P.id}/calendar.ics${s?'?'+s:''}`; }
+function whenText(m){ return `${longDay(m.date)}${m.allDay?' · all day':` · ${hh(m.start)}–${hh(m.end)}`}`; }
+function whoText(m){ return m.participants==='all'?'Everyone':m.participants.map(p=>p.name).join(', '); }
+function inviteText(m){
+  const p=P.data.poll;
+  return [`${m.title||p.title}`, whenText(m), m.location?`Where: ${m.location}`:'', `Who: ${whoText(m)}`, m.note||'',
+    '', `Add to your calendar: ${icsUrl(m.id,true)}`, `Poll: ${shareLink(P.id)}`].filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
+}
+function invited(m){ const rs=P.data.responses||[]; return m.participants==='all' ? rs : rs.filter(r=>m.participants.some(p=>p.id===r.id)); }
+function renderMeetings(){
+  const el=$('meetings'); if(!el) return;
+  const d=P.data, ms=inst().meetings;
+  if(!ms.length){ el.innerHTML=''; return; }
+  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:');
+  el.innerHTML=`<div class="card"><div class="row"><h2 class="grow">★ Scheduled</h2>
+      <a class="btn" href="${esc(icsUrl(null,true))}">Download all (.ics)</a><a class="btn" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe in calendar</a></div>
+    ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email);
+      return `<div class="meet"><div class="when">${esc(whenText(m))}</div>
+      <div>${esc(m.title||d.poll.title)}${m.location?` · <span class="muted">${esc(m.location)}</span>`:''}</div>
+      <div class="small muted">Who: ${esc(whoText(m))}</div>${m.note?`<div class="small" style="white-space:pre-wrap;margin-top:4px">${esc(m.note)}</div>`:''}
+      <div class="acts"><a class="btn" href="${esc(icsUrl(m.id,true))}">Add to calendar</a>
+      ${d.isAdmin?`${d.emailEnabled?`<button class="btn primary" data-sendinvite="${m.id}">${m.sentAt?'Send invite again':'Send invite email'}</button>`:''}
+        <button class="btn" data-mail="${m.id}">${d.emailEnabled?'Open in my email app':'Email invite'}</button><button class="btn" data-copyinvite="${m.id}">Copy invite text</button><button class="btn danger" data-delmeet="${m.id}">Delete</button>`:''}</div>
+      ${d.isAdmin?`<div class="help">${m.sentAt?`Invite emailed ${esc(new Date(m.sentAt).toLocaleString())}. `:''}${noMail.length?`No email for: ${esc(noMail.map(r=>r.name).join(', '))}.`:''}</div>`:''}</div>`; }).join('')}
+    ${d.isAdmin&&!d.emailEnabled?`<p class="help">“Email invite” opens your email app with the invitees who left an address in BCC. To send emails from the site itself, set up Cloudflare Email Service (see the README).</p>`:''}</div>`;
+}
+async function saveMeetings(list){
+  try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{meetings:list},headers()); P.data.instance=r.instance;
+    const x=P.data.instances.find(y=>y.id===r.instance.id); if(x) x.meetings=r.instance.meetings;
+    renderMeetings(); renderSeries(); renderBody(); return true; }
+  catch(e){ toast(e.message); return false; }
+}
+
+// ---- calendars ----
+function monthsOf(dates){ const g=[]; dates.forEach(k=>{ const ym=k.slice(0,7); let x=g[g.length-1]; if(!x||x.ym!==ym){ x={ym,days:[]}; g.push(x);} x.days.push(k); }); return g; }
+function calendar(dates, cell){
+  const set=new Set(dates), groups=monthsOf(dates);
+  return groups.map(g=>{
+    const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
+    let h=`${groups.length>1?`<div class="mlabel">${esc(monthLabel(g.ym))}</div>`:''}<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}`;
+    for(let i=0;i<wdOf(`${g.ym}-01`);i++) h+='<div class="blank"></div>';
+    for(let d=1; d<=n; d++){ const k=`${g.ym}-${pad(d)}`; h+= set.has(k) ? cell(k,d) : `<div class="day off"><div class="n">${d}</div></div>`; }
+    return h+'</div>';
+  }).join('');
+}
+function weeks(dates){
+  const out=[]; let cur=null, last=null;
+  dates.forEach(k=>{ const wd=wdOf(k); if(!cur||wd===0||(last!=null&&wd<=last)){ cur=Array(7).fill(null); out.push(cur);} cur[wd]=k; last=wd; });
+  return out;
+}
+
+function renderMine(el){
+  const d=P.data, me=P.mine.entries, md=meetingDays(), am=ansMode();
+  let h=`<div class="row"><h2>Your availability</h2>${am==='both'?`<div class="seg" style="margin-left:auto">
+      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}</div>`;
+  if(P.mode==='days'){
+    h+=`<p class="help">Tap a day to cycle: <b>available</b> → <b>maybe</b> → <b>not available</b> → blank.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}</p>
+      <div class="row" style="margin-top:10px"><button class="btn" data-bulk="all">All available</button><button class="btn" data-bulk="wkend">Weekends available</button>
+      <button class="btn" data-bulk="blank">Fill blanks as not available</button><button class="btn" data-bulk="clear">Clear all</button></div>`;
+    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v);
+      return `<div class="day ${s.cls}" data-day="${k}"><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+  } else {
+    const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
+    h+=`<p class="help">Pick a brush, then drag (or tap) across hours. Dragging over hours that already have that colour clears them.</p>
+      <div class="row" style="margin-top:10px"><span class="muted small">Brush:</span><div class="seg">
+      <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
+      <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
+      <button data-brush="n" class="${P.brush==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button>
+      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div></div>
+      <div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
+      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>
+      <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
+    wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?parseD(k).getDate()+(md.has(k)?' ★':''):'&nbsp;'}</b></div>`; });
+    H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
+      wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
+        if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
+        const st=hourMap(me[k]).get(hr); h+=`<div class="slot${pos}${st?' s'+st:''}" data-k="${k}" data-h="${hr}"></div>`; }); });
+    h+='</div>';
+  }
+  h+=`<div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--maybe)">Maybe</span><span style="--c:var(--no)">Not available</span><span style="--c:var(--empty)">No answer</span><span style="--c:var(--accent)">★ Scheduled</span></div>`;
+  el.innerHTML=h;
+  if(P.mode==='slots') wireGrid();
+}
+function setEntry(k,v){ const e=Object.assign({},P.mine.entries); if(v==null) delete e[k]; else e[k]=v; P.mine.entries=e; }
+
+function wireGrid(){
+  const grid=$('grid'); if(!grid) return;
+  let paint=null, touched=new Map();
+  const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
+  const stateOf=el=>['y','m','n'].find(s=>el.classList.contains('s'+s))||null;
+  const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k]));
+    const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
+    ['y','m','n'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
+  const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map))); touched=new Map(); changed(); renderBody(); };
+  grid.addEventListener('pointerdown',e=>{ const el=cellAt(e.clientX,e.clientY); if(!el) return; e.preventDefault();
+    paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el);
+    window.addEventListener('pointerup',end,{once:true}); window.addEventListener('pointercancel',end,{once:true}); });
+  grid.addEventListener('pointermove',e=>{ if(paint===null) return; const el=cellAt(e.clientX,e.clientY); if(el) apply(el); });
+}
+
+function stats(k){
+  const H=hours(), rs=P.data.responses||[], cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
+  const list=rs.map(r=>{ const v=(r.entries||{})[k];
+    if(v==='y') full++; else if(v==='n') no++; else if(v==='m') maybe++; else if(isPartial(v)) part++;
+    hourMap(v).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
+    return {id:r.id,name:r.name||'Someone',v}; });
+  const peak=Math.max(0,...cy), bestHours=peak?H.filter((h,i)=>cy[i]===peak):[];
+  const peakMaybe=peak?Math.max(0,...H.map((h,i)=>cy[i]===peak?cm[i]:0)):Math.max(0,...cm);
+  return {full,part,maybe,no,cy,cm,peak,peakMaybe,bestHours,window:hoursText(bestHours),list};
+}
+function bestBlock(s){ // longest contiguous run of best hours
+  const H=s.bestHours; if(!H.length) return [hours()[0], hours()[0]+2];
+  let best=[H[0],H[0]], cur=[H[0],H[0]];
+  for(let i=1;i<H.length;i++){ if(H[i]===cur[1]+1) cur[1]=H[i]; else cur=[H[i],H[i]]; if(cur[1]-cur[0]>best[1]-best[0]) best=[...cur]; }
+  return [best[0], best[1]+1];
+}
+
+function renderGroup(el){
+  const d=P.data, p=d.poll;
+  if(!d.responses){ el.innerHTML=`<h2>Group overview</h2><p class="help">The organiser has chosen to keep answers private.</p>`; return; }
+  const tot=d.responses.length, md=meetingDays(), H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
+  const slotsOn = p.answerMode!=='days';
+  let h=`<div class="row"><h2>Group overview</h2><span class="muted small" style="margin-left:auto">${tot} responded</span></div>`;
+  if(!tot) h+=`<p class="help">No answers yet. Once people respond, the best days show up here.</p>`;
+  h+=`<p class="help">Each day shows how many people are available at the best time (and how many more are “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.</p>`;
+  h+=calendar(d.dates,(k,day)=>{ const s=S[k], r=tot?s.peak/tot:0;
+    const bg=s.peak?`background:color-mix(in srgb,var(--yes) ${Math.round(10+r*55)}%,var(--card));border-color:var(--yes)`:'';
+    return `<div class="day heat${P.ovDay===k?' sel':''}" style="${bg}" data-ov="${k}"><div class="n">${day}</div><div class="t">${tot&&(s.peak||s.peakMaybe)?`${s.peak}/${tot}${s.peakMaybe?` · +${s.peakMaybe}?`:''}`:''}</div>${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+  if(P.ovDay && S[P.ovDay]){
+    const s=S[P.ovDay];
+    h+=`<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="row"><h3 class="grow">${esc(dayLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting</button>`:''}</div>
+      <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best time ${esc(s.window)} (${s.peak} available)`:''}</div>
+      ${slotsOn?`<div class="bars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+      <div class="barl">${H.map(x=>`<span>${x}</span>`).join('')}</div>
+      <div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--yes-dark)">Best hours</span><span style="--c:var(--maybe)">Maybe</span></div>`:''}
+      ${P.sched&&P.sched.date===P.ovDay?schedForm():''}
+      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'No answer')}</span></div>${st.cls==='part'?ratioBar(x.v):''}</div>`; }).join('')}</div></div>`;
+  }
+  if(tot){
+    const ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
+    h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><h3>Best days</h3><ul class="list">${ranked.map(o=>
+      `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small" style="margin-left:auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+    const withC=d.responses.filter(r=>r.comment);
+    if(withC.length) h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px" class="comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
+    if(d.isAdmin) h+=`<details style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><summary>Manage responses (${tot})</summary><ul class="list">${d.responses.map(r=>
+      `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></details>`;
+  }
+  el.innerHTML=h;
+  if(P.sched&&P.sched.date===P.ovDay) wireSched();
+}
+
+// ---- schedule form (admin) ----
+function openSched(date){
+  const s=stats(date), slotsOn=P.data.poll.answerMode!=='days';
+  const [st,en]=slotsOn?bestBlock(s):[hours()[0],hours()[0]+2];
+  P.sched={date, allDay:!slotsOn, start:st, end:Math.min(en,24), title:P.data.poll.title, location:'', note:'', who:'some', picked:null};
+  autoPick(); renderBody();
+}
+function autoPick(){
+  const sc=P.sched; sc.picked=new Set((P.data.responses||[]).filter(r=>windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay)!=='x').map(r=>r.id));
+}
+function schedForm(){
+  const sc=P.sched, rs=P.data.responses||[], H=hours();
+  const opt=(lo,hi,sel)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===sel?'selected':''}>${hh(h)}</option>`; return o; };
+  return `<div class="sched"><div class="row"><h3 class="grow">Schedule a meeting · ${esc(dayLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
+    <div class="grid2">
+      <div class="field"><label>Title</label><input type="text" id="mt_title" maxlength="120" value="${esc(sc.title)}"></div>
+      <div class="field"><label>Location (optional)</label><input type="text" id="mt_loc" maxlength="200" value="${esc(sc.location)}"></div></div>
+    <div class="row field"><label class="check" style="margin:0"><input type="checkbox" id="mt_allday" ${sc.allDay?'checked':''}> All day</label>
+      <span class="${sc.allDay?'hide':''} row" id="mt_times"><select id="mt_start" class="inline">${opt(0,23,sc.start)}</select> to <select id="mt_end" class="inline">${opt(1,24,sc.end)}</select></span></div>
+    <div class="field"><label>Note (optional)</label><textarea id="mt_note" maxlength="1000">${esc(sc.note)}</textarea></div>
+    <div class="field"><label>Who's invited</label>
+      <div class="seg" id="mt_who"><button type="button" data-v="all" class="${sc.who==='all'?'on':''}">Everyone</button><button type="button" data-v="some" class="${sc.who==='some'?'on':''}">Selected people</button></div>
+      <div id="mt_plist" class="${sc.who==='all'?'hide':''}">
+        <div class="help">Pre-selected: everyone who's available (or maybe) for the whole time. Change the time and the selection updates.</div>
+        <div class="plist">${rs.map(r=>{ const w=windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay);
+          return `<label><input type="checkbox" data-pid="${esc(r.id)}" ${sc.picked.has(r.id)?'checked':''}> ${esc(r.name)} <span class="tag ${w}">${w==='y'?'available':w==='m'?'maybe':'not free'}</span></label>`; }).join('')||'<span class="muted small">No responses yet.</span>'}</div></div></div>
+    <div class="err" id="mt_err"></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-savesched>Save meeting</button></div></div>`;
+}
+function wireSched(){
+  const sc=P.sched, v=id=>$(id).value;
+  const keep=()=>{ sc.title=v('mt_title'); sc.location=v('mt_loc'); sc.note=v('mt_note'); };
+  $('mt_allday').onchange=e=>{ keep(); sc.allDay=e.target.checked; autoPick(); renderBody(); };
+  $('mt_start').onchange=e=>{ keep(); sc.start=+e.target.value; if(sc.end<=sc.start) sc.end=Math.min(24,sc.start+1); autoPick(); renderBody(); };
+  $('mt_end').onchange=e=>{ keep(); sc.end=+e.target.value; if(sc.end<=sc.start) sc.start=Math.max(0,sc.end-1); autoPick(); renderBody(); };
+  $('mt_who').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; keep(); sc.who=b.dataset.v; renderBody(); };
+  document.querySelectorAll('[data-pid]').forEach(cb=>cb.onchange=()=>{ if(cb.checked) sc.picked.add(cb.dataset.pid); else sc.picked.delete(cb.dataset.pid); });
+  ['mt_title','mt_loc','mt_note'].forEach(id=>$(id).oninput=keep);
+}
+async function saveSched(){
+  const sc=P.sched, rs=P.data.responses||[];
+  const participants = sc.who==='all' ? 'all' : rs.filter(r=>sc.picked.has(r.id)).map(r=>({id:r.id,name:r.name}));
+  if(participants!=='all' && !participants.length){ $('mt_err').textContent='Select at least one person, or choose Everyone.'; return; }
+  const m={date:sc.date, allDay:sc.allDay, title:sc.title, location:sc.location, note:sc.note, participants};
+  if(!sc.allDay){ m.start=sc.start; m.end=sc.end; }
+  if(await saveMeetings([...inst().meetings, m])){ P.sched=null; renderBody(); toast('Meeting saved'); }
+}
+
+// ---- admin ----
+function adminPanel(){
+  const d=P.data, p=d.poll;
+  return `<div class="card"><h2>Share</h2>
+    <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
+    <details class="field"><summary>Settings</summary><form id="sf">
+      <div class="field"><label>Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
+      <div class="field"><label>Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
+      ${p.kind==='series'?`<div class="row field"><label style="margin:0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
+        <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
+        <div class="help">Applies to polls opened from now on. To edit dates of an existing poll, use “Edit” in the list. To change how often it repeats, create a new series.</div>`:''}
+      <div class="row field"><label style="margin:0">People answer with</label><select id="s_ans" class="inline">
+        <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
+      <div class="row field"><label style="margin:0">Hours from</label><input type="number" id="s_hs" min="0" max="23" value="${p.hourStart}"><label style="margin:0">to</label><input type="number" id="s_he" min="1" max="24" value="${p.hourEnd}"></div>
+      <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> Hide answers from respondents</label>
+      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label>
+      <div class="field"><label>Password ${p.hasPassword?'(currently set)':'(none)'}</label>
+        <div class="row"><input type="password" id="s_pw" class="grow" style="width:auto" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check" style="margin:0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div>
+      ${d.emailEnabled?`<div class="field"><label>Your email</label><div class="row"><input type="email" id="s_mail" class="grow" style="width:auto" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+        ${p.kind==='series'?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new poll opens</label>`:''}
+        <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" style="width:60px"> days before the reply-by date</label>`
+      :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}
+      <div class="err" id="serr"></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary">Save settings</button><span class="grow"></span><button type="button" class="btn danger" id="delPoll">Delete ${p.kind==='series'?'whole series':'poll'}</button></div>
+    </form></details></div>
+    <div id="series"></div>`;
+}
+function wireAdmin(){
+  const f=$('sf'); if(!f) return;
+  const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
+  f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
+    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans'), hourStart:+v('s_hs'), hourEnd:+v('s_he') };
+    if(p.kind==='series'){ b.openDays=+v('s_open'); b.deadlineDays=v('s_dld')===''?null:+v('s_dld'); }
+    if(P.data.emailEnabled){ b.adminEmail=v('s_mail'); if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
+    const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
+    try{ await api('PATCH',`/polls/${P.id}`,b,headers());
+      if(b.password!==undefined){ if(b.password) store.set('pw:'+P.id,b.password); else store.del('pw:'+P.id); P.password=b.password||null; }
+      const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===P.id) x.title=b.title; }); store.set('myPolls',list);
+      if(b.answerMode==='slots') P.mode='slots'; else if(b.answerMode==='days') P.mode='days';
+      toast('Settings saved'); await loadPoll(false);
+    }catch(ex){ err.textContent=ex.message; } };
+  const tm=$('testMail'); if(tm) tm.onclick=async()=>{ try{ await api('POST',`/polls/${P.id}/test-email`,{},headers()); toast('Test email sent'); }catch(ex){ toast(ex.message); } };
+  $('delPoll').onclick=async()=>{
+    if(!confirm(`Delete this ${p.kind==='series'?'whole series (all its polls)':'poll'} and all answers? This can’t be undone.`)) return;
+    try{ await api('DELETE',`/polls/${P.id}`,null,headers()); store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==P.id)); store.del('admin:'+P.id); location.href=origin; }
+    catch(ex){ alert(ex.message); } };
+}
+
+// ---- events ----
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst]'); if(!t) return;
+  const ds=t.dataset;
+  if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
+  if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
+  if(ds.inst){ switchInstance(ds.inst); return; }
+  if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
+  if(ds.istatus){ try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?'Poll closed':'Poll reopened'); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
+  if(ds.idel){ const x=P.data.instances.find(y=>y.id===ds.idel);
+    if(!confirm(`Delete the poll for ${instLabel(x)} and its ${x.responses} answers? This can’t be undone.`)) return;
+    try{ await api('DELETE',`/polls/${P.id}/instances/${ds.idel}`,null,headers()); if(P.iid===ds.idel) P.iid=null; toast('Deleted'); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
+  if(ds.nextinst!==undefined){ if(!P.data.next||!confirm(`Open the poll for ${rangeLabel(P.data.poll.unit,P.data.next.startDate,P.data.next.endDate)} now?`)) return;
+    try{ const r=await api('POST',`/polls/${P.id}/instances`,{},headers()); toast('Opened'); await switchInstance(r.id); }catch(ex){ toast(ex.message); } return; }
+  if(ds.tab){ if(t.disabled) return; P.tab=ds.tab; renderBody(); return; }
+  if(ds.mode){ P.mode=ds.mode; renderBody(); return; }
+  if(ds.brush){ P.brush=ds.brush; renderBody(); return; }
+  if(ds.wk){ P.week+=+ds.wk; renderBody(); return; }
+  if(ds.ov){ if(P.ovDay!==ds.ov) P.sched=null; P.ovDay=P.ovDay===ds.ov?null:ds.ov; renderBody(); return; }
+  if(ds.schedule){ openSched(ds.schedule); return; }
+  if(ds.cancelsched!==undefined){ P.sched=null; renderBody(); return; }
+  if(ds.savesched!==undefined){ saveSched(); return; }
+  if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
+    const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;
+    if(ds.copyinvite){ copy(inviteText(m)); return; }
+    if(ds.delmeet){ if(confirm('Delete this meeting?')) saveMeetings(inst().meetings.filter(x=>x.id!==m.id)); return; }
+    if(ds.sendinvite){ t.disabled=true;
+      try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/meetings/${m.id}/send`,{},headers());
+        toast(`Invite sent to ${r.sent} ${r.sent===1?'person':'people'}`); await loadPoll(false); }
+      catch(ex){ toast(ex.message); t.disabled=false; } return; }
+    const to=invited(m).filter(r=>r.email).map(r=>r.email);
+    if(!to.length) toast('Nobody invited left an email. Opening a blank email.');
+    location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent((m.title||P.data.poll.title)+' · '+dayLabel(m.date))}&body=${encodeURIComponent(inviteText(m))}`;
+    return;
+  }
+  if(ds.delresp){ if(!confirm('Delete this response?')) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
+  if(!editable()) return;
+  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==null?'y':v==='y'?'m':v==='m'?'n':v==='n'?null:'y'); changed(); renderBody(); return; }
+  if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
+    if(ds.bulk==='all') dates.forEach(k=>en[k]='y');
+    if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
+    if(ds.bulk==='blank') dates.forEach(k=>{ if(en[k]==null) en[k]='n'; });
+    if(ds.bulk==='clear') Object.keys(en).forEach(k=>delete en[k]);
+    P.mine.entries=en; changed(); renderBody(); }
+});
+window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefault(); e.returnValue=''; } });
+
+// ---- boot ----
+(async()=>{
+  try{ CONFIG = await api('GET','/config'); }catch(e){}
+  const qs=new URLSearchParams(location.search), pid=qs.get('p');
+  if(pid){
+    const ak=qs.get('admin');
+    if(ak){ store.set('admin:'+pid,ak); const list=store.get('myPolls',[]); if(!list.some(x=>x.id===pid)){ list.unshift({id:pid,adminKey:ak,title:'Poll',created:Date.now()}); store.set('myPolls',list); }
+      history.replaceState(null,'',`?p=${encodeURIComponent(pid)}`); }
+    await openPoll(pid);
+    if(P.data&&P.data.isAdmin){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
+  } else renderHome();
+})();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "whenwho",
+  "private": true,
+  "description": "Find out when everyone's free: availability polls, recurring poll series and meeting scheduling on Cloudflare Workers + D1.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply whenwho --local",
+    "db:migrate:remote": "wrangler d1 migrations apply whenwho --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "^4" }
+}

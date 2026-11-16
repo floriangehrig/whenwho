@@ -1,0 +1,636 @@
+// whenwho: Cloudflare Worker + D1 (+ optional Cloudflare Email Service)
+//
+// Bindings / variables:
+//   DB        (required) D1 database
+//   ASSETS    (optional) static assets binding serving /public; the single-file build inlines the page instead
+//   EMAIL     (optional) Email Service "send_email" binding. Turns on server-sent emails
+//   MAIL_FROM (optional) sender address on a domain onboarded to Email Service, e.g. polls@example.com
+//   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
+
+const MAX_RANGE_DAYS = 92;
+const MAX_RESPONSES = 300;
+const MAX_MEETINGS = 100;
+const ID_RE = /^[A-Za-z0-9]{6,20}$/;
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (!url.pathname.startsWith('/api/')) return servePage(request, env);
+    try {
+      return await route(request, env, ctx, url);
+    } catch (e) {
+      if (e instanceof HttpError) return json({ error: e.message, ...e.extra }, e.status);
+      console.error(e);
+      return json({ error: 'Something went wrong on the server.' }, 500);
+    }
+  },
+  // Cron trigger (optional): opens new polls in series on time and sends notification / reminder emails.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runScheduled(env));
+  },
+};
+
+function servePage(request, env) {
+  if (typeof INDEX_HTML !== 'undefined') return new Response(INDEX_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+  return env.ASSETS.fetch(request);
+}
+
+class HttpError extends Error {
+  constructor(status, message, extra = {}) { super(message); this.status = status; this.extra = extra; }
+}
+const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+
+async function route(request, env, ctx, url) {
+  const parts = url.pathname.split('/').filter(Boolean); // ['api','polls',id,...]
+  const m = request.method;
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env) });
+  if (parts[1] !== 'polls') throw new HttpError(404, 'Not found');
+  const id = parts[2];
+  if (!id) {
+    if (m === 'POST') return createPoll(request, env);
+    throw new HttpError(405, 'Method not allowed');
+  }
+  if (!ID_RE.test(id)) throw new HttpError(404, 'Poll not found');
+  const [, , , a, b, c, d, e] = parts;
+  if (!a) {
+    if (m === 'GET') return getPoll(request, env, ctx, url, id);
+    if (m === 'PATCH') return updatePoll(request, env, id);
+    if (m === 'DELETE') return deletePoll(request, env, id);
+  }
+  if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
+  if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
+  if (a === 'instances') {
+    if (!b && m === 'POST') return createNextInstance(request, env, ctx, url, id);
+    if (b && !c && m === 'PATCH') return updateInstance(request, env, id, b);
+    if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
+    if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
+    if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
+  }
+  if (a === 'responses' && b) {
+    if (m === 'GET') return getOwnResponse(request, env, id, b);
+    if (m === 'PUT') return updateResponse(request, env, id, b);
+    if (m === 'DELETE') return deleteResponse(request, env, id, b);
+  }
+  throw new HttpError(404, 'Not found');
+}
+
+// ---------- helpers ----------
+const now = () => new Date().toISOString();
+const today = () => new Date().toISOString().slice(0, 10);
+const pad = (n) => String(n).padStart(2, '0');
+const enc = new TextEncoder();
+async function sha256(s) {
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(s));
+  return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+function randomId(len = 10) {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  return [...crypto.getRandomValues(new Uint8Array(len))].map((x) => abc[x % abc.length]).join('');
+}
+function secret() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function safeEqual(x, y) {
+  if (typeof x !== 'string' || typeof y !== 'string' || x.length !== y.length) return false;
+  let r = 0;
+  for (let i = 0; i < x.length; i++) r |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return r === 0;
+}
+async function body(request) {
+  const text = await request.text();
+  if (text.length > 200_000) throw new HttpError(413, 'Request too large');
+  try { return text ? JSON.parse(text) : {}; } catch { throw new HttpError(400, 'Invalid JSON'); }
+}
+const str = (v, max, field, required = false) => {
+  if (v == null || v === '') { if (required) throw new HttpError(400, `${field} is required`); return ''; }
+  if (typeof v !== 'string') throw new HttpError(400, `${field} must be text`);
+  const t = v.trim();
+  if (required && !t) throw new HttpError(400, `${field} is required`);
+  if (t.length > max) throw new HttpError(400, `${field} is too long (max ${max} characters)`);
+  return t;
+};
+const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
+const email = (v, field = 'Email') => {
+  const e = str(v, 200, field);
+  if (e && !EMAIL_RE.test(e)) throw new HttpError(400, `${field}: that address doesn’t look right`);
+  return e;
+};
+const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
+const int = (v, lo, hi, field) => {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < lo || n > hi) throw new HttpError(400, `${field} must be a whole number from ${lo} to ${hi}`);
+  return n;
+};
+const optInt = (v, lo, hi, field) => (v === null || v === '' || v === undefined ? null : int(v, lo, hi, field));
+function addDays(d, n) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+function addMonths(d, n) { const [y, m] = d.split('-').map(Number); const x = new Date(Date.UTC(y, m - 1 + n, 1)); return x.toISOString().slice(0, 10); }
+function daysBetween(x, y) { return Math.round((Date.parse(y + 'T00:00:00Z') - Date.parse(x + 'T00:00:00Z')) / 86400000); }
+function checkRange(s, e) {
+  if (!isDate(s) || !isDate(e)) throw new HttpError(400, 'Pick a start and end date');
+  if (e < s) throw new HttpError(400, 'The end date is before the start date');
+  if (daysBetween(s, e) + 1 > MAX_RANGE_DAYS) throw new HttpError(400, `A poll can cover at most ${MAX_RANGE_DAYS} days`);
+}
+function datesOf(inst) { const out = []; for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) out.push(d); return out; }
+const effStatus = (inst) => (inst.status === 'closed' || inst.end_date < today() ? 'closed' : 'open');
+
+// ---------- series periods ----------
+function periodStart(poll, n) { return poll.unit === 'month' ? addMonths(poll.anchor, n * poll.every) : addDays(poll.anchor, n * 7 * poll.every); }
+function periodEnd(poll, n) { return addDays(periodStart(poll, n + 1), -1); }
+function openDate(poll, n) { return addDays(periodStart(poll, n), -poll.open_days); }
+function periodDeadline(poll, n) { return poll.deadline_days == null ? null : addDays(periodStart(poll, n), -poll.deadline_days); }
+function currentSeq(poll) {
+  const t = today(); let n = 0;
+  while (n < 5000 && openDate(poll, n + 1) <= t) n++;
+  return n;
+}
+async function insertInstance(env, poll, seq, fields, notified) {
+  const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
+  const cols = Object.keys(inst);
+  const r = await env.DB.prepare(`INSERT OR IGNORE INTO instances (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => inst[c])).run();
+  return r.meta && r.meta.changes ? inst : null;
+}
+const seriesFields = (poll, n) => ({ start_date: periodStart(poll, n), end_date: periodEnd(poll, n), deadline: periodDeadline(poll, n) });
+// Make sure the instance for the current period of a series exists. Returns the new instance if one was created.
+async function ensureCurrent(env, poll) {
+  if (poll.kind !== 'series') return null;
+  const n = currentSeq(poll);
+  const exists = await env.DB.prepare('SELECT id FROM instances WHERE poll_id = ? AND seq = ?').bind(poll.id, n).first();
+  if (exists) return null;
+  return insertInstance(env, poll, n, seriesFields(poll, n), false);
+}
+
+async function loadPoll(env, id) {
+  const poll = await env.DB.prepare('SELECT * FROM polls WHERE id = ?').bind(id).first();
+  if (!poll) throw new HttpError(404, 'Poll not found');
+  return poll;
+}
+async function loadInstance(env, pollId, iid) {
+  if (!ID_RE.test(iid)) throw new HttpError(404, 'Poll not found');
+  const inst = await env.DB.prepare('SELECT * FROM instances WHERE id = ? AND poll_id = ?').bind(iid, pollId).first();
+  if (!inst) throw new HttpError(404, 'This poll no longer exists');
+  return inst;
+}
+async function isAdmin(request, poll) {
+  const key = request.headers.get('x-admin-key');
+  return !!key && safeEqual(await sha256('admin:' + key), poll.admin_hash);
+}
+async function requireAdmin(request, poll) {
+  if (!(await isAdmin(request, poll))) throw new HttpError(403, 'Admin link required');
+}
+async function passwordOk(poll, pw) {
+  return !poll.password_hash || (!!pw && safeEqual(await sha256(poll.id + ':pw:' + pw), poll.password_hash));
+}
+async function checkPassword(request, poll) {
+  const pw = request.headers.get('x-poll-password');
+  if (!(await passwordOk(poll, pw)))
+    throw new HttpError(401, pw ? 'Wrong password' : 'Password required', { needPassword: true, title: poll.title });
+}
+function publicPoll(poll, admin) {
+  const p = {
+    id: poll.id, title: poll.title, description: poll.description, kind: poll.kind,
+    unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
+    answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end,
+    hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, hasPassword: !!poll.password_hash,
+  };
+  if (admin) Object.assign(p, { adminEmail: poll.admin_email, notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
+  return p;
+}
+function publicInstance(inst, extra = {}) {
+  return { id: inst.id, seq: inst.seq, startDate: inst.start_date, endDate: inst.end_date, deadline: inst.deadline,
+    status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), ...extra };
+}
+
+function validateEntries(entries, poll, dates) {
+  if (entries == null) return {};
+  if (typeof entries !== 'object' || Array.isArray(entries)) throw new HttpError(400, 'Invalid answers');
+  const allowed = new Set(dates), out = {};
+  const hourOk = (h) => Number.isInteger(h) && h >= poll.hour_start && h < poll.hour_end;
+  for (const [k, v] of Object.entries(entries)) {
+    if (!allowed.has(k)) continue;
+    if (v === 'y' || v === 'm' || v === 'n') { out[k] = v; continue; }
+    if (poll.answer_mode === 'days') throw new HttpError(400, 'This poll only takes whole days');
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const seen = new Set(), pick = (arr) => (Array.isArray(arr) ? arr : []).filter((h) => hourOk(h) && !seen.has(h) && seen.add(h)).sort((x, y) => x - y);
+      const y = pick(v.y), m = pick(v.m), n = pick(v.n);
+      if (y.length || m.length || n.length) out[k] = { y, m, n };
+      continue;
+    }
+    throw new HttpError(400, 'Invalid answer for ' + k);
+  }
+  return out;
+}
+
+function validateMeetings(list) {
+  if (!Array.isArray(list) || list.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid meetings');
+  return list.map((mt) => {
+    if (!mt || typeof mt !== 'object') throw new HttpError(400, 'Invalid meeting');
+    if (!isDate(mt.date)) throw new HttpError(400, 'Meeting needs a date');
+    const out = {
+      id: /^[A-Za-z0-9]{4,20}$/.test(mt.id || '') ? mt.id : randomId(8),
+      date: mt.date, allDay: !!mt.allDay,
+      title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
+      sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
+    };
+    if (!out.allDay) {
+      out.start = int(mt.start, 0, 23, 'Start hour');
+      out.end = int(mt.end, 1, 24, 'End hour');
+      if (out.end <= out.start) throw new HttpError(400, 'A meeting must end after it starts');
+    }
+    if (mt.participants === 'all' || mt.participants == null) out.participants = 'all';
+    else if (Array.isArray(mt.participants) && mt.participants.length <= MAX_RESPONSES) {
+      out.participants = mt.participants.map((p) => ({ id: ID_RE.test(p?.id || '') ? p.id : '', name: str(p?.name, 60, 'Participant name', true) }));
+    } else throw new HttpError(400, 'Invalid participants');
+    return out;
+  }).sort((x, y) => (x.date + pad(x.start ?? 0)).localeCompare(y.date + pad(y.start ?? 0)));
+}
+
+// ---------- polls ----------
+function readPollSettings(b, existing) {
+  const p = {}, has = (k) => b[k] !== undefined;
+  if (!existing || has('title')) p.title = str(b.title, 120, 'Title', true);
+  if (!existing || has('description')) p.description = str(b.description, 1000, 'Description');
+  const kind = existing ? existing.kind : b.kind;
+  if (!existing) {
+    if (kind !== 'single' && kind !== 'series') throw new HttpError(400, 'Choose "one-off" or "recurring series"');
+    p.kind = kind;
+    if (kind === 'series') {
+      if (b.unit !== 'week' && b.unit !== 'month') throw new HttpError(400, 'Repeat every week(s) or month(s)');
+      p.unit = b.unit; p.every = int(b.every ?? 1, 1, 12, 'Repeat interval');
+      if (p.unit === 'month') {
+        if (typeof b.firstStart !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(b.firstStart.slice(0, 7))) throw new HttpError(400, 'Pick the first month');
+        p.anchor = b.firstStart.slice(0, 7) + '-01';
+      } else {
+        if (!isDate(b.firstStart)) throw new HttpError(400, 'Pick the first start date');
+        p.anchor = b.firstStart;
+      }
+      if (p.unit === 'week' && p.every * 7 > MAX_RANGE_DAYS) throw new HttpError(400, 'A poll can cover at most 13 weeks');
+      if (p.unit === 'month' && p.every > 3) throw new HttpError(400, 'A poll can cover at most 3 months');
+    }
+  }
+  if (kind === 'series') {
+    if (!existing || has('openDays')) p.open_days = int(b.openDays ?? 11, 0, 90, 'Open days before');
+    if (!existing || has('deadlineDays')) p.deadline_days = optInt(b.deadlineDays, 0, 90, 'Reply-by days before');
+  }
+  if (!existing || has('answerMode')) {
+    const am = b.answerMode ?? 'both';
+    if (!['days', 'slots', 'both'].includes(am)) throw new HttpError(400, 'Invalid answer type');
+    p.answer_mode = am;
+  }
+  if (!existing || has('hourStart') || has('hourEnd')) {
+    const hs = int(b.hourStart ?? existing?.hour_start ?? 8, 0, 23, 'First hour');
+    const he = int(b.hourEnd ?? existing?.hour_end ?? 24, 1, 24, 'Last hour');
+    if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
+    p.hour_start = hs; p.hour_end = he;
+  }
+  if (!existing || has('hideResults')) p.hide_results = b.hideResults ? 1 : 0;
+  if (!existing || has('allowComments')) p.allow_comments = b.allowComments === false ? 0 : 1;
+  if (!existing || has('adminEmail')) p.admin_email = email(b.adminEmail, 'Your email');
+  if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
+  if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
+  return p;
+}
+
+async function createPoll(request, env) {
+  const b = await body(request);
+  const p = readPollSettings(b, null);
+  const id = randomId(10), adminKey = secret(), t = now();
+  p.id = id; p.admin_hash = await sha256('admin:' + adminKey);
+  p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
+  p.created_at = t; p.updated_at = t;
+  let first;
+  if (p.kind === 'single') {
+    checkRange(b.startDate, b.endDate);
+    if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date');
+    first = { start_date: b.startDate, end_date: b.endDate, deadline: b.deadline || null };
+  }
+  const cols = Object.keys(p);
+  await env.DB.prepare(`INSERT INTO polls (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => p[c])).run();
+  // The first poll of a series opens right away (it's the period currently due, or the first one if that's later).
+  const seq = p.kind === 'series' ? currentSeq(p) : 0;
+  await insertInstance(env, p, seq, first || seriesFields(p, seq), true);
+  return json({ id, adminKey }, 201);
+}
+
+async function getPoll(request, env, ctx, url, id) {
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  if (!admin) await checkPassword(request, poll);
+  const created = await ensureCurrent(env, poll);
+  if (created) ctx.waitUntil(notifyOpened(env, poll, created, url.origin).catch((e) => console.error(e)));
+  const { results: all } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
+  if (!all.length) throw new HttpError(404, 'This poll has no open rounds');
+  const open = all.filter((i) => effStatus(i) === 'open');
+  let sel = url.searchParams.get('i') ? all.find((i) => i.id === url.searchParams.get('i')) : null;
+  if (sel && !admin && effStatus(sel) !== 'open' && poll.hide_results) sel = null;
+  if (!sel) sel = open.length ? open[open.length - 1] : all[all.length - 1];
+  let counts = {};
+  if (admin) {
+    const { results } = await env.DB.prepare('SELECT instance_id, COUNT(*) AS n FROM responses WHERE poll_id = ? GROUP BY instance_id').bind(id).all();
+    results.forEach((r) => (counts[r.instance_id] = r.n));
+  }
+  const listed = admin ? all : all.filter((i) => effStatus(i) === 'open' || i.id === sel.id);
+  const out = {
+    poll: publicPoll(poll, admin), isAdmin: admin, emailEnabled: emailEnabled(env),
+    instances: listed.map((i) => publicInstance(i, admin ? { responses: counts[i.id] || 0 } : {})),
+    instance: publicInstance(sel), dates: datesOf(sel),
+  };
+  if (admin && poll.kind === 'series') {
+    const n = Math.max(...all.map((i) => i.seq)) + 1;
+    out.next = { startDate: periodStart(poll, n), endDate: periodEnd(poll, n), opens: openDate(poll, n) };
+  }
+  if (admin || !poll.hide_results) {
+    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
+    out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at, ...(admin ? { email: r.email } : {}) }));
+  }
+  return json(out);
+}
+
+async function updatePoll(request, env, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  const b = await body(request);
+  const p = readPollSettings(b, poll);
+  if (b.password !== undefined) p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
+  p.updated_at = now();
+  const cols = Object.keys(p);
+  await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
+  return json({ ok: true });
+}
+
+async function deletePoll(request, env, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM responses WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM instances WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id),
+  ]);
+  return json({ ok: true });
+}
+
+// ---------- instances ----------
+async function createNextInstance(request, env, ctx, url, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  if (poll.kind !== 'series') throw new HttpError(400, 'Only recurring series have a next poll');
+  const last = await env.DB.prepare('SELECT MAX(seq) AS s FROM instances WHERE poll_id = ?').bind(id).first('s');
+  const n = last == null ? currentSeq(poll) : last + 1;
+  const inst = await insertInstance(env, poll, n, seriesFields(poll, n), false);
+  if (!inst) throw new HttpError(409, 'That poll already exists');
+  ctx.waitUntil(notifyOpened(env, poll, inst, url.origin).catch((e) => console.error(e)));
+  return json({ ok: true, id: inst.id }, 201);
+}
+
+async function updateInstance(request, env, id, iid) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  const b = await body(request), u = {}, has = (k) => b[k] !== undefined;
+  if (has('status')) { if (!['open', 'closed'].includes(b.status)) throw new HttpError(400, 'Invalid status'); u.status = b.status; }
+  if (has('note')) u.note = str(b.note, 1000, 'Note');
+  if (has('deadline')) { if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date'); u.deadline = b.deadline || null; u.reminded = 0; }
+  if (has('startDate') || has('endDate')) {
+    const s = b.startDate ?? inst.start_date, e = b.endDate ?? inst.end_date;
+    checkRange(s, e); u.start_date = s; u.end_date = e;
+  }
+  if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings));
+  const cols = Object.keys(u);
+  if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
+  return json({ ok: true, instance: publicInstance(await loadInstance(env, id, iid)) });
+}
+
+async function deleteInstance(request, env, id, iid) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  await loadInstance(env, id, iid);
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM instances WHERE poll_id = ?').bind(id).first('n');
+  if (n <= 1) throw new HttpError(400, 'This is the only poll left. Delete the whole poll instead.');
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM responses WHERE instance_id = ?').bind(iid),
+    env.DB.prepare('DELETE FROM instances WHERE id = ?').bind(iid),
+  ]);
+  return json({ ok: true });
+}
+
+// ---------- calendar (.ics) ----------
+// Times are "floating" local times: 18:00 shows as 18:00 in every attendee's calendar.
+function icsEscape(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsFold(line) {
+  if (enc.encode(line).length <= 75) return line;
+  const out = []; let cur = '', len = 0;
+  for (const ch of line) {
+    const l = enc.encode(ch).length;
+    if (len + l > (out.length ? 74 : 75)) { out.push(cur); cur = ''; len = 0; }
+    cur += ch; len += l;
+  }
+  out.push(cur);
+  return out.join('\r\n ');
+}
+function meetingToIcs(mt, poll, link) {
+  const d = mt.date.replace(/-/g, '');
+  const stamp = now().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}@whenwho`, `DTSTAMP:${stamp}`];
+  if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(mt.date, 1).replace(/-/g, '')}`);
+  else {
+    const endDate = mt.end === 24 ? addDays(mt.date, 1).replace(/-/g, '') : d;
+    lines.push(`DTSTART:${d}T${pad(mt.start)}0000`, `DTEND:${endDate}T${pad(mt.end % 24)}0000`);
+  }
+  lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
+  if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
+  lines.push(`DESCRIPTION:${icsEscape([mt.note, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
+  return lines;
+}
+function buildIcs(poll, meetings, link) {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//whenwho//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    `X-WR-CALNAME:${icsEscape(poll.title)}`, ...meetings.flatMap((mt) => meetingToIcs(mt, poll, link)), 'END:VCALENDAR'];
+  return lines.map(icsFold).join('\r\n') + '\r\n';
+}
+const whoText = (mt) => (mt.participants === 'all' ? 'Everyone' : mt.participants.map((p) => p.name).join(', '));
+async function calendar(env, url, id) {
+  const poll = await loadPoll(env, id);
+  if (!(await passwordOk(poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
+  const { results } = await env.DB.prepare('SELECT id, meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
+  let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]'));
+  const only = url.searchParams.get('m');
+  if (only) meetings = meetings.filter((mt) => mt.id === only);
+  const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0]?.date || ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
+  return new Response(buildIcs(poll, meetings, `${url.origin}/?p=${poll.id}`), {
+    headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `${url.searchParams.get('download') ? 'attachment' : 'inline'}; filename="${name}.ics"`, 'cache-control': 'no-cache' },
+  });
+}
+
+// ---------- email (optional: Cloudflare Email Service) ----------
+const emailEnabled = (env) => !!(env.EMAIL && env.MAIL_FROM);
+const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, '');
+const fmtDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const hh = (h) => `${pad(h % 24)}:00`;
+const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function periodText(poll, inst) {
+  if (poll.unit === 'month' && inst.start_date.endsWith('-01') && addDays(inst.end_date, 1).endsWith('-01')) {
+    const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return f(inst.start_date) === f(inst.end_date) ? f(inst.start_date) : `${f(inst.start_date)} – ${f(inst.end_date)}`;
+  }
+  const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  return `${f(inst.start_date)} – ${f(inst.end_date)}`;
+}
+async function sendMail(env, poll, { to, subject, text, attachments }) {
+  if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
+  const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;white-space:pre-wrap">${escHtml(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</div>`;
+  let sent = 0;
+  for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
+    const bcc = list.slice(i, i + 49);
+    await env.EMAIL.send({
+      from: { email: env.MAIL_FROM, name: poll.title.slice(0, 60) },
+      to: poll.admin_email || env.MAIL_FROM,
+      bcc, subject, text, html,
+      ...(poll.admin_email ? { replyTo: poll.admin_email } : {}),
+      ...(attachments ? { attachments } : {}),
+    });
+    sent += bcc.length;
+  }
+  return sent;
+}
+const footer = (poll) => `\n\n—\nYou're getting this because you left your email address in the poll “${poll.title}”. To stop these emails, open the poll and remove your email from your answer.`;
+
+async function sendInvite(request, env, url, id, iid, mid) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  const meetings = JSON.parse(inst.meetings || '[]');
+  const mt = meetings.find((x) => x.id === mid);
+  if (!mt) throw new HttpError(404, 'Meeting not found');
+  const { results } = await env.DB.prepare('SELECT id, name, email FROM responses WHERE instance_id = ?').bind(iid).all();
+  const invited = mt.participants === 'all' ? results : results.filter((r) => mt.participants.some((p) => p.id === r.id));
+  const withMail = invited.filter((r) => r.email);
+  if (!withMail.length) throw new HttpError(400, 'None of the invited people left an email address');
+  const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
+  const when = `${fmtDay(mt.date)}${mt.allDay ? ' (all day)' : `, ${hh(mt.start)}–${hh(mt.end)}`}`;
+  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}` : null, `Who: ${whoText(mt)}`, mt.note ? `\n${mt.note}` : null,
+    '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
+  const ics = buildIcs(poll, [mt], link);
+  const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
+    attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }] });
+  mt.sentAt = now();
+  await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ?').bind(JSON.stringify(meetings), iid).run();
+  return json({ ok: true, sent, missing: invited.filter((r) => !r.email).map((r) => r.name) });
+}
+
+async function testEmail(request, env, url, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  if (!poll.admin_email) throw new HttpError(400, 'Add your email in the poll settings first');
+  await sendMail(env, poll, { to: [poll.admin_email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}` });
+  return json({ ok: true });
+}
+
+// Emails of people who answered the most recent earlier round of this series (with responses).
+async function previousEmails(env, poll, inst) {
+  const prev = await env.DB.prepare(
+    'SELECT i.id FROM instances i WHERE i.poll_id = ? AND i.seq < ? AND EXISTS (SELECT 1 FROM responses r WHERE r.instance_id = i.id) ORDER BY i.seq DESC LIMIT 1'
+  ).bind(poll.id, inst.seq).first('id');
+  if (!prev) return [];
+  const { results } = await env.DB.prepare("SELECT email FROM responses WHERE instance_id = ? AND email != ''").bind(prev).all();
+  return results.map((r) => r.email);
+}
+async function notifyOpened(env, poll, inst, origin) {
+  // claim the notification so it is sent once even if the cron job and a visitor race
+  const claim = await env.DB.prepare('UPDATE instances SET opened_notified = 1 WHERE id = ? AND opened_notified = 0').bind(inst.id).run();
+  if (!claim.meta || !claim.meta.changes) return;
+  if (!poll.notify_open || !emailEnabled(env)) return;
+  const to = await previousEmails(env, poll, inst);
+  if (!to.length) return;
+  const base = siteUrl(env, origin); if (!base) return;
+  const period = periodText(poll, inst);
+  const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + footer(poll);
+  await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text });
+}
+async function remind(env, poll, inst) {
+  const claim = await env.DB.prepare('UPDATE instances SET reminded = 1 WHERE id = ? AND reminded = 0').bind(inst.id).run();
+  if (!claim.meta || !claim.meta.changes || !emailEnabled(env)) return;
+  const base = siteUrl(env); if (!base) return;
+  const { results } = await env.DB.prepare("SELECT LOWER(email) AS e FROM responses WHERE instance_id = ? AND email != ''").bind(inst.id).all();
+  const answered = new Set(results.map((r) => r.e));
+  const to = (await previousEmails(env, poll, inst)).filter((e) => !answered.has(e.toLowerCase()));
+  if (!to.length) return;
+  const period = periodText(poll, inst);
+  const text = `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.\n\n${base}/?p=${poll.id}` + footer(poll);
+  await sendMail(env, poll, { to, subject: `Reminder: ${poll.title} (${period})`, text });
+}
+async function runScheduled(env) {
+  const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
+  const t = today();
+  for (const poll of polls) {
+    try {
+      await ensureCurrent(env, poll);
+      const { results: pending } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? AND opened_notified = 0').bind(poll.id).all();
+      for (const inst of pending) if (effStatus(inst) === 'open') await notifyOpened(env, poll, inst, null);
+      if (poll.remind_days != null) {
+        const { results: due } = await env.DB.prepare("SELECT * FROM instances WHERE poll_id = ? AND reminded = 0 AND deadline IS NOT NULL AND deadline >= ?").bind(poll.id, t).all();
+        for (const inst of due) if (effStatus(inst) === 'open' && addDays(inst.deadline, -poll.remind_days) <= t) await remind(env, poll, inst);
+      }
+    } catch (e) { console.error('scheduled', poll.id, e); }
+  }
+}
+
+// ---------- responses ----------
+async function createResponse(request, env, id, iid) {
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  if (!admin) await checkPassword(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
+  const b = await body(request);
+  const name = str(b.name, 60, 'Name', true);
+  const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
+  const mail = email(b.email);
+  const entries = validateEntries(b.entries, poll, datesOf(inst));
+  const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
+  if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
+  const rid = randomId(12), editKey = secret(), t = now();
+  await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .bind(rid, id, iid, name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), t, t).run();
+  return json({ id: rid, editKey }, 201);
+}
+async function loadResponse(env, id, rid) {
+  if (!ID_RE.test(rid)) throw new HttpError(404, 'Response not found');
+  const r = await env.DB.prepare('SELECT * FROM responses WHERE id = ? AND poll_id = ?').bind(rid, id).first();
+  if (!r) throw new HttpError(404, 'Response not found');
+  return r;
+}
+async function canEditResponse(request, r) {
+  const key = request.headers.get('x-edit-key');
+  return !!key && safeEqual(await sha256('edit:' + key), r.edit_hash);
+}
+async function getOwnResponse(request, env, id, rid) {
+  const poll = await loadPoll(env, id);
+  const r = await loadResponse(env, id, rid);
+  if (!(await canEditResponse(request, r)) && !(await isAdmin(request, poll))) throw new HttpError(403, 'Not your response');
+  return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries) });
+}
+async function updateResponse(request, env, id, rid) {
+  const poll = await loadPoll(env, id);
+  const r = await loadResponse(env, id, rid);
+  const inst = await loadInstance(env, id, r.instance_id);
+  if (!(await isAdmin(request, poll))) {
+    if (!(await canEditResponse(request, r))) throw new HttpError(403, 'Not your response');
+    await checkPassword(request, poll);
+    if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
+  }
+  const b = await body(request);
+  const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : r.name;
+  const mail = b.email !== undefined ? email(b.email) : r.email;
+  const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
+  const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst))) : r.entries;
+  await env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, now(), rid).run();
+  return json({ ok: true });
+}
+async function deleteResponse(request, env, id, rid) {
+  const poll = await loadPoll(env, id);
+  const r = await loadResponse(env, id, rid);
+  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, r))) throw new HttpError(403, 'Not allowed');
+  await env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid).run();
+  return json({ ok: true });
+}
