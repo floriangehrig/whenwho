@@ -1,4 +1,4 @@
-// whenwho: Cloudflare Worker + D1 (+ optional email via Resend)
+// when-who: Cloudflare Worker + D1 (+ optional email via Resend)
 //
 // Bindings / variables:
 //   DB        (required) D1 database
@@ -249,11 +249,20 @@ function matchesPattern(d, pat) {
   return (!pat.wd || pat.wd.includes((x.getUTCDay() + 6) % 7)) && (!pat.dom || (x.getUTCDate() >= pat.dom[0] && x.getUTCDate() <= pat.dom[1]));
 }
 function datesOf(inst, poll) {
-  const pat = poll ? patternOf(poll) : null, out = [];
+  let pat = poll ? patternOf(poll) : null; const out = [];
+  if (pat && isWeek0(inst)) pat = pat.wd ? { wd: pat.wd, dom: null } : null; // a typical week has no days of the month
   for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) if (matchesPattern(d, pat)) out.push(d);
   return out;
 }
-const effStatus = (inst) => (inst.status === 'closed' || inst.end_date < today() ? 'closed' : 'open');
+// Weekly schedule polls ask about a typical week. Their one round covers this fixed Monday-Sunday,
+// so answers reuse the date-keyed format; the page only shows weekday names. It never closes by date.
+const WEEK0 = '2001-01-01';
+const isWeek0 = (inst) => inst.start_date === WEEK0;
+const effStatus = (inst) => (inst.status === 'closed' || (!isWeek0(inst) && inst.end_date < today()) ? 'closed' : 'open');
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const wdOf = (d) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7; // 0 = Monday
+// First date on or after `from` that falls on weekday wd.
+const firstOnWeekday = (from, wd) => addDays(from, (wd - wdOf(from) + 7) % 7);
 
 // ---------- series periods ----------
 function periodStart(poll, n) { return poll.unit === 'month' ? addMonths(poll.anchor, n * poll.every) : addDays(poll.anchor, n * 7 * poll.every); }
@@ -349,16 +358,29 @@ function validateEntries(entries, poll, dates) {
   return out;
 }
 
-function validateMeetings(list) {
+function validateMeetings(list, poll) {
   if (!Array.isArray(list) || list.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid meetings');
+  const weekly = poll.kind === 'weekly';
   return list.map((mt) => {
     if (!mt || typeof mt !== 'object') throw new HttpError(400, 'Invalid meeting');
     if (!isDate(mt.date)) throw new HttpError(400, 'Meeting needs a date');
+    // Weekly polls: the date only picks the weekday (inside WEEK0); `repeat` says when the series runs.
+    let repeat;
+    if (weekly) {
+      if (mt.date < WEEK0 || mt.date > addDays(WEEK0, 6)) throw new HttpError(400, 'Invalid weekday');
+      const r = mt.repeat;
+      if (!r || typeof r !== 'object') throw new HttpError(400, 'A weekly meeting needs a start date');
+      if (!isDate(r.from)) throw new HttpError(400, 'Pick the date of the first meeting');
+      if (![1, 2, 4].includes(r.every)) throw new HttpError(400, 'Repeat every 1, 2 or 4 weeks');
+      if (r.until != null && r.until !== '' && (!isDate(r.until) || r.until < r.from)) throw new HttpError(400, 'The end date is before the first meeting');
+      repeat = { from: r.from, every: r.every, until: r.until || null };
+    }
     const out = {
       id: /^[A-Za-z0-9]{4,20}$/.test(mt.id || '') ? mt.id : randomId(8),
       date: mt.date, allDay: !!mt.allDay,
       title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
       sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
+      ...(repeat ? { repeat } : {}),
     };
     if (!out.allDay) {
       out.start = int(mt.start, 0, 23, 'Start hour');
@@ -447,10 +469,10 @@ async function sendLoginCode(request, env, url) {
     .bind(addr, await codeHash(addr, code), expires, now()).run();
 
   const site = siteUrl(env, url.origin);
-  const text = `Your whenwho sign-in code is:\n\n    ${code}\n\nIt is valid for ${CODE_MINUTES} minutes. Enter it on ${site} to sign in.\n\nIf you didn't ask for this, you can ignore this email: nobody can sign in without the code.`;
+  const text = `Your when-who sign-in code is:\n\n    ${code}\n\nIt is valid for ${CODE_MINUTES} minutes. Enter it on ${site} to sign in.\n\nIf you didn't ask for this, you can ignore this email: nobody can sign in without the code.`;
   if (emailEnabled(env)) {
     await sendEmail(env, {
-      fromName: 'whenwho', to: [addr],
+      fromName: 'when-who', to: [addr],
       subject: `Your sign-in code: ${code}`, text,
       html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">Your sign-in code</h1>
         <p style="margin:0 0 20px;color:#334155">Enter this code on <a href="${escHtml(site)}" style="color:#1F5EFF">${escHtml(site.replace(/^https?:\/\//, ''))}</a> to sign in. It is valid for ${CODE_MINUTES} minutes.</p>
@@ -566,7 +588,7 @@ function readPollSettings(b, existing) {
   if (!existing || has('description')) p.description = str(b.description, 1000, 'Description');
   const kind = existing ? existing.kind : b.kind;
   if (!existing) {
-    if (kind !== 'single' && kind !== 'series') throw new HttpError(400, 'Choose "one-off" or "recurring series"');
+    if (!['single', 'series', 'weekly'].includes(kind)) throw new HttpError(400, 'Choose "one-off", "recurring" or "weekly schedule"');
     p.kind = kind;
     if (kind === 'series') {
       if (b.unit !== 'week' && b.unit !== 'month') throw new HttpError(400, 'Repeat every week(s) or month(s)');
@@ -625,6 +647,9 @@ async function createPoll(request, env) {
     if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date');
     first = { start_date: b.startDate, end_date: b.endDate, deadline: b.deadline || null };
     if (!datesOf(first, p).length) throw new HttpError(400, 'None of the days in this range match the chosen days');
+  } else if (p.kind === 'weekly') {
+    if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date');
+    first = { start_date: WEEK0, end_date: addDays(WEEK0, 6), deadline: b.deadline || null };
   }
   const cols = Object.keys(p);
   await env.DB.prepare(`INSERT INTO polls (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => p[c])).run();
@@ -733,11 +758,11 @@ async function updateInstance(request, env, id, iid) {
   if (has('status')) { if (!['open', 'closed'].includes(b.status)) throw new HttpError(400, 'Invalid status'); u.status = b.status; }
   if (has('note')) u.note = str(b.note, 1000, 'Note');
   if (has('deadline')) { if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date'); u.deadline = b.deadline || null; u.reminded = 0; }
-  if (has('startDate') || has('endDate')) {
+  if ((has('startDate') || has('endDate')) && poll.kind !== 'weekly') {
     const s = b.startDate ?? inst.start_date, e = b.endDate ?? inst.end_date;
     checkRange(s, e); u.start_date = s; u.end_date = e;
   }
-  if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings));
+  if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll));
   const cols = Object.keys(u);
   if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
   return json({ ok: true, instance: publicInstance(await loadInstance(env, id, iid)) });
@@ -770,14 +795,20 @@ function icsFold(line) {
   out.push(cur);
   return out.join('\r\n ');
 }
+// A weekly meeting's first date: its weekday, on or after repeat.from.
+const meetingStart = (mt) => (mt.repeat ? firstOnWeekday(mt.repeat.from, wdOf(mt.date)) : mt.date);
 function meetingToIcs(mt, poll, link) {
-  const d = mt.date.replace(/-/g, '');
+  const day = meetingStart(mt), d = day.replace(/-/g, '');
   const stamp = now().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}@whenwho`, `DTSTAMP:${stamp}`];
-  if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(mt.date, 1).replace(/-/g, '')}`);
+  if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(day, 1).replace(/-/g, '')}`);
   else {
-    const endDate = mt.end === 24 ? addDays(mt.date, 1).replace(/-/g, '') : d;
+    const endDate = mt.end === 24 ? addDays(day, 1).replace(/-/g, '') : d;
     lines.push(`DTSTART:${d}T${pad(mt.start)}0000`, `DTEND:${endDate}T${pad(mt.end % 24)}0000`);
+  }
+  if (mt.repeat) { // floating times, so UNTIL is floating too (and must match DTSTART's type)
+    const until = mt.repeat.until ? `;UNTIL=${mt.repeat.until.replace(/-/g, '')}${mt.allDay ? '' : 'T235959'}` : '';
+    lines.push(`RRULE:FREQ=WEEKLY;INTERVAL=${mt.repeat.every}${until}`);
   }
   lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
@@ -785,7 +816,7 @@ function meetingToIcs(mt, poll, link) {
   return lines;
 }
 function buildIcs(poll, meetings, link) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//whenwho//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//when-who//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     `X-WR-CALNAME:${icsEscape(poll.title)}`, ...meetings.flatMap((mt) => meetingToIcs(mt, poll, link)), 'END:VCALENDAR'];
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
@@ -797,7 +828,7 @@ async function calendar(env, url, id) {
   let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]'));
   const only = url.searchParams.get('m');
   if (only) meetings = meetings.filter((mt) => mt.id === only);
-  const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0]?.date || ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
+  const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0] ? meetingStart(meetings[0]) : ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
   return new Response(buildIcs(poll, meetings, `${url.origin}/?p=${poll.id}`), {
     headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `${url.searchParams.get('download') ? 'attachment' : 'inline'}; filename="${name}.ics"`, 'cache-control': 'no-cache' },
   });
@@ -810,7 +841,7 @@ const b64 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x80
 // One message: { fromName, to: [..], bcc?: [..], replyTo?, subject, text, html, attachments?: [{ content: Uint8Array, filename }] }
 async function sendEmail(env, m) {
   const payload = {
-    from: `"${headerSafe(m.fromName) || 'whenwho'}" <${env.MAIL_FROM}>`,
+    from: `"${headerSafe(m.fromName) || 'when-who'}" <${env.MAIL_FROM}>`,
     to: m.to, subject: String(m.subject).replace(/[\r\n]+/g, ' ').slice(0, 200), text: m.text, html: m.html,
     ...(m.bcc && m.bcc.length ? { bcc: m.bcc } : {}),
     ...(m.replyTo ? { reply_to: m.replyTo } : {}),
@@ -830,6 +861,15 @@ async function sendEmail(env, m) {
 const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, '');
 const fmtDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const hh = (h) => `${pad(h % 24)}:00`;
+const shortDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+// "Monday 12 January 2026, 19:00–21:00", or for a weekly meeting "Every Tuesday, 19:00–21:00, from 13 Jan 2026 until 30 Jun 2026".
+function meetingWhen(mt) {
+  const time = mt.allDay ? ' (all day)' : `, ${hh(mt.start)}–${hh(mt.end)}`;
+  if (!mt.repeat) return fmtDay(mt.date) + time;
+  const r = mt.repeat, wd = WEEKDAYS[wdOf(mt.date)];
+  const every = r.every === 1 ? `Every ${wd}` : r.every === 2 ? `Every other ${wd}` : `Every ${r.every} weeks on ${wd}`;
+  return `${every}${time}, from ${shortDay(meetingStart(mt))}${r.until ? ` until ${shortDay(r.until)}` : ''}`;
+}
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Branded HTML email (navy header, white card), matching the web app. Inline styles and tables so email clients render it.
 // bodyHtml must already be escaped. button: optional { href, label } shown as a blue button above the body.
@@ -845,15 +885,16 @@ function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) 
     <tr><td style="background:#0B1F3A;border-radius:14px 14px 0 0;padding:18px 28px">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="width:28px;height:28px;background:#1F5EFF;border-radius:7px;text-align:center;vertical-align:middle;font-family:${font};font-size:15px;font-weight:700;color:#ffffff">✓</td>
-        <td style="padding-left:10px;font-family:${font};font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.2px">whenwho</td></tr></table></td></tr>
+        <td style="padding-left:10px;font-family:${font};font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.2px">when-who</td></tr></table></td></tr>
     <tr><td style="background:#ffffff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 14px 14px;padding:32px 28px;font-family:${font};font-size:15px;line-height:1.6;color:#0F172A">
       ${btn}${bodyHtml}</td></tr>
     <tr><td style="padding:16px 28px;font-family:${font};font-size:12px;line-height:1.5;color:#5B6578;text-align:center">
-      Sent by whenwho${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
+      Sent by when-who${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
   </table></td></tr></table></body></html>`;
 }
 const linkify = (escaped) => escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1F5EFF;word-break:break-all">$1</a>');
 function periodText(poll, inst) {
+  if (isWeek0(inst)) return 'a typical week';
   if (poll.unit === 'month' && inst.start_date.endsWith('-01') && addDays(inst.end_date, 1).endsWith('-01')) {
     const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     return f(inst.start_date) === f(inst.end_date) ? f(inst.start_date) : `${f(inst.start_date)} – ${f(inst.end_date)}`;
@@ -915,7 +956,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
   const withMail = invited.filter((r) => r.email);
   if (!withMail.length) throw new HttpError(400, 'None of the invited people left an email address');
   const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
-  const when = `${fmtDay(mt.date)}${mt.allDay ? ' (all day)' : `, ${hh(mt.start)}–${hh(mt.end)}`}`;
+  const when = meetingWhen(mt);
   const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}` : null, `Who: ${whoText(mt)}`, mt.note ? `\n${mt.note}` : null,
     '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link);
@@ -945,7 +986,7 @@ async function invitePoll(request, env, url, id) {
     poll.description ? poll.description + '\n' : null,
     'Mark your availability here (no account needed):', link,
     deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
-    + `\n\n—\nYou're getting this because ${who} invited you to a poll on whenwho.`;
+    + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
   const sent = await sendMail(env, poll, { to: emails, subject: `When are you free? ${poll.title}`, text, quota: true });
   return json({ ok: true, sent });
 }
