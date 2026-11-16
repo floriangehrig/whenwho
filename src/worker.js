@@ -59,7 +59,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://photon.komoot.io",
   'frame-src https://challenges.cloudflare.com',
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -1000,6 +1000,7 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   return sent;
 }
 const footer = (poll) => `\n\n—\nYou're getting this because you left your email address in the poll “${poll.title}”. To stop these emails, open the poll and remove your email from your answer.`;
+const seriesFooter = (poll) => `\n\n—\nYou're getting this because you're a participant in the poll “${poll.title}”. To stop these emails, remove your email from your answer in the poll, or reply to ask the organiser to take you off the list.`;
 
 async function sendInvite(request, env, url, id, iid, mid) {
   const poll = await loadPoll(env, id);
@@ -1014,7 +1015,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
   if (!withMail.length) throw new HttpError(400, 'None of the invited people left an email address');
   const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
   const when = meetingWhen(mt);
-  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}` : null, `Who: ${whoText(mt)}`, mt.note ? `\n${mt.note}` : null,
+  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}\nMap: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `Who: ${whoText(mt)}`, mt.note ? `\n${mt.note}` : null,
     '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
@@ -1057,37 +1058,38 @@ async function testEmail(request, env, url, id) {
   return json({ ok: true });
 }
 
-// Emails of people who answered the most recent earlier round of this series (with responses).
-async function previousEmails(env, poll, inst) {
-  const prev = await env.DB.prepare(
-    'SELECT i.id FROM instances i WHERE i.poll_id = ? AND i.seq < ? AND EXISTS (SELECT 1 FROM responses r WHERE r.instance_id = i.id) ORDER BY i.seq DESC LIMIT 1'
-  ).bind(poll.id, inst.seq).first('id');
-  if (!prev) return [];
-  const { results } = await env.DB.prepare("SELECT email FROM responses WHERE instance_id = ? AND email != ''").bind(prev).all();
-  return results.map((r) => r.email);
+// Who gets series emails: everyone in the poll's participant list who has an email address, not only last round's answers.
+// Accounts: the account's email. Guests who answered: the email on their latest answer (removing it there stops the emails).
+// Guests who never answered (added by the owner in Participants): the email the owner gave them.
+// Skips anyone who already answered `inst`.
+async function participantEmails(env, poll, inst) {
+  const { results } = await env.DB.prepare(
+    `SELECT u.email AS ue, p.email AS pe,
+       (SELECT r.email FROM responses r WHERE r.participant_id = p.id ORDER BY r.updated_at DESC LIMIT 1) AS re,
+       EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS here
+     FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ?`).bind(inst.id, poll.id).all();
+  return results.filter((r) => !r.here).map((r) => (r.ue || (r.re !== null ? r.re : r.pe) || '').trim()).filter(Boolean);
 }
 async function notifyOpened(env, poll, inst, origin) {
   // claim the notification so it is sent once even if the cron job and a visitor race
   const claim = await env.DB.prepare('UPDATE instances SET opened_notified = 1 WHERE id = ? AND opened_notified = 0').bind(inst.id).run();
   if (!claim.meta || !claim.meta.changes) return;
   if (!poll.notify_open || !emailEnabled(env)) return;
-  const to = await previousEmails(env, poll, inst);
+  const to = await participantEmails(env, poll, inst);
   if (!to.length) return;
   const base = siteUrl(env, origin); if (!base) return;
   const period = periodText(poll, inst);
-  const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + footer(poll);
+  const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
   await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text });
 }
 async function remind(env, poll, inst) {
   const claim = await env.DB.prepare('UPDATE instances SET reminded = 1 WHERE id = ? AND reminded = 0').bind(inst.id).run();
   if (!claim.meta || !claim.meta.changes || !emailEnabled(env)) return;
   const base = siteUrl(env); if (!base) return;
-  const { results } = await env.DB.prepare("SELECT LOWER(email) AS e FROM responses WHERE instance_id = ? AND email != ''").bind(inst.id).all();
-  const answered = new Set(results.map((r) => r.e));
-  const to = (await previousEmails(env, poll, inst)).filter((e) => !answered.has(e.toLowerCase()));
+  const to = await participantEmails(env, poll, inst);
   if (!to.length) return;
   const period = periodText(poll, inst);
-  const text = `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.\n\n${base}/?p=${poll.id}` + footer(poll);
+  const text = `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
   await sendMail(env, poll, { to, subject: `Reminder: ${poll.title} (${period})`, text });
 }
 async function runScheduled(env) {
