@@ -4,162 +4,323 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>whenwho</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231F5EFF'/%3E%3Crect x='7' y='9' width='18' height='16' rx='3' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 14h18M12 6.5v4M20 6.5v4' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='m12.5 19.5 2.5 2.3 4.5-4.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0B1F3A">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
+  /* ---------- design tokens: navy + blue corporate palette ---------- */
   :root{
-    --bg:#f7f6f3; --card:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e2dc; --empty:#e9e7e1;
-    --yes:#2f9e62; --yes-dark:#1d6e42; --yes-bg:#dff3e8; --maybe:#d99a1c; --maybe-bg:#fbefd2;
-    --no:#c4554c; --no-bg:#f6e0de; --accent:#7c4dff; --radius:12px;
+    color-scheme:light;
+    --brand:#0B1F3A; --brand-2:#132E55; --on-brand:#fff; --on-brand-muted:#A9B8D3;
+    --accent:#1F5EFF; --accent-hover:#1849D6; --accent-weak:#E8EFFF; --accent-ink:#1640B8;
+    --bg:#F5F7FB; --card:#fff; --sunken:#F8FAFC; --ink:#0F172A; --ink-2:#334155; --muted:#5B6578;
+    --line:#E2E8F0; --line-strong:#CBD5E1; --empty:#EDF1F7;
+    --yes:#12A150; --yes-dark:#0B7A3B; --yes-bg:#E3F6EA;
+    --maybe:#E8A317; --maybe-ink:#946500; --maybe-bg:#FDF3DC;
+    --no:#D64545; --no-bg:#FBE6E6;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r-sm:6px; --r:10px; --r-lg:14px; --radius:var(--r-lg);
+    --shadow-sm:0 1px 2px rgba(15,23,42,.05),0 1px 3px rgba(15,23,42,.04);
+    --shadow:0 4px 14px rgba(15,23,42,.08),0 1px 3px rgba(15,23,42,.05);
+    --shadow-pop:0 16px 40px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.06);
+    --ring:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent);
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#17171a; --card:#212125; --ink:#f2f2f4; --muted:#a0a0a8; --line:#34343a; --empty:#2e2e33;
-      --yes-bg:#1d3a2a; --yes-dark:#7fd6a5; --maybe-bg:#3d3015; --no-bg:#3f2222; }
+    :root{ color-scheme:dark;
+      --brand:#0A1830; --brand-2:#12284A; --on-brand-muted:#8FA0BF;
+      --accent:#4C7DFF; --accent-hover:#6A93FF; --accent-weak:#1A2747; --accent-ink:#A9C0FF;
+      --bg:#0E1525; --card:#151E31; --sunken:#111A2C; --ink:#E6EAF2; --ink-2:#C3CBDA; --muted:#94A0B8;
+      --line:#26324A; --line-strong:#34425E; --empty:#1E2940;
+      --yes:#1FB463; --yes-dark:#5FD38F; --yes-bg:#123526;
+      --maybe:#E8A317; --maybe-ink:#F2C25B; --maybe-bg:#3A2E12;
+      --no:#E86A6A; --no-bg:#3D1E22;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 4px 14px rgba(0,0,0,.35); --shadow-pop:0 16px 40px rgba(0,0,0,.5);
+    }
   }
+
+  /* ---------- base ---------- */
   *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
-  a{color:var(--accent)}
-  .wrap{max-width:880px;margin:0 auto;padding:22px 16px 70px}
-  .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-  .top a.home{font-weight:700;text-decoration:none;color:var(--ink);font-size:14px}
-  .top .acct{margin-left:auto;margin-top:0}
-  .namehint{margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--maybe-bg);font-size:13px}
-  .namehint .btn{margin-left:6px;padding:4px 9px}
-  h1{font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
-  h2{font-size:17px;margin:0} h3{font-size:15px;margin:0}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01"}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  h1{font-size:30px;line-height:1.2;margin:0;letter-spacing:-.022em;font-weight:700}
+  h2{font-size:18px;line-height:1.3;margin:0;letter-spacing:-.01em;font-weight:650}
+  h3{font-size:15px;margin:0;font-weight:600}
+  ::selection{background:color-mix(in srgb,var(--accent) 25%,transparent)}
+  :focus-visible{outline:none;box-shadow:var(--ring)}
+  .wrap{max-width:960px;margin:0 auto;padding:0 16px 80px}
   .sub{color:var(--muted);font-size:14px}
-  .desc{margin-top:8px;white-space:pre-wrap}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:16px}
+  .desc{margin-top:12px;white-space:pre-wrap;max-width:720px}
+  .muted{color:var(--muted)} .small{font-size:13px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .grow{flex:1}
-  .muted{color:var(--muted)} .small{font-size:13px}
-  label{font-weight:600;font-size:13px;display:block;margin-bottom:4px}
-  .field{margin-top:12px}
-  input[type=text],input[type=email],input[type=password],input[type=date],input[type=number],textarea,select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
-  textarea{min-height:60px;resize:vertical}
-  input[type=number]{width:90px}
+  .row>input.grow{width:auto;min-width:0}
+  .hide{display:none!important}
+  /* spacing utilities */
+  .m0{margin:0!important} .mt-0{margin-top:0!important} .mt-1{margin-top:var(--s1)} .mt-2{margin-top:var(--s2)} .mt-3{margin-top:var(--s3)} .mt-4{margin-top:var(--s4)} .mt-5{margin-top:var(--s5)}
+  .mb-3{margin-bottom:var(--s3)} .ml-auto{margin-left:auto} .minw{min-width:170px} .w-auto{width:auto!important}
+  .section{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--line)}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+  /* ---------- app bar + navy band ---------- */
+  .appbar{background:var(--brand);color:var(--on-brand);position:sticky;top:0;z-index:40;border-bottom:1px solid rgba(255,255,255,.06)}
+  .appbar-in{max-width:960px;margin:0 auto;padding:0 16px;height:60px;display:flex;align-items:center;gap:14px}
+  .logo{display:inline-flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:17px;letter-spacing:-.015em}
+  .logo:hover{text-decoration:none}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
+  .logo .mark svg{width:18px;height:18px}
+  .crumb{color:var(--on-brand-muted);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:14px}
+  .crumb::before{content:"";width:1px;height:18px;background:rgba(255,255,255,.18)}
+  .crumb:hover{color:#fff;text-decoration:none}
+  .acct{margin-left:auto;display:flex;align-items:center}
+  .band{background:radial-gradient(1200px 300px at 85% -40%,color-mix(in srgb,var(--accent) 45%,transparent),transparent 70%),linear-gradient(180deg,var(--brand) 0%,var(--brand-2) 100%);color:var(--on-brand);padding:36px 0 76px}
+  .band .wrap{padding-bottom:0}
+  .band .eyebrow{color:var(--on-brand-muted);display:flex;align-items:center;gap:8px}
+  .band h1{color:#fff;margin-top:8px}
+  .band .lead{color:#C9D5EA;font-size:16px;max-width:640px;margin:10px 0 0}
+  .band .desc{color:#DCE4F2}
+  .band .notice{background:rgba(255,255,255,.08);color:#E8EEF8;border-color:rgba(255,255,255,.12);border-left-color:var(--accent)}
+  .band .notice.warn{border-left-color:var(--maybe)}
+  .band .seg{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.1)}
+  .band .seg button{color:#C9D5EA} .band .seg button:hover{color:#fff}
+  .band .seg button.on{background:#fff;color:var(--brand)}
+  .band+.wrap{margin-top:-52px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.1);color:#E8EEF8;border:1px solid rgba(255,255,255,.08)}
+  .chip svg{width:14px;height:14px;opacity:.8}
+  .chip.closed{background:rgba(214,69,69,.22);border-color:rgba(214,69,69,.35)}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 24px;margin-top:var(--s4);box-shadow:var(--shadow-sm)}
+  .card{scroll-margin-top:76px}
+  .card-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+  .card-h h2{flex:1}
+  .card.accent{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));box-shadow:0 0 0 4px var(--accent-weak),var(--shadow-sm)}
+  .home-grid{display:grid;gap:var(--s4);grid-template-columns:1fr}
+  .home-grid>.card{margin-top:0}
+  @media (min-width:900px){ .home-grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start} .home-grid>.span{grid-column:1/-1} }
+  .empty{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 0 4px}
+
+  /* ---------- forms ---------- */
+  label{font-weight:600;font-size:13px;display:block;margin-bottom:6px;color:var(--ink-2)}
+  .field{margin-top:var(--s4)}
+  input[type=text],input[type=email],input[type=password],input[type=date],input[type=month],input[type=number],textarea,select{
+    font:inherit;font-size:14px;min-height:40px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);width:100%;
+    transition:border-color .12s,box-shadow .12s}
+  input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 80%,transparent)}
+  input:hover,textarea:hover,select:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+  input[readonly]{background:var(--sunken);color:var(--ink-2)}
+  textarea{min-height:76px;resize:vertical;line-height:1.45}
+  input[type=number]{width:84px}
+  .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
-  .check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;margin-top:8px}
-  .check input{width:auto}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  select{appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235B6578' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center}
+  input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer;flex:none}
+  .check{display:flex;gap:10px;align-items:center;font-weight:500;font-size:14px;margin-top:10px;color:var(--ink)}
+  .check input[type=number]{min-height:34px;padding:4px 8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
   @media (max-width:560px){ .grid2{grid-template-columns:1fr} }
-  .btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
-  .btn:hover{border-color:var(--muted)}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .linkbox{display:flex;gap:8px;margin-top:2px} .linkbox input{font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  details>summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px;color:var(--ink);padding:10px 0;user-select:none}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 4px 0 2px}
+  details[open]>summary::before{transform:rotate(45deg)}
+  details>summary:hover{color:var(--accent)}
+  details.field{margin-top:var(--s3);border-top:1px solid var(--line)}
+  details.field[open]{padding-bottom:6px}
+
+  /* ---------- buttons ---------- */
+  .btn{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);min-height:36px;padding:7px 14px;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1.2;white-space:nowrap;transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
+  .btn:hover{text-decoration:none;border-color:color-mix(in srgb,var(--ink) 30%,var(--line-strong));background:var(--sunken)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(31,94,255,.25)}
+  .btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .btn.ghost:hover{background:var(--empty)}
   .btn.danger{color:var(--no)}
-  .btn:disabled{opacity:.5;cursor:default}
-  .tabs{display:flex;gap:4px;margin-top:18px;background:var(--line);padding:4px;border-radius:10px;width:fit-content}
-  .tabs button,.seg button{font:inherit;font-size:14px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer}
-  .tabs button.on,.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-  .seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:var(--bg);border:1px solid var(--line);padding:3px;border-radius:9px}
-  .seg button{padding:5px 11px;font-size:13px}
-  .seg .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:6px}
-  .notice{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--maybe-bg);font-size:14px}
-  .err{margin-top:10px;color:var(--no);font-size:14px}
-  .help{color:var(--muted);font-size:13px;margin:10px 0 0}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
-  .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
-  .linkbox{display:flex;gap:6px;margin-top:4px} .linkbox input{font-size:13px}
-  .mlabel{font-weight:700;margin:16px 0 0;font-size:14px}
-  /* calendars */
-  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px}
-  .wd{font-size:12px;color:var(--muted);text-align:center;font-weight:600}
-  .day{position:relative;min-height:62px;border:1px solid var(--line);border-radius:10px;padding:6px 7px;cursor:pointer;background:var(--card);user-select:none;overflow:hidden}
-  .day:active{transform:scale(.97)}
-  .day.off{cursor:default;background:transparent;border-style:dashed;opacity:.35}
-  .day .n{font-weight:700;font-size:14px}
-  .day .t{font-size:11px;margin-top:4px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .day.y{background:var(--yes-bg);border-color:var(--yes)} .day.y .t{color:var(--yes-dark)}
-  .day.m{background:var(--maybe-bg);border-color:var(--maybe)} .day.m .t{color:var(--maybe)}
-  .day.no{background:var(--no-bg);border-color:var(--no)} .day.no .t{color:var(--no)}
-  .day.sel{outline:2px solid var(--ink);outline-offset:1px}
-  .day .star{position:absolute;top:5px;right:7px;color:var(--accent);font-size:13px}
+  .btn.danger:hover{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,var(--line))}
+  .btn.sm{min-height:30px;padding:4px 10px;font-size:12.5px}
+  .btn:disabled{opacity:.45;cursor:default;transform:none}
+  .btn.onbrand{background:transparent;border-color:rgba(255,255,255,.3);color:#fff}
+  .btn.onbrand:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5)}
+
+  /* ---------- tabs + segmented controls ---------- */
+  .tabs{display:flex;gap:4px;margin-top:var(--s5);border-bottom:1px solid var(--line-strong)}
+  .tabs button{font:inherit;font-size:14.5px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:12px 14px;cursor:pointer;position:relative;border-radius:8px 8px 0 0}
+  .tabs button:hover:not(:disabled){color:var(--ink)}
+  .tabs button.on{color:var(--accent)}
+  .tabs button.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
+  .tabs button:disabled{opacity:.4;cursor:default}
+  .tabs+.card{margin-top:var(--s4)}
+  .seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:var(--empty);border:1px solid var(--line);padding:3px;border-radius:10px}
+  .seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;display:inline-flex;align-items:center}
+  .seg button:hover{color:var(--ink)}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm),0 0 0 1px var(--line)}
+  .seg .dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:7px}
+
+  /* ---------- feedback ---------- */
+  .notice{margin-top:var(--s3);padding:11px 14px;border-radius:var(--r);background:var(--accent-weak);border:1px solid color-mix(in srgb,var(--accent) 18%,transparent);border-left:3px solid var(--accent);font-size:14px;color:var(--ink)}
+  .notice:empty{display:none}
+  .notice.warn{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 30%,transparent);border-left-color:var(--maybe)}
+  .notice.neutral{background:var(--sunken);border-color:var(--line);border-left-color:var(--line-strong)}
+  .namehint{margin-top:8px;padding:10px 12px;border-radius:var(--r);background:var(--maybe-bg);border-left:3px solid var(--maybe);font-size:13px}
+  .namehint .btn{margin-left:8px}
+  .err{margin-top:10px;color:var(--no);font-size:13.5px;font-weight:500}
+  .err:empty{display:none}
+  .help{color:var(--muted);font-size:13px;margin:10px 0 0;line-height:1.5}
+  .legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+  .legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+  .mlabel{font-weight:650;margin:22px 0 0;font-size:14px;color:var(--ink-2)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--brand);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:calc(100vw - 32px)}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ---------- pills / tags ---------- */
+  .tag,.pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;line-height:1.5;white-space:nowrap;background:var(--empty);color:var(--muted);vertical-align:1px}
+  .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.m{background:var(--maybe-bg);color:var(--maybe-ink)} .tag.x{background:var(--empty);color:var(--muted)}
+  .pill.accent{background:var(--accent);color:#fff}
+  .pill.soft{background:var(--accent-weak);color:var(--accent-ink)}
+
+  /* ---------- calendars ---------- */
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+  .wd{font-size:11px;color:var(--muted);text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding-bottom:2px}
+  .day{position:relative;min-height:66px;border:1px solid var(--line);border-radius:12px;padding:7px 8px;cursor:pointer;background:var(--card);user-select:none;overflow:hidden;transition:box-shadow .12s,border-color .12s,transform .08s}
+  .day:hover:not(.off){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow)}
+  .day:active:not(.off){transform:scale(.97)}
+  .day.off{cursor:default;background:transparent;border-style:dashed;opacity:.4}
+  .day .n{font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}
+  .day .t{font-size:11px;margin-top:5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .day.y{background:var(--yes-bg);border-color:color-mix(in srgb,var(--yes) 55%,transparent)} .day.y .t{color:var(--yes-dark)}
+  .day.m{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 60%,transparent)} .day.m .t{color:var(--maybe-ink)}
+  .day.no{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,transparent)} .day.no .t{color:var(--no)}
+  .day.sel{outline:2px solid var(--accent);outline-offset:2px}
+  .day .star{position:absolute;top:6px;right:8px;color:var(--accent);font-size:13px}
   .day.heat .t{color:var(--ink)}
-  .ratio{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:8px;background:var(--empty)}
+  .ratio{display:flex;height:6px;border-radius:999px;overflow:hidden;margin-top:9px;background:var(--empty)}
   .ratio i{display:block;height:100%}
   .ratio .ry{background:var(--yes)} .ratio .rm{background:var(--maybe)} .ratio .rn{background:var(--no)}
-  .blank{min-height:62px}
-  .wknav{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .blank{min-height:66px}
+  .wknav{display:flex;align-items:center;gap:10px;margin-top:16px}
+  .wknav .btn{min-width:36px;padding:0 10px;font-size:16px}
   .wknav .lbl{font-weight:600;font-size:14px}
-  .grid{display:grid;margin-top:10px;user-select:none;touch-action:none}
-  .grid .hd{font-size:12px;font-weight:600;text-align:center;padding:4px 2px;color:var(--muted)}
-  .grid .hd b{display:block;color:var(--ink);font-size:14px}
-  .grid .hr{font-size:11px;color:var(--muted);text-align:right;padding-right:6px;line-height:26px}
-  .slot{height:26px;border:1px solid var(--line);border-top:0;background:var(--card);cursor:pointer;margin:0 2px}
-  .slot.top{border-top:1px solid var(--line);border-radius:6px 6px 0 0}
-  .slot.bot{border-radius:0 0 6px 6px}
-  .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 70%,#000)}
-  .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 70%,#000)}
-  .slot.sn{background:var(--no);border-color:color-mix(in srgb,var(--no) 70%,#000)}
-  .slot.na{background:var(--bg);cursor:default;opacity:.4}
-  /* overview */
-  .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-top:8px}
-  .p{font-size:13px;padding:6px 9px;border-radius:8px;background:var(--bg)}
+  .grid{display:grid;margin-top:12px;user-select:none;touch-action:none}
+  .grid .hd{font-size:11px;font-weight:600;text-align:center;padding:4px 2px 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .grid .hd b{display:block;color:var(--ink);font-size:15px;text-transform:none;letter-spacing:0}
+  .grid .hr{font-size:11px;color:var(--muted);text-align:right;padding-right:8px;line-height:26px;font-variant-numeric:tabular-nums}
+  .slot{height:26px;border:1px solid var(--line);border-top:0;background:var(--card);cursor:pointer;margin:0 2px;transition:background .08s}
+  .slot:hover{background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+  .slot.top{border-top:1px solid var(--line);border-radius:8px 8px 0 0}
+  .slot.bot{border-radius:0 0 8px 8px}
+  .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 75%,#000)}
+  .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 75%,#000)}
+  .slot.sn{background:var(--no);border-color:color-mix(in srgb,var(--no) 75%,#000)}
+  .slot.na{background:var(--sunken);cursor:default;opacity:.5}
+
+  /* ---------- overview ---------- */
+  .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:14px}
+  .p{font-size:13px;padding:9px 12px;border-radius:var(--r);background:var(--sunken);border:1px solid var(--line)}
   .p .pr{display:flex;justify-content:space-between;gap:8px}
   .p .st{font-weight:600;text-align:right}
-  .p .ratio{margin-top:5px;height:6px}
-  .bars{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:12px}
+  .p .ratio{margin-top:7px;height:5px}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:96px;margin-top:14px;padding:6px;border-radius:var(--r);background:var(--sunken);border:1px solid var(--line)}
   .stack{flex:1;height:100%;display:flex;flex-direction:column-reverse}
-  .bar{background:var(--yes)} .bar.best{background:var(--yes-dark)} .bar.mbar{background:var(--maybe);opacity:.8}
+  .bar{background:var(--yes)} .stack .bar:first-child{border-radius:0 0 3px 3px}
+  .bar.best{background:var(--yes-dark)} .bar.mbar{background:var(--maybe);opacity:.85;border-radius:3px 3px 0 0}
   .bars.pick .stack{cursor:ew-resize;touch-action:none;border-radius:4px}
-  .bars .stack.in{background:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:inset 0 -3px 0 var(--accent)}
+  .bars .stack.in{background:color-mix(in srgb,var(--accent) 18%,transparent);box-shadow:inset 0 -3px 0 var(--accent)}
+  .barl{display:flex;gap:3px;font-size:10px;color:var(--muted);padding:4px 6px 0;font-variant-numeric:tabular-nums} .barl span{flex:1;text-align:center}
   .barl span.in{color:var(--accent);font-weight:700}
-  .barl{display:flex;gap:3px;font-size:10px;color:var(--muted)} .barl span{flex:1;text-align:center}
-  .list{margin:8px 0 0;padding:0;list-style:none}
-  .list li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
+  .list{margin:6px 0 0;padding:0;list-style:none}
+  .list li{display:flex;gap:10px;align-items:center;padding:11px 10px;margin:0 -10px;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap;border-radius:8px}
   .list li:first-child{border-top:0}
+  .list li:hover{background:var(--sunken)}
+  .list li+li:hover,.list li:hover+li{border-top-color:transparent}
   .list li.click{cursor:pointer}
-  .sc{font-weight:700;min-width:44px}
-  .comments .c{padding:8px 0;border-top:1px solid var(--line);font-size:14px}
-  .comments .c:first-child{border-top:0}
-  details summary{cursor:pointer;font-weight:600}
-  .meet{padding:10px 0;border-top:1px solid var(--line)} .meet:first-of-type{border-top:0}
-  .meet .when{font-weight:700}
-  .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .sched{margin-top:14px;padding:14px;border:1px dashed var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 5%,var(--card))}
-  .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px;margin-top:6px}
-  .plist label{font-weight:500;display:flex;gap:6px;align-items:center;font-size:13px;margin:0}
-  .plist input{width:auto}
-  .tag{font-size:11px;font-weight:600;padding:1px 6px;border-radius:5px}
-  .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.m{background:var(--maybe-bg);color:var(--maybe)} .tag.x{background:var(--empty);color:var(--muted)}
-  /* participant dropdown */
-  .dd{position:relative;display:inline-block;margin-top:8px}
-  .dd>summary{list-style:none;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:14px}
-  .dd>summary::-webkit-details-marker{display:none}
-  .dd>summary::after{content:'▾';color:var(--muted)}
-  .dd .ddp{position:absolute;z-index:20;top:calc(100% + 4px);left:0;min-width:230px;max-width:min(320px,calc(100vw - 32px));max-height:320px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.15)}
-  .dd .ddp label{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;margin:0;padding:5px 4px;border-radius:6px;cursor:pointer}
-  .dd .ddp label:hover{background:var(--bg)}
-  .dd .ddp input{width:auto}
-  .dd .ddb{display:flex;gap:6px;margin-bottom:6px}
-  .dd .ddp.signin{width:320px;max-height:none;padding:12px}
-  .signin label{display:block;padding:0;cursor:default} .signin label:hover{background:none}
-  .signin input[type=email],.signin input[type=text],.signin input[type=password]{width:100%}
-  .signin .code{font-size:20px;letter-spacing:6px;text-align:center}
-  .signin .ts{margin-top:10px;min-height:65px}
-  /* planner */
-  .pgrid .slot{display:block;position:relative;cursor:crosshair;font-size:10px;line-height:24px;text-align:center;color:var(--ink);overflow:hidden}
+  .list .acts{display:flex;gap:6px;flex-wrap:nowrap}
+  .polls li{gap:8px 10px} .polls li>.grow{flex-basis:100%;min-width:0}
+  @media (max-width:899px){ .polls li>.grow{flex-basis:auto} }
+  .list a{font-weight:600;color:var(--ink)} .list a:hover{color:var(--accent);text-decoration:none}
+  .sc{font-weight:700;min-width:48px;text-align:center;font-size:12.5px;padding:3px 8px;border-radius:999px;background:var(--yes-bg);color:var(--yes-dark);font-variant-numeric:tabular-nums}
+  .comments .c{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+  .comments .c:first-of-type{border-top:0}
+  .meet{padding:14px 0;border-top:1px solid var(--line)} .meet:first-of-type{border-top:0}
+  .meet .when{font-weight:650;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .meet .when::before{content:"★";color:var(--accent);font-size:13px}
+  .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .meet .note{white-space:pre-wrap;margin-top:4px}
+  .sched{margin-top:var(--s4);padding:18px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card));box-shadow:inset 3px 0 0 var(--accent)}
+  .sched.full{flex-basis:100%;margin-top:6px}
+  .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-top:10px}
+  .plist label{font-weight:500;display:flex;gap:8px;align-items:center;font-size:13px;margin:0;color:var(--ink);padding:6px 8px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+
+  /* ---------- dropdowns ---------- */
+  .dd{position:relative;display:inline-block;margin-top:12px}
+  .dd>summary{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;min-height:36px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);font-size:14px;font-weight:500}
+  .dd>summary::before{display:none}
+  .dd>summary::after{content:"";width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:4px}
+  .dd>summary:hover{border-color:var(--accent);color:var(--ink)}
+  .dd .ddp{position:absolute;z-index:50;top:calc(100% + 6px);left:0;min-width:240px;max-width:min(320px,calc(100vw - 32px));max-height:340px;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:var(--shadow-pop)}
+  .dd .ddp.right{left:auto;right:0}
+  .dd .ddp label{display:flex;gap:10px;align-items:center;font-weight:500;font-size:14px;margin:0;padding:7px 8px;border-radius:7px;cursor:pointer;color:var(--ink)}
+  .dd .ddp label:hover{background:var(--sunken)}
+  .dd .ddb{display:flex;gap:6px;margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .appbar .dd{margin-top:0}
+  .appbar .dd>summary{background:transparent;border-color:rgba(255,255,255,.3);color:#fff;font-weight:600;padding:6px 14px}
+  .appbar .dd>summary:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.55)}
+  .appbar .dd>summary::after{border-color:#C9D5EA}
+  .appbar .dd.me>summary{border-color:transparent;padding:4px 8px 4px 4px}
+  .appbar .nm{font-size:14px;font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;text-transform:uppercase}
+  .menu .who{padding:8px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:4px;font-size:13px;color:var(--muted)}
+  .menu .who b{display:block;color:var(--ink);font-size:14px;overflow:hidden;text-overflow:ellipsis}
+  .menu a{display:block;padding:8px 10px;border-radius:7px;color:var(--ink);font-size:14px;font-weight:500}
+  .menu a:hover{background:var(--sunken);text-decoration:none}
+  .dd .ddp.signin{width:340px;max-height:none;padding:20px}
+  .signin h3{font-size:16px;margin-bottom:4px}
+  .signin label{display:block;padding:0;cursor:default;font-weight:600;font-size:13px;color:var(--ink-2);margin-bottom:6px} .signin label:hover{background:none}
+  .signin .code{font-size:24px;letter-spacing:8px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;min-height:52px}
+  .signin .ts{margin-top:12px;min-height:65px}
+  .signin .ts[hidden]{display:none}
+  .signin .btn.primary{width:100%}
+  .signin details>summary{padding:6px 0}
+
+  /* ---------- planner ---------- */
+  .pgrid .slot{display:block;position:relative;cursor:crosshair;font-size:10px;line-height:24px;text-align:center;color:var(--ink);overflow:hidden;font-weight:600;font-variant-numeric:tabular-nums}
   .pgrid .slot.hm{background:color-mix(in srgb,var(--yes) var(--a),var(--card))}
   .pgrid .slot.mo{background:color-mix(in srgb,var(--maybe) var(--a),var(--card));color:var(--muted)}
   .pgrid .slot.mb{box-shadow:inset 3px 0 0 var(--maybe)}
   .pgrid .slot.allfree{background:var(--yes-dark);color:#fff}
   .pgrid .slot.mt{outline:2px solid var(--accent);outline-offset:-2px}
   .pgrid .slot.dr{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .pgrid .hd{cursor:pointer;border-radius:6px} .pgrid .hd:hover{background:var(--bg)}
+  .pgrid .hd{cursor:pointer;border-radius:8px} .pgrid .hd:hover{background:var(--accent-weak)}
   .pgrid .hd.dr{background:var(--accent);color:#fff} .pgrid .hd.dr b{color:#fff}
   .day.dr{outline:3px solid var(--accent);outline-offset:-1px}
-  .drafts .dft{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+  .drafts{margin-top:8px}
+  .drafts .dft{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
   .drafts .dft:first-child{border-top:0}
-  .drafts .dft .when{font-weight:700;min-width:110px}
+  .drafts .dft .when{font-weight:650;min-width:110px}
   .drafts .dft .who{flex-basis:100%;font-size:12px;color:var(--muted)}
-  .hide{display:none!important}
-  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
-  .toast.show{opacity:1}
-  @media (max-width:560px){ .day{min-height:52px;padding:5px} .day .t{font-size:10px} .blank{min-height:52px} }
+
+  /* ---------- small screens ---------- */
+  @media (max-width:560px){
+    h1{font-size:25px}
+    .band{padding:26px 0 68px}
+    .card{padding:18px 16px}
+    .appbar-in{gap:10px}
+    .crumb{font-size:13px;gap:10px}
+    .hide-sm{display:none!important}
+    .cal{gap:4px}
+    .day{min-height:54px;padding:5px;border-radius:9px} .day .t{font-size:10px} .blank{min-height:54px}
+    .dd .ddp.signin{width:min(340px,calc(100vw - 32px))}
+    .tabs button{padding:12px 10px;font-size:14px}
+  }
 </style>
 </head>
 <body>
-<div class="wrap" id="app">Loading…</div>
+<div id="app"><div class="wrap mt-5 muted">Loading…</div></div>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -222,20 +383,35 @@ function rangeLabel(unit, st, en){
 let CONFIG={emailEnabled:false};
 let ME={user:null,loginEnabled:false,polls:[]};
 const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+const ICON = {
+  logo:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg>`,
+  cal:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.9.7 3 2.4 3.5 5.2"/></svg>`,
+  lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>`,
+};
+// Navy app bar shown on every page: logo, optional "All polls" link, account menu or sign-in.
+function appbar(crumb){
+  return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>whenwho</a>
+    ${crumb?`<a class="crumb" href="${esc(origin)}">${esc(crumb)}</a>`:''}<div class="acct">${accountBar()}</div></div></header>`;
+}
 function accountBar(){
-  if(ME.user) return `<span class="acct small muted">Signed in as <b>${esc(ME.user.name)}</b> · <a href="#" data-logout>Sign out</a> · <a href="#" data-logout="all" title="Sign out on every device">everywhere</a></span>`;
-  return `<details class="acct dd" id="signin"><summary class="small">Sign in</summary><div class="ddp signin" style="left:auto;right:0">
-    <form class="codef"><label for="si_email">Your email</label><input type="email" id="si_email" name="email" autocomplete="email" maxlength="200" required>
+  if(ME.user) return `<details class="dd me"><summary aria-label="Account"><span class="avatar">${esc((ME.user.name||'?').trim().charAt(0)||'?')}</span><span class="nm hide-sm">${esc(ME.user.name)}</span></summary>
+    <div class="ddp right menu"><div class="who">Signed in as<b>${esc(ME.user.name)}</b></div>
+    <a href="#" data-logout>Sign out</a><a href="#" data-logout="all" title="Sign out on every device">Sign out everywhere</a></div></details>`;
+  return `<details class="dd" id="signin"><summary>Sign in</summary><div class="ddp signin right">
+    <form class="codef"><h3>Sign in to whenwho</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
+      <label for="si_email">Your email</label><input type="email" id="si_email" name="email" autocomplete="email" maxlength="200" placeholder="you@company.com" required>
       <div class="ts" id="si_ts" ${CONFIG.turnstileSiteKey?'':'hidden'}></div>
-      <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Email me a code</button></div>
+      <div class="err"></div><div class="row mt-3"><button class="btn primary">Email me a code</button></div>
       <p class="help">No password needed. We'll send you a 6-digit code. Your account is created the first time you sign in.</p></form>
-    <form class="verifyf" hidden><p class="help" style="margin-top:0">We sent a code to <b class="si_to"></b>. It's valid for 10 minutes.</p>
+    <form class="verifyf" hidden><p class="help mt-0">We sent a code to <b class="si_to"></b>. It's valid for 10 minutes.</p>
       <label for="si_code">Code</label><input type="text" id="si_code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required>
-      <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Sign in</button><a href="#" class="small" data-siback>Use another email</a></div></form>
-    ${ME.loginEnabled?`<details style="margin-top:12px"><summary class="small muted">Admin password</summary>
-      <form class="loginf" style="margin-top:8px"><input type="hidden" name="u" value="admin">
+      <div class="err"></div><div class="row mt-3"><button class="btn primary">Sign in</button><a href="#" class="small" data-siback>Use another email</a></div></form>
+    ${ME.loginEnabled?`<details class="mt-3"><summary class="small muted">Admin password</summary>
+      <form class="loginf"><input type="hidden" name="u" value="admin">
       <input type="password" name="pw" autocomplete="current-password" required aria-label="Admin password">
-      <div class="err"></div><div class="row" style="margin-top:8px"><button class="btn">Sign in as admin</button></div></form></details>`:''}
+      <div class="err"></div><div class="row mt-3"><button class="btn">Sign in as admin</button></div></form></details>`:''}
   </div></details>`;
 }
 // After signing in, move polls this browser has admin links for into the account.
@@ -286,6 +462,9 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('[data-siback]')) return; e.preventDefault();
   const box=e.target.closest('.signin'); box.querySelector('.verifyf').hidden=true; box.querySelector('.codef').hidden=false; $('si_email').focus();
 });
+document.addEventListener('click',e=>{ if(!e.target.closest('[data-opensignin]')) return; const d=$('signin'); if(d){ window.scrollTo({top:0}); d.open=true; } });
+// Close the account / sign-in menus in the app bar when clicking elsewhere.
+document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.appbar details[open]').forEach(d=>{ if(!d.contains(e.target)&&!e.target.closest('[data-opensignin]')) d.open=false; }); });
 const hh = h => `${pad(h%24)}:00`;
 function hoursText(arr){
   const a=[...arr].sort((x,y)=>x-y), parts=[]; let s=null,p=null;
@@ -304,25 +483,29 @@ function renderHome(){
   const server = ME.user ? ME.polls : [];
   const localOnly = mine.filter(p=>!server.some(x=>x.id===p.id));
   $app.innerHTML = `
-    <div class="top">${accountBar()}</div>
-    <h1>whenwho</h1>
-    <div class="sub">Find out when everyone's free, and who can make it. The organiser creates a poll and sends the link. Answering doesn't need an account.</div>
-    <div class="card" id="created" hidden></div>
+    ${appbar()}
+    <section class="band"><div class="wrap">
+      <div class="eyebrow">Availability polls</div>
+      <h1>Find a time that works for everyone</h1>
+      <p class="lead">Create a poll, share the link and see at a glance when everyone's free and who can make it. Answering doesn't need an account.</p>
+    </div></section>
+    <main class="wrap"><div class="home-grid">
+    <div class="card accent span" id="created" hidden></div>
     ${ME.user?`<div class="card">
-      <h2>New poll</h2>
+      <div class="card-h"><h2>New poll</h2></div>
       <form id="f">
         <div class="field"><label for="title">Title</label><input type="text" id="title" maxlength="120" placeholder="e.g. Band rehearsals, Summer trip" required></div>
         <div class="field"><label for="desc">Description (optional)</label><textarea id="desc" maxlength="1000" placeholder="Anything people should know"></textarea></div>
         <div class="field"><label>Type</label>${seg('kindSeg',[['series','Recurring series'],['single','One-off']],'series')}</div>
         <div id="seriesBox">
-          <div class="row field"><label style="margin:0">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
+          <div class="row field"><label class="m0">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
             <select id="unit" class="inline"><option value="month">month(s)</option><option value="week">week(s)</option></select></div>
           <div class="grid2">
             <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
             <div class="field"><label for="openDays">Open each poll … days before it starts</label><input type="number" id="openDays" min="0" max="90" value="11"></div>
             <div class="field"><label for="dlDays">Reply by … days before it starts (optional)</label><input type="number" id="dlDays" min="0" max="90" value="4"></div>
           </div>
-          <div class="help" id="seriesPreview"></div>
+          <div class="notice neutral small" id="seriesPreview"></div>
         </div>
         <div id="singleBox" class="grid2 hide">
           <div class="field"><label for="start">From</label><input type="date" id="start"></div>
@@ -331,7 +514,7 @@ function renderHome(){
         </div>
         <div class="field"><label>People answer with</label>${seg('ansSeg',[['days','Whole days'],['slots','Time slots'],['both','Both (they choose)']],'both')}
           <div class="help" id="ansHelp"></div></div>
-        <div id="hoursBox" class="row field"><label style="margin:0">Hours from</label><input type="number" id="hs" min="0" max="23" value="8"><label style="margin:0">to</label><input type="number" id="he" min="1" max="24" value="24"></div>
+        <div id="hoursBox" class="row field"><label class="m0">Hours from</label><input type="number" id="hs" min="0" max="23" value="8"><label class="m0">to</label><input type="number" id="he" min="1" max="24" value="24"></div>
         <details class="field"><summary>Privacy options</summary>
           <div class="field"><label for="pw">Password (optional)</label><input type="password" id="pw" maxlength="100" placeholder="Only people with the password can open the poll" autocomplete="new-password"></div>
           <label class="check"><input type="checkbox" id="hide"> Hide everyone's answers from respondents (only you see results)</label>
@@ -340,25 +523,26 @@ function renderHome(){
         <details class="field ${CONFIG.emailEnabled?'':'hide'}" id="mailBox"><summary>Email</summary>
           <div class="field"><label for="aemail">Your email (optional)</label><input type="email" id="aemail" maxlength="200" placeholder="Replies to invites go here"></div>
           <label class="check" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
-          <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" style="width:60px"> days before the reply-by date to people who haven't answered yet</label>
+          <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
           <div class="help">People only get emails if they leave their address when answering.</div>
         </details>
         <div class="err" id="ferr"></div>
-        <div class="row" style="margin-top:16px"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
+        <div class="row mt-4"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
       </form>
-    </div>`:`<div class="card"><h2>New poll</h2>
-      <p class="help">Sign in with your email (“Sign in” at the top right) to create polls. No password needed. Answering a poll never needs an account.</p></div>`}
-    <div class="card"><h2>Your polls</h2>
-      ${ME.user?(server.length?`<ul class="list">${server.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a> <span class="muted small">${p.kind==='series'?'series':p.kind==='single'?'one-off':''}</span></span>
-        <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button></li>`).join('')}</ul>`
+    </div>`:`<div class="card"><div class="card-h"><h2>New poll</h2></div>
+      <div class="empty"><p class="help mt-0">Sign in with your email to create polls. No password needed, just a code we email you. Answering a poll never needs an account.</p>
+      <button type="button" class="btn primary" data-opensignin>Sign in to get started</button></div></div>`}
+    <div class="card"><div class="card-h"><h2>Your polls</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
+      ${ME.user?(server.length?`<ul class="list polls">${server.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a> ${p.kind?`<span class="pill ${p.kind==='series'?'soft':''}">${p.kind==='series'?'Series':'One-off'}</span>`:''}</span>
+        <span class="acts"><button class="btn sm" data-copy="${esc(shareLink(p.id))}" title="Copy share link">Copy link</button></span></li>`).join('')}</ul>`
         :`<p class="help">Polls you create show up here, on every device you sign in on.</p>`):''}
-      ${localOnly.length?`${ME.user?'<h3 style="margin-top:14px">Only in this browser</h3>':''}<ul class="list">${localOnly.map(p=>`<li><span class="grow"><a href="${esc(adminLink(p.id,p.adminKey))}">${esc(p.title)}</a></span>
-        ${ME.user?`<button class="btn" data-claim="${esc(p.id)}">Add to my account</button>`:''}
-        <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button>
-        <button class="btn" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)">✕</button></li>`).join('')}</ul>
+      ${localOnly.length?`${ME.user?'<h3 class="mt-4">Only in this browser</h3>':''}<ul class="list polls">${localOnly.map(p=>`<li><span class="grow"><a href="${esc(adminLink(p.id,p.adminKey))}">${esc(p.title)}</a></span>
+        <span class="acts">${ME.user?`<button class="btn sm" data-claim="${esc(p.id)}">Add to account</button>`:''}
+        <button class="btn sm" data-copy="${esc(shareLink(p.id))}" title="Copy share link">Copy link</button>
+        <button class="btn sm ghost" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)" aria-label="Remove from this list">✕</button></span></li>`).join('')}</ul>
         <p class="help">${ME.user?'These are saved in this browser only.':'This list is saved in this browser only. Sign in to see your polls on every device.'}</p>`
       : (ME.user?'':`<p class="help">Sign in to see your polls.</p>`)}
-    </div>`;
+    </div></div></main>`;
   if(!ME.user) return;
   let kind='series', ans='both';
   const ansHelp={days:'Each day: available, maybe or not available.', slots:'People paint the hours they can make on a week grid.', both:'People can answer whole days, and switch to the time grid when they only have certain hours.'};
@@ -392,12 +576,12 @@ function renderHome(){
       ME.polls.unshift({id:r.id,title:body.title,kind});
       store.set('admin:'+r.id, r.adminKey); if(body.password) store.set('pw:'+r.id, body.password);
       const c=$('created'); c.hidden=false;
-      c.innerHTML=`<h2>✓ “${esc(body.title)}” is ready</h2>
+      c.innerHTML=`<div class="card-h"><h2>“${esc(body.title)}” is ready</h2><span class="tag y">Created</span></div>
         <div class="field"><label>Share link: send this to people</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(r.id))}"><button class="btn" data-copy="${esc(shareLink(r.id))}">Copy</button></div></div>
         <div class="field"><label>Admin link: keep this private</label><div class="linkbox"><input type="text" readonly value="${esc(adminLink(r.id,r.adminKey))}"><button class="btn" data-copy="${esc(adminLink(r.id,r.adminKey))}">Copy</button></div>
         <div class="help">Anyone with the admin link can edit or delete the poll. It's saved in this browser, but copy it somewhere safe too.</div></div>
         ${inviteBox(r.id, body.title, kind==='series'?null:body.deadline)}
-        <div class="row" style="margin-top:12px"><a class="btn primary" href="${esc(adminLink(r.id,r.adminKey))}">Open poll</a></div>`;
+        <div class="row mt-4"><a class="btn primary" href="${esc(adminLink(r.id,r.adminKey))}">Open poll</a></div>`;
       c.scrollIntoView({behavior:'smooth'}); $('f').reset();
     }catch(ex){ err.textContent=ex.message; }
     btn.disabled=false;
@@ -424,7 +608,8 @@ async function loadPoll(first){
   catch(e){
     if(e.status===401 && e.data && e.data.needPassword) return renderPassword(e.data.title, e.message);
     if(e.status===403 && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; return loadPoll(first); }
-    $app.innerHTML=`<div class="top"><a class="home" href="${esc(origin)}">← whenwho</a></div><h1>Poll not available</h1><p class="sub">${esc(e.message)}</p>`; return;
+    $app.innerHTML=`${appbar('All polls')}<section class="band"><div class="wrap"><div class="eyebrow">Poll</div><h1>Poll not available</h1><p class="lead">${esc(e.message)}</p></div></section>
+      <main class="wrap"><div class="card"><p class="m0">The link may be wrong, or the poll was deleted. Ask the organiser for a new link.</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">Go to whenwho</a></div></div></main>`; return;
   }
   if(!P.data.isAdmin && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; }
   P.iid = inst().id;
@@ -444,10 +629,10 @@ async function loadPoll(first){
 async function switchInstance(id){ if(P.dirty){ clearTimeout(saveT); await save(); } P.iid=id; await loadPoll(false); window.scrollTo({top:0,behavior:'smooth'}); }
 
 function renderPassword(title,msg){
-  $app.innerHTML=`<div class="top"><a class="home" href="${esc(origin)}">← whenwho</a></div><h1>${esc(title||'Poll')}</h1>
-    <div class="card"><form id="pwf"><label for="pwi">This poll is password-protected</label>
-    <div class="row"><input type="password" id="pwi" class="grow" style="width:auto" autofocus><button class="btn primary">Open</button></div>
-    ${msg==='Wrong password'?'<div class="err">Wrong password.</div>':''}</form></div>`;
+  $app.innerHTML=`${appbar('All polls')}<section class="band"><div class="wrap"><div class="eyebrow">${ICON.lock.replace('<svg','<svg width="14" height="14"')} Protected poll</div><h1>${esc(title||'Poll')}</h1></div></section>
+    <main class="wrap"><div class="card"><form id="pwf"><label for="pwi">This poll is password-protected. Enter the password to open it.</label>
+    <div class="row"><input type="password" id="pwi" class="grow" autofocus><button class="btn primary">Open poll</button></div>
+    ${msg==='Wrong password'?'<div class="err">Wrong password.</div>':''}</form></div></main>`;
   $('pwf').onsubmit=e=>{ e.preventDefault(); P.password=$('pwi').value; store.set('pw:'+P.id,P.password); loadPoll(true); };
 }
 
@@ -474,7 +659,7 @@ function hoursOf(v,s){ return [...hourMap(v)].filter(([h,x])=>x===s).map(([h])=>
 function partialText(v){ const y=hoursOf(v,'y'), m=hoursOf(v,'m'); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
 function statusOf(v){
   if(v==='y') return {t:'Available',c:'var(--yes-dark)',cls:'y'};
-  if(v==='m') return {t:'Maybe',c:'var(--maybe)',cls:'m'};
+  if(v==='m') return {t:'Maybe',c:'var(--maybe-ink)',cls:'m'};
   if(v==='n') return {t:"Can't",c:'var(--no)',cls:'no'};
   if(isPartial(v)) return {t:partialText(v),c:'var(--ink)',cls:'part'};
   return {t:'',c:'var(--muted)',cls:''};
@@ -525,7 +710,7 @@ function nameHint(force){
   const k=nameKey(P.mine.name), p=(P.data.participants||[]).find(x=>nameKey(x.name)===k);
   if(!k || P.myResp || (!p && !force)){ el.innerHTML=''; return; }
   const shown=p?p.name:P.mine.name.trim();
-  el.innerHTML=`<div class="namehint">“${esc(shown)}” is already in this poll. If that's you, load your answer.<button type="button" class="btn" data-recall>That's me</button><br><span class="muted">Otherwise, pick a different name.</span></div>`;
+  el.innerHTML=`<div class="namehint">“${esc(shown)}” is already in this poll. If that's you, load your answer.<button type="button" class="btn sm" data-recall>That's me</button><br><span class="muted">Otherwise, pick a different name.</span></div>`;
 }
 async function recallMine(){
   try{
@@ -549,22 +734,24 @@ function render(){
   document.title=p.title;
   if(!editable()) P.tab='group';
   $app.innerHTML=`
-    <div class="top"><a class="home" href="${esc(origin)}">← whenwho</a>${d.isAdmin?'<span class="muted small">· You are the admin</span>':''}${accountBar()}</div>
-    <div id="hdr"></div>
+    ${appbar('All polls')}
+    <section class="band"><div class="wrap"><div id="hdr"></div>
     ${!d.isAdmin&&d.instances.length>1?`<div class="field"><div class="seg">${d.instances.map(x=>`<button data-inst="${x.id}" class="${x.id===i.id?'on':''}">${esc(instLabel(x))}</button>`).join('')}</div></div>`:''}
+    </div></section>
+    <main class="wrap">
     <div id="meetings"></div>
     ${d.isAdmin?adminPanel():''}
-    ${editable()?`<div class="card"><div class="grid2">
-        <div><label for="name">Your name <span class="tag m">unique in this poll</span></label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are" list="pnames" autocomplete="off">
+    ${editable()?`<div class="card"><div class="card-h"><h2>Your details</h2><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div><div class="grid2">
+        <div class="field"><label for="name">Your name <span class="tag">unique in this poll</span></label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are" list="pnames" autocomplete="off">
           <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
-          <div class="help" style="margin-top:4px">Use the same name every round and on any device to get back to your answer.</div><div id="nameHint"></div></div>
-        <div><label for="email">Email (optional)</label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
+          <div class="help mt-1">Use the same name every round and on any device to get back to your answer.</div><div id="nameHint"></div></div>
+        <div class="field"><label for="email">Email (optional)</label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
       ${p.allowComments?`<div class="field"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="500" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:''}
-      <div class="row" style="margin-top:8px"><span class="small muted grow">${P.myResp?`Your answer is saved. To change it later, open the poll here or enter the same name on any device. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</span><span class="small muted" id="status">${P.myResp?'Saved ✓':''}</span></div></div>`
-      :`<div class="notice">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
+      <p class="help">${P.myResp?`Your answer is saved. To change it later, open the poll here or enter the same name on any device. <a href="#" id="delMine">Remove my answer</a>`:'Your answer saves automatically once you enter your name.'}</p></div>`
+      :`<div class="notice warn mt-4">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
     <div class="tabs"><button data-tab="mine" class="${P.tab==='mine'?'on':''}" ${editable()?'':'disabled'}>My availability</button>
       <button data-tab="group" class="${P.tab==='group'?'on':''}">Group overview</button></div>
-    <div class="card" id="body"></div>`;
+    <div class="card" id="body"></div></main>`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
@@ -579,11 +766,12 @@ function render(){
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null;
-  el.innerHTML=`<h1>${esc(p.title)}</h1>
-    <div class="sub">${esc(instLabel(i))}${i.deadline?` · please answer by ${esc(dayLabel(i.deadline))}`:''}${n!=null?` · ${n} ${n===1?'response':'responses'}`:''}${i.status==='closed'?' · closed':''}</div>
+  el.innerHTML=`<div class="eyebrow">${p.kind==='series'?'Recurring poll':'Poll'}${d.isAdmin?'<span class="pill accent">Admin</span>':''}</div>
+    <h1>${esc(p.title)}</h1>
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
-    ${i.note?`<div class="notice" style="background:var(--bg);border:1px solid var(--line)">${esc(i.note)}</div>`:''}
-    ${p.hideResults&&!d.isAdmin?'<div class="notice">Only the organiser can see everyone\'s answers.</div>':''}`;
+    ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
+    ${p.hideResults&&!d.isAdmin?'<div class="notice warn">Only the organiser can see everyone\'s answers.</div>':''}`;
   renderMeetings();
 }
 function renderBody(){
@@ -597,23 +785,23 @@ function renderSeries(){
   const el=$('series'); if(!el) return;
   const d=P.data, p=d.poll, cur=inst();
   const rows=[...d.instances].reverse().map(x=>`<li>
-      <span class="grow" style="min-width:170px">${x.id===cur.id?'<b>':''}${esc(instLabel(x))}${x.id===cur.id?'</b> <span class="muted small">(viewing)</span>':''}
+      <span class="grow minw">${x.id===cur.id?'<b>':''}${esc(instLabel(x))}${x.id===cur.id?'</b> <span class="muted small">(viewing)</span>':''}
         <div class="muted small">${x.status==='open'?'<span class="tag y">open</span>':'<span class="tag x">closed</span>'} ${x.responses} ${x.responses===1?'answer':'answers'}${x.meetings.length?` · ★ ${x.meetings.length}`:''}${x.deadline?` · reply by ${esc(dayLabel(x.deadline))}`:''}</div></span>
       ${x.id!==cur.id?`<button class="btn" data-inst="${x.id}">View</button>`:''}
       ${x.manualStatus==='open'?`<button class="btn" data-istatus="${x.id}" data-to="closed">Close</button>`:`<button class="btn" data-istatus="${x.id}" data-to="open">Reopen</button>`}
       <button class="btn" data-iedit="${x.id}">Edit</button>
       ${d.instances.length>1?`<button class="btn danger" data-idel="${x.id}">Delete</button>`:''}
-      ${P.iedit===x.id?`<form class="sched" id="ieditForm" style="flex-basis:100%;margin-top:6px">
+      ${P.iedit===x.id?`<form class="sched full" id="ieditForm">
         <div class="grid2"><div class="field"><label>From</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>To</label><input type="date" id="ie_e" value="${x.endDate}"></div>
         <div class="field"><label>Reply by</label><input type="date" id="ie_d" value="${x.deadline||''}"></div></div>
         <div class="field"><label>Note shown at the top of this poll</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
-        <div class="row" style="margin-top:10px"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
+        <div class="row mt-3"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
     </li>`).join('');
-  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="row"><h2 class="grow">Series · every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</h2>
+  el.innerHTML = p.kind==='series' ? `<div class="card"><div class="card-h"><h2>Series · every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</h2>
       <button class="btn" data-nextinst>Open next poll now</button></div>
       ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open poll.</p>`:''}
       <ul class="list">${rows}</ul></div>`
-    : `<div class="card"><h2>Poll</h2><ul class="list">${rows}</ul></div>`;
+    : `<div class="card"><div class="card-h"><h2>Poll</h2></div><ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
     try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{startDate:$('ie_s').value,endDate:$('ie_e').value,deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
       P.iedit=null; toast('Saved'); await loadPoll(false); }catch(ex){ toast(ex.message); } };
@@ -635,12 +823,12 @@ function renderMeetings(){
   const d=P.data, ms=inst().meetings;
   if(!ms.length){ el.innerHTML=''; return; }
   const sub=icsUrl(null,false).replace(/^https?:/,'webcal:');
-  el.innerHTML=`<div class="card"><div class="row"><h2 class="grow">★ Scheduled</h2>
+  el.innerHTML=`<div class="card"><div class="card-h"><h2>★ Scheduled</h2>
       <a class="btn" href="${esc(icsUrl(null,true))}">Download all (.ics)</a><a class="btn" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe in calendar</a></div>
     ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email);
       return `<div class="meet"><div class="when">${esc(whenText(m))}</div>
       <div>${esc(m.title||d.poll.title)}${m.location?` · <span class="muted">${esc(m.location)}</span>`:''}</div>
-      <div class="small muted">Who: ${esc(whoText(m))}</div>${m.note?`<div class="small" style="white-space:pre-wrap;margin-top:4px">${esc(m.note)}</div>`:''}
+      <div class="small muted">Who: ${esc(whoText(m))}</div>${m.note?`<div class="small note">${esc(m.note)}</div>`:''}
       <div class="acts"><a class="btn" href="${esc(icsUrl(m.id,true))}">Add to calendar</a>
       ${d.isAdmin?`${d.emailEnabled?`<button class="btn primary" data-sendinvite="${m.id}">${m.sentAt?'Send invite again':'Send invite email'}</button>`:''}
         <button class="btn" data-mail="${m.id}">${d.emailEnabled?'Open in my email app':'Email invite'}</button><button class="btn" data-copyinvite="${m.id}">Copy invite text</button><button class="btn danger" data-delmeet="${m.id}">Delete</button>`:''}</div>
@@ -674,18 +862,18 @@ function weeks(dates){
 
 function renderMine(el){
   const d=P.data, me=P.mine.entries, md=meetingDays(), am=ansMode();
-  let h=`<div class="row"><h2>Your availability</h2>${am==='both'?`<div class="seg" style="margin-left:auto">
+  let h=`<div class="card-h"><h2>Your availability</h2>${am==='both'?`<div class="seg ml-auto">
       <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}</div>`;
   if(P.mode==='days'){
     h+=`<p class="help">Tap a day to cycle: <b>available</b> → <b>maybe</b> → <b>not available</b> → blank.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}</p>
-      <div class="row" style="margin-top:10px"><button class="btn" data-bulk="all">All available</button><button class="btn" data-bulk="wkend">Weekends available</button>
-      <button class="btn" data-bulk="blank">Fill blanks as not available</button><button class="btn" data-bulk="clear">Clear all</button></div>`;
+      <div class="row mt-3"><button class="btn sm" data-bulk="all">All available</button><button class="btn sm" data-bulk="wkend">Weekends available</button>
+      <button class="btn sm" data-bulk="blank">Fill blanks as not available</button><button class="btn sm" data-bulk="clear">Clear all</button></div>`;
     h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v);
       return `<div class="day ${s.cls}" data-day="${k}"><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
     h+=`<p class="help">Pick a brush, then drag (or tap) across hours. Dragging over hours that already have that colour clears them.</p>
-      <div class="row" style="margin-top:10px"><span class="muted small">Brush:</span><div class="seg">
+      <div class="row mt-3"><span class="muted small">Brush:</span><div class="seg">
       <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
       <button data-brush="n" class="${P.brush==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button>
@@ -759,11 +947,11 @@ function bestBlock(s){ // longest contiguous run of best hours
 
 function renderGroup(el){
   const d=P.data, p=d.poll;
-  if(!d.responses){ el.innerHTML=`<h2>Group overview</h2><p class="help">The organiser has chosen to keep answers private.</p>`; return; }
+  if(!d.responses){ el.innerHTML=`<div class="card-h"><h2>Group overview</h2></div><p class="help">The organiser has chosen to keep answers private.</p>`; return; }
   const all=d.responses.length, tot=sel().length, md=meetingDays(), H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days', plan = d.isAdmin && P.gview==='plan';
-  let h=`<div class="row"><h2>Group overview</h2>${d.isAdmin?`<div class="seg"><button data-gview="overview" class="${plan?'':'on'}">Overview</button><button data-gview="plan" class="${plan?'on':''}">★ Plan meetings</button></div>`:''}
-    <span class="muted small" style="margin-left:auto">${P.who?`${tot} of ${all} selected`:`${all} responded`}</span></div>`;
+  let h=`<div class="card-h"><h2>Group overview</h2>${d.isAdmin?`<div class="seg"><button data-gview="overview" class="${plan?'':'on'}">Overview</button><button data-gview="plan" class="${plan?'on':''}">★ Plan meetings</button></div>`:''}
+    <span class="muted small ml-auto">${P.who?`${tot} of ${all} selected`:`${all} responded`}</span></div>`;
   if(!all){ el.innerHTML=h+`<p class="help">No answers yet. Once people respond, the best days show up here.</p>`; return; }
   h+=whoDropdown();
   if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person in the Participants list to see when they're free.</p>`; wireWho(); return; }
@@ -775,7 +963,7 @@ function renderGroup(el){
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
-    h+=`<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+    h+=`<div class="section">
       <div class="row"><h3 class="grow">${esc(dayLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`${sr?'<button class="btn" data-clearrange>Clear time</button>':''}<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting${sr?` · ${esc(rg)}`:''}</button>`:''}</div>
       <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best time ${esc(s.window)} (${s.peak} available)`:''}</div>
       ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time${sr?` (selected: <b>${esc(rg)}</b>)`:''}.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
@@ -786,11 +974,11 @@ function renderGroup(el){
   }
   if(tot){
     const ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
-    h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><h3>Best days</h3><ul class="list">${ranked.map(o=>
-      `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small" style="margin-left:auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+    h+=`<div class="section"><h3>Best days</h3><ul class="list">${ranked.map(o=>
+      `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span>${md.has(o.k)?'★ ':''}${esc(dayLabel(o.k))}</span><span class="muted small ml-auto">${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span></li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
     const withC=sel().filter(r=>r.comment);
-    if(withC.length) h+=`<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px" class="comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
-    if(d.isAdmin) h+=`<details style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
+    if(withC.length) h+=`<div class="section comments"><h3>Comments</h3>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</div>`;
+    if(d.isAdmin) h+=`<details class="section"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
       `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></details>`;
   }
   el.innerHTML=h;
@@ -841,11 +1029,11 @@ function autoPick(){
 }
 function schedForm(){
   const sc=P.sched, rs=P.data.responses||[], H=hours(), opt=hourOpts;
-  return `<div class="sched"><div class="row"><h3 class="grow">Schedule a meeting · ${esc(dayLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
+  return `<div class="sched"><div class="row"><h3 class="grow">★ Schedule a meeting · ${esc(dayLabel(sc.date))}</h3><button class="btn" data-cancelsched>Cancel</button></div>
     <div class="grid2">
       <div class="field"><label>Title</label><input type="text" id="mt_title" maxlength="120" value="${esc(sc.title)}"></div>
       <div class="field"><label>Location (optional)</label><input type="text" id="mt_loc" maxlength="200" value="${esc(sc.location)}"></div></div>
-    <div class="row field"><label class="check" style="margin:0"><input type="checkbox" id="mt_allday" ${sc.allDay?'checked':''}> All day</label>
+    <div class="row field"><label class="check m0"><input type="checkbox" id="mt_allday" ${sc.allDay?'checked':''}> All day</label>
       <span class="${sc.allDay?'hide':''} row" id="mt_times"><select id="mt_start" class="inline">${opt(0,23,sc.start)}</select> to <select id="mt_end" class="inline">${opt(1,24,sc.end)}</select></span></div>
     <div class="field"><label>Note (optional)</label><textarea id="mt_note" maxlength="1000">${esc(sc.note)}</textarea></div>
     <div class="field"><label>Who's invited</label>
@@ -855,7 +1043,7 @@ function schedForm(){
         <div class="plist">${rs.map(r=>{ const w=windowStatus((r.entries||{})[sc.date],sc.start,sc.end,sc.allDay);
           return `<label><input type="checkbox" data-pid="${esc(r.id)}" ${sc.picked.has(r.id)?'checked':''}> ${esc(r.name)} <span class="tag ${w}">${w==='y'?'available':w==='m'?'maybe':'not free'}</span></label>`; }).join('')||'<span class="muted small">No responses yet.</span>'}</div></div></div>
     <div class="err" id="mt_err"></div>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-savesched>Save meeting</button></div></div>`;
+    <div class="row mt-4"><button class="btn primary" data-savesched>Save meeting</button></div></div>`;
 }
 function wireSched(){
   const sc=P.sched, v=id=>$(id).value;
@@ -887,12 +1075,12 @@ function renderPlanner(S){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
   let h=`<p class="help">${slotsOn?'Darker green = more of the selected people are free; dark cells mean <b>everyone selected</b> is free. <b>Drag down a day</b> to add a meeting draft, tap a day name for an all-day one, tap a draft to remove it.':'Darker green = more of the selected people are free. <b>Tap a day</b> to add or remove an all-day meeting draft.'}
     Each draft invites the people selected when you drew it, so you can switch the Participants list and plan meetings for another group.</p>
-    <div class="row" style="margin-top:8px"><button class="btn" data-suggest>Suggest best times</button>${P.drafts.length?'<button class="btn" data-cleardrafts>Clear drafts</button>':''}</div>`;
+    <div class="row mt-3"><button class="btn" data-suggest>Suggest best times</button>${P.drafts.length?'<button class="btn" data-cleardrafts>Clear drafts</button>':''}</div>`;
   if(slotsOn){
     // Pages: whole weeks, or only the days where someone selected is available/maybe (plus days with drafts or meetings), 5 at a time.
     const PER=5, avail=d.dates.filter(k=>S[k].peak>0||S[k].cm.some(x=>x>0)||P.drafts.some(x=>x.date===k)||ms.some(x=>x.date===k));
     const pages=P.pavail?Array.from({length:Math.ceil(avail.length/PER)},(_,i)=>{ const pg=avail.slice(i*PER,i*PER+PER); while(pg.length<PER) pg.push(null); return pg; }):weeks(d.dates);
-    h+=`<div class="row" style="margin-top:10px"><span class="muted small">Show:</span><div class="seg">
+    h+=`<div class="row mt-3"><span class="muted small">Show:</span><div class="seg">
       <button data-pview="avail" class="${P.pavail?'on':''}">Available days (${avail.length})</button><button data-pview="week" class="${P.pavail?'':'on'}">Full weeks</button></div></div>`;
     if(!pages.length){ h+=`<p class="help">None of the selected people has marked any hours as available yet.</p>`; return h+draftTray(); }
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
@@ -926,18 +1114,18 @@ function draftTray(){
   if(!P.drafts.length) return `<div class="sched"><h3>Meeting drafts</h3><p class="help">No drafts yet. Drag across the grid or tap a day to add one.</p></div>`;
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
     return `<div class="dft"><span class="when">${esc(dayLabel(x.date))}</span>
-      <label class="check" style="margin:0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
+      <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
       <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
-      <button class="btn danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
+      <button class="btn sm danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
       <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span></div>`; }).join('');
   return `<div class="sched"><h3>Meeting drafts (${P.drafts.length})</h3><div class="drafts">${rows}</div>
-    <div class="grid2" style="margin-top:8px">
+    <div class="grid2 mt-2">
       <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
       <div class="field"><label>Location (optional)</label><input type="text" id="dm_loc" maxlength="200" value="${esc(dm.location)}"></div></div>
     <div class="field"><label>Note (optional)</label><textarea id="dm_note" maxlength="1000">${esc(dm.note)}</textarea></div>
     <div class="err" id="dm_err"></div>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
+    <div class="row mt-4"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
 }
 function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
@@ -980,28 +1168,28 @@ async function saveDrafts(btn){
 // ---- admin ----
 function adminPanel(){
   const d=P.data, p=d.poll;
-  return `<div class="card"><h2>Share</h2>
+  return `<div class="card"><div class="card-h"><h2>Share</h2><span class="muted small">Send this link to people</span></div>
     <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
     ${inviteBox(p.id, p.title, inst()&&inst().status==='open'?inst().deadline:null)}
     <details class="field"><summary>Settings</summary><form id="sf">
       <div class="field"><label>Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
       <div class="field"><label>Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
-      ${p.kind==='series'?`<div class="row field"><label style="margin:0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
+      ${p.kind==='series'?`<div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
         <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
         <div class="help">Applies to polls opened from now on. To edit dates of an existing poll, use “Edit” in the list. To change how often it repeats, create a new series.</div>`:''}
-      <div class="row field"><label style="margin:0">People answer with</label><select id="s_ans" class="inline">
+      <div class="row field"><label class="m0">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
-      <div class="row field"><label style="margin:0">Hours from</label><input type="number" id="s_hs" min="0" max="23" value="${p.hourStart}"><label style="margin:0">to</label><input type="number" id="s_he" min="1" max="24" value="${p.hourEnd}"></div>
+      <div class="row field"><label class="m0">Hours from</label><input type="number" id="s_hs" min="0" max="23" value="${p.hourStart}"><label class="m0">to</label><input type="number" id="s_he" min="1" max="24" value="${p.hourEnd}"></div>
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> Hide answers from respondents</label>
       <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label>
       <div class="field"><label>Password ${p.hasPassword?'(currently set)':'(none)'}</label>
-        <div class="row"><input type="password" id="s_pw" class="grow" style="width:auto" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check" style="margin:0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div>
-      ${d.emailEnabled?`<div class="field"><label>Your email</label><div class="row"><input type="email" id="s_mail" class="grow" style="width:auto" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+        <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div>
+      ${d.emailEnabled?`<div class="field"><label>Your email</label><div class="row"><input type="email" id="s_mail" class="grow" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
         ${p.kind==='series'?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new poll opens</label>`:''}
-        <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" style="width:60px"> days before the reply-by date</label>`
+        <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
       :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}
       <div class="err" id="serr"></div>
-      <div class="row" style="margin-top:12px"><button class="btn primary">Save settings</button><span class="grow"></span><button type="button" class="btn danger" id="delPoll">Delete ${p.kind==='series'?'whole series':'poll'}</button></div>
+      <div class="row mt-4"><button class="btn primary">Save settings</button><span class="grow"></span><button type="button" class="btn danger" id="delPoll">Delete ${p.kind==='series'?'whole series':'poll'}</button></div>
     </form></details>
     <details class="field" id="partsBox"><summary>Participants</summary><div id="parts"><p class="help">Loading…</p></div></details></div>
     <div id="series"></div>`;
@@ -1019,7 +1207,7 @@ async function loadParts(){
       <button class="btn danger" data-pdel="${esc(p.id)}">Remove</button></li>`).join('')}</ul>`:'<p class="help">Nobody yet.</p>'}
     <div class="field"><label for="p_add">Add people in advance (one per line: Name or Name, email)</label>
       <textarea id="p_add" maxlength="20000" placeholder="Anna&#10;Ben, ben@example.com"></textarea></div>
-    <div class="row" style="margin-top:8px"><button class="btn" data-padd>Add</button></div>`;
+    <div class="row mt-3"><button class="btn" data-padd>Add</button></div>`;
 }
 async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); const b=$('partsBox'); if(b){ b.open=true; loadParts(); } }
 document.addEventListener('change',async e=>{

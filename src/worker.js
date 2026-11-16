@@ -400,7 +400,11 @@ async function sendLoginCode(request, env, url) {
     await sendEmail(env, {
       fromName: 'whenwho', to: [addr],
       subject: `Your sign-in code: ${code}`, text,
-      html: `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5">${escHtml(text).replace(/\n/g, '<br>').replace(code, `<b style="font-size:22px;letter-spacing:3px">${code}</b>`)}</div>`,
+      html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">Your sign-in code</h1>
+        <p style="margin:0 0 20px;color:#334155">Enter this code on <a href="${escHtml(site)}" style="color:#1F5EFF">${escHtml(site.replace(/^https?:\/\//, ''))}</a> to sign in. It is valid for ${CODE_MINUTES} minutes.</p>
+        <div style="margin:0 0 24px;padding:18px;background:#E8EFFF;border-radius:10px;text-align:center;font-size:32px;font-weight:700;letter-spacing:10px;color:#0B1F3A;font-family:ui-monospace,Menlo,Consolas,monospace">${code}</div>
+        <p style="margin:0;font-size:13px;color:#5B6578">If you didn't ask for this, you can ignore this email: nobody can sign in without the code.</p>`,
+        { preheader: `Your sign-in code is ${code}`, site }),
     });
   } else {
     console.log(`[dev] sign-in code for ${addr}: ${code}`); // email not set up: local development
@@ -729,6 +733,28 @@ const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, 
 const fmtDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const hh = (h) => `${pad(h % 24)}:00`;
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Branded HTML email (navy header, white card), matching the web app. Inline styles and tables so email clients render it.
+// bodyHtml must already be escaped. button: optional { href, label } shown as a blue button above the body.
+function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) {
+  const font = "Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  const btn = button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px"><tr><td style="border-radius:8px;background:#1F5EFF">
+    <a href="${escHtml(button.href)}" style="display:inline-block;padding:12px 22px;font-family:${font};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${escHtml(button.label)}</a></td></tr></table>` : '';
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;padding:0;background:#F5F7FB">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escHtml(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F5F7FB"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
+    <tr><td style="background:#0B1F3A;border-radius:14px 14px 0 0;padding:18px 28px">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="width:28px;height:28px;background:#1F5EFF;border-radius:7px;text-align:center;vertical-align:middle;font-family:${font};font-size:15px;font-weight:700;color:#ffffff">✓</td>
+        <td style="padding-left:10px;font-family:${font};font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.2px">whenwho</td></tr></table></td></tr>
+    <tr><td style="background:#ffffff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 14px 14px;padding:32px 28px;font-family:${font};font-size:15px;line-height:1.6;color:#0F172A">
+      ${btn}${bodyHtml}</td></tr>
+    <tr><td style="padding:16px 28px;font-family:${font};font-size:12px;line-height:1.5;color:#5B6578;text-align:center">
+      Sent by whenwho${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
+  </table></td></tr></table></body></html>`;
+}
+const linkify = (escaped) => escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1F5EFF;word-break:break-all">$1</a>');
 function periodText(poll, inst) {
   if (poll.unit === 'month' && inst.start_date.endsWith('-01') && addDays(inst.end_date, 1).endsWith('-01')) {
     const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -750,7 +776,10 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
   if (quota) await mailQuota(env, poll, list.length);
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;white-space:pre-wrap">${escHtml(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</div>`;
+  const pollLink = (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
+  const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
+    preheader: subject, button: pollLink ? { href: pollLink, label: 'Open poll' } : null, site: siteUrl(env, ''),
+  });
   let sent = 0;
   for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
     const bcc = list.slice(i, i + 49);
