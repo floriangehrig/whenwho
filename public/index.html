@@ -143,6 +143,21 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show
 async function copy(text){ try{ await navigator.clipboard.writeText(text); toast('Copied'); }catch(e){ prompt('Copy this:', text); } }
 const origin = location.origin + location.pathname.replace(/index\.html$/,'');
 const shareLink = id => `${origin}?p=${id}`;
+// "Invite by email": opens the organiser's own email app with the share link (addresses in BCC). No server email needed.
+function inviteBox(id,title,deadline){
+  return `<details class="field"><summary>Invite by email</summary>
+    <div class="field"><label for="inv_${esc(id)}">Email addresses (separate with commas, spaces or new lines)</label>
+    <textarea id="inv_${esc(id)}" maxlength="5000" placeholder="anna@example.com, ben@example.com"></textarea></div>
+    <div class="row"><button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
+    <div class="help">Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.</div></details>`;
+}
+function pollInviteMail(id,title,deadline,raw){
+  const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
+  const ok=[...new Set(parts.filter(x=>EMAIL_RE.test(x)).map(x=>x.toLowerCase()))], bad=parts.filter(x=>!EMAIL_RE.test(x));
+  const body=['Hi,','',`When are you free? Please mark your availability for “${title}” here:`, shareLink(id),
+    deadline?`\nPlease answer by ${longDay(deadline)}.`:'', '', 'No account needed, just open the link.'].join('\n');
+  return { ok, bad, href:`mailto:?${ok.length?'bcc='+encodeURIComponent(ok.join(','))+'&':''}subject=${encodeURIComponent('When are you free? '+title)}&body=${encodeURIComponent(body)}` };
+}
 const adminLink = (id,key) => `${origin}?p=${id}&admin=${encodeURIComponent(key)}`;
 
 async function api(method, path, body, headers={}){
@@ -270,6 +285,7 @@ function renderHome(){
         <div class="field"><label>Share link: send this to people</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(r.id))}"><button class="btn" data-copy="${esc(shareLink(r.id))}">Copy</button></div></div>
         <div class="field"><label>Admin link: keep this private</label><div class="linkbox"><input type="text" readonly value="${esc(adminLink(r.id,r.adminKey))}"><button class="btn" data-copy="${esc(adminLink(r.id,r.adminKey))}">Copy</button></div>
         <div class="help">Anyone with the admin link can edit or delete the poll. It's saved in this browser, but copy it somewhere safe too.</div></div>
+        ${inviteBox(r.id, body.title, kind==='series'?null:body.deadline)}
         <div class="row" style="margin-top:12px"><a class="btn primary" href="${esc(adminLink(r.id,r.adminKey))}">Open poll</a></div>`;
       c.scrollIntoView({behavior:'smooth'}); $('f').reset();
     }catch(ex){ err.textContent=ex.message; }
@@ -670,6 +686,7 @@ function adminPanel(){
   const d=P.data, p=d.poll;
   return `<div class="card"><h2>Share</h2>
     <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
+    ${inviteBox(p.id, p.title, inst()&&inst().status==='open'?inst().deadline:null)}
     <details class="field"><summary>Settings</summary><form id="sf">
       <div class="field"><label>Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
       <div class="field"><label>Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
@@ -715,9 +732,13 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll]'); if(!t) return;
   const ds=t.dataset;
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
+  if(ds.invitepoll){ const box=$('inv_'+ds.invitepoll), r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, box&&box.value);
+    if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
+    else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
+    location.href=r.href; return; }
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
   if(ds.inst){ switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
