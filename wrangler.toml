@@ -2,6 +2,10 @@ name = "whenwho"
 main = "src/worker.js"
 compatibility_date = "2026-11-01"
 
+# Production address (Wrangler creates the DNS record and certificate).
+routes = [{ pattern = "when-who.app", custom_domain = true }]
+# workers_dev = false   # turn off the *.workers.dev address once when-who.app works
+
 # The web app (public/index.html) is served as a static asset.
 # Requests that aren't a file (e.g. /api/...) go to the Worker.
 [assets]
@@ -17,10 +21,14 @@ database_id = "f485894f-738a-4ac7-be68-bec6aeb8d13e"
 [triggers]
 crons = ["17 * * * *"]
 
-# ---- Optional: email via Cloudflare Email Service (Workers Paid plan + your own domain) ----
-# [[send_email]]
-# name = "EMAIL"
-#
-# [vars]
-# MAIL_FROM = "whenwho@your-domain.com"
-# SITE_URL = "https://whenwho.your-subdomain.workers.dev"
+# ---- Production settings ----
+# Runs on the Workers Free plan (hard daily limits, never billed). Email goes through Resend (free: 100/day, 3,000/month).
+# Secrets (never in this file), already set in production:
+#   RESEND_API_KEY     (Resend → API Keys, "Sending access" for mail.when-who.app only)
+#   TURNSTILE_SECRET   (Cloudflare → Turnstile)
+#   ADMIN_PASSWORD     (optional)
+[vars]
+MAIL_FROM = "noreply@mail.when-who.app"     # on the domain verified in Resend
+SITE_URL = "https://when-who.app"
+TURNSTILE_SITE_KEY = "0x4AAAAAAGEFcq5D-SUTLIt7"   # public site key of the Turnstile widget
+MAIL_PER_DAY = "50"                         # invite/test-email recipients per account per day

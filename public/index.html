@@ -101,6 +101,9 @@
   .bars{display:flex;align-items:flex-end;gap:3px;height:80px;margin-top:12px}
   .stack{flex:1;height:100%;display:flex;flex-direction:column-reverse}
   .bar{background:var(--yes)} .bar.best{background:var(--yes-dark)} .bar.mbar{background:var(--maybe);opacity:.8}
+  .bars.pick .stack{cursor:ew-resize;touch-action:none;border-radius:4px}
+  .bars .stack.in{background:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:inset 0 -3px 0 var(--accent)}
+  .barl span.in{color:var(--accent);font-weight:700}
   .barl{display:flex;gap:3px;font-size:10px;color:var(--muted)} .barl span{flex:1;text-align:center}
   .list{margin:8px 0 0;padding:0;list-style:none}
   .list li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
@@ -129,9 +132,15 @@
   .dd .ddp label:hover{background:var(--bg)}
   .dd .ddp input{width:auto}
   .dd .ddb{display:flex;gap:6px;margin-bottom:6px}
+  .dd .ddp.signin{width:320px;max-height:none;padding:12px}
+  .signin label{display:block;padding:0;cursor:default} .signin label:hover{background:none}
+  .signin input[type=email],.signin input[type=text],.signin input[type=password]{width:100%}
+  .signin .code{font-size:20px;letter-spacing:6px;text-align:center}
+  .signin .ts{margin-top:10px;min-height:65px}
   /* planner */
-  .pgrid .slot{position:relative;cursor:crosshair;font-size:10px;line-height:24px;text-align:center;color:var(--ink);overflow:hidden}
+  .pgrid .slot{display:block;position:relative;cursor:crosshair;font-size:10px;line-height:24px;text-align:center;color:var(--ink);overflow:hidden}
   .pgrid .slot.hm{background:color-mix(in srgb,var(--yes) var(--a),var(--card))}
+  .pgrid .slot.mo{background:color-mix(in srgb,var(--maybe) var(--a),var(--card));color:var(--muted)}
   .pgrid .slot.mb{box-shadow:inset 3px 0 0 var(--maybe)}
   .pgrid .slot.allfree{background:var(--yes-dark);color:#fff}
   .pgrid .slot.mt{outline:2px solid var(--accent);outline-offset:-2px}
@@ -214,12 +223,20 @@ let CONFIG={emailEnabled:false};
 let ME={user:null,loginEnabled:false,polls:[]};
 const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 function accountBar(){
-  if(ME.user) return `<span class="acct small muted">Signed in as <b>${esc(ME.user.name)}</b> · <a href="#" data-logout>Sign out</a></span>`;
-  if(!ME.loginEnabled) return '';
-  return `<details class="acct dd"><summary class="small">Admin login</summary><div class="ddp" style="left:auto;right:0">
-    <form class="loginf"><div><label>Username</label><input type="text" name="u" autocomplete="username" value="admin"></div>
-    <div class="field"><label>Password</label><input type="password" name="pw" autocomplete="current-password" required></div>
-    <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Sign in</button></div></form></div></details>`;
+  if(ME.user) return `<span class="acct small muted">Signed in as <b>${esc(ME.user.name)}</b> · <a href="#" data-logout>Sign out</a> · <a href="#" data-logout="all" title="Sign out on every device">everywhere</a></span>`;
+  return `<details class="acct dd" id="signin"><summary class="small">Sign in</summary><div class="ddp signin" style="left:auto;right:0">
+    <form class="codef"><label for="si_email">Your email</label><input type="email" id="si_email" name="email" autocomplete="email" maxlength="200" required>
+      <div class="ts" id="si_ts" ${CONFIG.turnstileSiteKey?'':'hidden'}></div>
+      <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Email me a code</button></div>
+      <p class="help">No password needed. We'll send you a 6-digit code. Your account is created the first time you sign in.</p></form>
+    <form class="verifyf" hidden><p class="help" style="margin-top:0">We sent a code to <b class="si_to"></b>. It's valid for 10 minutes.</p>
+      <label for="si_code">Code</label><input type="text" id="si_code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required>
+      <div class="err"></div><div class="row" style="margin-top:10px"><button class="btn primary">Sign in</button><a href="#" class="small" data-siback>Use another email</a></div></form>
+    ${ME.loginEnabled?`<details style="margin-top:12px"><summary class="small muted">Admin password</summary>
+      <form class="loginf" style="margin-top:8px"><input type="hidden" name="u" value="admin">
+      <input type="password" name="pw" autocomplete="current-password" required aria-label="Admin password">
+      <div class="err"></div><div class="row" style="margin-top:8px"><button class="btn">Sign in as admin</button></div></form></details>`:''}
+  </div></details>`;
 }
 // After signing in, move polls this browser has admin links for into the account.
 async function claimLocalPolls(){
@@ -228,11 +245,46 @@ async function claimLocalPolls(){
     try{ await api('POST',`/polls/${p.id}/claim`,{},{'x-admin-key':p.adminKey}); }catch(e){}
   }
 }
+// Turnstile ("I'm human" check) is loaded only when someone opens the sign-in box.
+const TS={id:null,token:'',loading:null};
+function loadTurnstile(){
+  if(!TS.loading) TS.loading=new Promise((ok,fail)=>{ const sc=document.createElement('script');
+    sc.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async=true; sc.onload=ok; sc.onerror=fail; document.head.appendChild(sc); });
+  return TS.loading;
+}
+async function showTurnstile(){
+  const el=$('si_ts'); if(!CONFIG.turnstileSiteKey||!el||el.childElementCount) return;
+  try{ await loadTurnstile(); TS.token='';
+    TS.id=turnstile.render(el,{sitekey:CONFIG.turnstileSiteKey,size:'flexible',callback:t=>{TS.token=t;},'expired-callback':()=>{TS.token='';}}); }
+  catch(e){ el.textContent='Couldn’t load the “I’m human” check. Reload the page and try again.'; }
+}
+document.addEventListener('toggle',e=>{ if(e.target.id==='signin'&&e.target.open){ showTurnstile(); const i=$('si_email'); if(i) i.focus(); } },true);
+let SI_EMAIL='';
 document.addEventListener('submit',async e=>{
-  const f=e.target.closest('.loginf'); if(!f) return; e.preventDefault();
-  const err=f.querySelector('.err'); err.textContent='';
-  try{ await api('POST','/auth/login',{username:f.u.value,password:f.pw.value}); ME.user={name:'admin'}; await claimLocalPolls(); location.reload(); }
-  catch(ex){ err.textContent=ex.message; }
+  const cf=e.target.closest('.codef'), vf=e.target.closest('.verifyf'), lf=e.target.closest('.loginf');
+  if(!cf&&!vf&&!lf) return; e.preventDefault();
+  const f=cf||vf||lf, err=f.querySelector('.err'), btn=f.querySelector('button'); err.textContent=''; btn.disabled=true;
+  try{
+    if(cf){
+      if(CONFIG.turnstileSiteKey&&!TS.token) throw new Error('Please complete the “I’m human” check first.');
+      SI_EMAIL=cf.email.value.trim();
+      await api('POST','/auth/code',{email:SI_EMAIL,turnstileToken:TS.token});
+      cf.hidden=true; const v=f.parentNode.querySelector('.verifyf'); v.hidden=false; v.querySelector('.si_to').textContent=SI_EMAIL; v.code.value=''; v.code.focus();
+    } else if(vf){
+      const r=await api('POST','/auth/verify',{email:SI_EMAIL,code:vf.code.value});
+      ME.user=r.user; await claimLocalPolls(); location.reload(); return;
+    } else {
+      await api('POST','/auth/login',{username:'admin',password:lf.pw.value}); ME.user={name:'admin'}; await claimLocalPolls(); location.reload(); return;
+    }
+  }catch(ex){ err.textContent=ex.message; }
+  finally{
+    btn.disabled=false;
+    if(cf&&window.turnstile&&TS.id!==null){ try{ turnstile.reset(TS.id); }catch(x){} TS.token=''; } // a token works once
+  }
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('[data-siback]')) return; e.preventDefault();
+  const box=e.target.closest('.signin'); box.querySelector('.verifyf').hidden=true; box.querySelector('.codef').hidden=false; $('si_email').focus();
 });
 const hh = h => `${pad(h%24)}:00`;
 function hoursText(arr){
@@ -295,7 +347,7 @@ function renderHome(){
         <div class="row" style="margin-top:16px"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
       </form>
     </div>`:`<div class="card"><h2>New poll</h2>
-      <p class="help">Only the organiser can create polls. ${ME.loginEnabled?'Sign in with “Admin login” at the top right.':'Login isn’t set up on this site yet (ADMIN_PASSWORD is missing).'}</p></div>`}
+      <p class="help">Sign in with your email (“Sign in” at the top right) to create polls. No password needed. Answering a poll never needs an account.</p></div>`}
     <div class="card"><h2>Your polls</h2>
       ${ME.user?(server.length?`<ul class="list">${server.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a> <span class="muted small">${p.kind==='series'?'series':p.kind==='single'?'one-off':''}</span></span>
         <button class="btn" data-copy="${esc(shareLink(p.id))}">Copy share link</button></li>`).join('')}</ul>`
@@ -354,8 +406,8 @@ function renderHome(){
 
 // ================= POLL =================
 const P = { id:null, data:null, adminKey:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
-  tab:'mine', mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false,
-  who:null, whoOpen:false, gview:'overview', pweek:0, drafts:[], dmeta:null };
+  tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, sched:null, dirty:false, saving:false,
+  who:null, whoOpen:false, gview:'overview', pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null };
 
 function headers(){ const h={}; if(P.adminKey) h['x-admin-key']=P.adminKey; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -377,7 +429,7 @@ async function loadPoll(first){
   if(!P.data.isAdmin && P.adminKey){ store.del('admin:'+P.id); P.adminKey=null; }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.dirty=false; P.sched=null; P.range=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     P.myResp = store.get(respKey(), null);
     P.mine = { name: store.get('myName',''), email: store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
@@ -593,7 +645,7 @@ function renderMeetings(){
       ${d.isAdmin?`${d.emailEnabled?`<button class="btn primary" data-sendinvite="${m.id}">${m.sentAt?'Send invite again':'Send invite email'}</button>`:''}
         <button class="btn" data-mail="${m.id}">${d.emailEnabled?'Open in my email app':'Email invite'}</button><button class="btn" data-copyinvite="${m.id}">Copy invite text</button><button class="btn danger" data-delmeet="${m.id}">Delete</button>`:''}</div>
       ${d.isAdmin?`<div class="help">${m.sentAt?`Invite emailed ${esc(new Date(m.sentAt).toLocaleString())}. `:''}${noMail.length?`No email for: ${esc(noMail.map(r=>r.name).join(', '))}.`:''}</div>`:''}</div>`; }).join('')}
-    ${d.isAdmin&&!d.emailEnabled?`<p class="help">“Email invite” opens your email app with the invitees who left an address in BCC. To send emails from the site itself, set up Cloudflare Email Service (see the README).</p>`:''}</div>`;
+    ${d.isAdmin&&!d.emailEnabled?`<p class="help">“Email invite” opens your email app with the invitees who left an address in BCC. To send emails from the site itself, set up Resend (see the README).</p>`:''}</div>`;
 }
 async function saveMeetings(list){
   try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{meetings:list},headers()); P.data.instance=r.instance;
@@ -721,12 +773,13 @@ function renderGroup(el){
     const bg=s.peak?`background:color-mix(in srgb,var(--yes) ${Math.round(10+r*55)}%,var(--card));border-color:var(--yes)`:'';
     return `<div class="day heat${P.ovDay===k?' sel':''}" style="${bg}" data-ov="${k}"><div class="n">${day}</div><div class="t">${tot&&(s.peak||s.peakMaybe)?`${s.peak}/${tot}${s.peakMaybe?` · +${s.peakMaybe}?`:''}`:''}</div>${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   if(P.ovDay && S[P.ovDay]){
-    const s=S[P.ovDay];
+    const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
+    const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
     h+=`<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-      <div class="row"><h3 class="grow">${esc(dayLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting</button>`:''}</div>
+      <div class="row"><h3 class="grow">${esc(dayLabel(P.ovDay))}</h3>${d.isAdmin&&!P.sched?`${sr?'<button class="btn" data-clearrange>Clear time</button>':''}<button class="btn primary" data-schedule="${P.ovDay}">★ Schedule a meeting${sr?` · ${esc(rg)}`:''}</button>`:''}</div>
       <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best time ${esc(s.window)} (${s.peak} available)`:''}</div>
-      ${slotsOn?`<div class="bars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
-      <div class="barl">${H.map(x=>`<span>${x}</span>`).join('')}</div>
+      ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time${sr?` (selected: <b>${esc(rg)}</b>)`:''}.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
       <div class="legend"><span style="--c:var(--yes)">Available</span><span style="--c:var(--yes-dark)">Best hours</span><span style="--c:var(--maybe)">Maybe</span></div>`:''}
       ${P.sched&&P.sched.date===P.ovDay?schedForm():''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'No answer')}</span></div>${st.cls==='part'?ratioBar(x.v):''}</div>`; }).join('')}</div></div>`;
@@ -743,12 +796,43 @@ function renderGroup(el){
   el.innerHTML=h;
   wireWho();
   if(P.sched&&P.sched.date===P.ovDay) wireSched();
+  if(d.isAdmin&&slotsOn) wireBars();
+}
+
+// ---- hour-range picking on the day bars (admin) ----
+function pickRange(){ // [start,end) currently picked for the open day, or null
+  const sc=P.sched;
+  if(sc&&sc.date===P.ovDay) return sc.allDay?null:[sc.start,sc.end];
+  return P.range&&P.range.date===P.ovDay?[P.range.start,P.range.end]:null;
+}
+function setRange(st,en){
+  const sc=P.sched;
+  if(sc&&sc.date===P.ovDay){ sc.allDay=false; sc.start=st; sc.end=en; autoPick(); }
+  else P.range=st==null?null:{date:P.ovDay,start:st,end:en};
+  renderBody();
+}
+function wireBars(){
+  const box=$('ovbars'); if(!box) return;
+  const at=(x,y)=>{ const el=document.elementFromPoint(x,y), st=el&&el.closest&&el.closest('[data-bh]'); return st&&box.contains(st)?+st.dataset.bh:null; };
+  let a=null, b=null, moved=false;
+  const show=()=>{ const lo=Math.min(a,b), hi=Math.max(a,b);
+    box.querySelectorAll('[data-bh]').forEach(el=>{ const hr=+el.dataset.bh; el.classList.toggle('in',hr>=lo&&hr<=hi); }); };
+  const move=e=>{ if(a===null) return; const hr=at(e.clientX,e.clientY); if(hr!==null&&hr!==b){ b=hr; moved=true; show(); } };
+  const end=()=>{ window.removeEventListener('pointermove',move); if(a===null) return;
+    const lo=Math.min(a,b), hi=Math.max(a,b)+1, cur=pickRange(); a=null;
+    if(!moved&&cur&&cur[0]===lo&&cur[1]===hi&&!(P.sched&&P.sched.date===P.ovDay)) setRange(null); // tap the single picked hour again to clear
+    else setRange(lo,hi); };
+  box.addEventListener('pointerdown',e=>{ const hr=at(e.clientX,e.clientY); if(hr===null) return; e.preventDefault();
+    a=b=hr; moved=false; show();
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',end,{once:true}); window.addEventListener('pointercancel',end,{once:true}); });
 }
 
 // ---- schedule form (admin) ----
 function openSched(date){
   const s=stats(date), slotsOn=P.data.poll.answerMode!=='days';
-  const [st,en]=slotsOn?bestBlock(s):[hours()[0],hours()[0]+2];
+  const r=P.range&&P.range.date===date?[P.range.start,P.range.end]:null;
+  const [st,en]=r||(slotsOn?bestBlock(s):[hours()[0],hours()[0]+2]);
   P.sched={date, allDay:!slotsOn, start:st, end:Math.min(en,24), title:P.data.poll.title, location:'', note:'', who:'some', picked:null};
   autoPick(); renderBody();
 }
@@ -789,7 +873,7 @@ async function saveSched(){
   if(participants!=='all' && !participants.length){ $('mt_err').textContent='Select at least one person, or choose Everyone.'; return; }
   const m={date:sc.date, allDay:sc.allDay, title:sc.title, location:sc.location, note:sc.note, participants};
   if(!sc.allDay){ m.start=sc.start; m.end=sc.end; }
-  if(await saveMeetings([...inst().meetings, m])){ P.sched=null; renderBody(); toast('Meeting saved'); }
+  if(await saveMeetings([...inst().meetings, m])){ P.sched=null; P.range=null; renderBody(); toast('Meeting saved'); }
 }
 
 function hourOpts(lo,hi,cur){ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh(h)}</option>`; return o; }
@@ -805,24 +889,30 @@ function renderPlanner(S){
     Each draft invites the people selected when you drew it, so you can switch the Participants list and plan meetings for another group.</p>
     <div class="row" style="margin-top:8px"><button class="btn" data-suggest>Suggest best times</button>${P.drafts.length?'<button class="btn" data-cleardrafts>Clear drafts</button>':''}</div>`;
   if(slotsOn){
-    const wks=weeks(d.dates); P.pweek=Math.min(Math.max(0,P.pweek),wks.length-1); const wk=wks[P.pweek], real=wk.filter(Boolean);
-    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P.pweek===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
-      <button class="btn" data-pwk="1" ${P.pweek===wks.length-1?'disabled':''}>›</button></div>
-      <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
+    // Pages: whole weeks, or only the days where someone selected is available/maybe (plus days with drafts or meetings), 5 at a time.
+    const PER=5, avail=d.dates.filter(k=>S[k].peak>0||S[k].cm.some(x=>x>0)||P.drafts.some(x=>x.date===k)||ms.some(x=>x.date===k));
+    const pages=P.pavail?Array.from({length:Math.ceil(avail.length/PER)},(_,i)=>{ const pg=avail.slice(i*PER,i*PER+PER); while(pg.length<PER) pg.push(null); return pg; }):weeks(d.dates);
+    h+=`<div class="row" style="margin-top:10px"><span class="muted small">Show:</span><div class="seg">
+      <button data-pview="avail" class="${P.pavail?'on':''}">Available days (${avail.length})</button><button data-pview="week" class="${P.pavail?'':'on'}">Full weeks</button></div></div>`;
+    if(!pages.length){ h+=`<p class="help">None of the selected people has marked any hours as available yet.</p>`; return h+draftTray(); }
+    const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
+    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">(${P[pk]+1}/${pages.length})</span>`:''}</span>
+      <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''}>›</button></div>
+      <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.date===k&&x.allDay);
-      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dayLabel(k))}"`:''}>${WD[i]}<b>${k?parseD(k).getDate():'&nbsp;'}</b></div>`; });
+      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dayLabel(k))}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?parseD(k).getDate():'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
         const c=S[k].cy[ri], m=S[k].cm[ri];
         let cls='slot'+pos;
-        if(c===tot) cls+=' allfree'; else if(c) cls+=' hm';
+        if(c===tot) cls+=' allfree'; else if(c) cls+=' hm'; else if(m) cls+=' mo';
         if(c<tot&&m&&c+m>=tot) cls+=' mb';
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
         if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
-        h+=`<div class="${cls}" style="--a:${Math.round(12+c/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dayLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||''}</div>`; }); });
+        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dayLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>';
-    h+=`<div class="legend"><span style="--c:color-mix(in srgb,var(--yes) 45%,var(--card))">Some free (number = how many)</span><span style="--c:var(--yes-dark)">Everyone selected free</span><span style="--c:var(--maybe)">Rest are “maybe”</span><span style="--c:var(--accent)">Draft / ★ scheduled (outline)</span></div>`;
+    h+=`<div class="legend"><span style="--c:color-mix(in srgb,var(--yes) 45%,var(--card))">Some free (number = how many)</span><span style="--c:var(--yes-dark)">Everyone selected free</span><span style="--c:color-mix(in srgb,var(--maybe) 45%,var(--card))">Only “maybe” (n? = how many)</span><span style="--c:var(--maybe)">Rest are “maybe” (stripe)</span><span style="--c:var(--accent)">Draft / ★ scheduled (outline)</span></div>`;
   } else {
     const md=meetingDays();
     h+=calendar(d.dates,(k,day)=>{ const s=S[k], r=tot?s.peak/tot:0, dr=P.drafts.some(x=>x.date===k);
@@ -963,14 +1053,14 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-claim],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-claim],[data-recall],[data-pedit],[data-pdel],[data-padd]'); if(!t) return;
   const ds=t.dataset;
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.invitepoll){ const box=$('inv_'+ds.invitepoll), r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, box&&box.value);
     if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
     else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
     location.href=r.href; return; }
-  if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{}); }catch(ex){} location.reload(); return; }
+  if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.claim){ const p=store.get('myPolls',[]).find(x=>x.id===ds.claim); if(!p) return;
     try{ await api('POST',`/polls/${p.id}/claim`,{},{'x-admin-key':p.adminKey}); ME.polls.unshift({id:p.id,title:p.title,kind:''}); toast('Added to your account'); renderHome(); }catch(ex){ toast(ex.message); } return; }
   if(ds.recall!==undefined){ recallMine(); return; }
@@ -996,7 +1086,8 @@ document.addEventListener('click',async e=>{
   if(ds.gview){ P.gview=ds.gview; P.sched=null; renderBody(); return; }
   if(ds.whoall!==undefined){ setWho(new Set((P.data.responses||[]).map(r=>r.id))); return; }
   if(ds.whonone!==undefined){ setWho(new Set()); return; }
-  if(ds.pwk){ P.pweek+=+ds.pwk; renderBody(); return; }
+  if(ds.pwk){ P[P.pavail?'ppage':'pweek']+=+ds.pwk; renderBody(); return; }
+  if(ds.pview){ P.pavail=ds.pview==='avail'; renderBody(); return; }
   if(ds.pday){ const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
   if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
@@ -1009,6 +1100,7 @@ document.addEventListener('click',async e=>{
   if(ds.ov){ if(P.ovDay!==ds.ov) P.sched=null; P.ovDay=P.ovDay===ds.ov?null:ds.ov; renderBody(); return; }
   if(ds.schedule){ openSched(ds.schedule); return; }
   if(ds.cancelsched!==undefined){ P.sched=null; renderBody(); return; }
+  if(ds.clearrange!==undefined){ P.range=null; renderBody(); return; }
   if(ds.savesched!==undefined){ saveSched(); return; }
   if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;

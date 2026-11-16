@@ -1,13 +1,18 @@
-// whenwho: Cloudflare Worker + D1 (+ optional Cloudflare Email Service)
+// whenwho: Cloudflare Worker + D1 (+ optional email via Resend)
 //
 // Bindings / variables:
 //   DB        (required) D1 database
 //   ASSETS    (optional) static assets binding serving /public; the single-file build inlines the page instead
-//   EMAIL     (optional) Email Service "send_email" binding. Turns on server-sent emails
-//   MAIL_FROM (optional) sender address on a domain onboarded to Email Service, e.g. polls@example.com
+//   RESEND_API_KEY (optional secret) Resend API key (sending access). With MAIL_FROM, turns on server-sent emails
+//   MAIL_FROM (optional) sender address on a domain verified in Resend, e.g. noreply@example.com
+//   MAIL_PER_DAY (optional) recipients of invites / test emails per account (or per poll without one) per day, default 50
 //   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
-//   ADMIN_PASSWORD (secret) password of the built-in "admin" account. Only a signed-in admin can create polls.
-//                  Set it with `npx wrangler secret put ADMIN_PASSWORD` (and in .dev.vars locally). Unset = login disabled.
+//   ADMIN_PASSWORD (optional secret) password of the built-in "admin" account. Unset = admin login hidden.
+//                  Set it with `npx wrangler secret put ADMIN_PASSWORD` (and in .dev.vars locally).
+//   TURNSTILE_SITE_KEY (optional var) + TURNSTILE_SECRET (secret): bot check before a sign-in code is emailed.
+//
+// Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
+// Only signed-in users can create polls. Without them, codes are written to the log (local development only).
 
 const MAX_RANGE_DAYS = 92;
 const MAX_RESPONSES = 300;
@@ -17,17 +22,23 @@ const MAX_PARTICIPANTS = 500;
 const SESSION_DAYS = 30;
 const MAX_FAILS = 10;          // failed logins / name lookups per IP ...
 const FAIL_WINDOW_MIN = 15;    // ... within this many minutes
+const CODE_MINUTES = 10;       // a sign-in code is valid this long
+const CODE_TRIES = 5;          // wrong guesses before a code is thrown away
+const CODE_SENDS_IP = 5;       // sign-in emails per IP ...
+const CODE_SENDS_EMAIL = 3;    // ... and per address, within FAIL_WINDOW_MIN
+const MAX_POLLS_PER_USER = 100;
+const MAIL_PER_DAY = 50;       // default for env.MAIL_PER_DAY (Resend's free plan allows 100 emails a day in total)
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith('/api/')) return servePage(request, env);
+    if (!url.pathname.startsWith('/api/')) return secure(await servePage(request, env), url);
     try {
-      return await route(request, env, ctx, url);
+      return secure(await route(request, env, ctx, url), url);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message, ...e.extra }, e.status);
+      if (e instanceof HttpError) return secure(json({ error: e.message, ...e.extra }, e.status), url);
       console.error(e);
-      return json({ error: 'Something went wrong on the server.' }, 500);
+      return secure(json({ error: 'Something went wrong on the server.' }, 500), url);
     }
   },
   // Cron trigger (optional): opens new polls in series on time and sends notification / reminder emails.
@@ -41,6 +52,31 @@ function servePage(request, env) {
   return env.ASSETS.fetch(request);
 }
 
+// Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  'frame-src https://challenges.cloudflare.com',
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+].join('; ');
+function secure(res, url) {
+  const r = new Response(res.body, res);
+  const h = r.headers;
+  h.set('x-content-type-options', 'nosniff');
+  h.set('referrer-policy', 'same-origin');
+  h.set('x-frame-options', 'DENY');
+  h.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  if ((h.get('content-type') || '').startsWith('text/html')) h.set('content-security-policy', CSP);
+  if (url.protocol === 'https:') h.set('strict-transport-security', 'max-age=31536000');
+  return r;
+}
+
 class HttpError extends Error {
   constructor(status, message, extra = {}) { super(message); this.status = status; this.extra = extra; }
 }
@@ -52,17 +88,23 @@ async function route(request, env, ctx, url) {
   const m = request.method;
   const cookies = parseCookies(request);
   // A request that carries the session cookie and changes something must come from this site (CSRF guard).
-  if (cookies.ww_session && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
+  // Sign-in requests too, so another site can't sign a visitor into an attacker's account.
+  if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env) });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '' });
   if (parts[1] === 'auth') {
+    if (parts[2] === 'code' && m === 'POST') return sendLoginCode(request, env, url);
+    if (parts[2] === 'verify' && m === 'POST') return verifyLoginCode(request, env, url);
     if (parts[2] === 'login' && m === 'POST') return login(request, env, url);
-    if (parts[2] === 'logout' && m === 'POST') return logout(env, cookies, url);
+    if (parts[2] === 'logout' && m === 'POST') return logout(request, env, cookies, url);
     throw new HttpError(404, 'Not found');
   }
   if (parts[1] === 'me') {
-    if (!parts[2] && m === 'GET') return json({ user: userOf(request) ? { name: userOf(request).id } : null, loginEnabled: !!env.ADMIN_PASSWORD });
+    if (!parts[2] && m === 'GET') {
+      const u = userOf(request);
+      return json({ user: u ? { name: u.email || u.id, email: u.email || '' } : null, loginEnabled: !!env.ADMIN_PASSWORD });
+    }
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
     throw new HttpError(404, 'Not found');
   }
@@ -298,17 +340,102 @@ function sessionCookie(url, token, maxAge) {
 async function getUser(env, cookies) {
   const token = cookies.ww_session;
   if (!token || token.length > 100) return null;
-  const s = await env.DB.prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(await sha256('session:' + token), now()).first();
-  return s ? { id: s.user_id } : null;
+  const s = await env.DB.prepare('SELECT s.user_id, u.email FROM sessions s LEFT JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?')
+    .bind(await sha256('session:' + token), now()).first();
+  return s ? { id: s.user_id, email: s.email || '' } : null;
 }
 const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
-async function checkThrottle(env, request, kind) {
+// login_attempts doubles as a rate-limit log; `key` is an IP or 'e:' + hash of an email address.
+async function checkThrottle(env, request, kind, { key = clientIp(request), max = MAX_FAILS, msg } = {}) {
   const since = new Date(Date.now() - FAIL_WINDOW_MIN * 60000).toISOString();
-  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(clientIp(request), kind, since).first('n');
-  if (n >= MAX_FAILS) throw new HttpError(429, `Too many failed attempts. Try again in ${FAIL_WINDOW_MIN} minutes.`);
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, kind, since).first('n');
+  if (n >= max) throw new HttpError(429, msg || `Too many failed attempts. Try again in ${FAIL_WINDOW_MIN} minutes.`);
 }
-const recordFail = (env, request, kind) =>
-  env.DB.prepare('INSERT INTO login_attempts (ip, kind, at) VALUES (?, ?, ?)').bind(clientIp(request), kind, now()).run();
+const recordFail = (env, request, kind, key = clientIp(request)) =>
+  env.DB.prepare('INSERT INTO login_attempts (ip, kind, at) VALUES (?, ?, ?)').bind(key, kind, now()).run();
+
+async function startSession(env, url, userId) {
+  const token = secret();
+  const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
+  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await sha256('session:' + token), userId, expires, now()).run();
+  return sessionCookie(url, token, SESSION_DAYS * 86400);
+}
+
+// ---------- sign-in by email code ----------
+async function verifyTurnstile(env, request, token) {
+  if (!env.TURNSTILE_SECRET) return; // not configured (local development)
+  if (typeof token !== 'string' || !token || token.length > 4000) throw new HttpError(400, 'Please complete the “I’m human” check');
+  const form = new FormData();
+  form.append('secret', env.TURNSTILE_SECRET);
+  form.append('response', token);
+  form.append('remoteip', clientIp(request));
+  const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form });
+  const out = await r.json().catch(() => ({}));
+  if (!out.success) throw new HttpError(400, 'The “I’m human” check failed. Please try again.');
+}
+const codeHash = (mail, code) => sha256(`code:${mail}:${code}`);
+
+async function sendLoginCode(request, env, url) {
+  const b = await body(request);
+  const mail = email(b.email);
+  if (!mail) throw new HttpError(400, 'Enter your email address');
+  const addr = mail.toLowerCase();
+  const tooMany = `Too many sign-in emails. Try again in ${FAIL_WINDOW_MIN} minutes.`;
+  await checkThrottle(env, request, 'code-send', { max: CODE_SENDS_IP, msg: tooMany });
+  const ekey = 'e:' + (await sha256('mail:' + addr));
+  await checkThrottle(env, request, 'code-send', { key: ekey, max: CODE_SENDS_EMAIL, msg: tooMany });
+  await verifyTurnstile(env, request, b.turnstileToken);
+  await recordFail(env, request, 'code-send');
+  await recordFail(env, request, 'code-send', ekey);
+
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+  const code = String(n).padStart(6, '0');
+  const expires = new Date(Date.now() + CODE_MINUTES * 60000).toISOString();
+  await env.DB.prepare('INSERT OR REPLACE INTO login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)')
+    .bind(addr, await codeHash(addr, code), expires, now()).run();
+
+  const site = siteUrl(env, url.origin);
+  const text = `Your whenwho sign-in code is:\n\n    ${code}\n\nIt is valid for ${CODE_MINUTES} minutes. Enter it on ${site} to sign in.\n\nIf you didn't ask for this, you can ignore this email: nobody can sign in without the code.`;
+  if (emailEnabled(env)) {
+    await sendEmail(env, {
+      fromName: 'whenwho', to: [addr],
+      subject: `Your sign-in code: ${code}`, text,
+      html: `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5">${escHtml(text).replace(/\n/g, '<br>').replace(code, `<b style="font-size:22px;letter-spacing:3px">${code}</b>`)}</div>`,
+    });
+  } else {
+    console.log(`[dev] sign-in code for ${addr}: ${code}`); // email not set up: local development
+  }
+  // Same answer whether or not the address has an account.
+  return json({ ok: true, minutes: CODE_MINUTES });
+}
+
+async function verifyLoginCode(request, env, url) {
+  await checkThrottle(env, request, 'code');
+  const b = await body(request);
+  const addr = (email(b.email) || '').toLowerCase();
+  const code = typeof b.code === 'string' ? b.code.replace(/\s+/g, '') : '';
+  const wrong = new HttpError(401, 'That code is wrong or has expired. Check the latest email or ask for a new code.');
+  if (!addr || !/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code from the email');
+  const row = await env.DB.prepare('SELECT * FROM login_codes WHERE email = ?').bind(addr).first();
+  if (!row || row.expires_at < now() || row.attempts >= CODE_TRIES) {
+    if (row) await env.DB.prepare('DELETE FROM login_codes WHERE email = ?').bind(addr).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  if (!safeEqual(await codeHash(addr, code), row.code_hash)) {
+    await env.DB.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').bind(addr).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  // One-time: only the request that deletes the row may sign in.
+  const del = await env.DB.prepare('DELETE FROM login_codes WHERE email = ? AND code_hash = ?').bind(addr, row.code_hash).run();
+  if (!del.meta || !del.meta.changes) throw wrong;
+  const t = now();
+  await env.DB.prepare('INSERT INTO users (id, email, created_at, last_login_at) VALUES (?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at')
+    .bind('u_' + randomId(16), addr, t, t).run();
+  const user = await env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(addr).first();
+  return json({ user: { name: user.email, email: user.email } }, 200, { 'set-cookie': await startSession(env, url, user.id) });
+}
 
 async function login(request, env, url) {
   if (!env.ADMIN_PASSWORD) throw new HttpError(400, 'Login isn’t set up on this site (ADMIN_PASSWORD is missing)');
@@ -321,13 +448,14 @@ async function login(request, env, url) {
     await recordFail(env, request, 'login');
     throw new HttpError(401, 'Wrong username or password');
   }
-  const token = secret(), t = now();
-  const expires = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
-  await env.DB.prepare('INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(await sha256('session:' + token), 'admin', expires, t).run();
-  return json({ user: { name: 'admin' } }, 200, { 'set-cookie': sessionCookie(url, token, SESSION_DAYS * 86400) });
+  return json({ user: { name: 'admin' } }, 200, { 'set-cookie': await startSession(env, url, 'admin') });
 }
-async function logout(env, cookies, url) {
-  if (cookies.ww_session) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256('session:' + cookies.ww_session)).run();
+// { everywhere: true } ends all sessions of this account (e.g. after using a shared computer).
+async function logout(request, env, cookies, url) {
+  const b = await body(request);
+  const user = userOf(request);
+  if (b.everywhere && user) await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
+  else if (cookies.ww_session) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256('session:' + cookies.ww_session)).run();
   return json({ ok: true }, 200, { 'set-cookie': sessionCookie(url, '', 0) });
 }
 function requireUser(request) {
@@ -398,7 +526,9 @@ function readPollSettings(b, existing) {
 
 async function createPoll(request, env) {
   const user = userOf(request);
-  if (!user) throw new HttpError(401, 'Only the organiser can create polls. Sign in first.');
+  if (!user) throw new HttpError(401, 'Sign in to create polls.');
+  const owned = await env.DB.prepare('SELECT COUNT(*) AS n FROM polls WHERE owner_id = ?').bind(user.id).first('n');
+  if (owned >= MAX_POLLS_PER_USER) throw new HttpError(429, `You can have at most ${MAX_POLLS_PER_USER} polls. Delete an old one first.`);
   const b = await body(request);
   const p = readPollSettings(b, null);
   const id = randomId(10), adminKey = secret(), t = now();
@@ -571,8 +701,30 @@ async function calendar(env, url, id) {
   });
 }
 
-// ---------- email (optional: Cloudflare Email Service) ----------
-const emailEnabled = (env) => !!(env.EMAIL && env.MAIL_FROM);
+// ---------- email (optional: Resend, https://resend.com/docs/api-reference/emails/send-email) ----------
+const emailEnabled = (env) => !!(env.RESEND_API_KEY && env.MAIL_FROM);
+const headerSafe = (s) => String(s || '').replace(/[\r\n<>"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+const b64 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
+// One message: { fromName, to: [..], bcc?: [..], replyTo?, subject, text, html, attachments?: [{ content: Uint8Array, filename }] }
+async function sendEmail(env, m) {
+  const payload = {
+    from: `"${headerSafe(m.fromName) || 'whenwho'}" <${env.MAIL_FROM}>`,
+    to: m.to, subject: String(m.subject).replace(/[\r\n]+/g, ' ').slice(0, 200), text: m.text, html: m.html,
+    ...(m.bcc && m.bcc.length ? { bcc: m.bcc } : {}),
+    ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+    ...(m.attachments ? { attachments: m.attachments.map((a) => ({ filename: a.filename, content: b64(a.content) })) } : {}),
+  };
+  const r = await fetch((env.RESEND_API_URL || 'https://api.resend.com') + '/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (r.ok) return;
+  const detail = await r.text().catch(() => '');
+  console.error('resend', r.status, detail.slice(0, 300));
+  if (r.status === 429) throw new HttpError(503, 'The site’s email limit is reached for now. Try again later (or tomorrow).');
+  throw new HttpError(502, 'The email couldn’t be sent. Try again later.');
+}
 const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, '');
 const fmtDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const hh = (h) => `${pad(h % 24)}:00`;
@@ -585,17 +737,28 @@ function periodText(poll, inst) {
   const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   return `${f(inst.start_date)} – ${f(inst.end_date)}`;
 }
-async function sendMail(env, poll, { to, subject, text, attachments }) {
+// Emails started by a person (invites, test emails) count against a daily cap per account, or per poll without one.
+async function mailQuota(env, poll, count) {
+  const key = poll.owner_id || 'poll:' + poll.id;
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const used = await env.DB.prepare('SELECT COALESCE(SUM(n), 0) AS n FROM mail_log WHERE user_id = ? AND at > ?').bind(key, since).first('n');
+  const max = Number(env.MAIL_PER_DAY) || MAIL_PER_DAY;
+  if (used + count > max) throw new HttpError(429, `Daily email limit reached (${max} recipients). Try again tomorrow.`);
+  await env.DB.prepare('INSERT INTO mail_log (user_id, n, at) VALUES (?, ?, ?)').bind(key, count, now()).run();
+}
+async function sendMail(env, poll, { to, subject, text, attachments, quota = false }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
+  if (quota) await mailQuota(env, poll, list.length);
   const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;white-space:pre-wrap">${escHtml(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')}</div>`;
   let sent = 0;
   for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
     const bcc = list.slice(i, i + 49);
-    await env.EMAIL.send({
-      from: { email: env.MAIL_FROM, name: poll.title.slice(0, 60) },
-      to: poll.admin_email || env.MAIL_FROM,
-      bcc, subject, text, html,
+    const to = (poll.admin_email || env.MAIL_FROM).toLowerCase();
+    await sendEmail(env, {
+      fromName: poll.title,
+      to: [to],
+      bcc: bcc.filter((e) => e !== to), subject, text, html,
       ...(poll.admin_email ? { replyTo: poll.admin_email } : {}),
       ...(attachments ? { attachments } : {}),
     });
@@ -622,7 +785,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
     '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
-    attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }] });
+    attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }], quota: true });
   mt.sentAt = now();
   await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ?').bind(JSON.stringify(meetings), iid).run();
   return json({ ok: true, sent, missing: invited.filter((r) => !r.email).map((r) => r.name) });
@@ -632,7 +795,7 @@ async function testEmail(request, env, url, id) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
   if (!poll.admin_email) throw new HttpError(400, 'Add your email in the poll settings first');
-  await sendMail(env, poll, { to: [poll.admin_email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}` });
+  await sendMail(env, poll, { to: [poll.admin_email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}`, quota: true });
   return json({ ok: true });
 }
 
@@ -674,6 +837,8 @@ async function runScheduled(env) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now()),
       env.DB.prepare('DELETE FROM login_attempts WHERE at < ?').bind(new Date(Date.now() - 86400000).toISOString()),
+      env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(now()),
+      env.DB.prepare('DELETE FROM mail_log WHERE at < ?').bind(new Date(Date.now() - 2 * 86400000).toISOString()),
     ]);
   } catch (e) { console.error('cleanup', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
