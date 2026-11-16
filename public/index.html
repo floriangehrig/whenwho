@@ -112,7 +112,34 @@
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
   input[readonly]{background:var(--sunken);color:var(--ink-2)}
   textarea{min-height:76px;resize:vertical;line-height:1.45}
+  /* email entry: each address becomes a square-ish pill */
+  .emails{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:76px;align-content:flex-start;padding:7px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);cursor:text;transition:border-color .12s,box-shadow .12s}
+  .emails:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
+  .emails:focus-within{border-color:var(--accent);box-shadow:var(--ring)}
+  .emails input[type=text]{flex:1 1 160px;min-width:120px;min-height:30px;width:auto;padding:4px 4px;border:0;background:transparent;box-shadow:none}
+  .em-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;font-size:13.5px;font-weight:500;line-height:1.3;padding:4px 4px 4px 9px;border-radius:5px;background:var(--accent-weak);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .em-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .em-pill.bad{background:var(--no-bg);color:var(--no);border-color:color-mix(in srgb,var(--no) 40%,transparent)}
+  .em-pill button{flex:none;width:20px;height:20px;padding:0;border:0;border-radius:3px;background:transparent;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.7}
+  .em-pill button:hover{opacity:1;background:color-mix(in srgb,currentColor 14%,transparent)}
   input[type=number]{width:84px}
+  /* day/time pattern picker */
+  .patp{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken)}
+  .pat-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+  .pat-row.hide{display:none}
+  .pat-l{flex:none;width:44px;font-size:13px;font-weight:600;color:var(--muted)}
+  .pat-in{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:14px}
+  .pat-in .num-sm{margin:0 2px}
+  .wdchips{display:inline-flex;flex-wrap:wrap;gap:4px}
+  .wdc{font:inherit;font-size:13px;font-weight:600;width:38px;height:34px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+  .wdc:hover{border-color:var(--accent);color:var(--ink)}
+  .wdc.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pat-pre{display:inline-flex;flex-wrap:wrap;gap:2px 10px}
+  .pat-pre button{font:inherit;font-size:13px;font-weight:500;border:0;background:none;padding:2px 0;color:var(--accent);cursor:pointer}
+  .pat-pre button:hover{text-decoration:underline}
+  .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
+  .qf{margin-top:12px}
+  @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
   .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
   select{appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;
@@ -334,8 +361,11 @@
   /* ---------- picker ---------- */
   .picker{display:flex;gap:18px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken)}
   .pk-body{flex:1;min-width:0}
-  .pk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:4px}
+  .pk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));grid-auto-rows:38px;gap:4px;align-content:start;min-height:calc(38px * 5 + 4px * 4)}
   .pk-e{font-size:21px;line-height:1;height:38px;border:1px solid transparent;border-radius:9px;background:transparent;cursor:pointer;transition:background .1s,border-color .1s}
+  .pk-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .pk-arrow{min-width:36px;font-size:20px;line-height:1;padding-inline:10px}
+  .pk-arrow:disabled{opacity:.35;cursor:default}
   .pk-e:hover{background:var(--card);border-color:var(--line)}
   .pk-e.on{background:var(--accent-weak);border-color:var(--accent);box-shadow:var(--ring)}
   label.btn{margin:0;color:var(--ink)}
@@ -358,7 +388,7 @@
   .st.open{background:var(--yes-bg);color:var(--yes-dark)} .st.closed{background:var(--empty);color:var(--muted)}
   .pc-copy{position:absolute;top:10px;right:10px;z-index:1;padding:0;width:32px;min-height:32px}
   .pc-copy svg{width:16px;height:16px}
-  .pcard.new{border-style:dashed;cursor:pointer;background:transparent;justify-content:center;align-items:center;text-align:center}
+  .pcard.new{text-decoration:none!important;color:inherit;border-style:dashed;cursor:pointer;background:transparent;justify-content:center;align-items:center;text-align:center}
   .pcard.new .pc-title{padding:0}
   .pcard.new .tile{background:var(--accent-weak)}
   .pcard.new:hover .pc-title{color:var(--accent)}
@@ -388,6 +418,46 @@
   .drafts .dft:first-child{border-top:0}
   .drafts .dft .when{font-weight:650;min-width:110px}
   .drafts .dft .who{flex-basis:100%;font-size:12px;color:var(--muted)}
+
+  /* ---------- new poll page ---------- */
+  .btn.withic svg{width:16px;height:16px;flex:none}
+  .new-grid{display:grid;gap:var(--s4);grid-template-columns:minmax(0,1fr)}
+  .new-grid>.card{margin-top:0}
+  @media (min-width:900px){ .new-grid{grid-template-columns:minmax(0,1fr) 300px;align-items:start} .new-sum{position:sticky;top:76px} }
+  .new-form{counter-reset:step;padding-top:6px}
+  .new-form .step{margin-top:var(--s5)}
+  .new-form .step:first-child{margin-top:0;border-top:0}
+  .step>h3{display:flex;align-items:center;gap:10px;font-size:16px}
+  .step>h3::before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-weak);color:var(--accent-ink);font-size:12.5px;font-weight:700}
+  .step>h3+.field{margin-top:var(--s3)}
+  label .opt{font-weight:500;color:var(--muted);margin-left:4px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
+  @media (max-width:640px){ .grid3{grid-template-columns:1fr 1fr} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
+  .unit-in{display:flex;align-items:center;gap:8px} .unit-in input{flex:none;width:72px} .unit-in span{font-size:13px;color:var(--muted);line-height:1.3}
+  .choice{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .choice.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  @media (max-width:560px){ .choice,.choice.c3{grid-template-columns:1fr} }
+  .choice .ch{position:relative;display:flex;flex-direction:column;gap:3px;margin:0;padding:12px 14px 12px 40px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--card);cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s}
+  .choice .ch:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-strong))}
+  .choice .ch input{position:absolute;left:14px;top:14px;margin:0;width:16px;height:16px;accent-color:var(--accent)}
+  .choice .ch.on{border-color:var(--accent);background:var(--accent-weak);box-shadow:0 0 0 1px var(--accent)}
+  .ch-t{font-size:14.5px;font-weight:650;color:var(--ink)}
+  .ch-d{font-size:13px;font-weight:400;color:var(--muted);line-height:1.4}
+  .icon-row{display:flex;gap:14px;align-items:center}
+  .icon-tile{padding:0;border:0;background:none;border-radius:14px;cursor:pointer;flex:none}
+  .icon-tile:hover .tile{box-shadow:0 0 0 3px var(--accent-weak)}
+  .sum-h{display:flex;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .sum-title{font-weight:650;font-size:16px;line-height:1.3;overflow-wrap:anywhere;margin-top:2px}
+  .sum-list{margin:4px 0 0}
+  .sum-list>div{display:flex;flex-direction:column;gap:1px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .sum-list dt{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .sum-list dd{margin:0;font-size:14px}
+  .sum-btn{width:100%;min-height:42px;margin-top:16px;font-size:14.5px}
+  .new-bar{display:none}
+  @media (max-width:899px){
+    .new-bar{display:flex;align-items:center;gap:12px;position:sticky;bottom:0;z-index:30;margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+    .new-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-weight:600}
+  }
 
   /* ---------- small screens ---------- */
   @media (max-width:560px){
@@ -432,13 +502,51 @@ const shareLink = id => `${origin}?p=${id}`;
 function inviteBox(id,title,deadline){
   const srv=CONFIG.emailEnabled;
   return `<div class="section"><h3>Invite by email</h3>
-    <div class="field"><label for="inv_${esc(id)}">Email addresses (separate with commas, spaces or new lines)</label>
-    <textarea id="inv_${esc(id)}" maxlength="5000" placeholder="anna@example.com, ben@example.com"></textarea></div>
+    <div class="field"><label for="invin_${esc(id)}">Email addresses (press Enter, comma or space after each one)</label>
+    <div class="emails" data-emailsbox="${esc(id)}"><input type="text" id="invin_${esc(id)}" data-emails="${esc(id)}" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="anna@example.com"></div>
+    <textarea id="inv_${esc(id)}" hidden></textarea></div>
     <div class="row">${srv?`<button type="button" class="btn primary" data-sendpoll="${esc(id)}">Send invites</button>`:''}
       <button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
-    <div class="help">${srv?`“Send invites” emails everyone the poll link from whenwho's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to “Your email” in Settings, if set. “Open in my email app” sends it from your own address instead.`
+    <div class="help">${srv?`“Send invites” emails everyone the poll link from whenwho's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to your account email. “Open in my email app” sends it from your own address instead.`
       :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></div>`;
 }
+// Email pills: the hidden textarea inv_<id> holds the addresses (one per line); the visible box shows them as pills.
+function emailsRender(id){
+  const box=document.querySelector(`[data-emailsbox="${CSS.escape(id)}"]`), ta=$('inv_'+id); if(!box||!ta) return;
+  box.querySelectorAll('.em-pill').forEach(x=>x.remove());
+  const inp=box.querySelector('input');
+  ta.value.split('\n').filter(Boolean).forEach((a,i)=>{ const ok=EMAIL_RE.test(a), el=document.createElement('span');
+    el.className='em-pill'+(ok?'':' bad'); if(!ok) el.title="Doesn't look like an email";
+    el.innerHTML=`<span>${esc(a)}</span><button type="button" data-emdel="${esc(id)}" data-i="${i}" aria-label="Remove ${esc(a)}">×</button>`;
+    box.insertBefore(el,inp); });
+  inp.placeholder=ta.value?'':'anna@example.com';
+}
+function emailsAdd(id,raw){
+  const ta=$('inv_'+id), have=ta.value.split('\n').filter(Boolean), keys=new Set(have.map(x=>x.toLowerCase()));
+  (raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean).forEach(a=>{ if(!keys.has(a.toLowerCase())){ keys.add(a.toLowerCase()); have.push(a); } });
+  ta.value=have.join('\n'); emailsRender(id);
+}
+// Commits whatever is still typed, then returns all addresses.
+function emailsValue(id){ const inp=$('invin_'+id); if(inp&&inp.value.trim()){ emailsAdd(id,inp.value); inp.value=''; } const ta=$('inv_'+id); return ta?ta.value:''; }
+function emailsClear(id){ const ta=$('inv_'+id); if(ta){ ta.value=''; emailsRender(id); } }
+document.addEventListener('keydown',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp) return; const id=inp.dataset.emails;
+  if(e.key==='Enter'||e.key===','||e.key===';'||(e.key===' '&&inp.value.trim())||(e.key==='Tab'&&inp.value.trim())){ e.preventDefault(); emailsAdd(id,inp.value); inp.value=''; }
+  else if(e.key==='Backspace'&&!inp.value){ const ta=$('inv_'+id), a=ta.value.split('\n').filter(Boolean); if(a.length){ e.preventDefault(); inp.value=a.pop(); ta.value=a.join('\n'); emailsRender(id); } }
+});
+document.addEventListener('paste',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp) return;
+  const t=(e.clipboardData||window.clipboardData).getData('text'); if(!/[\s,;]/.test(t.trim())) return;
+  e.preventDefault(); emailsAdd(inp.dataset.emails, inp.value+t); inp.value=''; });
+// Mobile keyboards often send no usable keydown, so also split on separators as the text changes.
+document.addEventListener('input',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp||!/[\s,;]/.test(inp.value)) return;
+  const parts=inp.value.split(/[\s,;]+/), rest=/[\s,;]$/.test(inp.value)?'':parts.pop(); emailsAdd(inp.dataset.emails,parts.join(' ')); inp.value=rest; });
+// Keep focus in the input while clicking a pill's ×, so focusout doesn't re-render the pills mid-click.
+document.addEventListener('mousedown',e=>{ if(e.target.closest('[data-emdel]')) e.preventDefault(); });
+document.addEventListener('focusout',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(inp&&inp.value.trim()){ emailsAdd(inp.dataset.emails,inp.value); inp.value=''; } });
+document.addEventListener('click',e=>{
+  const d=e.target.closest('[data-emdel]');
+  if(d){ const id=d.dataset.emdel, ta=$('inv_'+id), a=ta.value.split('\n').filter(Boolean); a.splice(+d.dataset.i,1); ta.value=a.join('\n'); emailsRender(id); $('invin_'+id)?.focus(); return; }
+  const b=e.target.closest('[data-emailsbox]'); if(b&&e.target===b) b.querySelector('input').focus();
+});
 function pollInviteMail(id,title,deadline,raw){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
   const ok=[...new Set(parts.filter(x=>EMAIL_RE.test(x)).map(x=>x.toLowerCase()))], bad=parts.filter(x=>!EMAIL_RE.test(x));
@@ -470,6 +578,77 @@ function rangeLabel(unit, st, en){
   const f=k=>parseD(k).toLocaleDateString(undefined,{day:'numeric',month:'short'});
   return `${f(st)} – ${f(en)} ${parseD(en).getFullYear()}`;
 }
+// ---------- day/time patterns ----------
+// pat = {wd:[0..6]|null (0 = Monday), dom:[from,to]|null}; null = every day. Hours are a separate [hs,he).
+const matchPat = (k,pat) => !pat || ((!pat.wd||pat.wd.includes(wdOf(k))) && (!pat.dom||(parseD(k).getDate()>=pat.dom[0]&&parseD(k).getDate()<=pat.dom[1])));
+const ord = n => n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
+const hh24 = h => h===24?'24:00':`${pad(h)}:00`;
+function wdText(wd){
+  if(!wd||wd.length===7) return '';
+  const k=wd.join(''); if(k==='01234') return 'Weekdays'; if(k==='56') return 'Weekends';
+  if(wd.length<=2) return wd.map(i=>['Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays','Sundays'][i]).join(' and ');
+  // runs of 3+ days as "Mon–Thu"
+  const parts=[]; let i=0; while(i<wd.length){ let j=i; while(j+1<wd.length&&wd[j+1]===wd[j]+1) j++;
+    if(j-i>=2) parts.push(`${WD[wd[i]]}–${WD[wd[j]]}`); else for(let x=i;x<=j;x++) parts.push(WD[wd[x]]); i=j+1; }
+  return parts.join(', ');
+}
+function patText(pat,hs,he,{allDayFrom,allDayTo,hours=true}={}){
+  const a=[wdText(pat&&pat.wd), pat&&pat.dom?`${ord(pat.dom[0])}–${ord(pat.dom[1])} of the month`:''].filter(Boolean).join(', ')||'Every day';
+  if(!hours) return a;
+  const all=hs<=(allDayFrom??0)&&he>=(allDayTo??24);
+  return `${a} · ${all?'all day':he===24?`from ${hh24(hs)}`:`${hh24(hs)}–${hh24(he)}`}`;
+}
+// Picker state: PAT[id] = {wd:Set, dom:[a|'',b|''], hs, he, hmin, hmax, hours, count:()=>string}
+const PAT={};
+function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false}={}){
+  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, count:PAT[id]&&PAT[id].count};
+  else Object.assign(PAT[id],{hmin,hmax,hours});
+  return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
+}
+function patInner(id){
+  const st=PAT[id], opt=(lo,hi,cur)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh24(h)}</option>`; return o; };
+  const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
+  return `<div class="pat-row"><span class="pat-l">Days</span><div class="wdchips" role="group" aria-label="Weekdays">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
+      <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="all">Every day</button><button type="button" data-patpre="${id}" data-v="wk">Weekdays</button><button type="button" data-patpre="${id}" data-v="we">Weekends</button></span></div>
+    <div class="pat-row"><span class="pat-l">Dates</span><span class="pat-in">Only the <input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="First day of the month">
+      to <input type="number" class="num-sm" min="1" max="31" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="Last day of the month"> of each month <span class="muted small">(optional)</span></span></div>
+    <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">Time</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="From">${opt(st.hmin,st.hmax-1,st.hs)}</select> to
+      <select class="inline" data-patto="${id}" aria-label="To">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
+      <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">All day</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">Evening 18–22</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">From 17:00</button>`:''}</span></div>
+    <div class="pat-sum" id="patsum_${id}">${esc(patSummary(id))}</div>`;
+}
+// Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
+function patValue(id){
+  const st=PAT[id], wd=[...st.wd].sort((a,b)=>a-b);
+  let [a,b]=st.dom.map(x=>x===''?null:Math.max(1,Math.min(31,Math.round(+x)||1)));
+  let dom=null; if(a!=null||b!=null){ a=a??1; b=b??31; if(b<a) [a,b]=[b,a]; if(!(a===1&&b===31)) dom=[a,b]; }
+  const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
+  return {pat, empty:!wd.length, hs:st.hs, he:st.he};
+}
+function patSummary(id){
+  const st=PAT[id], v=patValue(id); if(v.empty) return 'Pick at least one day.';
+  const c=st.count?st.count(v):''; return patText(v.pat,v.hs,v.he,{allDayFrom:st.hmin,allDayTo:st.hmax,hours:st.hours})+(c?` · ${c}`:'');
+}
+function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.textContent=patSummary(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
+function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-patwd]'), p=e.target.closest('[data-patpre]'); if(!c&&!p) return;
+  if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
+  const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
+  if(v==='all') st.wd=new Set([0,1,2,3,4,5,6]); if(v==='wk') st.wd=new Set([0,1,2,3,4]); if(v==='we') st.wd=new Set([5,6]);
+  if(v==='allday'){ st.hs=st.hmin; st.he=st.hmax; } if(v==='eve'){ st.hs=18; st.he=22; } if(v==='from17'){ st.hs=17; st.he=st.hmax; }
+  patRefresh(id,true);
+});
+document.addEventListener('input',e=>{
+  const t=e.target; if(!t.dataset) return;
+  if(t.dataset.patdom){ PAT[t.dataset.patdom].dom[+t.dataset.i]=t.value; patRefresh(t.dataset.patdom); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target; if(!t.dataset) return; const id=t.dataset.patfrom||t.dataset.patto; if(!id) return; const st=PAT[id];
+  if(t.dataset.patfrom){ st.hs=+t.value; if(st.he<=st.hs) st.he=Math.min(st.hmax,st.hs+1); }
+  else { st.he=+t.value; if(st.hs>=st.he) st.hs=Math.max(st.hmin,st.he-1); }
+  patRefresh(id,true);
+});
 let CONFIG={emailEnabled:false};
 let ME={user:null,polls:[],answered:[]};
 const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -503,15 +682,44 @@ const pollTile = (p,cls='') => tile({img:pollImgUrl(p.id,p.image),emoji:p.icon,t
 
 // Emoji / picture picker, used for poll icons and avatars. PICK[key] = {emoji, img (shown), data (new upload), changed}
 const EMOJI=['📅','🗓️','👥','🤝','💼','📊','🎯','💡','🎉','🎂','🍕','🍽️','☕','🍻','🎵','🎸','🎭','🎬','🎮','🎲','⚽','🏀','🎾','🏃','🧘','🚴','⛰️','🏖️','✈️','🚗','🏠','📚','🎓','💻','🔧','🌱','🐶','❤️','⭐','🚀'];
+// The full set comes after the favourites, built once from Unicode ranges: every single emoji the browser
+// knows (\p{RGI_Emoji}), then country flags. Skin tones and multi-person sequences are left out.
+const EMOJI_PAGE=48;
+let EMOJI_ALL=null;
+function allEmoji(){
+  if(EMOJI_ALL) return EMOJI_ALL;
+  let isEmoji;
+  try{ const re=new RegExp('^\\p{RGI_Emoji}$','v'); isEmoji=s=>re.test(s); }
+  catch(e){ const re=/^\p{Emoji_Presentation}$/u; isEmoji=s=>re.test(s); }
+  const seen=new Set(EMOJI), out=[...EMOJI];
+  const add=s=>{ if(!seen.has(s)&&isEmoji(s)){ seen.add(s); out.push(s); return true; } return false; };
+  // Roughly grouped: faces and people, nature/food/places, travel, symbols.
+  const ranges=[[0x1F600,0x1F64F],[0x1F910,0x1F9FF],[0x1FA70,0x1FAFF],[0x1F300,0x1F5FF],[0x1F680,0x1F6FF],[0x1F7E0,0x1F7FF],[0x1F000,0x1F2FF],[0x2190,0x2BFF],[0x203C,0x2189],[0x3030,0x3299]];
+  for(const [a,b] of ranges) for(let c=a;c<=b;c++){
+    if(c>=0x1F1E6&&c<=0x1F1FF || c>=0x1F3FB&&c<=0x1F3FF) continue; // flag letters, skin tones
+    const ch=String.fromCodePoint(c); add(ch)||add(ch+'\uFE0F');
+  }
+  const RI=l=>String.fromCodePoint(0x1F1E6+l.charCodeAt(0)-65);
+  'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CP CR CU CV CW CX CY CZ DE DG DJ DK DM DO DZ EA EC EE EG EH ER ES ET EU FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU IC ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TA TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM UN US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW'
+    .split(' ').forEach(cc=>add(RI(cc[0])+RI(cc[1])));
+  return EMOJI_ALL=out;
+}
 const PICK={};
 function picker(key,{emoji='',img='',text='',seed='',round=false,size=256}={}){
-  PICK[key]={emoji,img,data:null,changed:false,text,seed,round,size};
+  const i=emoji?allEmoji().indexOf(emoji):-1;
+  PICK[key]={emoji,img,data:null,changed:false,text,seed,round,size,page:i<EMOJI.length?0:1+Math.floor((i-EMOJI.length)/EMOJI_PAGE)};
   return `<div class="picker" id="pk_${key}">${pickerInner(key)}</div>`;
 }
 function pickerInner(key){
-  const st=PICK[key];
+  // Page 0 is the favourites, then the rest in pages of EMOJI_PAGE.
+  const st=PICK[key], all=allEmoji(), pages=1+Math.ceil((all.length-EMOJI.length)/EMOJI_PAGE);
+  st.page=Math.max(0,Math.min(st.page,pages-1));
+  const from=EMOJI.length+(st.page-1)*EMOJI_PAGE, list=st.page?all.slice(from,from+EMOJI_PAGE):EMOJI;
   return `<div class="pk-preview">${tile({img:st.data||st.img,emoji:st.emoji,text:st.text,seed:st.seed},st.round?'avatar xl':'ptile-icon xl')}</div>
-    <div class="pk-body"><div class="pk-grid" role="listbox" aria-label="Pick an emoji">${EMOJI.map(e=>`<button type="button" class="pk-e${st.emoji===e&&!(st.data||st.img)?' on':''}" data-pkemoji="${e}" data-pk="${key}" aria-label="${e}">${e}</button>`).join('')}</div>
+    <div class="pk-body"><div class="pk-nav"><button type="button" class="btn sm ghost pk-arrow" data-pkpage="${key}" data-dir="-1" aria-label="Previous emoji page"${st.page?'':' disabled'}>‹</button>
+      <span class="small muted">${st.page?`Page ${st.page+1} of ${pages}`:'Favourites'} · ${all.length} emoji</span>
+      <button type="button" class="btn sm ghost pk-arrow" data-pkpage="${key}" data-dir="1" aria-label="Next emoji page"${st.page<pages-1?'':' disabled'}>›</button></div>
+    <div class="pk-grid" role="listbox" aria-label="Pick an emoji">${list.map(e=>`<button type="button" class="pk-e${st.emoji===e&&!(st.data||st.img)?' on':''}" data-pkemoji="${e}" data-pk="${key}" aria-label="${e}">${e}</button>`).join('')}</div>
     <div class="row mt-3"><label class="btn sm">Upload picture<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-pkfile="${key}" hidden></label>
       ${st.emoji||st.data||st.img?`<button type="button" class="btn sm ghost" data-pkclear="${key}">Use ${st.round?'initial':'first letter'}</button>`:''}
       <span class="small muted">Pictures are cropped to a square.</span></div><div class="err" id="pkerr_${key}"></div></div>`;
@@ -532,8 +740,9 @@ async function resizeImage(file,size){
   return url;
 }
 document.addEventListener('click',e=>{
-  const em=e.target.closest('[data-pkemoji]'), cl=e.target.closest('[data-pkclear]');
-  if(em){ const st=PICK[em.dataset.pk]; st.emoji=em.dataset.pkemoji; if(st.data||st.img){ st.data=null; st.img=''; st.changed=true; } pickerRefresh(em.dataset.pk); }
+  const em=e.target.closest('[data-pkemoji]'), cl=e.target.closest('[data-pkclear]'), pg=e.target.closest('[data-pkpage]');
+  if(pg){ const k=pg.dataset.pkpage; PICK[k].page+=+pg.dataset.dir; pickerRefresh(k); const b=$('pk_'+k)?.querySelector(`[data-dir="${pg.dataset.dir}"]`); if(b&&!b.disabled) b.focus(); }
+  else if(em){ const st=PICK[em.dataset.pk]; st.emoji=em.dataset.pkemoji; if(st.data||st.img){ st.data=null; st.img=''; st.changed=true; } pickerRefresh(em.dataset.pk); }
   else if(cl){ const st=PICK[cl.dataset.pkclear]; st.emoji=''; if(st.data||st.img){ st.data=null; st.img=''; st.changed=true; } pickerRefresh(cl.dataset.pkclear); }
 });
 document.addEventListener('change',async e=>{
@@ -620,8 +829,6 @@ function hoursText(arr){
 }
 
 // ================= HOME =================
-function seg(id, options, current){ return `<div class="seg" id="${id}">${options.map(([v,l])=>`<button type="button" data-v="${v}" class="${v===current?'on':''}">${l}</button>`).join('')}</div>`; }
-function wireSeg(id, onChange){ $(id).onclick=e=>{ const b=e.target.closest('button'); if(!b) return; [...$(id).children].forEach(x=>x.classList.toggle('on',x===b)); onChange(b.dataset.v); }; }
 
 function pollCard(p){
   const c=p.current, open=c&&c.status==='open';
@@ -637,118 +844,216 @@ function renderHome(){
   const server = ME.user ? ME.polls : [], answered = ME.user ? ME.answered : [];
   const localOnly = ME.user ? [] : store.get('myPolls',[]).filter(p=>p.adminKey);
   const nOpen = server.filter(p=>p.current&&p.current.status==='open').length;
+  const newBtn = label => `<div class="row mt-4"><a class="btn primary withic" href="?new">${ICON.plus}${label}</a></div>`;
   $app.innerHTML = `
     ${appbar()}
     <section class="band"><div class="wrap">
       ${ME.user?`<div class="hero-me">${avatarOf(ME.user,'xl')}<div><div class="eyebrow">Your polls</div><h1>Hi, ${esc(displayName(ME.user))}</h1>
-        <p class="lead">${server.length?`You have ${server.length} ${server.length===1?'poll':'polls'}${nOpen?`, ${nOpen} open right now`:''}.`:'Create your first poll and share the link.'}</p></div></div>`
+        <p class="lead">${server.length?`You have ${server.length} ${server.length===1?'poll':'polls'}${nOpen?`, ${nOpen} open right now`:''}.`:'Create your first poll and share the link.'}</p>
+        ${newBtn('New poll')}</div></div>`
       :`<div class="eyebrow">Availability polls</div>
       <h1>Find a time that works for everyone</h1>
-      <p class="lead">Create a poll, share the link and see at a glance when everyone's free and who can make it. Answering doesn't need an account.</p>`}
+      <p class="lead">Create a poll, share the link and see at a glance when everyone's free and who can make it. Answering doesn't need an account.</p>
+      ${newBtn('Create a poll')}`}
     </div></section>
     <main class="wrap"><div class="home-grid">
-    <div class="card accent span" id="created" hidden></div>
     ${ME.user?`<div class="card span"><div class="card-h"><h2>Your polls</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
       <div class="pcards">${server.map(pollCard).join('')}
-        <button type="button" class="pcard new" data-newpoll><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">New poll</span><span class="pc-meta">Pick dates, an icon and share the link</span></button></div></div>`:''}
-    ${ME.user?`<div class="card" id="newpoll">
-      <div class="card-h"><h2>New poll</h2></div>
-      <form id="f">
-        <div class="field"><label for="title">Title</label><input type="text" id="title" maxlength="120" placeholder="e.g. Band rehearsals, Summer trip" required></div>
-        <div class="field"><label for="desc">Description (optional)</label><textarea id="desc" maxlength="1000" placeholder="Anything people should know"></textarea></div>
-        <div class="field"><label>Icon or picture</label>${picker('new',{text:'',seed:'new'})}</div>
-        <div class="field"><label>Type</label>${seg('kindSeg',[['series','Recurring series'],['single','One-off']],'series')}</div>
-        <div id="seriesBox">
-          <div class="row field"><label class="m0">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
-            <select id="unit" class="inline"><option value="month">month(s)</option><option value="week">week(s)</option></select></div>
-          <div class="grid2">
-            <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
-            <div class="field"><label for="openDays">Open each poll … days before it starts</label><input type="number" id="openDays" min="0" max="90" value="11"></div>
-            <div class="field"><label for="dlDays">Reply by … days before it starts (optional)</label><input type="number" id="dlDays" min="0" max="90" value="4"></div>
-          </div>
-          <div class="notice neutral small" id="seriesPreview"></div>
-        </div>
-        <div id="singleBox" class="grid2 hide">
-          <div class="field"><label for="start">From</label><input type="date" id="start"></div>
-          <div class="field"><label for="end">To</label><input type="date" id="end"></div>
-          <div class="field"><label for="dl">Reply by (optional)</label><input type="date" id="dl"></div>
-        </div>
-        <div class="field"><label>People answer with</label>${seg('ansSeg',[['days','Whole days'],['slots','Time slots'],['both','Both (they choose)']],'both')}
-          <div class="help" id="ansHelp"></div></div>
-        <div id="hoursBox" class="row field"><label class="m0">Hours from</label><input type="number" id="hs" min="0" max="23" value="8"><label class="m0">to</label><input type="number" id="he" min="1" max="24" value="24"></div>
-        <div class="section"><h3>Privacy</h3>
-          <div class="field"><label for="pw">Password (optional)</label><input type="password" id="pw" maxlength="100" placeholder="Only people with the password can open the poll" autocomplete="new-password"></div>
-          <label class="check"><input type="checkbox" id="hide"> Hide everyone's answers from respondents (only you see results)</label>
-          <label class="check"><input type="checkbox" id="comments" checked> Let people add a comment</label>
-        </div>
-        <div class="section ${CONFIG.emailEnabled?'':'hide'}" id="mailBox"><h3>Email</h3>
-          <div class="field"><label for="aemail">Your email (optional)</label><input type="email" id="aemail" maxlength="200" placeholder="Replies to invites go here"></div>
-          <label class="check" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
-          <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
-          <div class="help">People only get emails if they leave their address when answering.</div>
-        </div>
-        <div class="err" id="ferr"></div>
-        <div class="row mt-4"><button class="btn primary" type="submit" id="createBtn">Create poll</button></div>
-      </form>
-    </div>`:`<div class="card"><div class="card-h"><h2>New poll</h2></div>
-      <div class="empty"><p class="help mt-0">Sign in with your email to create polls. No password needed, just a code we email you. Answering a poll never needs an account.</p>
-      <button type="button" class="btn primary" data-opensignin>Sign in to get started</button></div></div>`}
-    ${ME.user?`<div class="card"><div class="card-h"><h2>Polls you answered</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
+        <a class="pcard new" href="?new"><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">New poll</span><span class="pc-meta">Pick dates, an icon and share the link</span></a></div></div>
+      <div class="card span"><div class="card-h"><h2>Polls you answered</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
       ${answered.length?`<ul class="list polls answered">${answered.map(p=>`<li>${pollTile(p,'sm')}<span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a>
         <span class="small muted">as ${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}`:''}</span></span></li>`).join('')}</ul>`
         :`<p class="help">Polls you answer while signed in show up here, and your answers follow you to every device.</p>`}</div>`
-    :`<div class="card"><div class="card-h"><h2>Your polls</h2></div>
+    :`<div class="card span"><div class="card-h"><h2>Your polls</h2></div>
       ${localOnly.length?`<p class="help mt-0">These polls were created in this browser with an admin link. Sign in to move them into your account; only the account that owns a poll can manage it.</p>
       <ul class="list polls">${localOnly.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a></span>
         <span class="acts"><button class="btn sm ghost" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)" aria-label="Remove from this list">✕</button></span></li>`).join('')}</ul>
       <div class="row mt-3"><button type="button" class="btn primary" data-opensignin>Sign in</button></div>`
-      :`<p class="help mt-0">Sign in to see the polls you created and answered, on every device.</p>`}</div>`}
-    </div></div></main>`;
-  if(!ME.user) return;
-  $('title').addEventListener('input',e=>pickerSetText('new',e.target.value));
-  let kind='series', ans='both';
-  const ansHelp={days:'Each day: available, maybe or not available.', slots:'People paint the hours they can make on a week grid.', both:'People can answer whole days, and switch to the time grid when they only have certain hours.'};
-  $('ansHelp').textContent=ansHelp[ans];
-  const today=new Date(), iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  // defaultValue too, so the dates come back after the form is reset for the next poll
-  $('start').value=$('start').defaultValue=iso(today); $('end').value=$('end').defaultValue=iso(new Date(today.getFullYear(),today.getMonth(),today.getDate()+13));
-  const nextMonth=new Date(today.getFullYear(),today.getMonth()+1,1); $('first').value=$('first').defaultValue=iso(nextMonth).slice(0,7);
+      :`<div class="empty"><p class="help mt-0">Sign in with your email to create polls and see the ones you created and answered, on every device. No password needed, just a code we email you.</p>
+      <button type="button" class="btn primary" data-opensignin>Sign in</button></div>`}</div>`}
+    </div></main>`;
+}
+
+// ================= NEW POLL =================
+// Radio cards: opts = [[value, title, description], …]
+function choice(name,opts,cur){
+  return `<div class="choice c${opts.length}" role="radiogroup">${opts.map(([v,t,d])=>`<label class="ch${v===cur?' on':''}"><input type="radio" name="${name}" value="${v}"${v===cur?' checked':''}>
+    <span class="ch-t">${t}</span><span class="ch-d">${d}</span></label>`).join('')}</div>`;
+}
+function renderNew(){
+  document.title='New poll · whenwho';
+  const band=`<section class="band"><div class="wrap"><div class="eyebrow">New poll</div><h1>Create a poll</h1>
+    <p class="lead">Pick the dates, choose how people answer, then share the link. Answering doesn't need an account.</p></div></section>`;
+  if(!ME.user){
+    $app.innerHTML=`${appbar('All polls')}${band}<main class="wrap"><div class="card"><div class="empty">
+      <p class="help mt-0">Sign in with your email to create polls. No password needed, just a code we email you. You'll come back to this page after signing in.</p>
+      <button type="button" class="btn primary" data-opensignin>Sign in to get started</button></div></div></main>`; return;
+  }
+  const mail=CONFIG.emailEnabled;
+  $app.innerHTML=`${appbar('All polls')}${band}
+    <main class="wrap"><form id="f" class="new-grid" novalidate>
+    <div class="card new-form">
+      <div class="section step"><h3>Basics</h3>
+        <div class="field"><label for="title">Title</label><input type="text" id="title" maxlength="120" placeholder="e.g. Band rehearsals, Summer trip" required autocomplete="off"></div>
+        <div class="field"><label for="desc">Description <span class="opt">optional</span></label><textarea id="desc" maxlength="1000" placeholder="Anything people should know"></textarea></div>
+        <div class="field"><label>Icon</label>
+          <div class="icon-row"><button type="button" class="icon-tile" id="iconTile" aria-label="Change icon"></button>
+            <div><button type="button" class="btn sm" id="iconBtn" aria-expanded="false" aria-controls="iconBox">Change icon</button>
+            <div class="help mt-1">An emoji or a picture. Without one, the first letter of the title is used.</div></div></div>
+          <div id="iconBox" class="mt-3 hide">${picker('new',{text:'',seed:'new'})}</div></div>
+      </div>
+      <div class="section step"><h3>When</h3>
+        <div class="field">${choice('kind',[['single','One-off','One date range, like a trip or a single meeting'],['series','Recurring','A new poll every week or month, like rehearsals or a club night']],'single')}</div>
+        <div id="singleBox" class="grid3">
+          <div class="field"><label for="start">From</label><input type="date" id="start"></div>
+          <div class="field"><label for="end">To</label><input type="date" id="end"></div>
+          <div class="field"><label for="dl">Reply by <span class="opt">optional</span></label><input type="date" id="dl"></div>
+        </div>
+        <div id="seriesBox" class="hide">
+          <div class="row field"><label class="m0" for="every">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
+            <select id="unit" class="inline" aria-label="Unit"><option value="month">month(s)</option><option value="week">week(s)</option></select></div>
+          <div class="grid3">
+            <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
+            <div class="field"><label for="openDays">Open each poll</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>days before</span></div></div>
+            <div class="field"><label for="dlDays">Reply by <span class="opt">optional</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>days before</span></div></div>
+          </div>
+          <div class="notice neutral small" id="seriesPreview"></div>
+        </div>
+        <div class="field mt-3"><label>Which days and times</label>${patternPicker('np',{hs:8,he:24})}
+          <div class="help">Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22.</div></div>
+      </div>
+      <div class="section step"><h3>How people answer</h3>
+        <div class="field">${choice('ans',[['days','Whole days','Available, maybe or not, for each day'],['slots','Time slots','They paint the hours they can make on a week grid'],['both','Both','Whole days, or hours when they only have some']],'both')}</div>
+      </div>
+      <div class="section step"><h3>Privacy</h3>
+        <div class="field"><label for="pw">Password <span class="opt">optional</span></label><input type="password" id="pw" maxlength="100" placeholder="Only people with the password can open the poll" autocomplete="new-password"></div>
+        <label class="check"><input type="checkbox" id="hide"> Hide everyone's answers from respondents (only you see results)</label>
+        <label class="check"><input type="checkbox" id="comments" checked> Let people add a comment</label>
+      </div>
+      ${mail?`<div class="section step"><h3>Email</h3>
+        <label class="check hide" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone who answered last time</label>
+        <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
+        <div class="help">People only get emails if they leave their address when answering. Emails come from whenwho's address under your name; replies go to your account email${ME.user?` (${esc(ME.user.email)})`:''}.</div>
+      </div>`:''}
+    </div>
+    <aside class="card new-sum">
+      <div class="sum-h"><span id="sumTile"></span><div class="grow"><div class="eyebrow">Preview</div><div class="sum-title" id="sumTitle"></div></div></div>
+      <dl class="sum-list" id="sumList"></dl>
+      <div class="err" id="ferr" role="alert"></div>
+      <button class="btn primary sum-btn" type="submit" id="createBtn">Create poll</button>
+      <p class="help small">Only you can manage the poll. Anyone with the link can answer.</p>
+    </aside>
+    <div class="new-bar"><span class="grow small" id="barTitle"></span><button class="btn primary" type="submit">Create poll</button></div>
+    </form></main>`;
+
+  const today=new Date(), iso=isoL;
+  const getR = n => (document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+  $('start').value=iso(today); $('end').value=iso(new Date(today.getFullYear(),today.getMonth(),today.getDate()+13));
+  const nextMonth=new Date(today.getFullYear(),today.getMonth()+1,1); $('first').value=iso(nextMonth).slice(0,7);
+  const seriesSettings=()=>({unit:$('unit').value, every:Math.max(1,+$('every').value||1), anchor:$('unit').value==='month'?($('first').value||'').slice(0,7)+'-01':$('first').value,
+    openDays:+$('openDays').value||0, deadlineDays:$('dlDays').value===''?null:+$('dlDays').value});
   const setUnit=()=>{ const u=$('unit').value, f=$('first');
     if(u==='month'){ f.type='month'; f.value=iso(nextMonth).slice(0,7); $('firstLbl').textContent='First month'; }
     else { f.type='date'; const mon=new Date(today); mon.setDate(mon.getDate()+((8-mon.getDay())%7||7)); f.value=iso(mon); $('firstLbl').textContent='First period starts on'; }
     preview(); };
   const preview=()=>{
-    const s={unit:$('unit').value, every:Math.max(1,+$('every').value||1), anchor:$('unit').value==='month'?($('first').value||'').slice(0,7)+'-01':$('first').value, openDays:+$('openDays').value||0, deadlineDays:$('dlDays').value===''?null:+$('dlDays').value};
+    const s=seriesSettings();
     if(!/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)){ $('seriesPreview').textContent=''; return; }
     const lines=[0,1,2].map(n=>{ const st=seriesStart(s,n), en=addDaysL(seriesStart(s,n+1),-1), op=addDaysL(st,-s.openDays), dl=s.deadlineDays==null?null:addDaysL(st,-s.deadlineDays);
       return `${rangeLabel(s.unit,st,en)}: opens ${n===0?'right away':dayLabel(op)}${dl?`, reply by ${dayLabel(dl)}`:''}`; });
     $('seriesPreview').innerHTML='Schedule: '+lines.map(esc).join(' · ')+' …<br>The share link always shows the current poll.'; };
-  ['every','unit','first','openDays','dlDays'].forEach(id=>$(id).addEventListener('input',id==='unit'?setUnit:preview)); preview();
-  wireSeg('kindSeg',v=>{ kind=v; $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('notifyRow').classList.toggle('hide',v!=='series'); });
-  wireSeg('ansSeg',v=>{ ans=v; $('ansHelp').textContent=ansHelp[v]; $('hoursBox').classList.toggle('hide',v==='days'); });
-  $('f').onsubmit=async e=>{
+
+  // Live summary on the right (and the title in the mobile bar).
+  const ANS={days:'Whole days', slots:'Time slots', both:'Whole days or time slots'};
+  const sum=()=>{
+    const st=PICK.new, title=$('title').value.trim(), kind=getR('kind'), ans=getR('ans');
+    const t=tile({img:st.data||st.img,emoji:st.emoji,text:title||'?',seed:'new'},'ptile-icon');
+    $('sumTile').innerHTML=t; $('iconTile').innerHTML=t;
+    $('sumTitle').textContent=title||'Untitled poll'; $('sumTitle').classList.toggle('muted',!title);
+    $('barTitle').textContent=title||'Untitled poll';
+    const rows=[];
+    if(kind==='single'){ const a=$('start').value, b=$('end').value, d=$('dl').value;
+      rows.push(['Dates', a&&b?`${dayLabel(a)} – ${dayLabel(b)}`:'Pick a date range']);
+      if(d) rows.push(['Reply by', dayLabel(d)]); }
+    else { const s=seriesSettings(), u=s.unit==='month'?'month':'week';
+      rows.push(['Repeats', s.every===1?`Every ${u}`:`Every ${s.every} ${u}s`]);
+      if(/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)) rows.push(['First', rangeLabel(s.unit,seriesStart(s,0),addDaysL(seriesStart(s,1),-1))]); }
+    { const pv=patValue('np'); rows.push(['Days', pv.empty?'Pick at least one day':patText(pv.pat,pv.hs,pv.he,{hours:ans!=='days'})]); }
+    rows.push(['Answers', ANS[ans]]);
+    const priv=[$('pw').value?'Password':'Anyone with the link'];
+    if($('hide').checked) priv.push('results hidden'); if(!$('comments').checked) priv.push('no comments');
+    rows.push(['Access', priv.join(', ')]);
+    if(mail&&$('remind').checked&&$('remindDays').value!=='') rows.push(['Reminder', `${+$('remindDays').value} days before reply-by`]);
+    $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+  };
+  const f=$('f');
+  f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value);
+    if(['every','first','openDays','dlDays'].includes(e.target.id)) preview(); sum(); });
+  f.addEventListener('change',e=>{ const n=e.target.name;
+    if(e.target.type==='radio') e.target.closest('.choice').querySelectorAll('.ch').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
+    if(e.target.id==='unit') setUnit();
+    if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series'); }
+    if(n==='ans') patShowHours('np',getR('ans')!=='days');
+    if(n==='kind') patRefresh('np');
+    sum(); });
+  // The picker re-renders itself on every change (emoji, upload, clear), so watch it.
+  new MutationObserver(sum).observe($('pk_new'),{childList:true});
+  // Days matching the pattern in [st,en], for the picker's count and warnings.
+  const daysIn=(st,en,pat)=>{ let n=0; if(!st||!en||en<st) return 0; for(let k=st,i=0;k<=en&&i<400;k=addDaysL(k,1),i++) if(matchPat(k,pat)) n++; return n; };
+  const firstRound=()=>{ const s=seriesSettings(); return /^\d{4}-\d{2}-\d{2}$/.test(s.anchor)?[seriesStart(s,0),addDaysL(seriesStart(s,1),-1)]:null; };
+  PAT.np.count=v=>{ if(getR('kind')==='single'){ const n=daysIn($('start').value,$('end').value,v.pat); return n?`${n} day${n===1?'':'s'} in this poll`:'no days in this range match'; }
+    const r=firstRound(); if(!r) return ''; const n=daysIn(r[0],r[1],v.pat); return n?`${n} day${n===1?'':'s'} in the first round`:'no days in the first round match'; };
+  $('pat_np').addEventListener('patchange',sum);
+  f.addEventListener('input',e=>{ if(['start','end','every','first'].includes(e.target.id)) patRefresh('np'); });
+  f.addEventListener('change',e=>{ if(e.target.id==='unit') patRefresh('np'); });
+  patRefresh('np');
+  const toggleIcon=()=>{ const box=$('iconBox'), open=box.classList.toggle('hide')===false;
+    $('iconBtn').textContent=open?'Done':'Change icon'; $('iconBtn').setAttribute('aria-expanded',open); };
+  $('iconBtn').onclick=toggleIcon; $('iconTile').onclick=toggleIcon;
+  preview(); sum(); $('title').focus();
+
+  f.onsubmit=async e=>{
     e.preventDefault(); const v=id=>$(id).value, err=$('ferr'); err.textContent='';
-    const body={ title:v('title'), description:v('desc'), kind, answerMode:ans, hourStart:+v('hs'), hourEnd:+v('he'),
+    const kind=getR('kind'), ans=getR('ans');
+    const fail=(msg,id)=>{ err.textContent=msg; if(id){ $(id).focus(); } return false; };
+    const check=()=>{
+      if(!v('title').trim()) return fail('Give the poll a title.','title');
+      if(kind==='single'){
+        if(!v('start')||!v('end')) return fail('Pick the first and last day.', v('start')?'end':'start');
+        if(v('end')<v('start')) return fail('The last day is before the first day.','end');
+        if(v('dl')&&v('dl')>v('end')) return fail('The reply-by date is after the last day.','dl');
+      } else if(!v('first')) return fail('Pick when the series starts.','first');
+      const pv=patValue('np'); if(pv.empty) return fail('Pick at least one day of the week.');
+      if(kind==='single'&&!daysIn(v('start'),v('end'),pv.pat)) return fail('None of the days in this range match the chosen days.');
+      return true; };
+    if(!check()) return;
+    const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
       hideResults:$('hide').checked, allowComments:$('comments').checked, password:v('pw')||undefined };
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
     else { body.startDate=v('start'); body.endDate=v('end'); body.deadline=v('dl')||null; }
-    if(CONFIG.emailEnabled){ body.adminEmail=v('aemail'); body.notifyOpen=kind==='series'&&$('notify').checked; body.remindDays=$('remind').checked&&v('remindDays')!==''?+v('remindDays'):null; }
-    const btn=$('createBtn'); btn.disabled=true;
+    if(mail){ body.notifyOpen=kind==='series'&&$('notify').checked; body.remindDays=$('remind').checked&&v('remindDays')!==''?+v('remindDays'):null; }
+    const btns=f.querySelectorAll('button[type=submit]'); btns.forEach(b=>b.disabled=true);
     try{
       const r=await api('POST','/polls',body);
       if(body.password) store.set('pw:'+r.id, body.password);
-      const c=$('created'); c.hidden=false;
-      c.innerHTML=`<div class="card-h">${tile({img:body.image,emoji:body.icon,text:body.title,seed:r.id},'ptile-icon')}<h2>“${esc(body.title)}” is ready</h2><span class="tag y">Created</span></div>
-        <div class="field"><label>Share link: send this to people</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(r.id))}"><button class="btn" data-copy="${esc(shareLink(r.id))}">Copy</button></div>
-        <div class="help">You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.</div></div>
-        ${inviteBox(r.id, body.title, kind==='series'?null:body.deadline)}
-        <div class="row mt-4"><a class="btn primary" href="?p=${esc(r.id)}">Open poll</a></div>`;
-      c.scrollIntoView({behavior:'smooth'}); $('f').reset(); $('pk_new').outerHTML=picker('new',{seed:'new'});
+      renderCreated(r.id, body, kind);
       try{ ME.polls=(await api('GET','/me/polls')).polls; }catch(e){}
-    }catch(ex){ err.textContent=ex.message; }
-    btn.disabled=false;
+    }catch(ex){ err.textContent=ex.message; btns.forEach(b=>b.disabled=false); }
   };
+}
+function renderCreated(id, body, kind){
+  document.title=`${body.title} · whenwho`;
+  $app.innerHTML=`${appbar('All polls')}
+    <section class="band"><div class="wrap"><div class="hero-me">${tile({img:body.image,emoji:body.icon,text:body.title,seed:id},'ptile-icon xl')}
+      <div><div class="eyebrow">Poll created</div><h1>${esc(body.title)}</h1><p class="lead">Send people the link. They can answer straight away, no account needed.</p></div></div></div></section>
+    <main class="wrap"><div class="card accent"><div class="card-h"><h2>Share it</h2><span class="tag y">Created</span></div>
+      <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}"><button class="btn" data-copy="${esc(shareLink(id))}">Copy</button></div>
+      <div class="help">You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.</div></div>
+      ${inviteBox(id, body.title, kind==='series'?null:body.deadline)}
+      <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">Open poll</a><a class="btn" href="?new">Create another</a></div>
+    </div></main>`;
+  window.scrollTo({top:0});
 }
 
 // ================= ACCOUNT =================
@@ -1087,8 +1392,8 @@ function renderMine(el){
       <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}</div>`;
   if(P.mode==='days'){
     h+=`<p class="help">Tap a day to cycle: <b>available</b> → <b>maybe</b> → <b>not available</b> → blank.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}</p>
-      <div class="row mt-3"><button class="btn sm" data-bulk="all">All available</button><button class="btn sm" data-bulk="wkend">Weekends available</button>
-      <button class="btn sm" data-bulk="blank">Fill blanks as not available</button><button class="btn sm" data-bulk="clear">Clear all</button></div>`;
+      <div class="row mt-3"><button class="btn sm" data-bulk="all">All available</button><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>
+      <button class="btn sm" data-bulk="blank">Fill blanks as not available</button><button class="btn sm" data-bulk="clear">Clear all</button></div>${quickFill()}`;
     h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v);
       return `<div class="day ${s.cls}" data-day="${k}"><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
@@ -1098,7 +1403,7 @@ function renderMine(el){
       <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
       <button data-brush="n" class="${P.brush==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button>
-      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div></div>
+      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' primary':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button></div>${quickFill()}
       <div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
@@ -1113,6 +1418,36 @@ function renderMine(el){
   el.innerHTML=h;
   if(P.mode==='slots') wireGrid();
 }
+// Quick fill: mark every day matching a pattern (optionally only some hours) in one go.
+function quickFill(){
+  if(!P.qfOpen) return '';
+  const p=P.data.poll, slots=ansMode()!=='days', st=P.qfs||'y';
+  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true};
+  // A new poll (or new hours) starts the quick-fill fresh.
+  if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
+  patternPicker('qf',o); PAT.qf.poll=P.id;
+  PAT.qf.count=v=>{ const n=P.data.dates.filter(k=>matchPat(k,v.pat)).length; return `${n} day${n===1?'':'s'} in this poll`; };
+  const box=patternPicker('qf',o);
+  return `<div class="qf">${box}<div class="row mt-3"><span class="muted small">Mark as:</span><div class="seg">
+    <button type="button" data-qfs="y" class="${st==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
+    <button type="button" data-qfs="m" class="${st==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
+    <button type="button" data-qfs="n" class="${st==='n'?'on':''}"><span class="dot" style="--c:var(--no)"></span>Not available</button></div>
+    <button type="button" class="btn sm primary" data-qfapply>Apply</button></div></div>`;
+}
+document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
+function applyQuickFill(){
+  const v=patValue('qf'); if(v.empty){ toast('Pick at least one day'); return; }
+  const H=hours(), st=P.qfs||'y', whole=!PAT.qf.hours||(v.hs<=H[0]&&v.he>=H[H.length-1]+1), en=Object.assign({},P.mine.entries);
+  const ks=P.data.dates.filter(k=>matchPat(k,v.pat));
+  ks.forEach(k=>{ if(whole){ en[k]=st; return; }
+    const m=hourMap(en[k]); H.forEach(h=>{ if(h>=v.hs&&h<v.he) m.set(h,st); }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; });
+  P.mine.entries=en; changed(); renderBody(); toast(ks.length?`Marked ${ks.length} day${ks.length===1?'':'s'}`:'No days in this poll match');
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; renderBody(); return; }
+  const s=e.target.closest('[data-qfs]'); if(s){ P.qfs=s.dataset.qfs; s.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===s)); return; }
+  if(e.target.closest('[data-qfapply]')){ if(typeof editable==='function'&&!editable()) return; applyQuickFill(); }
+});
 function setEntry(k,v){ const e=Object.assign({},P.mine.entries); if(v==null) delete e[k]; else e[k]=v; P.mine.entries=e; }
 
 function wireGrid(){
@@ -1421,14 +1756,15 @@ function adminPanes(){
     <div class="section"><h3>Answering</h3>
       <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
-      <div class="row field"><label class="m0">Hours from</label><input type="number" id="s_hs" min="0" max="23" value="${p.hourStart}"><label class="m0">to</label><input type="number" id="s_he" min="1" max="24" value="${p.hourEnd}"></div>
+      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days'})}
+        <div class="help">Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.</div></div>
       <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label></div>
     <div class="section"><h3>Privacy</h3>
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> Hide answers from respondents</label>
       <div class="field"><label for="s_pw">Password ${p.hasPassword?'(currently set)':'(none)'}</label>
         <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div></div>
     <div class="section"><h3>Email</h3>
-      ${d.emailEnabled?`<div class="field"><label for="s_mail">Your email</label><div class="row"><input type="email" id="s_mail" class="grow" maxlength="200" value="${esc(p.adminEmail||'')}"><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from whenwho's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span><button type="button" class="btn" id="testMail">Send test email</button></div></div>
         ${series?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone who answered last time when a new round opens</label>`:''}
         <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
       :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}</div>
@@ -1469,9 +1805,9 @@ function wireAdmin(){
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
-    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans'), hourStart:+v('s_hs'), hourEnd:+v('s_he') };
+    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast('Pick at least one day of the week'); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
-    if(P.data.emailEnabled){ b.adminEmail=v('s_mail'); if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
+    if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
     try{ await api('PATCH',`/polls/${P.id}`,b,headers());
       if(b.password!==undefined){ if(b.password) store.set('pw:'+P.id,b.password); else store.del('pw:'+P.id); P.password=b.password||null; }
@@ -1487,25 +1823,24 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-newpoll],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-atab]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-cancelsched],[data-clearrange],[data-savesched],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-gview],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-atab]'); if(!t) return;
   const ds=t.dataset;
   if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
-  if(ds.sendpoll){ const box=$('inv_'+ds.sendpoll), r=pollInviteMail(ds.sendpoll,'',null,box&&box.value);
+  if(ds.sendpoll){ const r=pollInviteMail(ds.sendpoll,'',null,emailsValue(ds.sendpoll));
     if(r.bad.length){ toast(`Doesn't look like an email: ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`); return; }
     if(!r.ok.length){ toast('Enter at least one email address'); return; }
     t.disabled=true;
     try{ const x=await api('POST',`/polls/${ds.sendpoll}/invite`,{emails:r.ok});
-      toast(`Invite sent to ${x.sent} ${x.sent===1?'person':'people'}`); box.value=''; }
+      toast(`Invite sent to ${x.sent} ${x.sent===1?'person':'people'}`); emailsClear(ds.sendpoll); }
     catch(ex){ toast(ex.message); }
     t.disabled=false; return; }
-  if(ds.invitepoll){ const box=$('inv_'+ds.invitepoll), r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, box&&box.value);
+  if(ds.invitepoll){ const r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, emailsValue(ds.invitepoll));
     if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
     else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
     location.href=r.href; return; }
   if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
-  if(ds.newpoll!==undefined){ const c=$('newpoll'); if(c){ c.scrollIntoView({behavior:'smooth'}); setTimeout(()=>$('title').focus({preventScroll:true}),350); } return; }
   if(ds.padd!==undefined){ const v=$('p_add').value; if(!v.trim()) return;
     try{ const r=await api('POST',`/polls/${P.id}/participants`,{lines:v},headers());
       partsChanged(`Added ${r.added.length}${r.skipped.length?` · already there: ${r.skipped.join(', ')}`:''}`); }catch(ex){ toast(ex.message); } return; }
@@ -1810,6 +2145,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
     await openPoll(pid);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
   } else if(qs.has('account')) renderAccount();
+  else if(qs.has('new')) renderNew();
   else renderHome();
 })();
 })();
