@@ -495,6 +495,7 @@ async function verifyLoginCode(request, env, url) {
   const code = typeof b.code === 'string' ? b.code.replace(/\s+/g, '') : '';
   const wrong = new HttpError(401, 'That code is wrong or has expired. Check the latest email or ask for a new code.');
   if (!addr || !/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code from the email');
+  const signupName = typeof b.name === 'string' && b.name.trim() ? personName(b.name) : '';
   const row = await env.DB.prepare('SELECT * FROM login_codes WHERE email = ?').bind(addr).first();
   if (!row || row.expires_at < now() || row.attempts >= CODE_TRIES) {
     if (row) await env.DB.prepare('DELETE FROM login_codes WHERE email = ?').bind(addr).run();
@@ -510,8 +511,9 @@ async function verifyLoginCode(request, env, url) {
   const del = await env.DB.prepare('DELETE FROM login_codes WHERE email = ? AND code_hash = ?').bind(addr, row.code_hash).run();
   if (!del.meta || !del.meta.changes) throw wrong;
   const t = now();
-  await env.DB.prepare('INSERT INTO users (id, email, created_at, last_login_at) VALUES (?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at')
-    .bind('u_' + randomId(16), addr, t, t).run();
+  // Sign-up sends a name: it becomes the profile name of a new account (an existing account keeps its own).
+  await env.DB.prepare('INSERT INTO users (id, email, name, created_at, last_login_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at')
+    .bind('u_' + randomId(16), addr, signupName, t, t).run();
   const user = await env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(addr).first();
   return json({ user: { email: user.email } }, 200, { 'set-cookie': await startSession(env, url, user.id) });
 }

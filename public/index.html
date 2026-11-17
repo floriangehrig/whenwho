@@ -72,7 +72,8 @@
   .crumb{color:var(--on-brand-muted);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:14px}
   .crumb::before{content:"";width:1px;height:18px;background:rgba(255,255,255,.18)}
   .crumb:hover{color:#fff;text-decoration:none}
-  .acct{margin-left:auto;display:flex;align-items:center}
+  .acct{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .appbar .su-btn{color:#fff;font-weight:600;padding:6px 12px} .appbar .su-btn:hover{background:rgba(255,255,255,.1)}
   .band{background:radial-gradient(1200px 300px at 85% -40%,color-mix(in srgb,var(--accent) 45%,transparent),transparent 70%),linear-gradient(180deg,var(--brand) 0%,var(--brand-2) 100%);color:var(--on-brand);padding:36px 0 76px}
   .band .wrap{padding-bottom:0}
   .band .eyebrow{color:var(--on-brand-muted);display:flex;align-items:center;gap:8px}
@@ -416,7 +417,7 @@
   .menu a:hover{background:var(--sunken);text-decoration:none}
   .dd .ddp.signin{width:384px;max-width:calc(100vw - 24px);max-height:none;padding:22px}
   .signin h3{font-size:16px;margin-bottom:4px}
-  .signin label{display:block;padding:0;cursor:default;font-weight:600;font-size:13px;color:var(--ink-2);margin-bottom:6px} .signin label:hover{background:none}
+  .dd .ddp.signin label{display:block;padding:0;cursor:default;font-weight:600;font-size:13px;color:var(--ink-2);margin-bottom:6px} .dd .ddp.signin label:hover{background:none}
   .signin .code{font-size:24px;letter-spacing:8px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;min-height:52px}
   .signin .ts{margin-top:12px;min-height:65px;min-width:300px}
   .signin .ts[hidden]{display:none}
@@ -937,15 +938,22 @@ function accountBar(){
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
     <a href="?account">Account &amp; profile</a><a href="${esc(origin)}">Your polls</a>
     <div class="menu-sep"></div><a href="#" data-logout>Sign out</a><a href="#" data-logout="all" title="Sign out on every device">Sign out everywhere</a></div></details>`;
-  return `<details class="dd" id="signin"><summary>Sign in</summary><div class="ddp signin right">
-    <form class="codef"><h3>Sign in to when-who</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
-      <label for="si_email">Your email</label><input type="email" id="si_email" name="email" autocomplete="email" maxlength="200" placeholder="you@company.com" required>
+  // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
+  return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">Sign up</button><details class="dd" id="signin"><summary>Sign in</summary><div class="ddp signin right">
+    <form class="codef" id="login-form" name="login" data-mode="signin" autocomplete="on"><h3>Sign in to when-who</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
+      <label for="si_email">Email</label><input type="email" id="si_email" name="username" autocomplete="username" maxlength="200" placeholder="you@company.com" required>
       <div class="ts" id="si_ts" ${CONFIG.turnstileSiteKey?'':'hidden'}></div>
-      <div class="err"></div><div class="row mt-3"><button class="btn primary">Email me a code</button></div>
-      <p class="help">No password needed. We'll send you a 6-digit code. Your account is created the first time you sign in.</p></form>
-    <form class="verifyf" hidden><p class="help mt-0">We sent a code to <b class="si_to"></b>. It's valid for 10 minutes.</p>
+      <div class="err"></div><div class="row mt-3"><button class="btn primary" type="submit">Sign in</button></div>
+      <p class="help">No password needed: we'll email you a 6-digit code. New here? <a href="#" data-simode="signup">Create an account</a></p></form>
+    <form class="codef" id="signup-form" name="register" data-mode="signup" autocomplete="on" hidden><h3>Create your when-who account</h3><p class="help mt-0 mb-3">Create and manage polls on any device.</p>
+      <label for="su_name">Account name</label><input type="text" id="su_name" name="name" autocomplete="name" maxlength="60" placeholder="Your name" required>
+      <label for="su_email" class="mt-3">Email</label><input type="email" id="su_email" name="email" autocomplete="email" maxlength="200" placeholder="you@company.com" required>
+      <div class="ts" id="su_ts" ${CONFIG.turnstileSiteKey?'':'hidden'}></div>
+      <div class="err"></div><div class="row mt-3"><button class="btn primary" type="submit">Create account</button></div>
+      <p class="help">No password needed: we'll email you a 6-digit code to confirm your address. Already have an account? <a href="#" data-simode="signin">Sign in</a></p></form>
+    <form class="verifyf" id="verify-form" hidden><p class="help mt-0">We sent a code to <b class="si_to"></b>. It's valid for 10 minutes.</p>
       <label for="si_code">Code</label><input type="text" id="si_code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required>
-      <div class="err"></div><div class="row mt-3"><button class="btn primary">Sign in</button><a href="#" class="small" data-siback>Use another email</a></div></form>
+      <div class="err"></div><div class="row mt-3"><button class="btn primary" type="submit">Continue</button><a href="#" class="small" data-siback>Use another email</a></div></form>
   </div></details>`;
 }
 // Polls created earlier with an (old) admin link are remembered in this browser. Signed in, move them into the account.
@@ -959,45 +967,64 @@ async function claimLocalPolls(){
   store.set('myPolls',keep);
 }
 // Turnstile ("I'm human" check) is loaded only when someone opens the sign-in box.
-const TS={id:null,token:'',loading:null};
+const TS={ids:{},tok:{},loading:null};
 function loadTurnstile(){
   if(!TS.loading) TS.loading=new Promise((ok,fail)=>{ const sc=document.createElement('script');
     sc.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async=true; sc.onload=ok; sc.onerror=fail; document.head.appendChild(sc); });
   return TS.loading;
 }
-async function showTurnstile(){
-  const el=$('si_ts'); if(!CONFIG.turnstileSiteKey||!el||el.childElementCount) return;
-  try{ await loadTurnstile(); TS.token='';
-    TS.id=turnstile.render(el,{sitekey:CONFIG.turnstileSiteKey,size:'flexible',callback:t=>{TS.token=t;},'expired-callback':()=>{TS.token='';}}); }
+async function showTurnstile(elId){
+  const el=$(elId); if(!CONFIG.turnstileSiteKey||!el||el.childElementCount) return;
+  try{ await loadTurnstile(); TS.tok[elId]='';
+    TS.ids[elId]=turnstile.render(el,{sitekey:CONFIG.turnstileSiteKey,size:'flexible',callback:t=>{TS.tok[elId]=t;},'expired-callback':()=>{TS.tok[elId]='';}}); }
   catch(e){ el.textContent='Couldn’t load the “I’m human” check. Reload the page and try again.'; }
 }
-document.addEventListener('toggle',e=>{ if(e.target.id==='signin'&&e.target.open){ showTurnstile(); const i=$('si_email'); if(i) i.focus(); } },true);
-let SI_EMAIL='';
+// Show the sign-in or the sign-up form in the account box.
+function signinMode(mode){
+  const d=$('signin'); if(!d) return;
+  const box=d.querySelector('.signin');
+  box.querySelectorAll('.codef').forEach(f=>{ f.hidden=f.dataset.mode!==mode; f.querySelector('.err').textContent=''; });
+  box.querySelector('.verifyf').hidden=true;
+  const f=box.querySelector(`.codef[data-mode="${mode}"]`);
+  showTurnstile(f.querySelector('.ts').id); const i=f.querySelector('input'); if(i) i.focus();
+}
+document.addEventListener('toggle',e=>{ if(e.target.id==='signin'&&e.target.open){ const v=e.target.querySelector('.codef:not([hidden])'); if(v) signinMode(v.dataset.mode); } },true);
+document.addEventListener('click',e=>{ const a=e.target.closest('[data-simode]'); if(!a) return; e.preventDefault(); signinMode(a.dataset.simode); });
+let SI_EMAIL='', SI_NAME='', SI_FORM=null;
 document.addEventListener('submit',async e=>{
   const cf=e.target.closest('.codef'), vf=e.target.closest('.verifyf');
   if(!cf&&!vf) return; e.preventDefault();
   const f=cf||vf, err=f.querySelector('.err'), btn=f.querySelector('button'); err.textContent=''; btn.disabled=true;
+  const tsId=cf&&cf.querySelector('.ts').id;
   try{
     if(cf){
-      if(CONFIG.turnstileSiteKey&&!TS.token) throw new Error('Please complete the “I’m human” check first.');
-      SI_EMAIL=cf.email.value.trim();
-      await api('POST','/auth/code',{email:SI_EMAIL,turnstileToken:TS.token});
-      cf.hidden=true; const v=f.parentNode.querySelector('.verifyf'); v.hidden=false; v.querySelector('.si_to').textContent=SI_EMAIL; v.code.value=''; v.code.focus();
+      if(CONFIG.turnstileSiteKey&&!TS.tok[tsId]) throw new Error('Please complete the “I’m human” check first.');
+      const signup=cf.dataset.mode==='signup';
+      SI_EMAIL=cf.querySelector('input[type=email]').value.trim();
+      SI_NAME=signup?cf.querySelector('[name=name]').value.trim():'';
+      if(signup&&!SI_NAME) throw new Error('Enter an account name');
+      await api('POST','/auth/code',{email:SI_EMAIL,turnstileToken:TS.tok[tsId]||''});
+      SI_FORM=cf; cf.hidden=true; const v=f.parentNode.querySelector('.verifyf'); v.hidden=false; v.querySelector('.si_to').textContent=SI_EMAIL; v.code.value=''; v.code.focus();
     } else {
-      const r=await api('POST','/auth/verify',{email:SI_EMAIL,code:vf.code.value});
-      ME.user=r.user; await claimLocalPolls(); location.reload(); return;
+      const r=await api('POST','/auth/verify',{email:SI_EMAIL,code:vf.code.value,...(SI_NAME?{name:SI_NAME}:{})});
+      ME.user=r.user; await claimLocalPolls();
+      // Land on the overview, except when signing in on a poll page (e.g. to answer it): stay there.
+      if(new URLSearchParams(location.search).has('p')) location.reload(); else location.href=origin;
+      return;
     }
   }catch(ex){ err.textContent=ex.message; }
   finally{
     btn.disabled=false;
-    if(cf&&window.turnstile&&TS.id!==null){ try{ turnstile.reset(TS.id); }catch(x){} TS.token=''; } // a token works once
+    if(cf&&window.turnstile&&TS.ids[tsId]!==undefined){ try{ turnstile.reset(TS.ids[tsId]); }catch(x){} TS.tok[tsId]=''; } // a token works once
   }
 });
 document.addEventListener('click',e=>{
   if(!e.target.closest('[data-siback]')) return; e.preventDefault();
-  const box=e.target.closest('.signin'); box.querySelector('.verifyf').hidden=true; box.querySelector('.codef').hidden=false; $('si_email').focus();
+  signinMode(SI_FORM?SI_FORM.dataset.mode:'signin');
 });
-document.addEventListener('click',e=>{ if(!e.target.closest('[data-opensignin]')) return; const d=$('signin'); if(d){ window.scrollTo({top:0}); d.open=true; } });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-opensignin]'); if(!b) return; const d=$('signin'); if(!d) return;
+  window.scrollTo({top:0}); const mode=b.dataset.opensignin==='signup'?'signup':'signin';
+  if(d.open) signinMode(mode); else { d.querySelectorAll('.codef').forEach(f=>{ f.hidden=f.dataset.mode!==mode; }); d.querySelector('.verifyf').hidden=true; d.open=true; } });
 // Close the account / sign-in menus in the app bar when clicking elsewhere.
 document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.appbar details[open]').forEach(d=>{ if(!d.contains(e.target)&&!e.target.closest('[data-opensignin]')) d.open=false; }); });
 const hh = h => `${pad(h%24)}:00`;
@@ -1066,7 +1093,7 @@ function renderNew(){
     <p class="lead">Pick the dates, choose how people answer, then share the link. Answering doesn't need an account.</p></div></section>`;
   if(!ME.user){
     $app.innerHTML=`${appbar('All polls')}${band}<main class="wrap"><div class="card"><div class="empty">
-      <p class="help mt-0">Sign in with your email to create polls. No password needed, just a code we email you. You'll come back to this page after signing in.</p>
+      <p class="help mt-0">Sign in with your email to create polls. No password needed, just a code we email you.</p>
       <button type="button" class="btn primary" data-opensignin>Sign in to get started</button></div></div></main>`; return;
   }
   const mail=CONFIG.emailEnabled;
