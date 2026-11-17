@@ -150,6 +150,15 @@
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
   .pat-chips .em-pill.pop{animation:chipIn .16s ease-out}
+  .em-pill .pat-brush{display:inline-flex;align-items:center;gap:4px;width:auto;height:auto;min-width:0;padding:0;font:inherit;opacity:1;overflow:hidden}
+  .em-pill .pat-brush:hover{background:none;text-decoration:underline}
+  .pat-keys{margin-left:auto}
+  .pat-keys kbd{font:inherit;font-size:11.5px;padding:0 4px;border:1px solid var(--line,currentColor);border-radius:3px}
+  @media (hover:none){ .pat-keys{display:none} }
+  .pat-chips .em-pill .dot{flex:none;display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c);margin-right:2px}
+  .pat-chips .em-pill.draft{border-style:dashed;background:transparent}
+  .pat-add{flex:none;width:26px;height:26px;padding:0;border-radius:5px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:var(--accent-weak);color:var(--accent-ink);font-size:17px;line-height:1;cursor:pointer}
+  .pat-add:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
   @keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .pat-chips .em-pill{animation:none} }
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
@@ -720,19 +729,32 @@ function patInner(id){
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">Time</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="From">${opt(st.hmin,st.hmax-1,st.hs)}</select> to
       <select class="inline" data-patto="${id}" aria-label="To">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">All day</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">Evening 18–22</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">From 17:00</button>`:''}</span></div>
-    <div class="pat-sum${st.chips?' pat-chips':''}" id="patsum_${id}">${st.chips?patChips(id):esc(patSummary(id))}</div>`;
+    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.chips?' pat-chips':''}" id="patsum_${id}">${st.chips?patChips(id):esc(patSummary(id))}</div>`;
 }
-// Chip view of the summary: each active criterion is a rectangle with × that resets it to the default.
+// Chip view of the summary (quick fill): saved rules as chips, then the rule being edited (dashed) with + to save it and start another.
+// Each rule is one criterion: days, dates and time together, e.g. "Weekdays 12:00–15:00".
+function patRule(id){
+  const st=PAT[id], v=patValue(id); if(v.empty) return null;
+  const days=[v.pat&&v.pat.wd?wdText(v.pat.wd):'', v.pat&&v.pat.dom?`${ord(v.pat.dom[0])}–${ord(v.pat.dom[1])} of the month`:''].filter(Boolean).join(', ');
+  const all=!st.hours||(v.hs<=st.hmin&&v.he>=st.hmax), time=all?'':(v.he===24?`from ${hh24(v.hs)}`:`${hh24(v.hs)}–${hh24(v.he)}`);
+  return {pat:v.pat, hs:all?st.hmin:v.hs, he:all?st.hmax:v.he, dflt:!days&&!time, text:`${days||'Every day'}${time?' '+time:''}`, ...(st.ruleExtra?st.ruleExtra():{})};
+}
+// The rules a fill uses: the saved ones plus the one being edited (unless it's untouched and there are saved ones).
+function patRules(id){ const st=PAT[id], rs=st.rules||[], d=patRule(id); return d&&(!d.dflt||!rs.length)?[...rs,d]:[...rs]; }
+function patResetDraft(st){ st.wd=new Set([0,1,2,3,4,5,6]); st.dom=['','']; st.hs=st.hmin; st.he=st.hmax; }
 function patChips(id){
-  const st=PAT[id], v=patValue(id); if(v.empty) return 'Pick at least one day.';
-  const seen=st.seenChips||new Set(), now=new Set();
-  const chip=(t,k)=>{ now.add(k+t); return `<span class="em-pill${seen.has(k+t)?'':' pop'}"><span>${esc(t)}</span><button type="button" data-patchip="${id}" data-k="${k}" aria-label="Remove ${esc(t)}">×</button></span>`; };
-  const out=[];
-  if(v.pat&&v.pat.wd) out.push(chip(wdText(v.pat.wd),'wd'));
-  if(v.pat&&v.pat.dom) out.push(chip(`${ord(v.pat.dom[0])}–${ord(v.pat.dom[1])} of the month`,'dom'));
-  if(st.hours&&!(v.hs<=st.hmin&&v.he>=st.hmax)) out.push(chip(v.he===24?`from ${hh24(v.hs)}`:`${hh24(v.hs)}–${hh24(v.he)}`,'time'));
-  st.seenChips=now; const c=st.count?st.count(v):'';
-  return (out.length?out.join(''):'<span class="muted">Every day'+(st.hours?' · all day':'')+'</span>')+(c?`<span class="muted small">${esc(c)}</span>`:'');
+  const st=PAT[id], rs=st.rules||(st.rules=[]), d=patRule(id), seen=st.seenChips||new Set(), now=new Set();
+  // r.st (quick fill brush): y = available, m = maybe, x = clear
+  // With a brush, the tag's label is a button that switches it: Available → Maybe → Clear.
+  const chip=(r,attr,cls='',bi='')=>{ const t=r.text, k=(r.st||'')+t, b=r.st==='y'?'Available':r.st==='m'?'Maybe':r.st==='x'?'Clear':''; now.add(k);
+    const lab=r.st?`<button type="button" class="pat-brush" data-qfbrush="${bi}" title="${b} · click to switch" aria-label="${esc(b+': '+t)}, switch brush">${r.st!=='x'?`<span class="dot" style="--c:var(--${r.st==='y'?'yes':'maybe'})"></span>`:''}<span>${r.st==='x'?'Clear: ':''}${esc(t)}</span></button>`:`<span>${esc(t)}</span>`;
+    return `<span class="em-pill${cls}${seen.has(k)?'':' pop'}">${lab}<button type="button" ${attr} aria-label="Remove ${esc((b?b+': ':'')+t)}">×</button></span>`; };
+  let h=rs.map((r,i)=>chip(r,`data-patrule="${id}" data-i="${i}"`,'',i)).join('');
+  if(!d) h+='<span class="muted">Pick at least one day.</span>';
+  else if(!d.dflt) h+=chip(d,`data-patchip="${id}"`,' draft','d')+`<button type="button" class="pat-add" data-patadd="${id}" title="Add another rule" aria-label="Keep ${esc(d.text)} and add another rule">+</button>`;
+  else if(!rs.length) h+='<span class="muted">Every day'+(st.hours?' · all day':'')+'</span>';
+  st.seenChips=now; const c=st.countRules?st.countRules(patRules(id)):'';
+  return h+(c?`<span class="muted small">${esc(c)}</span>`:'');
 }
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
@@ -750,9 +772,10 @@ function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el
 function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
 document.addEventListener('click',e=>{
   const x=e.target.closest('[data-patchip]');
-  if(x){ const id=x.dataset.patchip, st=PAT[id], k=x.dataset.k;
-    if(k==='wd') st.wd=new Set([0,1,2,3,4,5,6]); if(k==='dom') st.dom=['','']; if(k==='time'){ st.hs=st.hmin; st.he=st.hmax; }
-    patRefresh(id,true); return; }
+  if(x){ patResetDraft(PAT[x.dataset.patchip]); patRefresh(x.dataset.patchip,true); return; }
+  const ru=e.target.closest('[data-patrule]'); if(ru){ PAT[ru.dataset.patrule].rules.splice(+ru.dataset.i,1); patRefresh(ru.dataset.patrule,true); return; }
+  const ad=e.target.closest('[data-patadd]');
+  if(ad){ const id=ad.dataset.patadd, st=PAT[id], d=patRule(id); if(d&&!d.dflt){ (st.rules||(st.rules=[])).push(d); patResetDraft(st); } patRefresh(id,true); return; }
   const c=e.target.closest('[data-patwd]'), p=e.target.closest('[data-patpre]'); if(!c&&!p) return;
   if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
   const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
@@ -1805,32 +1828,46 @@ function renderMine(el){
 // Quick fill: mark every day matching a pattern (optionally only some hours) in one go.
 function quickFill(){
   if(!P.qfOpen) return '';
-  const p=P.data.poll, slots=ansMode()!=='days', st=P.qfs||'y';
+  const p=P.data.poll, slots=ansMode()!=='days';
   const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly(),chips:true};
   // A new poll (or new hours) starts the quick-fill fresh.
   if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
   patternPicker('qf',o); PAT.qf.poll=P.id;
-  PAT.qf.count=v=>{ const n=P.data.dates.filter(k=>matchPat(k,v.pat)).length; return `${n} day${n===1?'':'s'} in this poll`; };
+  PAT.qf.ruleExtra=()=>({st:P.qfs||'y'});
+  // The brush is part of the rule being built, so it sits with the other criteria (above the rule tags).
+  PAT.qf.extraRow=()=>{ const b=P.qfs||'y'; return `<div class="pat-row"><span class="pat-l">Mark as</span><div class="seg">
+    <button type="button" data-qfs="y" class="${b==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
+    <button type="button" data-qfs="m" class="${b==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
+    <button type="button" data-qfs="x" class="${b==='x'?'on':''}">Clear</button></div>
+    <span class="pat-keys muted small">Keys: <kbd>A</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule</span></div>`; };
+  PAT.qf.countRules=rs=>{ const n=P.data.dates.filter(k=>rs.some(r=>matchPat(k,r.pat))).length; return `${n} day${n===1?'':'s'} in this poll`; };
   const box=patternPicker('qf',o);
-  return `<div class="qf">${box}<div class="row mt-3"><span class="muted small">Mark as:</span><div class="seg">
-    <button type="button" data-qfs="y" class="${st==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
-    <button type="button" data-qfs="m" class="${st==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
-    <button type="button" data-qfs="x" class="${st==='x'?'on':''}">Clear</button></div>
-    <button type="button" class="btn sm primary" data-qfapply>Apply</button></div></div>`;
+  return `<div class="qf">${box}<div class="row mt-3"><button type="button" class="btn sm primary" data-qfapply>Apply</button></div></div>`;
 }
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
+// Brush for the rule being built (also from the keyboard: A / M / C, + saves the rule).
+function qfBrush(b){ P.qfs=b; document.querySelectorAll('.qf [data-qfs]').forEach(x=>x.classList.toggle('on',x.dataset.qfs===b)); patRefresh('qf'); }
+document.addEventListener('keydown',e=>{
+  if(!P.qfOpen||!document.querySelector('.qf')||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,select,textarea,[contenteditable]')) return;
+  const b={a:'y',m:'m',c:'x'}[e.key.toLowerCase()];
+  if(b){ e.preventDefault(); qfBrush(b); }
+  else if(e.key==='+'){ e.preventDefault(); document.querySelector('.qf [data-patadd]')?.click(); }
+});
 function applyQuickFill(){
-  const v=patValue('qf'); if(v.empty){ toast('Pick at least one day'); return; }
-  const H=hours(), st=P.qfs||'y', whole=!PAT.qf.hours||(v.hs<=H[0]&&v.he>=H[H.length-1]+1), en=Object.assign({},P.mine.entries);
-  const ks=P.data.dates.filter(k=>matchPat(k,v.pat));
-  ks.forEach(k=>{ if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
-    const m=hourMap(en[k]); H.forEach(h=>{ if(h>=v.hs&&h<v.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; });
-  P.mine.entries=en; changed(); renderBody(); toast(ks.length?`${st==='x'?'Cleared':'Marked'} ${ks.length} day${ks.length===1?'':'s'}`:'No days in this poll match');
+  const rs=patRules('qf'); if(!rs.length){ toast('Pick at least one day'); return; }
+  const H=hours(), en=Object.assign({},P.mine.entries), done=new Set();
+  rs.forEach(r=>{ const st=r.st||'y', whole=!PAT.qf.hours||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
+    P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
+      const m=hourMap(en[k]); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; }); });
+  const n=done.size; P.mine.entries=en; changed(); renderBody(); toast(n?`${rs.every(r=>r.st==='x')?'Cleared':'Filled'} ${n} day${n===1?'':'s'}`:'No days in this poll match');
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; renderBody(); return; }
   if(e.target.closest('[data-hint]')){ P.hint=!P.hint; store.set('showOthers',P.hint); renderBody(); return; }
-  const s=e.target.closest('[data-qfs]'); if(s){ P.qfs=s.dataset.qfs; s.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===s)); return; }
+  const s=e.target.closest('[data-qfs]'); if(s){ qfBrush(s.dataset.qfs); return; }
+  const qb=e.target.closest('[data-qfbrush]');
+  if(qb){ const nx={y:'m',m:'x',x:'y'}, i=qb.dataset.qfbrush;
+    if(i==='d') qfBrush(nx[P.qfs||'y']); else { const r=PAT.qf.rules[+i]; r.st=nx[r.st||'y']; patRefresh('qf'); } return; }
   if(e.target.closest('[data-qfapply]')){ if(typeof editable==='function'&&!editable()) return; applyQuickFill(); }
 });
 // ---------- calendar import (iCal feed or .ics file) ----------
