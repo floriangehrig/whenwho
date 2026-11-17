@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>when-who</title>
+<meta name="description" content="Free availability polls: share one link and see when everyone is free. No account needed to answer.">
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#0B1F3A">
@@ -479,6 +480,81 @@
   .appbar .tile.has-e{background:#fff}
   .hero-me{display:flex;gap:20px;align-items:center}
   .hero-me h1{margin-top:4px}
+
+  /* ---------- landing (signed out) ---------- */
+  .btn.lg{min-height:46px;padding:11px 20px;font-size:15px;border-radius:10px}
+  .btn.on-band{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+  .btn.on-band:hover{background:rgba(255,255,255,.16)}
+  .landing-band{padding:56px 0 110px;position:relative;overflow:hidden}
+  .landing-band::after{content:"";position:absolute;inset:auto -10% -60% 40%;height:420px;background:radial-gradient(closest-side,color-mix(in srgb,var(--yes) 28%,transparent),transparent);pointer-events:none}
+  .landing-hero{display:grid;gap:40px;grid-template-columns:minmax(0,1fr);align-items:center;position:relative;z-index:1}
+  @media (min-width:900px){ .landing-hero{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)} }
+  .band h1.display{font-size:clamp(34px,5.2vw,52px);line-height:1.06;letter-spacing:-.035em}
+  .display .hl{background:linear-gradient(90deg,#7FE3A8,#6EA8FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .landing-band .lead{font-size:17.5px;margin-top:16px}
+  .lh-note{color:var(--on-brand-muted);font-size:13px;margin:14px 0 0}
+  .demo{background:rgba(255,255,255,.97);color:#0F172A;border-radius:18px;padding:18px;box-shadow:0 30px 60px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.2);transform:rotate(-1.2deg);transition:transform .4s}
+  .demo:hover{transform:none}
+  .demo-h{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .demo-h b{display:block;font-size:15px}
+  .demo-sub{font-size:12px;color:#5B6578}
+  .demo-count{margin-left:auto;font-size:12px;font-weight:600;background:#EDF1F7;color:#334155;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .demo-grid{display:grid;gap:6px}
+  .demo-row{display:grid;grid-template-columns:28px 52px repeat(5,minmax(0,1fr));gap:6px;align-items:center;border-radius:10px;transition:background .3s}
+  .demo-row .tile.avatar{width:28px;height:28px;opacity:.35;transition:opacity .3s,box-shadow .3s} .demo-row .tile.avatar .tile-i{font-size:12px}
+  .demo-row.on .tile.avatar{opacity:1;box-shadow:0 0 0 3px #E8EFFF,0 0 0 5px #1F5EFF}
+  .demo-row.done .tile.avatar{opacity:1}
+  .demo-name{font-size:12.5px;font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .demo-days span{font-size:11px;font-weight:600;color:#5B6578;text-align:center;text-transform:uppercase;letter-spacing:.05em}
+  .demo-cell{height:26px;border-radius:7px;background:#EDF1F7;transition:background .25s}
+  .demo-cell.y,.demo-cell.m,.demo-cell.n{animation:demoPop .3s cubic-bezier(.3,1.6,.6,1)}
+  .demo-cell.y{background:#12A150} .demo-cell.m{background:#E8A317} .demo-cell.n{background:#F3C9C9}
+  @keyframes demoPop{from{transform:scale(.6)}to{transform:none}}
+  .demo-heat{margin-top:6px;padding-top:10px;border-top:1px dashed #CBD5E1}
+  .demo-hc{position:relative;height:34px;border-radius:8px;background:#EDF1F7;overflow:hidden;display:grid;place-items:center}
+  .demo-hc i{position:absolute;inset:0;background:#12A150;opacity:var(--h,0);transition:opacity .45s}
+  .demo-hc b{position:relative;font-size:12px;color:#0F172A;transition:color .3s}
+  .demo-hc.full b{color:#fff}
+  .demo.best .demo-hc.full{box-shadow:0 0 0 2px #fff,0 0 0 4px #12A150;animation:demoGlow 1.4s ease-in-out infinite}
+  @keyframes demoGlow{50%{box-shadow:0 0 0 2px #fff,0 0 0 7px color-mix(in srgb,#12A150 45%,transparent)}}
+  .demo-best{margin-top:14px;text-align:center;font-weight:600;font-size:14px;color:#0B7A3B;background:#E3F6EA;border-radius:10px;padding:9px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+  .demo.best .demo-best{opacity:1;transform:none}
+  .landing{padding-top:8px;position:relative;z-index:1}
+  .band+.wrap.landing{margin-top:-56px}
+  .landing>.card:first-child{margin-top:0;margin-bottom:var(--s6)}
+  .l-sec{margin-top:72px}
+  .landing>.l-sec:first-child{margin-top:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px 24px;box-shadow:var(--shadow)}
+  .l-h{font-size:28px;letter-spacing:-.025em;margin:6px 0 22px}
+  .steps{list-style:none;margin:0;padding:0;display:grid;gap:22px;grid-template-columns:minmax(0,1fr)}
+  @media (min-width:720px){ .steps{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  .steps h3,.feat h3{font-size:16px;margin:12px 0 4px}
+  .steps p,.feat p{margin:0;color:var(--muted);font-size:14.5px}
+  .step-n{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);font-weight:700}
+  .k{display:inline-block;font-size:12px;font-weight:600;padding:0 7px;border-radius:999px}
+  .k.y{background:var(--yes-bg);color:var(--yes-dark)} .k.m{background:var(--maybe-bg);color:var(--maybe-ink)} .k.n{background:var(--no-bg);color:var(--no)}
+  .feat-grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+  @media (min-width:600px){ .feat-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (min-width:900px){ .feat-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+  .feat:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .feat-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--accent-weak);color:var(--accent)}
+  .feat-ic svg{width:20px;height:20px}
+  .cta-band{margin-top:72px;text-align:center;border-radius:20px;padding:44px 20px;color:#fff;background:radial-gradient(600px 200px at 50% -20%,color-mix(in srgb,var(--accent) 55%,transparent),transparent),linear-gradient(180deg,var(--brand),var(--brand-2))}
+  .cta-band h2{font-size:clamp(22px,3.4vw,30px);letter-spacing:-.025em;margin:0;color:#fff}
+  .cta-band p{color:#C9D5EA;margin:8px 0 22px}
+  @media (max-width:560px){
+    .landing-band{padding:32px 0 96px}
+    .landing-band .lead{font-size:16px}
+    .lh-ctas .btn{flex:1 1 auto}
+    .demo{padding:14px;transform:none}
+    .demo-row{grid-template-columns:24px 44px repeat(5,minmax(0,1fr));gap:4px}
+    .demo-row .tile.avatar{width:24px;height:24px}
+    .l-sec{margin-top:52px} .cta-band{margin-top:52px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .demo,.demo-cell,.demo-hc i,.demo-best,.feat{transition:none} .demo{transform:none}
+    .demo-cell.y,.demo-cell.m,.demo-cell.n,.demo.best .demo-hc.full{animation:none}
+  }
   .poll-h{display:flex;gap:18px;align-items:center}
   .card-h>.tile{margin-right:2px}
 
@@ -1223,6 +1299,87 @@ function renderHome(){
       :`<div class="empty"><p class="help mt-0">Sign in with your email to create polls and see the ones you created and answered, on every device. No password needed, just a code we email you.</p>
       <button type="button" class="btn primary" data-opensignin>Sign in</button></div>`}</div>`}
     </div></main>`;
+}
+
+// ================= LANDING (signed out) =================
+// The hero demo is a scripted pretend poll: people answer one by one, the heat row fills in, the best day lights up.
+const DEMO_DAYS=['Mon','Tue','Wed','Thu','Fri'];
+const DEMO_PEOPLE=[['Ana','ynyym'],['Ben','mynyy'],['Chloé','yymyn'],['Dev','nyyyy'],['Eli','ymnyy']];
+const DEMO_LBL={y:'free',m:'maybe',n:'busy'};
+function renderLanding(localOnly){
+  const cta = `<a class="btn primary lg withic" href="?new">${ICON.plus}Create a poll</a>`;
+  const rows = DEMO_PEOPLE.map(([n],i)=>`<div class="demo-row" data-r="${i}">${tile({text:n},'avatar')}<span class="demo-name">${esc(n)}</span>
+    ${DEMO_DAYS.map((_,j)=>`<span class="demo-cell" data-c="${j}"></span>`).join('')}</div>`).join('');
+  const feats=[
+    [ICON.cal,'Recurring polls','Weekly team sync? A series opens a fresh round each period and keeps everyone\'s answers together.'],
+    [ICON.clock,'Days or hours','Ask about whole days, or let people paint the exact hours they\'re free.'],
+    [ICON.link,'Calendar pre-fill','Paste your iCal feed and your busy hours fill themselves in.'],
+    [ICON.users,'Schedule the meeting','Pick the winning slot, add a place and a note, and everyone gets an .ics invite.'],
+    [ICON.mail,'Gentle reminders','Optional emails nudge people before the deadline, so you don\'t have to.'],
+    [ICON.lock,'Private when needed','Protect a poll with a password. Answering never needs an account.'],
+  ];
+  return `
+  <section class="band landing-band"><div class="wrap landing-hero">
+    <div class="lh-copy">
+      <div class="eyebrow">Availability polls</div>
+      <h1 class="display">Find a time that works for <span class="hl">everyone</span></h1>
+      <p class="lead">Create a poll, share one link and watch the group's free time light up. No accounts, no back-and-forth, no 40-message threads.</p>
+      <div class="row mt-5 lh-ctas">${cta}<button type="button" class="btn lg on-band" data-opensignin>Sign in</button></div>
+      <p class="lh-note">Free · answering takes 20 seconds · works on any phone</p>
+    </div>
+    <div class="demo" id="demo" aria-label="Example: five people answer a poll for team dinner, and Thursday works for all of them" role="img">
+      <div class="demo-h"><span class="tile sm has-e"><span class="tile-e">🍝</span></span><div><b>Team dinner</b><span class="demo-sub">Next week · 5 invited</span></div>
+        <span class="demo-count" id="demoCount">0/5 answered</span></div>
+      <div class="demo-grid">
+        <div class="demo-row demo-days"><span></span><span></span>${DEMO_DAYS.map(d=>`<span>${d}</span>`).join('')}</div>
+        ${rows}
+        <div class="demo-row demo-heat"><span></span><span class="demo-name">Group</span>${DEMO_DAYS.map((_,j)=>`<span class="demo-hc" data-c="${j}"><i></i><b>0</b></span>`).join('')}</div>
+      </div>
+      <div class="demo-best" id="demoBest">🎉 Thursday works for everyone</div>
+    </div>
+  </div></section>
+  <main class="wrap landing">
+    ${localOnly.length?`<div class="card"><div class="card-h"><h2>Polls created in this browser</h2></div>
+      <p class="help mt-0">These polls were created with an admin link. Sign in to move them into your account; only the account that owns a poll can manage it.</p>
+      <ul class="list polls">${localOnly.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a></span>
+        <span class="acts"><button class="btn sm ghost" data-forget="${esc(p.id)}" title="Remove from this list (doesn't delete the poll)" aria-label="Remove from this list">✕</button></span></li>`).join('')}</ul>
+      <div class="row mt-3"><button type="button" class="btn primary" data-opensignin>Sign in</button></div></div>`:''}
+    <section class="l-sec"><div class="eyebrow">How it works</div><h2 class="l-h">Three steps, one link</h2>
+      <ol class="steps">
+        <li><span class="step-n">1</span><h3>Pick the dates</h3><p>Choose a range or a few days, whole days or hours, and a deadline if you like.</p></li>
+        <li><span class="step-n">2</span><h3>Share the link</h3><p>Drop it in the group chat. People tap <span class="k y">free</span> <span class="k m">maybe</span> <span class="k n">busy</span>, no sign-up.</p></li>
+        <li><span class="step-n">3</span><h3>See who's free</h3><p>The heatmap shows the best time at a glance. Schedule it and send calendar invites.</p></li>
+      </ol></section>
+    <section class="l-sec"><div class="eyebrow">Everything you need</div><h2 class="l-h">Small tool, no fuss</h2>
+      <div class="feat-grid">${feats.map(([ic,t,d])=>`<div class="feat"><span class="feat-ic">${ic}</span><h3>${t}</h3><p>${d}</p></div>`).join('')}</div></section>
+    <section class="cta-band"><h2>Your next meeting is one link away</h2><p>Make a poll in under a minute.</p>${cta}</section>
+  </main>`;
+}
+let demoTimer=0;
+function startLandingDemo(){
+  clearTimeout(demoTimer);
+  const demo=$('demo'); if(!demo) return;
+  const n=DEMO_PEOPLE.length, cells=[...demo.querySelectorAll('.demo-row[data-r] .demo-cell')], heat=[...demo.querySelectorAll('.demo-hc')];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const steps=[]; DEMO_PEOPLE.forEach(([,a],i)=>{ steps.push(['row',i]); [...a].forEach((s,j)=>steps.push(['cell',i,j,s])); steps.push(['done',i]); });
+  let k=0;
+  const setCell=(i,j,s)=>{ const c=cells[i*5+j]; c.className='demo-cell '+s; c.title=`${DEMO_PEOPLE[i][0]}: ${DEMO_LBL[s]}`; };
+  const tally=answered=>DEMO_DAYS.forEach((_,j)=>{ let y=0,m=0; for(let i=0;i<answered;i++){ const s=DEMO_PEOPLE[i][1][j]; if(s==='y') y++; else if(s==='m') m++; }
+    const h=heat[j]; h.style.setProperty('--h',((y+m*.4)/n).toFixed(2)); h.querySelector('b').textContent=y+(m?'+'+m+'?':''); h.classList.toggle('full',y===n); });
+  const reset=()=>{ cells.forEach(c=>{c.className='demo-cell';c.title='';}); demo.querySelectorAll('.demo-row[data-r]').forEach(r=>r.classList.remove('on','done')); tally(0); demo.classList.remove('best'); $('demoCount').textContent=`0/${n} answered`; };
+  const finish=()=>{ DEMO_PEOPLE.forEach(([,a],i)=>{ [...a].forEach((s,j)=>setCell(i,j,s)); demo.querySelector(`[data-r="${i}"]`).classList.add('done'); }); tally(n); $('demoCount').textContent=`${n}/${n} answered`; demo.classList.add('best'); };
+  if(reduce){ finish(); return; }
+  reset();
+  const tick=()=>{
+    if(!document.body.contains(demo)) return;            // navigated away
+    if(document.hidden){ demoTimer=setTimeout(tick,600); return; }
+    if(k>=steps.length){ demo.classList.add('best'); demoTimer=setTimeout(()=>{ reset(); k=0; demoTimer=setTimeout(tick,900); },4200); return; }
+    const [t,i,j,s]=steps[k++], row=demo.querySelector(`[data-r="${i}"]`);
+    if(t==='row'){ row.classList.add('on'); demoTimer=setTimeout(tick,350); return; }
+    if(t==='cell'){ setCell(i,j,s); demoTimer=setTimeout(tick,140); return; }
+    row.classList.replace('on','done'); tally(i+1); $('demoCount').textContent=`${i+1}/${n} answered`; demoTimer=setTimeout(tick,500);
+  };
+  demoTimer=setTimeout(tick,700);
 }
 
 // ================= NEW POLL =================
