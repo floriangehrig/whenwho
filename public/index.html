@@ -349,6 +349,32 @@
   .meet-b{padding:0 16px 14px 40px}
   .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .meet .note{white-space:pre-wrap}
+  .mstrip{overflow:visible} .mstrip.folded .mstrip-h{border-bottom:0}
+  .mfold{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
+  .mfold::before{content:"";width:7px;height:7px;border-right:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(45deg);transition:transform .15s;margin:0 4px 3px 2px;flex:none}
+  .folded .mfold::before{transform:rotate(-45deg);margin-bottom:0}
+  .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
+  .qacts{display:flex;align-items:center;gap:2px;flex:none}
+  .qacts .btn{margin-right:4px}
+  .qb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer;padding:0}
+  .qb svg{width:16px;height:16px}
+  .qb:hover{background:var(--sunken);border-color:var(--line-strong);color:var(--ink)}
+  .qb.danger:hover{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,var(--line));color:var(--no)}
+  .selecting .meet>summary::before{display:none}
+  .mchk{width:18px;height:18px;margin:0;accent-color:var(--accent);pointer-events:none;flex:none}
+  .meet.sel>summary{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+  .mbatch{display:flex;flex-direction:column;gap:12px;padding:12px 16px 14px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line));background:var(--card)}
+  .mbatch-h{display:flex;align-items:center;gap:10px}
+  .mbatch-g{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:start}
+  .mbatch-g>label{font-size:13px;font-weight:600;padding-top:7px}
+  .mbatch-r{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;min-width:0}
+  .mbatch-r>.locbox,.mbatch-r>textarea{flex:1;min-width:0}
+  .mbatch-r textarea{min-height:60px}
+  .mbatch-r input[type=number]{width:80px}
+  .mbatch-r select{width:auto}
+  .mbatch-r .help{align-self:center;margin:0}
+  @media (max-width:560px){ .mbatch-g{grid-template-columns:minmax(0,1fr)} .mbatch-g>label{padding-top:0}
+    .meet>summary{flex-wrap:wrap} .qacts{margin-left:auto} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
@@ -748,6 +774,9 @@ let CONFIG={emailEnabled:false};
 let ME={user:null,polls:[],answered:[]};
 const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 const ICON = {
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5a2 2 0 0 0 2 1.5h6a2 2 0 0 0 2-1.5L18 7M9 7V4.5h6V7"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>`,
   logo:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg>`,
   cal:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>`,
   clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`,
@@ -1594,21 +1623,80 @@ function invited(m){ const rs=P.data.responses||[]; return m.participants==='all
 function renderMeetings(){
   const el=$('meetings'); if(!el) return;
   const d=P.data, ms=inst().meetings;
-  if(!ms.length){ el.innerHTML=''; return; }
-  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:');
-  el.innerHTML=`<div class="mstrip"><div class="mstrip-h"><h3>★ Scheduled <span class="count">${ms.length}</span></h3>
-      ${d.isAdmin&&ms.length>1?`<button class="btn sm ghost" data-mdesc="*" title="Set the same description on every scheduled meeting">Description for all</button>`:''}<a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></div>
-    ${P.mdesc==='*'?descEditor('*', ms.every(m=>(m.note||'')===(ms[0].note||''))?ms[0].note||'':'', `Replaces the description of all ${ms.length} meetings. Leave it empty to clear every description.`):''}
-    ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email);
-      return `<details class="meet"${P.mdesc===m.id?' open':''}><summary><span class="mw"><span class="when">${esc(whenText(m))}</span>
+  if(!ms.length){ el.innerHTML=''; P.msel=null; return; }
+  if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
+  if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
+  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:'), fold=P.mfold, sel=d.isAdmin&&!fold?P.msel:null, nSel=sel?sel.size:0;
+  const qb=(attr,id,ic,label,cls='')=>`<button type="button" class="qb${cls}" data-q ${attr}="${id}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
+  el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
+      <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?'Show':'Hide'} scheduled meetings"><h3>★ Scheduled <span class="count">${ms.length}</span></h3></button>
+      ${d.isAdmin&&!fold?`<button class="btn sm ghost${sel?' on':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button>`:''}<a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></div>
+    ${fold?'':`${sel?batchPanel(ms,nSel):''}
+    ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email), on=sel&&sel.has(m.id);
+      return `<details class="meet${on?' sel':''}"${!sel&&P.mdesc===m.id?' open':''}><summary${sel?` data-mpick="${m.id}"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-label="Select this meeting"${on?' checked':''}>`:''}<span class="mw"><span class="when">${esc(whenText(m))}</span>
           <span class="small muted">${esc(m.title||d.poll.title)}${m.location?` · ${esc(m.location)}`:''} · ${esc(whoText(m))}</span></span>
-          <a class="btn sm" href="${esc(icsUrl(m.id,true))}">Add to calendar</a></summary>
+          ${sel?'':`<span class="qacts"><a class="btn sm" href="${esc(icsUrl(m.id,true))}">Add to calendar</a>${d.isAdmin?qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')+qb('data-copyinvite',m.id,'copy','Copy invite text')+qb('data-delmeet',m.id,'trash','Delete meeting',' danger'):''}</span>`}</summary>
         <div class="meet-b">${m.location?`<div class="small">📍 ${esc(m.location)} · <a href="${esc(mapUrl(m.location))}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>`:''}${P.mdesc===m.id?descEditor(m.id,m.note||'',''):m.note?`<div class="small note">${esc(m.note)}</div>`:''}
         ${d.isAdmin?`<div class="acts">${d.emailEnabled?`<button class="btn sm primary" data-sendinvite="${m.id}">${m.sentAt?'Send invite again':'Send invite email'}</button>`:''}
           <button class="btn sm" data-mail="${m.id}">${d.emailEnabled?'Open in my email app':'Email invite'}</button><button class="btn sm" data-copyinvite="${m.id}">Copy invite text</button>${P.mdesc===m.id?'':`<button class="btn sm" data-mdesc="${m.id}">${m.note?'Edit description':'Add description'}</button>`}<button class="btn sm danger" data-delmeet="${m.id}">Delete</button></div>
           <div class="help">${m.sentAt?`Invite emailed ${esc(new Date(m.sentAt).toLocaleString())}. `:''}${noMail.length?`No email for: ${esc(noMail.map(r=>r.name).join(', '))}.`:''}${!d.emailEnabled?' “Email invite” opens your email app with the invitees who left an address in BCC.':''}</div>`
-          :`<div class="small muted">Who: ${esc(whoText(m))}</div>`}</div></details>`; }).join('')}</div>`;
+          :`<div class="small muted">Who: ${esc(whoText(m))}</div>`}</div></details>`; }).join('')}`}</div>`;
+  if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
+// Batch tools for the selected meetings (select mode): location, description, move, delete.
+function batchPanel(ms,n){
+  const S=ms.filter(m=>P.msel.has(m.id)), same=f=>S.length&&S.every(m=>(m[f]||'')===(S[0][f]||''))?S[0][f]||'':'';
+  const dis=n?'':' disabled', b=P.mbatch||{};
+  return `<div class="mbatch"><div class="mbatch-h"><button class="btn sm" data-mselall>${n===ms.length?'Select none':'Select all'}</button>
+      <span class="small muted" aria-live="polite">${n} of ${ms.length} selected</span></div>
+    <div class="mbatch-g">
+      <label for="mb_loc">Location</label><div class="mbatch-r"><div class="locbox"><input type="text" id="mb_loc" maxlength="200" autocomplete="off" placeholder="Search a place, or leave empty to clear" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mb_loc_sug" value="${esc(b.loc??same('location'))}"><div class="locsug" id="mb_loc_sug" role="listbox" hidden></div></div><button class="btn sm" data-mbatch="loc"${dis}>Set</button></div>
+      <label for="mb_desc">Description</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="Agenda, what to bring, a call link … (empty clears it)">${esc(b.desc??same('note'))}</textarea><button class="btn sm" data-mbatch="desc"${dis}>Set</button></div>
+      <label for="mb_n">Move by</label><div class="mbatch-r"><input type="number" id="mb_n" step="1" min="-365" max="365" value="${esc(b.n??'1')}" inputmode="numeric"><select id="mb_u" aria-label="Unit"><option value="h"${b.u==='h'?' selected':''}>hours</option><option value="d"${b.u!=='h'?' selected':''}>days</option></select><button class="btn sm" data-mbatch="shift"${dis}>Move</button><span class="help">Negative moves earlier.</span></div>
+    </div>
+    <div class="row"><button class="btn sm danger withic" data-mbatch="del"${dis}>${ICON.trash}Delete ${n||''} selected</button></div></div>`;
+}
+// A meeting moved by n days or hours; null if it can't be (it would run past midnight).
+function shiftMeeting(m,n,unit){
+  let days=unit==='d'?n:0, o={...m};
+  if(unit==='h'){ if(m.allDay) return m;
+    let s=m.start+n, e=m.end+n; const off=Math.floor(s/24); s-=off*24; e-=off*24; if(e>24) return null;
+    o.start=s; o.end=e; days=off; }
+  if(!days) return o;
+  if(m.repeat){ o.date=addDaysL(WEEK0,((wdOf(m.date)+days)%7+7)%7);
+    o.repeat={...m.repeat, from:addDaysL(m.repeat.from,days), until:m.repeat.until?addDaysL(m.repeat.until,days):m.repeat.until}; }
+  else o.date=addDaysL(m.date,days);
+  return o;
+}
+async function runBatch(kind,btn){
+  const ms=inst().meetings, S=P.msel, n=S.size; if(!n) return;
+  const pl=`${n} ${n===1?'meeting':'meetings'}`;
+  let list, msg;
+  if(kind==='del'){ if(!confirm(`Delete ${pl}? This can't be undone.`)) return; list=ms.filter(m=>!S.has(m.id)); msg=`Deleted ${pl}`; }
+  else if(kind==='loc'){ const v=$('mb_loc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,location:v}:m); msg=v?`Location set on ${pl}`:`Location cleared on ${pl}`; }
+  else if(kind==='desc'){ const v=$('mb_desc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,note:v}:m); msg=v?`Description set on ${pl}`:`Description cleared on ${pl}`; }
+  else { const k=+$('mb_n').value, u=$('mb_u').value;
+    if(!Number.isInteger(k)||!k||Math.abs(k)>(u==='h'?48:365)){ toast(u==='h'?'Enter whole hours, up to ±48':'Enter whole days, up to ±365'); return; }
+    const out=ms.map(m=>S.has(m.id)?shiftMeeting(m,k,u):m), bad=out.filter(x=>!x).length;
+    if(bad){ toast(`${bad} ${bad===1?'meeting would':'meetings would'} run past midnight. Nothing was moved.`); return; }
+    const ad=u==='h'?ms.filter(m=>S.has(m.id)&&m.allDay).length:0;
+    list=out; msg=`Moved ${pl} ${k>0?'later':'earlier'} by ${Math.abs(k)} ${u==='h'?(Math.abs(k)===1?'hour':'hours'):(Math.abs(k)===1?'day':'days')}${ad?` (${ad} all-day left as is)`:''}`; }
+  btn.disabled=true;
+  if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('summary [data-q]')) e.preventDefault(); // quick actions don't open/close the row
+  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch]'); if(!t||!P.data) return;
+  const ds=t.dataset, ms=inst().meetings;
+  if(ds.mfold!==undefined){ P.mfold=!P.mfold; store.set('mfold:'+P.id,P.mfold); renderMeetings(); return; }
+  if(ds.mselect!==undefined){ P.msel=P.msel?null:new Set(); P.mbatch={}; P.mdesc=null; renderMeetings(); return; }
+  if(ds.mpick){ e.preventDefault(); if(!P.msel) return; P.msel.has(ds.mpick)?P.msel.delete(ds.mpick):P.msel.add(ds.mpick); renderMeetings(); return; }
+  if(ds.mselall!==undefined){ P.msel=P.msel.size===ms.length?new Set():new Set(ms.map(m=>m.id)); renderMeetings(); return; }
+  if(ds.mbatch){ runBatch(ds.mbatch,t); }
+});
+// Remember what was typed in the batch fields across re-renders (untouched fields follow the selection).
+document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n:'n',mb_u:'u'}[e.target.id]; if(f) (P.mbatch||(P.mbatch={}))[f]=e.target.value; });
+document.addEventListener('change',e=>{ if(e.target.id==='mb_u') (P.mbatch||(P.mbatch={})).u=e.target.value; });
 // Inline editor for a meeting's description; id '*' = every scheduled meeting of this round.
 function descEditor(id,val,help){
   return `<div class="mdesc"><label for="mdesc_t">${id==='*'?'Description for all meetings':'Description'}</label>
