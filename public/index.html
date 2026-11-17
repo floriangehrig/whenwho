@@ -329,7 +329,6 @@
   .ws-me .field.mt-0+.field,.ws-me .grid2+.field{margin-top:var(--s3)}
   .ws-who{display:flex;align-items:center;gap:12px}
   .ws-tools{margin-top:var(--s4);gap:8px}
-  .ws-tools.mt-0{margin-top:var(--s4)}
   .ws-tools+.ws-tools{margin-top:var(--s2)}
   .ws-tools .dd{margin-top:0}
   #body>.help:first-child{margin-top:var(--s4)}
@@ -1765,7 +1764,7 @@ function renderMine(el){
   const names=(a,b)=>[a.length?'Available: '+a.join(', '):'',b.length?'Maybe: '+b.join(', '):''].filter(Boolean).join(' · ');
   const othBtn=n?`<button type="button" class="btn sm ml-auto${on?' on':''}" data-hint aria-pressed="${on}" title="Show where the others are available">👥 ${on?'Hide':'Show'} others (${n})</button>`:'';
   let h=am==='both'||n?tools(`${am==='both'?`<div class="seg">
-      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}${othBtn}`,'mt-0'):'';
+      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}${othBtn}`):'';
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+=tools(`<button class="btn sm" data-bulk="all">All available</button><button class="btn sm${P.qfOpen?' on':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>
