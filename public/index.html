@@ -2316,17 +2316,17 @@ function draftTray(){
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
       <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
-      <button class="btn sm${x.ownDesc?' on':''}" data-ddesc="${x.key}" title="Give this meeting its own description instead of the shared one">${x.ownDesc?'Use shared description':'Own description'}</button>
+      <button class="btn sm${x.ownDesc?' on':''}" data-ddesc="${x.key}" title="Add text for this meeting only, shown below the shared description">${x.ownDesc?'Remove extra description':'Extra description'}</button>
       <button class="btn sm danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
       <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span>
-      ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="Description for this meeting only">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
+      ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="Extra description for this meeting only, shown below the shared one">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
   return `<div class="sched" id="drafts"><h3>Meeting drafts <span class="count">${P.drafts.length}</span></h3><div class="drafts">${rows}</div>
     <div class="grid2 mt-2">
       <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
       <div class="field"><label for="dm_loc">Location (optional)</label><div class="locbox"><input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="Search a place or address" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div></div>
     ${repeatFields()}
     <div class="field"><label>Description (optional${P.drafts.length>1?', for all':''})</label><textarea id="dm_note" maxlength="1000" placeholder="Agenda, what to bring, a call link …">${esc(dm.note)}</textarea>
-      ${P.drafts.length>1?'<div class="help">Use <b>Own description</b> on a draft to give just that meeting a different one.</div>':''}</div>
+      ${P.drafts.length>1?'<div class="help">Use <b>Extra description</b> on a draft to add text for just that meeting below this one.</div>':''}</div>
     <div class="err" id="dm_err"></div>
     <div class="row mt-4"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
 }
@@ -2364,7 +2364,9 @@ async function saveDrafts(btn){
   if(!P.drafts.length) return;
   if(ms.length+P.drafts.length>100){ err.textContent=`A poll can have at most 100 meetings (${ms.length} already scheduled).`; return; }
   const rv=repeatValue(err); if(!rv) return;
-  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:x.ownDesc?(x.note||''):dm.note, participants:x.participants, ...rv};
+  const noteOf=x=>[dm.note, x.ownDesc?x.note:''].map(t=>(t||'').trim()).filter(Boolean).join('\n\n');
+  const long=P.drafts.find(x=>noteOf(x).length>1000); if(long){ err.textContent=`The description for ${dLabel(long.date)} is too long: the shared and extra description together can be at most 1000 characters.`; return; }
+  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:noteOf(x), participants:x.participants, ...rv};
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
   if(await saveMeetings([...ms, ...list])){ P.drafts=[]; renderBody(); toast(`${n} ${n===1?'meeting':'meetings'} created`); }
@@ -2536,7 +2538,7 @@ document.addEventListener('click',async e=>{
   if(ds.pwk){ P[P.pavail?'ppage':'pweek']+=+ds.pwk; renderBody(); return; }
   if(ds.pview){ P.pavail=ds.pview==='avail'; renderBody(); return; }
   if(ds.pday){ const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
-  if(ds.ddesc){ const x=P.drafts.find(y=>y.key===+ds.ddesc); if(x){ x.ownDesc=!x.ownDesc; if(x.ownDesc&&x.note==null) x.note=(P.dmeta&&P.dmeta.note)||''; renderBody(); } return; }
+  if(ds.ddesc){ const x=P.drafts.find(y=>y.key===+ds.ddesc); if(x){ x.ownDesc=!x.ownDesc; renderBody(); } return; }
   if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
   if(ds.suggest!==undefined){ suggestDrafts(); return; }
