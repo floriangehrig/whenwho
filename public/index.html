@@ -348,7 +348,7 @@
   .empty-v{display:flex;flex-direction:column;gap:2px;margin-top:var(--s4);padding:22px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);text-align:center;align-items:center}
   /* scheduled meetings strip */
   .mstrip{margin-top:var(--s4);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card));overflow:hidden}
-  .mstrip-h{display:flex;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
+  .mstrip-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
   .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
   .meet{border-top:1px solid var(--line)} .meet:first-of-type{border-top:0}
   .meet>summary{padding:10px 12px 10px 16px;gap:12px;font-weight:500}
@@ -361,7 +361,7 @@
   .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .meet .note{white-space:pre-wrap}
   .mstrip{overflow:visible} .mstrip.folded .mstrip-h{border-bottom:0}
-  .mfold{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
+  .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfold::before{content:"";width:7px;height:7px;border-right:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(45deg);transition:transform .15s;margin:0 4px 3px 2px;flex:none}
   .folded .mfold::before{transform:rotate(-45deg);margin-bottom:0}
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
@@ -380,7 +380,7 @@
   .mbatch-g>label{font-size:13px;font-weight:600;padding-top:7px}
   .mbatch-r{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;min-width:0}
   .mbatch-r>.locbox,.mbatch-r>textarea{flex:1;min-width:0}
-  .mbatch-r textarea{min-height:60px}
+  .mbatch-r textarea{min-height:76px}
   .mbatch-r input[type=number]{width:80px}
   .mbatch-r select{width:auto}
   .mbatch-r .help{align-self:center;margin:0}
