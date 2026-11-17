@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>when-who</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231F5EFF'/%3E%3Crect x='7' y='9' width='18' height='16' rx='3' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 14h18M12 6.5v4M20 6.5v4' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='m12.5 19.5 2.5 2.3 4.5-4.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#0B1F3A">
@@ -118,6 +118,7 @@
   input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 80%,transparent)}
   input:hover,textarea:hover,select:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+  input[type=date],input[type=month]{min-width:0}
   input[readonly]{background:var(--sunken);color:var(--ink-2)}
   textarea{min-height:76px;resize:vertical;line-height:1.45}
   /* email entry: each address becomes a square-ish pill */
@@ -170,8 +171,8 @@
   input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer;flex:none}
   .check{display:flex;gap:10px;align-items:center;font-weight:500;font-size:14px;margin-top:10px;color:var(--ink)}
   .check input[type=number]{min-height:34px;padding:4px 8px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-  @media (max-width:560px){ .grid2{grid-template-columns:1fr} }
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px}
+  @media (max-width:560px){ .grid2{grid-template-columns:minmax(0,1fr)} }
   .linkbox{display:flex;gap:8px;margin-top:2px} .linkbox input{font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   details>summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:8px;color:var(--ink);padding:10px 0;user-select:none}
   details>summary::-webkit-details-marker{display:none}
@@ -233,7 +234,7 @@
   .legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
   .legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
   .mlabel{font-weight:650;margin:22px 0 0;font-size:14px;color:var(--ink-2)}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,12px);background:var(--brand);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:calc(100vw - 32px)}
+  .toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,12px);background:var(--brand);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:calc(100vw - 32px)}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   /* ---------- easter egg: Pigeon Post ---------- */
   .pigeon-ov{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(6,12,26,.58);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);outline:none}
@@ -261,7 +262,7 @@
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
   .wd{font-size:11px;color:var(--muted);text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding-bottom:2px}
   .day{position:relative;min-height:66px;border:1px solid var(--line);border-radius:12px;padding:7px 8px;cursor:pointer;background:var(--card);user-select:none;overflow:hidden;transition:box-shadow .12s,border-color .12s,transform .08s}
-  .day:hover:not(.off){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow)}
+  @media (hover:hover){ .day:hover:not(.off){border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow)} }
   .day:active:not(.off){transform:scale(.97)}
   .day.off{cursor:default;background:transparent;border-style:dashed;opacity:.4}
   .day .n{font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}
@@ -278,12 +279,13 @@
   .wknav{display:flex;align-items:center;gap:10px;margin-top:16px}
   .wknav .btn{min-width:36px;padding:0 10px;font-size:16px}
   .wknav .lbl{font-weight:600;font-size:14px}
-  .grid{display:grid;margin-top:12px;user-select:none;touch-action:none}
+  .grid{display:grid;margin-top:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+  .grid.painting{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:4px;border-radius:10px}
   .grid .hd{font-size:11px;font-weight:600;text-align:center;padding:4px 2px 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .grid .hd b{display:block;color:var(--ink);font-size:15px;text-transform:none;letter-spacing:0}
   .grid .hr{font-size:11px;color:var(--muted);text-align:right;padding-right:8px;line-height:26px;font-variant-numeric:tabular-nums}
   .slot{height:26px;border:1px solid var(--line);border-top:0;background:var(--card);cursor:pointer;margin:0 2px;transition:background .08s}
-  .slot:hover{background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+  @media (hover:hover){ .slot:hover{background:color-mix(in srgb,var(--accent) 8%,var(--card))} }
   .slot.top{border-top:1px solid var(--line);border-radius:8px 8px 0 0}
   .slot.bot{border-radius:0 0 8px 8px}
   /* "Show others" hints in My availability */
@@ -317,8 +319,8 @@
   .list{margin:6px 0 0;padding:0;list-style:none}
   .list li{display:flex;gap:10px;align-items:center;padding:11px 10px;margin:0 -10px;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap;border-radius:8px}
   .list li:first-child{border-top:0}
-  .list li:hover{background:var(--sunken)}
-  .list li+li:hover,.list li:hover+li{border-top-color:transparent}
+  @media (hover:hover){ .list li:hover{background:var(--sunken)}
+  .list li+li:hover,.list li:hover+li{border-top-color:transparent} }
   .list li.click{cursor:pointer}
   .list .acts{display:flex;gap:6px;flex-wrap:nowrap}
   .polls li{gap:8px 10px} .polls li>.grow{flex-basis:100%;min-width:0}
@@ -473,7 +475,7 @@
   .pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:14px}
   .pcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:16px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);
     text-align:left;font:inherit;color:inherit;transition:border-color .12s,box-shadow .12s,transform .12s;min-height:150px}
-  .pcard:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow);transform:translateY(-1px)}
+  @media (hover:hover){ .pcard:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow);transform:translateY(-1px)} }
   .pcard .tile{margin-bottom:8px}
   .pc-title{font-weight:650;font-size:15.5px;color:var(--ink);line-height:1.3;padding-right:28px;overflow-wrap:anywhere}
   a.pc-title::after{content:"";position:absolute;inset:0;border-radius:inherit}
@@ -534,7 +536,7 @@
   .step>h3+.field{margin-top:var(--s3)}
   label .opt{font-weight:500;color:var(--muted);margin-left:4px}
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
-  @media (max-width:640px){ .grid3{grid-template-columns:1fr 1fr} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
+  @media (max-width:640px){ .grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
   .unit-in{display:flex;align-items:center;gap:8px} .unit-in input{flex:none;width:72px} .unit-in span{font-size:13px;color:var(--muted);line-height:1.3}
   .choice{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
   .choice.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -561,6 +563,23 @@
     .new-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-weight:600}
   }
 
+  /* ---------- touch screens: no zoom on focus, bigger tap targets ---------- */
+  @media (pointer:coarse){
+    input[type=text],input[type=email],input[type=url],input[type=password],input[type=date],input[type=month],input[type=number],textarea,select{font-size:16px}
+    .btn{min-height:40px} .btn.sm{min-height:36px;padding:6px 12px}
+    .qb{width:38px;height:38px}
+    .seg button{padding:9px 12px}
+    .pc-copy{width:40px;min-height:40px}
+    .slot{height:32px} .grid .hr{line-height:32px} .pgrid .slot{line-height:30px}
+    .pat-pre button{padding:6px 0}
+    .em-pill button{width:26px;height:26px}
+    .wdc{height:40px}
+    .dd .ddp label,.menu a{padding-top:10px;padding-bottom:10px}
+    .locsug button{padding-top:10px;padding-bottom:10px}
+    input[type=checkbox]{width:20px;height:20px}
+    .mchk{width:20px;height:20px}
+  }
+
   /* ---------- small screens ---------- */
   @media (max-width:560px){
     h1{font-size:25px}
@@ -579,6 +598,10 @@
     #wsmeta{margin-left:0}
     .ws-me{padding:12px} .meet-b{padding-left:16px} .dpanel{padding:14px 12px}
     .mstrip-h .btn{padding:4px 8px}
+    .savebar{flex-wrap:nowrap;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));margin-left:-4px;margin-right:-4px}
+    .savebar #status{min-width:0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .savebar .btn{flex:none}
+    body:has(.savebar) .toast,body:has(.new-bar) .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
     .card.atabs{padding:4px 2px 0;gap:0} .card.atabs button{padding:12px 6px 14px;font-size:13px} .card.atabs button.on::after{left:4px;right:4px}
   }
 </style>
@@ -593,6 +616,7 @@ const $app = document.getElementById('app');
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
+const TOUCH = !!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 const WD = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 const store = {
@@ -1806,7 +1830,7 @@ function renderMine(el){
       <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
       <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' on':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>${calButton()}</div>${quickFill()}${calPanel()}
-      <p class="help">Pick a brush, then drag (or tap) across the hours you can make; dragging over the same colour clears it. Blank counts as not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}</p>
+      <p class="help">${TOUCH?'Pick a brush, then tap the hours you can make, or press and hold an hour and drag to paint several. Painting over the same colour clears it.':'Pick a brush, then drag (or tap) across the hours you can make; dragging over the same colour clears it.'} Blank counts as not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}</p>
       ${isWeekly()?'':`<div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>`}
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
@@ -2060,10 +2084,30 @@ function wireGrid(){
     const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
     ['y','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
   const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map))); touched=new Map(); changed(); renderBody(); };
-  grid.addEventListener('pointerdown',e=>{ const el=cellAt(e.clientX,e.clientY); if(!el) return; e.preventDefault();
-    paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el);
-    window.addEventListener('pointerup',end,{once:true}); window.addEventListener('pointercancel',end,{once:true}); });
-  grid.addEventListener('pointermove',e=>{ if(paint===null) return; const el=cellAt(e.clientX,e.clientY); if(el) apply(el); });
+  gridGestures(grid,cellAt,{
+    start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
+    move:el=>{ if(paint!==null) apply(el); },
+    end, cancel:end });
+}
+// Hour grids: a mouse or pen drag paints straight away. On touch a swipe scrolls the page,
+// a tap does one cell, and press-and-hold (then drag) paints a range. h.start may return false to skip the drag.
+function gridGestures(grid,cellAt,h){
+  let mode=null, timer=0, x0=0, y0=0, cell=null, pid=null;
+  const off=()=>{ clearTimeout(timer); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',cancel); mode=null; grid.classList.remove('painting'); };
+  const up=e=>{ if(e.pointerId!==pid) return; const m=mode; off(); if(m==='wait'){ if(h.start(cell)!==false) h.end(); } else if(m==='paint') h.end(); };
+  const cancel=e=>{ if(e.pointerId!==pid) return; const m=mode; off(); if(m==='paint') h.cancel(); };
+  grid.addEventListener('pointerdown',e=>{ if(mode) return; const el=cellAt(e.clientX,e.clientY); if(!el) return;
+    pid=e.pointerId; window.addEventListener('pointerup',up); window.addEventListener('pointercancel',cancel);
+    if(e.pointerType!=='touch'){ e.preventDefault(); mode='paint'; if(h.start(el)===false) off(); return; }
+    mode='wait'; cell=el; x0=e.clientX; y0=e.clientY;
+    timer=setTimeout(()=>{ if(mode!=='wait') return; mode='paint'; grid.classList.add('painting');
+      try{ navigator.vibrate&&navigator.vibrate(10); }catch(_){}
+      if(h.start(cell)===false) off(); },320); });
+  grid.addEventListener('pointermove',e=>{ if(e.pointerId!==pid) return;
+    if(mode==='wait'){ if(Math.hypot(e.clientX-x0,e.clientY-y0)>8){ clearTimeout(timer); mode='scroll'; } return; }
+    if(mode==='paint'){ const el=cellAt(e.clientX,e.clientY); if(el) h.move(el); } });
+  grid.addEventListener('touchmove',e=>{ if(mode==='paint'&&e.cancelable) e.preventDefault(); },{passive:false});
+  grid.addEventListener('contextmenu',e=>{ if(mode||e.target.closest('.slot')) e.preventDefault(); });
 }
 
 // ---- participant filter ----
@@ -2234,7 +2278,7 @@ function planShow(k){
 }
 function renderPlanner(S){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
-  let h=`<p class="help">${slotsOn?'<b>Drag down a day</b> to draw a meeting, tap a day name for an all-day one, tap a draft to remove it. Darker = more of the selected people are free.':'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of the selected people are free.'}
+  let h=`<p class="help">${slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to draw a meeting (a tap adds one hour),':'<b>Drag down a day</b> to draw a meeting,')+' tap a day name for an all-day one, tap a draft to remove it. Darker = more of the selected people are free.':'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of the selected people are free.'}
     Each draft invites the people selected when you drew it.</p>`;
   if(slotsOn){
     const {avail,pages}=planPages(S);
@@ -2266,7 +2310,7 @@ function renderPlanner(S){
 }
 function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
-  if(!P.drafts.length) return `<div class="sched" id="drafts"><h3>Meeting drafts</h3><p class="help">No drafts yet. ${P.data.poll.answerMode==='days'?'Tap a day':'Drag across the grid'} to add one, or use <b>Suggest best times</b>.</p></div>`;
+  if(!P.drafts.length) return `<div class="sched" id="drafts"><h3>Meeting drafts</h3><p class="help">No drafts yet. ${P.data.poll.answerMode==='days'?'Tap a day':TOUCH?'Press and hold, then drag on the grid':'Drag across the grid'} to add one, or use <b>Suggest best times</b>.</p></div>`;
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
     return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
@@ -2300,12 +2344,12 @@ function wirePlanner(){
   const paint=()=>{ const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b);
     grid.querySelectorAll(`.slot[data-k="${drag.k}"]`).forEach(c=>{ const hr=+c.dataset.h; c.classList.toggle('dr', drag.orig.has(c)||(hr>=lo&&hr<=hi)); }); };
   const end=()=>{ if(!drag) return; const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b), k=drag.k; drag=null; addDraft(k,false,lo,hi+1); renderBody(); };
-  grid.addEventListener('pointerdown',e=>{ const el=cellAt(e.clientX,e.clientY); if(!el) return; e.preventDefault();
-    const k=el.dataset.k, hr=+el.dataset.h, hit=P.drafts.find(x=>!x.allDay&&inMeeting(x,k,hr));
-    if(hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return; }
-    drag={k,a:hr,b:hr,orig:new Set(grid.querySelectorAll(`.slot.dr[data-k="${k}"]`))}; paint();
-    window.addEventListener('pointerup',end,{once:true}); window.addEventListener('pointercancel',()=>{ drag=null; renderBody(); },{once:true}); });
-  grid.addEventListener('pointermove',e=>{ if(!drag) return; const el=cellAt(e.clientX,e.clientY); if(el&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; paint(); } });
+  gridGestures(grid,cellAt,{
+    start:el=>{ const k=el.dataset.k, hr=+el.dataset.h, hit=P.drafts.find(x=>!x.allDay&&inMeeting(x,k,hr));
+      if(hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return false; }
+      drag={k,a:hr,b:hr,orig:new Set(grid.querySelectorAll(`.slot.dr[data-k="${k}"]`))}; paint(); },
+    move:el=>{ if(drag&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; paint(); } },
+    end, cancel:()=>{ drag=null; renderBody(); } });
 }
 function suggestDrafts(){
   const slotsOn=P.data.poll.answerMode!=='days', tot=sel().length, taken=new Set(P.drafts.map(x=>x.date));
