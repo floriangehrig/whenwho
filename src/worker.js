@@ -930,7 +930,8 @@ function meetingWhen(mt) {
   return `${every}${time}, from ${shortDay(meetingStart(mt))}${r.until ? ` until ${shortDay(r.until)}` : ''}`;
 }
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-// Branded HTML email (navy header, white card), matching the web app. Inline styles and tables so email clients render it.
+// Branded HTML email (navy header with the logo, white card), matching the web app. The logo is public/logo-email.png on `site`
+// (email clients block data: and SVG images); without a site address it falls back to a plain check mark. Inline styles and tables so email clients render it.
 // bodyHtml must already be escaped. button: optional { href, label } shown as a blue button above the body.
 function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) {
   const font = "Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -943,7 +944,8 @@ function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
     <tr><td style="background:#0B1F3A;border-radius:14px 14px 0 0;padding:18px 28px">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="width:28px;height:28px;background:#1F5EFF;border-radius:7px;text-align:center;vertical-align:middle;font-family:${font};font-size:15px;font-weight:700;color:#ffffff">✓</td>
+        ${site ? `<td style="width:28px;height:28px;vertical-align:middle"><img src="${escHtml(site)}/logo-email.png" width="28" height="28" alt="" style="display:block;border:0;width:28px;height:28px;border-radius:7px"></td>`
+          : `<td style="width:28px;height:28px;background:#1F5EFF;border-radius:7px;text-align:center;vertical-align:middle;font-family:${font};font-size:15px;font-weight:700;color:#ffffff">✓</td>`}
         <td style="padding-left:10px;font-family:${font};font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.2px">when-who</td></tr></table></td></tr>
     <tr><td style="background:#ffffff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 14px 14px;padding:32px 28px;font-family:${font};font-size:15px;line-height:1.6;color:#0F172A">
       ${btn}${bodyHtml}</td></tr>
