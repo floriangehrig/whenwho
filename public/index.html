@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>when-who</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231F5EFF'/%3E%3Crect x='7' y='9' width='18' height='16' rx='3' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M7 14h18M12 6.5v4M20 6.5v4' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='m12.5 19.5 2.5 2.3 4.5-4.6' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#0B1F3A">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -67,8 +68,8 @@
   .appbar-in{max-width:960px;margin:0 auto;padding:0 16px;height:60px;display:flex;align-items:center;gap:14px}
   .logo{display:inline-flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:17px;letter-spacing:-.015em}
   .logo:hover{text-decoration:none}
-  .logo .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
-  .logo .mark svg{width:18px;height:18px}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#3B7BFF,#1640B8);display:grid;place-items:center;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
+  .logo .mark svg{width:21px;height:15px}
   .crumb{color:var(--on-brand-muted);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:14px}
   .crumb::before{content:"";width:1px;height:18px;background:rgba(255,255,255,.18)}
   .crumb:hover{color:#fff;text-decoration:none}
@@ -356,7 +357,8 @@
   .meet[open]>summary::before{transform:none}
   .meet>summary:hover{color:inherit;background:color-mix(in srgb,var(--accent) 5%,transparent)}
   .meet .mw{flex:1;min-width:0;display:flex;flex-direction:column}
-  .meet .when{font-weight:650;color:var(--ink)}
+  .meet .when{font-weight:650;color:var(--ink)} .meet .nw{white-space:nowrap}
+  .mcal{display:flex;gap:6px}
   .meet-b{padding:0 16px 14px 40px}
   .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .meet .note{white-space:pre-wrap}
@@ -385,7 +387,8 @@
   .mbatch-r select{width:auto}
   .mbatch-r .help{align-self:center;margin:0}
   @media (max-width:560px){ .mbatch-g{grid-template-columns:minmax(0,1fr)} .mbatch-g>label{padding-top:0}
-    .meet>summary{flex-wrap:wrap} .qacts{margin-left:auto} }
+    .meet>summary{flex-wrap:wrap;row-gap:8px} .meet .mw{flex:1 1 calc(100% - 32px)}
+    .qacts{width:100%;padding-left:25px} .qacts .btn{margin-right:auto} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
@@ -824,7 +827,7 @@ const ICON = {
   trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5a2 2 0 0 0 2 1.5h6a2 2 0 0 0 2-1.5L18 7M9 7V4.5h6V7"/></svg>`,
   edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>`,
   copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>`,
-  logo:`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg>`,
+  logo:`<svg viewBox="10 17 44 30" aria-hidden="true"><path d="M32 20.47A13 13 0 0 1 32 43.53A13 13 0 0 1 32 20.47Z" fill="#3DDC84"/><g fill="none" stroke="#fff" stroke-width="4"><circle cx="26" cy="32" r="13"/><circle cx="38" cy="32" r="13"/></g></svg>`,
   cal:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>`,
   clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`,
   users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.9.7 3 2.4 3.5 5.2"/></svg>`,
@@ -1703,10 +1706,10 @@ function renderMeetings(){
   const qb=(attr,id,ic,label,cls='')=>`<button type="button" class="qb${cls}" data-q ${attr}="${id}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
   el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?'Show':'Hide'} scheduled meetings"><h3>★ Scheduled <span class="count">${ms.length}</span></h3></button>
-      ${d.isAdmin&&!fold?`<button class="btn sm ghost${sel?' on':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button>`:''}<a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></div>
+      ${d.isAdmin&&!fold?`<button class="btn sm ghost${sel?' on':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button>`:''}<span class="mcal"><a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></span></div>
     ${fold?'':`${sel?batchPanel(ms,nSel):''}
     ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email), on=sel&&sel.has(m.id);
-      return `<details class="meet${on?' sel':''}"${!sel&&P.mdesc===m.id?' open':''}><summary${sel?` data-mpick="${m.id}"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-label="Select this meeting"${on?' checked':''}>`:''}<span class="mw"><span class="when">${esc(whenText(m))}</span>
+      return `<details class="meet${on?' sel':''}"${!sel&&P.mdesc===m.id?' open':''}><summary${sel?` data-mpick="${m.id}"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-label="Select this meeting"${on?' checked':''}>`:''}<span class="mw"><span class="when">${whenText(m).split(' · ').map(s=>`<span class="nw">${esc(s)}</span>`).join(' · ')}</span>
           <span class="small muted">${esc(m.title||d.poll.title)}${m.location?` · ${esc(m.location)}`:''} · ${esc(whoText(m))}</span></span>
           ${sel?'':`<span class="qacts"><a class="btn sm" href="${esc(icsUrl(m.id,true))}">Add to calendar</a>${d.isAdmin?qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')+qb('data-copyinvite',m.id,'copy','Copy invite text')+qb('data-delmeet',m.id,'trash','Delete meeting',' danger'):''}</span>`}</summary>
         <div class="meet-b">${m.location?`<div class="small">📍 ${esc(m.location)} · <a href="${esc(mapUrl(m.location))}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>`:''}${P.mdesc===m.id?descEditor(m.id,m.note||'',''):m.note?`<div class="small note">${esc(m.note)}</div>`:''}
