@@ -127,6 +127,16 @@
   .emails:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
   .emails:focus-within{border-color:var(--accent);box-shadow:var(--ring)}
   .emails input[type=text]{flex:1 1 160px;min-width:120px;min-height:30px;width:auto;padding:4px 4px;border:0;background:transparent;box-shadow:none}
+  .stage{display:flex;flex-direction:column;gap:6px;margin-top:8px} .stage:empty{display:none}
+  .stg-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto;gap:6px;align-items:center}
+  .stg-row input{min-height:36px;padding:6px 9px;font-size:14px} .stg-row input.bad{border-color:var(--no)}
+  .stg-note{font-size:12.5px;max-width:14em} .stg-note:empty{display:none}
+  @media (max-width:560px){ .stg-row{grid-template-columns:minmax(0,1fr) auto;padding-bottom:6px;border-bottom:1px solid var(--line)} .stg-row input[data-f=email]{grid-row:2;grid-column:1} .stg-row .stg-note{grid-row:3;grid-column:1/-1;max-width:none} .stg-row button{grid-row:1;grid-column:2} }
+  .ptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0 8px;border-bottom:1px solid var(--line)}
+  .plist li>input[type=checkbox]{flex:none;width:18px;height:18px;margin:0}
+  .plist li.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+  .plist .acts{flex-wrap:wrap;align-items:center} .plist select.inline{min-height:32px;font-size:13px;padding:4px 8px}
+  @media (max-width:560px){ .plist li>.grow{flex:1 1 calc(100% - 40px)} .plist .acts{width:100%;padding-left:28px} }
   .em-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;font-size:13.5px;font-weight:500;line-height:1.3;padding:4px 4px 4px 9px;border-radius:5px;background:var(--accent-weak);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
   .em-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .em-pill.bad{background:var(--no-bg);color:var(--no);border-color:color-mix(in srgb,var(--no) 40%,transparent)}
@@ -348,34 +358,47 @@
   .count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);font-size:11.5px;font-weight:700;vertical-align:1px;font-variant-numeric:tabular-nums}
   .empty-v{display:flex;flex-direction:column;gap:2px;margin-top:var(--s4);padding:22px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);text-align:center;align-items:center}
   /* scheduled meetings strip */
-  .mstrip{margin-top:var(--s4);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card));overflow:hidden}
+  .mstrip{margin-top:var(--s4);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card))}
   .mstrip-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
   .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
-  .meet{border-top:1px solid var(--line)} .meet:first-of-type{border-top:0}
-  .meet>summary{padding:10px 12px 10px 16px;gap:12px;font-weight:500}
-  .meet>summary::before{content:"★";width:auto;height:auto;border:0;transform:none;margin:0;color:var(--accent);font-size:13px}
-  .meet[open]>summary::before{transform:none}
-  .meet>summary:hover{color:inherit;background:color-mix(in srgb,var(--accent) 5%,transparent)}
-  .meet .mw{flex:1;min-width:0;display:flex;flex-direction:column}
-  .meet .when{font-weight:650;color:var(--ink)} .meet .nw{white-space:nowrap}
+  .mstrip.folded .mstrip-h{border-bottom:0}
   .mcal{display:flex;gap:6px}
-  .meet-b{padding:0 16px 14px 40px}
-  .meet .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .meet .note{white-space:pre-wrap}
-  .mstrip{overflow:visible} .mstrip.folded .mstrip-h{border-bottom:0}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfold::before{content:"";width:7px;height:7px;border-right:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(45deg);transition:transform .15s;margin:0 4px 3px 2px;flex:none}
   .folded .mfold::before{transform:rotate(-45deg);margin-bottom:0}
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
-  .qacts{display:flex;align-items:center;gap:2px;flex:none}
-  .qacts .btn{margin-right:4px}
-  .qb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer;padding:0}
+  /* one card per meeting: date tile | title, time · place · who, description, owner actions */
+  .mlist{display:flex;flex-direction:column;gap:10px;padding:12px}
+  .meet{display:flex;align-items:flex-start;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm)}
+  .mtile{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;padding:7px 0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);line-height:1.1;text-align:center;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .mtile .mo{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+  .mtile .dn{font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;margin:2px 0 1px}
+  .mtile .wd{font-size:11px;font-weight:600;opacity:.75}
+  .mtile.rep .dn{font-size:17px;margin:4px 0 3px}
+  .mbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .mhead{display:flex;align-items:flex-start;gap:10px}
+  .mtitle{flex:1;min-width:0;padding-top:3px;font-weight:650;font-size:15.5px;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
+  .mhead .btn{flex:none}
+  .mmeta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--muted)}
+  .mmeta>span,.mmeta>a{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
+  .mmeta svg{width:15px;height:15px;flex:none;color:var(--accent)}
+  .mmeta .tm{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .mmeta a{color:inherit;text-decoration:none}
+  .mmeta a:hover{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+  .mrep{font-size:12.5px;color:var(--muted)}
+  .mnote{font-size:13.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);padding:8px 11px;border-radius:8px;background:var(--sunken);border-left:3px solid color-mix(in srgb,var(--accent) 40%,var(--line))}
+  .meet .mdesc{margin-top:2px}
+  .mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px;padding-top:10px;border-top:1px solid var(--line)}
+  .mfoot>.btn{margin-right:6px}
+  .mstat{flex:1 1 160px;min-width:0;margin-left:6px;font-size:12px;color:var(--muted)}
+  .qb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer;padding:0}
   .qb svg{width:16px;height:16px}
   .qb:hover{background:var(--sunken);border-color:var(--line-strong);color:var(--ink)}
   .qb.danger:hover{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,var(--line));color:var(--no)}
-  .selecting .meet>summary::before{display:none}
+  .selecting .meet{cursor:pointer;align-items:center}
+  .selecting .meet:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
   .mchk{width:18px;height:18px;margin:0;accent-color:var(--accent);pointer-events:none;flex:none}
-  .meet.sel>summary{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+  .meet.sel{background:color-mix(in srgb,var(--accent) 7%,var(--card));border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
   .mbatch{display:flex;flex-direction:column;gap:12px;padding:12px 16px 14px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line));background:var(--card)}
   .mbatch-h{display:flex;align-items:center;gap:10px}
   .mbatch-g{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:start}
@@ -387,8 +410,8 @@
   .mbatch-r select{width:auto}
   .mbatch-r .help{align-self:center;margin:0}
   @media (max-width:560px){ .mbatch-g{grid-template-columns:minmax(0,1fr)} .mbatch-g>label{padding-top:0}
-    .meet>summary{flex-wrap:wrap;row-gap:8px} .meet .mw{flex:1 1 calc(100% - 32px)}
-    .qacts{width:100%;padding-left:25px} .qacts .btn{margin-right:auto} }
+    .mlist{padding:8px;gap:8px} .meet{gap:11px;padding:12px 12px 12px 10px} .mtile{width:48px} .mtile .dn{font-size:20px}
+    .mhead{display:contents} .mhead .btn{order:1;align-self:flex-start;margin-top:4px} .mfoot{order:2} .mfoot>.btn{flex:1 1 100%;margin:0 0 4px} .mstat{flex-basis:100%;margin:4px 0 0} .mmeta{flex-direction:column;gap:3px} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
@@ -524,6 +547,24 @@
   .drafts .dft .who{flex-basis:100%;font-size:12px;color:var(--muted)}
   .drafts .dft .ddesc{flex-basis:100%;min-height:60px}
   .mdesc{display:flex;flex-direction:column;gap:6px;margin-top:8px} .mdesc textarea{min-height:70px}
+  /* organiser Meetings tab: scheduled meetings card + "Plan new meetings" in numbered steps */
+  .mcard .mlist{padding:var(--s3) 0 0}
+  .mcard .mbatch{margin-top:var(--s3);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--accent) 4%,var(--card))}
+  .mcard .card-h .mcal{margin-left:auto}
+  .card-h h2 .count,.pstep-h h3 .count{vertical-align:2px}
+  .tabs button .count{margin-left:6px;vertical-align:1px} .count[hidden]{display:none}
+  .pstep{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line);scroll-margin-top:76px}
+  .card-h+.pstep{margin-top:var(--s2);padding-top:var(--s2);border-top:0}
+  .pstep-h{display:flex;align-items:flex-start;gap:12px}
+  .pstep-h h3{margin:3px 0 0} .pstep-h .help{margin:4px 0 0}
+  .pstep-h>.btn{flex:none}
+  .pstep-n{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent-weak);color:var(--accent-ink);font-weight:750;font-size:14px;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 25%,transparent)}
+  .pstep>:not(.pstep-h){margin-left:40px}
+  .pstep>.ws-tools{margin-top:var(--s3)}
+  .pstep .empty-v{margin-top:var(--s3)}
+  @media (max-width:560px){ .pstep>:not(.pstep-h){margin-left:0} .pstep-h{gap:10px} .mcard .card-h .mcal{margin-left:0}
+    #mplan>.card-h>.muted{display:none}
+    .pstep .wknav{flex-wrap:wrap} .pstep .wknav .lbl{flex:1;text-align:center} .pstep .wknav .seg{order:-1;flex-basis:100%;margin-left:0;display:flex} .pstep .wknav .seg button{flex:1;justify-content:center} }
   .mstrip>.mdesc{margin:0;padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
 
   /* ---------- new poll page ---------- */
@@ -631,56 +672,107 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show
 async function copy(text){ try{ await navigator.clipboard.writeText(text); toast('Copied'); }catch(e){ prompt('Copy this:', text); } }
 const origin = location.origin + location.pathname.replace(/index\.html$/,'');
 const shareLink = id => `${origin}?p=${id}`;
-// "Invite by email": with email set up, the site sends it from its own domain (replies go to the organiser).
-// Otherwise (or as a fallback) it opens the organiser's own email app with the share link (addresses in BCC).
-function inviteBox(id,title,deadline){
+// ---- "Add people": one box for names and/or email addresses (People tab and the "Poll created" screen) ----
+// Each entry becomes an editable row (name + email). "Add & send invite" adds them to the poll's participants and
+// emails those with an address from when-who (replies go to the organiser); "Open in my email app" adds them and
+// opens the organiser's own email app with the link (addresses in BCC). STAGE[pollId] holds the rows.
+const STAGE={};
+// "anna.m-b@x.com" -> "Anna M B"
+const nameFromEmail = e => e.split('@')[0].split(/[._+\-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ').slice(0,60) || e.split('@')[0].slice(0,60);
+// Accepts "Anna", "ben@x.com", "Carl <carl@x.com>", "Dora dora@x.com", "Eve, eve@x.com" and lists of them
+// (one per line, or separated by commas or semicolons). A name directly followed by an address on the same line pairs up.
+function parsePeople(raw){
+  const out=[];
+  String(raw||'').split(/\r?\n/).forEach(line=>{ let prevName=null;
+    line.split(/[,;\t]+/).map(x=>x.trim()).filter(Boolean).forEach(tok=>{
+      let m=tok.match(/^"?(.*?)"?\s*<([^<>\s]+)>$/)||tok.match(/^(.+?)\s+(\S+@\S+)$/);
+      if(m&&m[2].includes('@')&&!m[1].includes('@')){ out.push({name:m[1].trim().slice(0,60)||(EMAIL_RE.test(m[2])?nameFromEmail(m[2]):''),email:m[2].toLowerCase()}); prevName=null; return; }
+      tok=tok.replace(/^<|>$/g,'');
+      if(EMAIL_RE.test(tok)||tok.includes('@')){ const e=tok.toLowerCase();
+        if(prevName&&!prevName.email){ prevName.email=e; prevName=null; } else out.push({name:EMAIL_RE.test(e)?nameFromEmail(e):'',email:e}); return; }
+      prevName={name:tok.slice(0,60),email:''}; out.push(prevName);
+    }); });
+  return out;
+}
+function peopleBox(id){
   const srv=CONFIG.emailEnabled;
-  return `<div class="section"><h3>Invite by email</h3>
-    <div class="field"><label for="invin_${esc(id)}">Email addresses (press Enter, comma or space after each one)</label>
-    <div class="emails" data-emailsbox="${esc(id)}"><input type="text" id="invin_${esc(id)}" data-emails="${esc(id)}" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="anna@example.com"></div>
-    <textarea id="inv_${esc(id)}" hidden></textarea></div>
-    <div class="row mt-3">${srv?`<button type="button" class="btn primary" data-sendpoll="${esc(id)}">Send invites</button>`:''}
-      <button type="button" class="btn" data-invitepoll="${esc(id)}" data-title="${esc(title)}" data-deadline="${esc(deadline||'')}">Open in my email app</button></div>
-    <div class="help">${srv?`“Send invites” emails everyone the poll link from when-who's address, under your account name, each in BCC so they don't see each other's addresses. Replies go to your account email. “Open in my email app” sends it from your own address instead.`
-      :`Opens a ready-to-send email in your email app, with everyone in BCC so they don't see each other's addresses.`}</div></div>`;
+  return `<div class="section"><h3>Add people</h3>
+    <div class="field"><label for="pin_${esc(id)}">Names or email addresses <span class="opt">press Enter after each, or paste a list</span></label>
+      <div class="emails" data-emailsbox="${esc(id)}"><input type="text" id="pin_${esc(id)}" data-people="${esc(id)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Anna, ben@example.com, Carl &lt;carl@example.com&gt;"></div></div>
+    <div class="stage" id="stg_${esc(id)}"></div>
+    <div class="row mt-3">${srv?`<button type="button" class="btn primary" data-padd="${esc(id)}" data-send="1">Add &amp; send invite</button>`:''}
+      <button type="button" class="btn${srv?'':' primary'}" data-padd="${esc(id)}">Add${srv?' only':''}</button>
+      <button type="button" class="btn" data-padd="${esc(id)}" data-mailapp="1">Add &amp; open in my email app</button></div>
+    <div class="help">${srv?`“Send invite” emails the poll link from when-who's address under your name, everyone in BCC. Replies go to your account email. People without an address are just added to the list.`
+      :`Adds them to the list, then opens your email app with the poll link and everyone's address in BCC.`} Guests who answer with the same name are matched to their row.</div>
+    <div class="help" id="pres_${esc(id)}"></div></div>`;
 }
-// Email pills: the hidden textarea inv_<id> holds the addresses (one per line); the visible box shows them as pills.
-function emailsRender(id){
-  const box=document.querySelector(`[data-emailsbox="${CSS.escape(id)}"]`), ta=$('inv_'+id); if(!box||!ta) return;
-  box.querySelectorAll('.em-pill').forEach(x=>x.remove());
-  const inp=box.querySelector('input');
-  ta.value.split('\n').filter(Boolean).forEach((a,i)=>{ const ok=EMAIL_RE.test(a), el=document.createElement('span');
-    el.className='em-pill'+(ok?'':' bad'); if(!ok) el.title="Doesn't look like an email";
-    el.innerHTML=`<span>${esc(a)}</span><button type="button" data-emdel="${esc(id)}" data-i="${i}" aria-label="Remove ${esc(a)}">×</button>`;
-    box.insertBefore(el,inp); });
-  inp.placeholder=ta.value?'':'anna@example.com';
+// Existing people (People tab only) to flag duplicates while typing.
+function stageNote(x){
+  if(x.email&&!EMAIL_RE.test(x.email)) return `<span class="err m0">Check the address</span>`;
+  if(!x.name.trim()) return `<span class="err m0">Name needed</span>`;
+  const ps=P.parts||[], have=ps.find(p=>(x.email&&p.email&&p.email.toLowerCase()===x.email)||(!p.account&&nameKey(p.name)===nameKey(x.name)));
+  return have?`<span class="muted small">Already in the list${x.email&&have.invitedAt?', invites again':''}</span>`:'';
 }
-function emailsAdd(id,raw){
-  const ta=$('inv_'+id), have=ta.value.split('\n').filter(Boolean), keys=new Set(have.map(x=>x.toLowerCase()));
-  (raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean).forEach(a=>{ if(!keys.has(a.toLowerCase())){ keys.add(a.toLowerCase()); have.push(a); } });
-  ta.value=have.join('\n'); emailsRender(id);
+function stageRender(id){
+  const el=$('stg_'+id); if(!el) return; const rows=STAGE[id]||[];
+  el.innerHTML=rows.length?rows.map((x,i)=>`<div class="stg-row">
+    <input type="text" maxlength="60" value="${esc(x.name)}" placeholder="Name" aria-label="Name" data-stg="${esc(id)}" data-i="${i}" data-f="name">
+    <input type="email" maxlength="200" value="${esc(x.email)}" placeholder="Email (optional)" aria-label="Email" data-stg="${esc(id)}" data-i="${i}" data-f="email" class="${x.email&&!EMAIL_RE.test(x.email)?'bad':''}">
+    <span class="stg-note">${stageNote(x)}</span>
+    <button type="button" class="btn sm ghost" data-stgdel="${esc(id)}" data-i="${i}" aria-label="Remove ${esc(x.name||x.email)}">×</button></div>`).join(''):'';
 }
-// Commits whatever is still typed, then returns all addresses.
-function emailsValue(id){ const inp=$('invin_'+id); if(inp&&inp.value.trim()){ emailsAdd(id,inp.value); inp.value=''; } const ta=$('inv_'+id); return ta?ta.value:''; }
-function emailsClear(id){ const ta=$('inv_'+id); if(ta){ ta.value=''; emailsRender(id); } }
-document.addEventListener('keydown',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp) return; const id=inp.dataset.emails;
-  if(e.key==='Enter'||e.key===','||e.key===';'||(e.key===' '&&inp.value.trim())||(e.key==='Tab'&&inp.value.trim())){ e.preventDefault(); emailsAdd(id,inp.value); inp.value=''; }
-  else if(e.key==='Backspace'&&!inp.value){ const ta=$('inv_'+id), a=ta.value.split('\n').filter(Boolean); if(a.length){ e.preventDefault(); inp.value=a.pop(); ta.value=a.join('\n'); emailsRender(id); } }
+function stageAdd(id,raw){
+  const rows=STAGE[id]||(STAGE[id]=[]);
+  parsePeople(raw).forEach(x=>{ if(!rows.some(r=>(x.email&&r.email===x.email)||(!x.email&&!r.email&&nameKey(r.name)===nameKey(x.name)))) rows.push(x); });
+  stageRender(id);
+}
+// Commits whatever is still typed, then returns the rows.
+function stageValue(id){ const inp=$('pin_'+id); if(inp&&inp.value.trim()){ stageAdd(id,inp.value); inp.value=''; } return STAGE[id]||[]; }
+// Enter or ; commits. A comma commits only after an address, so "Carl, carl@x.com" can be typed as one person.
+document.addEventListener('keydown',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return; const id=inp.dataset.people, v=inp.value;
+  if(e.key==='Enter'||e.key===';'||(e.key===','&&/@\S*$/.test(v.trim()))||(e.key==='Tab'&&v.trim())){ if(!v.trim()&&e.key!==';') return; e.preventDefault(); stageAdd(id,v); inp.value=''; }
+  else if(e.key==='Backspace'&&!v){ const rows=STAGE[id]||[]; if(rows.length){ e.preventDefault(); const x=rows.pop(); inp.value=x.email?(x.name&&x.name!==nameFromEmail(x.email)?`${x.name} <${x.email}>`:x.email):x.name; stageRender(id); } }
 });
-document.addEventListener('paste',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp) return;
-  const t=(e.clipboardData||window.clipboardData).getData('text'); if(!/[\s,;]/.test(t.trim())) return;
-  e.preventDefault(); emailsAdd(inp.dataset.emails, inp.value+t); inp.value=''; });
-// Mobile keyboards often send no usable keydown, so also split on separators as the text changes.
-document.addEventListener('input',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(!inp||!/[\s,;]/.test(inp.value)) return;
-  const parts=inp.value.split(/[\s,;]+/), rest=/[\s,;]$/.test(inp.value)?'':parts.pop(); emailsAdd(inp.dataset.emails,parts.join(' ')); inp.value=rest; });
-// Keep focus in the input while clicking a pill's ×, so focusout doesn't re-render the pills mid-click.
-document.addEventListener('mousedown',e=>{ if(e.target.closest('[data-emdel]')) e.preventDefault(); });
-document.addEventListener('focusout',e=>{ const inp=e.target.closest&&e.target.closest('[data-emails]'); if(inp&&inp.value.trim()){ emailsAdd(inp.dataset.emails,inp.value); inp.value=''; } });
+document.addEventListener('paste',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return;
+  const t=(e.clipboardData||window.clipboardData).getData('text'); if(!/[\n,;\t]/.test(t.trim())) return;
+  e.preventDefault(); stageAdd(inp.dataset.people, inp.value+t); inp.value=''; });
+// Mobile keyboards often send no usable keydown: commit on ; or newline, and on a comma right after an address.
+document.addEventListener('input',e=>{
+  const s=e.target.closest&&e.target.closest('[data-stg]');
+  if(s){ const x=(STAGE[s.dataset.stg]||[])[+s.dataset.i]; if(!x) return; x[s.dataset.f]=s.dataset.f==='email'?s.value.trim().toLowerCase():s.value;
+    if(s.dataset.f==='email') s.classList.toggle('bad',!!x.email&&!EMAIL_RE.test(x.email));
+    const n=s.parentNode.querySelector('.stg-note'); if(n) n.innerHTML=stageNote(x); return; }
+  const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return;
+  if(/[;\n]/.test(inp.value)||/@[^\s,;]*\.[^\s,;]+,/.test(inp.value)){ stageAdd(inp.dataset.people,inp.value); inp.value=''; } });
+document.addEventListener('focusout',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(inp&&inp.value.trim()){ stageAdd(inp.dataset.people,inp.value); inp.value=''; } });
+document.addEventListener('mousedown',e=>{ if(e.target.closest('[data-stgdel]')) e.preventDefault(); });
 document.addEventListener('click',e=>{
-  const d=e.target.closest('[data-emdel]');
-  if(d){ const id=d.dataset.emdel, ta=$('inv_'+id), a=ta.value.split('\n').filter(Boolean); a.splice(+d.dataset.i,1); ta.value=a.join('\n'); emailsRender(id); $('invin_'+id)?.focus(); return; }
+  const d=e.target.closest('[data-stgdel]');
+  if(d){ const id=d.dataset.stgdel; (STAGE[id]||[]).splice(+d.dataset.i,1); stageRender(id); $('pin_'+id)?.focus(); return; }
   const b=e.target.closest('[data-emailsbox]'); if(b&&e.target===b) b.querySelector('input').focus();
 });
+const pollHeaders = id => id===P.id ? headers() : (store.get('pw:'+id,null) ? {'x-poll-password':store.get('pw:'+id,null)} : {});
+const plural = (n,one,many) => `${n} ${n===1?one:many}`;
+// data-padd: add the staged people; data-send also emails them from the site, data-mailapp opens the email app.
+async function peopleAdd(t){
+  const id=t.dataset.padd, rows=stageValue(id).map(x=>({name:x.name.trim(),email:x.email.trim()}));
+  if(!rows.length){ toast('Type a name or an email address first'); $('pin_'+id)?.focus(); return; }
+  if(rows.some(x=>x.email&&!EMAIL_RE.test(x.email))){ toast("One of the addresses doesn't look right"); return; }
+  if(rows.some(x=>!x.name)){ toast('Every person needs a name'); return; }
+  const send=!!t.dataset.send, mailapp=!!t.dataset.mailapp;
+  t.disabled=true;
+  try{
+    const r=await api('POST',`/polls/${id}/${send?'invite':'participants'}`,{people:rows},pollHeaders(id));
+    const bits=[r.added.length?`Added ${r.added.length}`:'', r.updated.length?`updated ${r.updated.length}`:'', send?(r.sent?`invite sent to ${plural(r.sent,'person','people')}`:'no invites sent (no email addresses)'):''].filter(Boolean);
+    const res=$('pres_'+id); if(res) res.textContent=[bits.join(', '), r.skipped.length?`Already in the list: ${r.skipped.join(', ')}.`:''].filter(Boolean).join('. ');
+    toast(bits.join(', ')||'Already in the list');
+    STAGE[id]=[]; stageRender(id);
+    if(mailapp){ const to=rows.filter(x=>x.email).map(x=>x.email); location.href=pollInviteMail(id, P.id===id?P.data.poll.title:document.title.replace(/ · when-who$/,''), P.id===id&&inst()&&inst().status==='open'?inst().deadline:null, to.join('\n')).href; }
+    if(P.id===id&&P.data) await partsChanged();
+  }catch(ex){ toast(ex.message); }
+  t.disabled=false;
+}
 function pollInviteMail(id,title,deadline,raw){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
   const ok=[...new Set(parts.filter(x=>EMAIL_RE.test(x)).map(x=>x.toLowerCase()))], bad=parts.filter(x=>!EMAIL_RE.test(x));
@@ -833,6 +925,8 @@ const ICON = {
   users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.9.7 3 2.4 3.5 5.2"/></svg>`,
   link:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>`,
   plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`,
+  mail:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>`,
   lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>`,
 };
 // Navy app bar shown on every page: logo, optional "All polls" link, account menu or sign-in.
@@ -1101,6 +1195,7 @@ function renderHome(){
   const localOnly = ME.user ? [] : store.get('myPolls',[]).filter(p=>p.adminKey);
   const nOpen = server.filter(p=>p.current&&p.current.status==='open').length;
   const newBtn = label => `<div class="row mt-4"><a class="btn primary withic" href="?new">${ICON.plus}${label}</a></div>`;
+  if(!ME.user){ $app.innerHTML = appbar() + renderLanding(localOnly); startLandingDemo(); return; }
   $app.innerHTML = `
     ${appbar()}
     <section class="band"><div class="wrap">
@@ -1191,7 +1286,7 @@ function renderNew(){
       ${mail?`<div class="section step"><h3>Email</h3>
         <label class="check hide" id="notifyRow"><input type="checkbox" id="notify" checked> When a new poll in the series opens, email everyone in the series</label>
         <label class="check"><input type="checkbox" id="remind" checked> Email a reminder <input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm"> days before the reply-by date to people who haven't answered yet</label>
-        <div class="help">People get emails if they left their address when answering (or you added it under Participants). Emails come from when-who's address under your name; replies go to your account email${ME.user?` (${esc(ME.user.email)})`:''}.</div>
+        <div class="help">People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email${ME.user?` (${esc(ME.user.email)})`:''}.</div>
       </div>`:''}
     </div>
     <aside class="card new-sum">
@@ -1313,7 +1408,7 @@ function renderCreated(id, body, kind){
     <main class="wrap"><div class="card accent"><div class="card-h"><h2>Share it</h2><span class="tag y">Created</span></div>
       <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}"><button class="btn" data-copy="${esc(shareLink(id))}">Copy</button></div>
       <div class="help">You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.</div></div>
-      ${inviteBox(id, body.title, kind==='series'?null:body.deadline)}
+      ${peopleBox(id)}
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">Open poll</a><a class="btn" href="?new">Create another</a></div>
     </div></main>`;
   window.scrollTo({top:0});
@@ -1385,7 +1480,9 @@ const respKey = () => `resp:${P.id}:${inst().id}`;
 const ansMode = () => P.data.poll.answerMode;
 const instLabel = i => P.data.poll.kind==='weekly' ? 'A typical week' : P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
 
-async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.tab=store.get('view:'+id,'mine'); P.password=store.get('pw:'+id,null); await loadPoll(true); }
+async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.tab=store.get('view:'+id,'mine');
+  if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; } // the old "★ Schedule" view now lives in the Meetings tab
+  P.password=store.get('pw:'+id,null); await loadPoll(true); }
 async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
 async function loadPoll(first){
   try{ P.data = await fetchPoll(); }
@@ -1553,7 +1650,7 @@ function render(){
   const d=P.data, p=d.poll, i=inst();
   document.title=p.title;
   if(!editable()&&P.tab==='mine') P.tab='group';
-  if(!d.isAdmin&&P.tab==='plan') P.tab='group';
+  if(P.tab==='plan') P.tab='group';
   $app.innerHTML=`
     ${appbar('All polls')}
     <section class="band"><div class="wrap"><div id="hdr"></div>
@@ -1565,10 +1662,9 @@ function render(){
     <div class="card ws">
       <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="View">
         <button role="tab" data-tab="mine" ${editable()?'':'disabled'}>Mine</button>
-        <button role="tab" data-tab="group">Group</button>
-        ${d.isAdmin?'<button role="tab" data-tab="plan">★ Schedule</button>':''}</div>
+        <button role="tab" data-tab="group">Group</button></div>
         <span class="muted small ml-auto" id="wsmeta"></span></div>
-      <div id="meetings"></div>
+      ${d.isAdmin?'':'<div id="meetings"></div>'}
       ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
         :`<div class="notice warn">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
       <div id="body"></div>
@@ -1604,7 +1700,7 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null;
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':p.kind==='weekly'?'Weekly schedule':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?'meeting':'meetings'}</a>`:''}${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">Only the organiser can see everyone\'s answers.</div>':''}`;
@@ -1616,7 +1712,10 @@ function renderBody(){
   const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
   const rs=P.data.responses, mt=$('wsmeta');
   if(mt) mt.textContent=rs?`${rs.length} ${rs.length===1?'response':'responses'}${P.who&&P.tab!=='mine'?` · ${sel().length} selected`:''}`:'';
-  if(P.tab==='mine') renderMine(b); else renderGroup(b, P.tab==='plan');
+  // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
+  const mp=$('mplan');
+  if(mp&&P.atab==='meetings'){ b.innerHTML=''; renderPlan(mp); }
+  else { if(mp) mp.innerHTML=''; if(P.tab==='mine') renderMine(b); else renderGroup(b); }
   saveBar();
 }
 
@@ -1696,27 +1795,52 @@ function inviteText(m){
     '', `Add to your calendar: ${icsUrl(m.id,true)}`, `Poll: ${shareLink(P.id)}`].filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
 }
 function invited(m){ const rs=P.data.responses||[]; return m.participants==='all' ? rs : rs.filter(r=>m.participants.some(p=>p.id===r.id)); }
+// Calendar-style date tile for a meeting card; weekly meetings show their weekday.
+function dateTile(m){
+  if(m.repeat||isWeekly()){ const ev=m.repeat?m.repeat.every:1;
+    return `<div class="mtile rep" role="img" aria-label="${esc(m.repeat?repeatText(m).split(' · ')[0]:WDL[wdOf(m.date)])}"><span class="mo">Every</span><span class="dn">${WD[wdOf(m.date)]}</span><span class="wd">${ev===1?'week':ev===2?'other wk':`${ev} wks`}</span></div>`; }
+  const t=parseD(m.date);
+  return `<div class="mtile" role="img" aria-label="${esc(longDay(m.date))}"><span class="mo">${esc(t.toLocaleDateString(undefined,{month:'short'}))}</span><span class="dn">${t.getDate()}</span><span class="wd">${esc(t.toLocaleDateString(undefined,{weekday:'short'}))}</span></div>`;
+}
 function renderMeetings(){
   const el=$('meetings'); if(!el) return;
-  const d=P.data, ms=inst().meetings;
-  if(!ms.length){ el.innerHTML=''; P.msel=null; return; }
+  const d=P.data, ms=inst().meetings, adm=d.isAdmin;
+  if(adm){ const n=$('mtabn'); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } }
+  if(!ms.length){ P.msel=null;
+    el.innerHTML=adm?`<div class="card mcard"><div class="card-h"><h2>Scheduled meetings</h2></div>
+      <div class="empty-v"><b>No meetings yet.</b><span class="muted small">Pick people and times below, or use ★ Schedule on a day in the Group view.</span></div></div>`:'';
+    return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
-  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:'), fold=P.mfold, sel=d.isAdmin&&!fold?P.msel:null, nSel=sel?sel.size:0;
-  const qb=(attr,id,ic,label,cls='')=>`<button type="button" class="qb${cls}" data-q ${attr}="${id}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
-  el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
+  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:'), fold=!adm&&P.mfold, sel=adm?P.msel:null, nSel=sel?sel.size:0;
+  const qb=(attr,id,ic,label,cls='')=>`<button type="button" class="qb${cls}" ${attr}="${id}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
+  const card=m=>{
+    const on=sel&&sel.has(m.id), edit=!sel&&P.mdesc===m.id;
+    const where=m.location?(sel?`<span>${ICON.pin}<span>${esc(m.location)}</span></span>`
+      :`<a href="${esc(mapUrl(m.location))}" target="_blank" rel="noopener" title="Open in Google Maps">${ICON.pin}<span>${esc(m.location)}</span></a>`):'';
+    const range=m.repeat?repeatText(m).split(' · ').slice(1).join(' · '):'';
+    let foot='';
+    if(d.isAdmin&&!sel){ const noMail=invited(m).filter(r=>!r.email);
+      const stat=[m.sentAt?`<span title="${esc(new Date(m.sentAt).toLocaleString())}">Invite emailed ${esc(new Date(m.sentAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}.</span>`:'',
+        noMail.length?`No email for ${esc(noMail.map(r=>r.name).join(', '))}.`:''].filter(Boolean).join(' ');
+      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}${m.sentAt?'Send again':'Send invite'}</button>${qb('data-mail',m.id,'mail','Write the invite in my own email app')}`
+          :`<button class="btn sm primary withic" data-mail="${m.id}" title="Opens your email app with the invitees who left an address in BCC">${ICON.mail}Email invite</button>`}
+        ${qb('data-copyinvite',m.id,'copy','Copy invite text')}${edit?'':qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')}${qb('data-delmeet',m.id,'trash','Delete meeting',' danger')}
+        ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
+    return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
+      ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
+      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':`<a class="btn sm withic" href="${esc(icsUrl(m.id,true))}">${ICON.cal}Add to calendar</a>`}</div>
+        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?'All day':`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
+        ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
+        ${edit?descEditor(m.id,m.note||'',''):m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${foot}</div></div>`; };
+  const cal=`<span class="mcal"><a class="btn sm ghost withic" href="${esc(icsUrl(null,true))}">${ICON.cal}Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></span>`;
+  if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2>Scheduled meetings <span class="count">${ms.length}</span></h2>
+      ${cal}<button class="btn sm${sel?' primary':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button></div>
+    ${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
+  else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?'Show':'Hide'} scheduled meetings"><h3>★ Scheduled <span class="count">${ms.length}</span></h3></button>
       ${d.isAdmin&&!fold?`<button class="btn sm ghost${sel?' on':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button>`:''}<span class="mcal"><a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></span></div>
-    ${fold?'':`${sel?batchPanel(ms,nSel):''}
-    ${ms.map(m=>{ const inv=d.isAdmin?invited(m):[], noMail=inv.filter(r=>!r.email), on=sel&&sel.has(m.id);
-      return `<details class="meet${on?' sel':''}"${!sel&&P.mdesc===m.id?' open':''}><summary${sel?` data-mpick="${m.id}"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-label="Select this meeting"${on?' checked':''}>`:''}<span class="mw"><span class="when">${whenText(m).split(' · ').map(s=>`<span class="nw">${esc(s)}</span>`).join(' · ')}</span>
-          <span class="small muted">${esc(m.title||d.poll.title)}${m.location?` · ${esc(m.location)}`:''} · ${esc(whoText(m))}</span></span>
-          ${sel?'':`<span class="qacts"><a class="btn sm" href="${esc(icsUrl(m.id,true))}">Add to calendar</a>${d.isAdmin?qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')+qb('data-copyinvite',m.id,'copy','Copy invite text')+qb('data-delmeet',m.id,'trash','Delete meeting',' danger'):''}</span>`}</summary>
-        <div class="meet-b">${m.location?`<div class="small">📍 ${esc(m.location)} · <a href="${esc(mapUrl(m.location))}" target="_blank" rel="noopener">Open in Google Maps ↗</a></div>`:''}${P.mdesc===m.id?descEditor(m.id,m.note||'',''):m.note?`<div class="small note">${esc(m.note)}</div>`:''}
-        ${d.isAdmin?`<div class="acts">${d.emailEnabled?`<button class="btn sm primary" data-sendinvite="${m.id}">${m.sentAt?'Send invite again':'Send invite email'}</button>`:''}
-          <button class="btn sm" data-mail="${m.id}">${d.emailEnabled?'Open in my email app':'Email invite'}</button><button class="btn sm" data-copyinvite="${m.id}">Copy invite text</button>${P.mdesc===m.id?'':`<button class="btn sm" data-mdesc="${m.id}">${m.note?'Edit description':'Add description'}</button>`}<button class="btn sm danger" data-delmeet="${m.id}">Delete</button></div>
-          <div class="help">${m.sentAt?`Invite emailed ${esc(new Date(m.sentAt).toLocaleString())}. `:''}${noMail.length?`No email for: ${esc(noMail.map(r=>r.name).join(', '))}.`:''}${!d.emailEnabled?' “Email invite” opens your email app with the invitees who left an address in BCC.':''}</div>`
-          :`<div class="small muted">Who: ${esc(whoText(m))}</div>`}</div></details>`; }).join('')}`}</div>`;
+    ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
 // Batch tools for the selected meetings (select mode): location, description, move, delete.
@@ -1761,7 +1885,6 @@ async function runBatch(kind,btn){
   if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('summary [data-q]')) e.preventDefault(); // quick actions don't open/close the row
   const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch]'); if(!t||!P.data) return;
   const ds=t.dataset, ms=inst().meetings;
   if(ds.mfold!==undefined){ P.mfold=!P.mfold; store.set('mfold:'+P.id,P.mfold); renderMeetings(); return; }
@@ -1770,6 +1893,8 @@ document.addEventListener('click',e=>{
   if(ds.mselall!==undefined){ P.msel=P.msel.size===ms.length?new Set():new Set(ms.map(m=>m.id)); renderMeetings(); return; }
   if(ds.mbatch){ runBatch(ds.mbatch,t); }
 });
+document.addEventListener('keydown',e=>{ const c=e.target.closest&&e.target.closest('.meet[data-mpick]');
+  if(c&&e.target===c&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); const id=c.dataset.mpick; c.click(); const n=document.querySelector(`.meet[data-mpick="${CSS.escape(id)}"]`); if(n) n.focus(); } });
 // Remember what was typed in the batch fields across re-renders (untouched fields follow the selection).
 document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n:'n',mb_u:'u'}[e.target.id]; if(f) (P.mbatch||(P.mbatch={}))[f]=e.target.value; });
 document.addEventListener('change',e=>{ if(e.target.id==='mb_u') (P.mbatch||(P.mbatch={})).u=e.target.value; });
@@ -1783,7 +1908,7 @@ function descEditor(id,val,help){
 async function saveMeetings(list){
   try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{meetings:list},headers()); P.data.instance=r.instance;
     const x=P.data.instances.find(y=>y.id===r.instance.id); if(x) x.meetings=r.instance.meetings;
-    renderMeetings(); renderSeries(); renderBody(); return true; }
+    renderHeader(); renderSeries(); renderBody(); return true; }
   catch(e){ toast(e.message); return false; }
 }
 
@@ -2174,20 +2299,20 @@ function scheduleDay(k){
   if(!P.drafts.some(x=>x.date===k&&(x.allDay||(r&&x.start===r[0]&&x.end===r[1])))){
     if(!slotsOn) addDraft(k,true,null,null);
     else { const [st,en]=r||bestBlock(stats(k)); addDraft(k,false,st,Math.min(en,24)); } }
-  P.range=null; P.tab='plan'; store.set('view:'+P.id,'plan'); planShow(k); renderBody();
+  P.range=null; planShow(k);
+  if(P.atab==='meetings') renderBody(); else setAdminTab('meetings');
   toast('Draft added. Set the details, then create the meeting.');
-  const tr=$('drafts'); if(tr) tr.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const tr=$('drafts'); if(tr) tr.closest('.pstep').scrollIntoView({block:'start'});
 }
 
-function renderGroup(el, plan){
+function renderGroup(el){
   const d=P.data, p=d.poll;
   if(!d.responses){ el.innerHTML=`<p class="help">The organiser has chosen to keep answers private.</p>`; return; }
   const all=d.responses.length, tot=sel().length, H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days';
   if(!all){ el.innerHTML=`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people respond, the best days show up here.</span></div>`; return; }
-  let h=tools(whoDropdown()+(plan?`<button class="btn sm" data-suggest>✨ Suggest best times</button>${P.drafts.length?'<button class="btn sm ghost" data-cleardrafts>Clear drafts</button>':''}`:''));
+  let h=tools(whoDropdown());
   if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person in the Participants list to see when they're free.</p>`; wireWho(); return; }
-  if(plan){ el.innerHTML=h+renderPlanner(S); wireWho(); wirePlanner(); return; }
   h+=`<p class="help">Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.</p>`;
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   h+=legend('heat','maybe',d.isAdmin||meetingDays().size?'meeting':'');
@@ -2281,11 +2406,10 @@ function planShow(k){
 }
 function renderPlanner(S){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
-  let h=`<p class="help">${slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to draw a meeting (a tap adds one hour),':'<b>Drag down a day</b> to draw a meeting,')+' tap a day name for an all-day one, tap a draft to remove it. Darker = more of the selected people are free.':'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of the selected people are free.'}
-    Each draft invites the people selected when you drew it.</p>`;
+  let h='';
   if(slotsOn){
     const {avail,pages}=planPages(S);
-    if(!pages.length){ h+=`<p class="help">None of the selected people has marked any hours as available yet.</p>`; return h+draftTray(); }
+    if(!pages.length) return `<div class="empty-v"><b>No free hours yet.</b><span class="muted small">None of the selected people has marked any hours as available.</span></div>`;
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
     h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="Previous">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">(${P[pk]+1}/${pages.length})</span>`:''}</span>
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="Next">›</button>
@@ -2309,11 +2433,29 @@ function renderPlanner(S){
     h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
     h+=legend('heat','maybe','draft','meeting');
   }
-  return h+draftTray();
+  return h;
+}
+// The organiser's Meetings tab, lower card: 1 who, 2 when (grid), 3 details of the drafts + create.
+function step(n,title,help,body,extra=''){
+  return `<section class="pstep"><div class="pstep-h"><span class="pstep-n" aria-hidden="true">${n}</span><div class="grow minw"><h3>${title}</h3>${help?`<p class="help">${help}</p>`:''}</div>${extra}</div>${body}</section>`;
+}
+function renderPlan(el){
+  const d=P.data, rs=d.responses||[], slotsOn=d.poll.answerMode!=='days', tot=sel().length, nd=P.drafts.length;
+  let h=`<div class="card-h"><h2>Plan new meetings</h2><span class="muted small">Pick people, draw the times, create</span></div>`;
+  if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people answer, you can plan meetings around when they're free.</span><button class="btn sm mt-2" data-atab="people">Share the poll</button></div>`; return; }
+  const S={}; d.dates.forEach(k=>S[k]=stats(k));
+  h+=step(1,'Who should come?','Each meeting invites the people selected when you add it.',
+    tools(whoDropdown()+`<button class="btn sm" data-suggest${tot?'':' disabled'}>✨ Suggest best times</button>`,'mt-2'));
+  h+=step(2,'Pick the times',tot?(slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).':'<b>Drag down a day</b> to add a meeting.')+' Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.'
+      :'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.'):'',
+    tot?renderPlanner(S):`<div class="empty-v"><b>Nobody selected.</b><span class="muted small">Pick at least one person in step 1.</span></div>`);
+  h+=step(3,`Details${nd?` <span class="count">${nd}</span>`:''}`,nd?'':'Meetings you add in step 2 show up here. Set the details, then create them in one go.',
+    draftTray(),nd?'<button class="btn sm ghost" data-cleardrafts>Clear all</button>':'');
+  el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
-  if(!P.drafts.length) return `<div class="sched" id="drafts"><h3>Meeting drafts</h3><p class="help">No drafts yet. ${P.data.poll.answerMode==='days'?'Tap a day':TOUCH?'Press and hold, then drag on the grid':'Drag across the grid'} to add one, or use <b>Suggest best times</b>.</p></div>`;
+  if(!P.drafts.length) return `<div id="drafts"></div>`;
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
     return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
@@ -2323,7 +2465,7 @@ function draftTray(){
       <button class="btn sm danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
       <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span>
       ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="Extra description for this meeting only, shown below the shared one">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
-  return `<div class="sched" id="drafts"><h3>Meeting drafts <span class="count">${P.drafts.length}</span></h3><div class="drafts">${rows}</div>
+  return `<div id="drafts"><div class="drafts">${rows}</div>
     <div class="grid2 mt-2">
       <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
       <div class="field"><label for="dm_loc">Location (optional)</label><div class="locbox"><input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="Search a place or address" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div></div>
@@ -2379,32 +2521,36 @@ async function saveDrafts(btn){
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
 // Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
-const adminTabList = () => [['answers','Answers'],...(P.data.poll.kind==='series'?[['rounds','Rounds']]:[]),['participants','Participants'],['share','Share'],['settings','Settings']];
+const adminTabList = () => [['answers','Answers'],['meetings','Meetings'],...(P.data.poll.kind==='series'?[['rounds','Rounds']]:[]),['people','People'],['settings','Settings']];
 function adminTabs(){
+  if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
   if(!adminTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
-  return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}</button>`).join('')}</nav>`;
+  return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
 }
 function setAdminTab(k){
+  if(k==='participants'||k==='share') k='people';
   if(!adminTabList().some(x=>x[0]===k)) k='answers';
-  P.atab=k; store.set('atab:'+P.id,k);
-  document.querySelectorAll('[data-atab]').forEach(x=>x.classList.toggle('on',x.dataset.atab===k));
+  const was=P.atab; P.atab=k; store.set('atab:'+P.id,k);
+  document.querySelectorAll('.atabs [data-atab]').forEach(x=>x.classList.toggle('on',x.dataset.atab===k));
   ['answers',...adminTabList().map(x=>x[0])].forEach(t=>{ const el=$('pane-'+t); if(el) el.classList.toggle('hide',t!==k); });
-  if(k==='participants') loadParts();
+  if(k==='people') loadParts();
+  if((was==='meetings')!==(k==='meetings')) renderBody(); // the planner and the Group view share ids: render only the visible one
 }
 function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide';
-  return `${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div id="meetings"></div><div class="card" id="mplan"></div></div>
+  ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2>Schedule for new rounds</h2></div><form id="rf">
       <div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
         <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
       <div class="help">Applies to rounds opened from now on. To change the dates of an existing round, use “Edit” above. To change how often it repeats, create a new series.</div>
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div></div>`:''}
-  <div id="pane-participants" class="${hid('participants')}"><div class="card"><div class="card-h"><h2>Participants</h2></div><div id="parts"><p class="help">Loading…</p></div></div></div>
-  <div id="pane-share" class="${hid('share')}"><div class="card"><div class="card-h"><h2>Share</h2><span class="muted small">Send this link to people</span></div>
-    <div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy share link</button></div>
-    ${series?'<p class="help">The link always shows the newest open round, so you can share it once for the whole series.</p>':''}
-    ${inviteBox(p.id, p.title, inst()&&inst().status==='open'?inst().deadline:null)}</div></div>
+  <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>People</h2><span class="muted small">Who's invited and who answered</span></div>
+    <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy link</button></div>
+      <div class="help">${series?'The link always shows the newest open round, so you can share it once for the whole series. ':''}Anyone with the link can answer, no account needed.</div></div>
+    ${peopleBox(p.id)}
+    <div class="section"><h3>In this poll</h3><div id="parts"><p class="help">Loading…</p></div></div></div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>Settings</h2></div>
     <div class="section"><h3>Details</h3>
       <div class="field"><label for="s_title">Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
@@ -2448,17 +2594,52 @@ async function loadParts(){
   const el=$('parts'); if(!el) return;
   try{ const r=await api('GET',`/polls/${P.id}/participants`,null,headers()); P.parts=r.participants; }
   catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
-  const ps=P.parts;
-  el.innerHTML=`<p class="help">Guests are identified by their name, which is unique in this poll and stays the same across all rounds. People who answer while signed in are identified by their account's email, so their names may repeat.</p>
-    ${ps.length?`<ul class="list">${ps.map(p=>`<li><span class="grow"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their email, not by name">Account</span>':''}${p.email?` <span class="muted small">· ${esc(p.email)}</span>`:''}<br>
-      <span class="muted small">${p.rounds?`${p.rounds} ${p.rounds===1?'answer':'answers'} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
-      <button class="btn" data-pedit="${esc(p.id)}">Edit</button>
-      ${ps.length>1?`<select class="inline" data-pmerge="${esc(p.id)}"><option value="">Merge into…</option>${ps.filter(x=>x.id!==p.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
-      <button class="btn danger" data-pdel="${esc(p.id)}">Remove</button></li>`).join('')}</ul>`:'<p class="help">Nobody yet.</p>'}
-    <div class="field"><label for="p_add">Add people in advance (one per line: Name or Name, email)</label>
-      <textarea id="p_add" maxlength="20000" placeholder="Anna&#10;Ben, ben@example.com"></textarea></div>
-    <div class="row mt-3"><button class="btn" data-padd>Add</button></div>`;
+  renderParts();
 }
+// One status per person: answered this round, invited (when), or why they can't be emailed.
+function partStatus(p){
+  const series=P.data.poll.kind==='series';
+  if(p.answeredNow) return `<span class="tag y" title="${series?'Answered the current round':'Has answered'}">Answered</span>`;
+  if(p.invitedAt) return `<span class="tag m" title="Invite emailed ${esc(new Date(p.invitedAt).toLocaleString())}">Invited ${esc(new Date(p.invitedAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</span>`;
+  if(!p.canMail) return `<span class="tag x" title="${p.email?'Removed their email when answering':'No email address'}">No email</span>`;
+  return `<span class="tag x">Not invited</span>`;
+}
+function renderParts(){
+  const el=$('parts'); if(!el||!P.parts) return;
+  const ps=P.parts, srv=P.data.emailEnabled, series=P.data.poll.kind==='series';
+  const sel=P.psel=new Set([...(P.psel||[])].filter(id=>ps.some(p=>p.id===id)));
+  const answered=ps.filter(p=>p.answeredNow).length, waiting=ps.filter(p=>p.canMail&&!p.answeredNow);
+  const selMail=ps.filter(p=>sel.has(p.id)&&p.canMail);
+  el.innerHTML=ps.length?`<div class="ptools">
+      <label class="check m0"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''}> <span>${sel.size?`${sel.size} selected`:`${plural(ps.length,'person','people')} · ${answered} answered${series?' this round':''}`}</span></label>
+      <span class="grow"></span>
+      ${sel.size?`${srv?`<button type="button" class="btn sm primary" data-pmailsel ${selMail.length?'':'disabled'}>Email ${selMail.length}</button>`:''}
+        <button type="button" class="btn sm" data-pmailapp ${selMail.length?'':'disabled'}>Open in my email app</button>
+        <button type="button" class="btn sm ghost" data-pselnone>Clear</button>`
+      :srv&&waiting.length?`<button type="button" class="btn sm" data-premind title="${esc(waiting.map(p=>p.name).join(', '))}">Remind ${plural(waiting.length,'person','people')} who haven't answered</button>`:''}</div>
+    <ul class="list plist">${ps.map(p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="Select ${esc(p.name)}">
+      <span class="grow"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their account, not by name">Account</span>':''} ${partStatus(p)}<br>
+        <span class="muted small">${p.email?`${esc(p.email)} · `:''}${p.rounds?`${plural(p.rounds,'answer','answers')} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
+      <span class="acts">${srv&&p.canMail?`<button class="btn sm" data-pinvite="${esc(p.id)}">${p.invitedAt?'Resend':'Invite'}</button>`:''}
+        <button class="btn sm" data-pedit="${esc(p.id)}">Edit</button>
+        ${ps.length>1?`<select class="inline sm" data-pmerge="${esc(p.id)}" aria-label="Merge ${esc(p.name)} into someone else"><option value="">Merge into…</option>${ps.filter(x=>x.id!==p.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
+        <button class="btn sm danger" data-pdel="${esc(p.id)}">Remove</button></span></li>`).join('')}</ul>`
+    :'<p class="help">Nobody yet. Add people above, or share the link.</p>';
+  el.insertAdjacentHTML('beforeend',`<p class="help">Guests are matched by name, which is unique in this poll${series?' and stays the same across rounds':''}. People who answer while signed in are matched by their account, so their names may repeat.</p>`);
+}
+// Sends the poll invite from the site to participants: { ids } or { remind:true }.
+async function partsInvite(t,body,what){
+  t.disabled=true;
+  try{ const r=await api('POST',`/polls/${P.id}/invite`,body,headers());
+    toast(`${what} sent to ${plural(r.sent,'person','people')}${r.missing&&r.missing.length?` · no email: ${r.missing.join(', ')}`:''}`); await loadParts(); }
+  catch(ex){ toast(ex.message); t.disabled=false; }
+}
+document.addEventListener('change',e=>{
+  const c=e.target.closest('[data-psel],[data-pselall]'); if(!c||!P.parts) return;
+  if(c.dataset.psel!==undefined){ P.psel=P.psel||new Set(); c.checked?P.psel.add(c.dataset.psel):P.psel.delete(c.dataset.psel); }
+  else P.psel=new Set(c.checked?P.parts.map(p=>p.id):[]);
+  renderParts();
+});
 async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); }
 document.addEventListener('change',async e=>{
   const sel=e.target.closest('[data-pmerge]'); if(!sel||!sel.value) return;
@@ -2468,7 +2649,7 @@ document.addEventListener('change',async e=>{
   catch(ex){ toast(ex.message); sel.value=''; }
 });
 function wireAdmin(){
-  if(P.atab==='participants') loadParts();
+  if(P.atab==='people') loadParts();
   const rf=$('rf'); if(rf) rf.onsubmit=async e=>{ e.preventDefault(); const err=$('rerr'); err.textContent='';
     try{ await api('PATCH',`/polls/${P.id}`,{openDays:+$('s_open').value, deadlineDays:$('s_dld').value===''?null:+$('s_dld').value},headers());
       toast('Schedule saved'); await loadPoll(false); }catch(ex){ err.textContent=ex.message; } };
@@ -2499,27 +2680,20 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-invitepoll],[data-sendpoll],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-atab]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!t) return;
   const ds=t.dataset;
   if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
-  if(ds.sendpoll){ const r=pollInviteMail(ds.sendpoll,'',null,emailsValue(ds.sendpoll));
-    if(r.bad.length){ toast(`Doesn't look like an email: ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`); return; }
-    if(!r.ok.length){ toast('Enter at least one email address'); return; }
-    t.disabled=true;
-    try{ const x=await api('POST',`/polls/${ds.sendpoll}/invite`,{emails:r.ok});
-      toast(`Invite sent to ${x.sent} ${x.sent===1?'person':'people'}`); emailsClear(ds.sendpoll); }
-    catch(ex){ toast(ex.message); }
-    t.disabled=false; return; }
-  if(ds.invitepoll){ const r=pollInviteMail(ds.invitepoll, ds.title, ds.deadline||null, emailsValue(ds.invitepoll));
-    if(r.bad.length) toast(`Skipped (doesn't look like an email): ${r.bad.slice(0,3).join(', ')}${r.bad.length>3?' …':''}`);
-    else if(!r.ok.length) toast('No addresses entered. Opening a blank email.');
-    location.href=r.href; return; }
   if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
-  if(ds.padd!==undefined){ const v=$('p_add').value; if(!v.trim()) return;
-    try{ const r=await api('POST',`/polls/${P.id}/participants`,{lines:v},headers());
-      partsChanged(`Added ${r.added.length}${r.skipped.length?` · already there: ${r.skipped.join(', ')}`:''}`); }catch(ex){ toast(ex.message); } return; }
+  if(ds.padd){ peopleAdd(t); return; }
+  if(ds.pinvite){ const p=P.parts.find(x=>x.id===ds.pinvite); if(p) partsInvite(t,{ids:[p.id]},p.invitedAt?'Reminder':'Invite'); return; }
+  if(ds.premind!==undefined){ const n=P.parts.filter(p=>p.canMail&&!p.answeredNow).length;
+    if(confirm(`Email a reminder to ${plural(n,'person','people')} who haven't answered yet?`)) partsInvite(t,{remind:true},'Reminder'); return; }
+  if(ds.pmailsel!==undefined){ const ids=P.parts.filter(p=>P.psel.has(p.id)&&p.canMail).map(p=>p.id); if(ids.length){ await partsInvite(t,{ids},'Invite'); P.psel=new Set(); renderParts(); } return; }
+  if(ds.pmailapp!==undefined){ const to=P.parts.filter(p=>P.psel.has(p.id)&&p.canMail&&p.email).map(p=>p.email);
+    location.href=pollInviteMail(P.id,P.data.poll.title,inst()&&inst().status==='open'?inst().deadline:null,to.join('\n')).href; return; }
+  if(ds.pselnone!==undefined){ P.psel=new Set(); renderParts(); return; }
   if(ds.pedit){ const p=P.parts.find(x=>x.id===ds.pedit); if(!p) return;
     const name=prompt('Name', p.name); if(name===null) return; const mail=p.account?p.email:prompt(`Email for ${name} (optional)`, p.email||''); if(mail===null) return;
     try{ await api('PATCH',`/polls/${P.id}/participants/${p.id}`,{name,email:mail},headers()); partsChanged('Saved'); }catch(ex){ toast(ex.message); } return; }

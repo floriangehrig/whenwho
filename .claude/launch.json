@@ -9,6 +9,35 @@
         "dev"
       ],
       "port": 8787
+    },
+    {
+      "name": "mockresend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-home--claude-spares-spare-SwWPCk/54269af7-4f3b-467d-83ea-728f1f3280cc/scratchpad/mockresend.js"
+      ],
+      "port": 8799,
+      "autoPort": false
+    },
+    {
+      "name": "whenwho-mail",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8790",
+        "--var",
+        "RESEND_API_KEY:test",
+        "--var",
+        "RESEND_API_URL:http://localhost:8799",
+        "--var",
+        "SITE_URL:http://localhost:8790",
+        "--persist-to",
+        "/private/tmp/claude-501/-Users-home--claude-spares-spare-SwWPCk/54269af7-4f3b-467d-83ea-728f1f3280cc/scratchpad/wstate"
+      ],
+      "port": 8790,
+      "autoPort": false
     }
   ]
 }

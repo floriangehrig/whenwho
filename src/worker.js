@@ -1030,27 +1030,57 @@ async function sendInvite(request, env, url, id, iid, mid) {
 }
 
 // "Invite by email" for the poll itself: sent from MAIL_FROM (the site's domain), everyone in BCC, replies go to the organiser.
+// Who gets it, one of:
+//   { people: [{ name, email }] }  adds them to the poll's participants (or finds them), then emails those with an address
+//   { ids: [participantId] }       participants of this poll, e.g. "Resend" or a selection in the People tab
+//   { remind: true }               everyone with an address who hasn't answered the current round
+//   { emails: [...] }              legacy: plain addresses, not added as participants
+// Participants who are emailed get invited_at set. Already-invited people (and { remind }) get a reminder wording.
 async function invitePoll(request, env, url, id) {
   const poll = await loadPoll(env, id);
-  requireAdmin(request, poll);
+  await requireAdmin(request, poll);
   const b = await body(request);
-  if (!Array.isArray(b.emails)) throw new HttpError(400, 'emails must be a list');
-  const emails = [...new Set(b.emails.filter((e) => typeof e === 'string').map((e) => e.trim().toLowerCase()).filter((e) => e.length <= 200 && EMAIL_RE.test(e)))];
-  if (!emails.length) throw new HttpError(400, 'Enter at least one email address');
-  if (emails.length > 200) throw new HttpError(400, 'At most 200 addresses at once');
   const message = str(b.message, 1000, 'Message');
-  const user = userOf(request);
-  const inst = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 1').bind(id).first();
+  const inst = await latestInstance(env, id);
+  let emails = [], pids = [], missing = [], again = !!b.remind, added = null;
+  if (Array.isArray(b.people) || b.remind || Array.isArray(b.ids)) {
+    let want;
+    if (Array.isArray(b.people)) { added = await upsertPeople(env, id, peopleInput(b)); want = new Set(added.ids.filter(Boolean)); }
+    else if (Array.isArray(b.ids)) {
+      if (b.ids.length > 500) throw new HttpError(400, 'Too many people');
+      want = new Set(b.ids.filter((x) => typeof x === 'string' && ID_RE.test(x)));
+    }
+    const rows = (await participantRows(env, id, inst && inst.id)).filter((p) => (b.remind ? !p.here : want.has(p.id)));
+    const withMail = rows.filter((p) => EMAIL_RE.test(p.mail_to));
+    missing = rows.filter((p) => !EMAIL_RE.test(p.mail_to)).map((p) => p.name);
+    if (!b.remind && withMail.length && withMail.every((p) => p.invited_at)) again = true;
+    emails = withMail.map((p) => p.mail_to.toLowerCase()); pids = withMail.map((p) => p.id);
+    if (!emails.length) {
+      if (added) return json({ ok: true, sent: 0, missing, ...added });
+      throw new HttpError(400, b.remind ? 'Everyone with an email address has answered' : 'None of them has an email address');
+    }
+  } else {
+    if (!Array.isArray(b.emails)) throw new HttpError(400, 'emails must be a list');
+    emails = [...new Set(b.emails.filter((e) => typeof e === 'string').map((e) => e.trim().toLowerCase()).filter((e) => e.length <= 200 && EMAIL_RE.test(e)))];
+    if (!emails.length) throw new HttpError(400, 'Enter at least one email address');
+  }
+  emails = [...new Set(emails)];
+  if (emails.length > 200) throw new HttpError(400, 'At most 200 addresses at once');
+  const user = userOf(request) || {};
   const deadline = inst && inst.status === 'open' && inst.deadline ? inst.deadline.slice(0, 10) : null;
   const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
   const who = user.name || 'The organiser';
-  const text = [message || `${who} would like to know when you're free for “${poll.title}”.`, '',
+  const text = [message || (again ? `A reminder: ${who} would like to know when you're free for “${poll.title}”.` : `${who} would like to know when you're free for “${poll.title}”.`), '',
     poll.description ? poll.description + '\n' : null,
     'Mark your availability here (no account needed):', link,
     deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
     + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
-  const sent = await sendMail(env, poll, { to: emails, subject: `When are you free? ${poll.title}`, text, quota: true });
-  return json({ ok: true, sent });
+  const sent = await sendMail(env, poll, { to: emails, subject: `${again ? 'Reminder: when' : 'When'} are you free? ${poll.title}`, text, quota: true });
+  if (pids.length) {
+    const at = now();
+    await env.DB.batch(pids.map((pid) => env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ?').bind(at, pid)));
+  }
+  return json({ ok: true, sent, missing, ...(added || {}) });
 }
 
 async function testEmail(request, env, url, id) {
@@ -1303,30 +1333,62 @@ async function loadParticipant(env, id, pid) {
   if (!p) throw new HttpError(404, 'Participant not found');
   return p;
 }
+const latestInstance = (env, pollId) => env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 1').bind(pollId).first();
+// Every participant with the address emails actually go to (`mail_to`, same rule as participantEmails)
+// and whether they answered `instId` (`here`).
+async function participantRows(env, pollId, instId) {
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+       (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email,
+       (SELECT r3.email FROM responses r3 WHERE r3.participant_id = p.id ORDER BY r3.updated_at DESC LIMIT 1) AS re,
+       EXISTS (SELECT 1 FROM responses r4 WHERE r4.participant_id = p.id AND r4.instance_id = ?) AS here
+     FROM participants p LEFT JOIN users u ON u.id = p.user_id LEFT JOIN responses r ON r.participant_id = p.id
+     WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(instId || '', pollId).all();
+  return results.map((p) => ({ ...p, mail_to: (p.ue || (p.re !== null ? p.re : p.email) || '').trim() }));
+}
 async function listParticipants(request, env, id) {
   await adminPoll(request, env, id);
-  const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, p.user_id, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
-       (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email
-     FROM participants p LEFT JOIN responses r ON r.participant_id = p.id
-     WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(id).all();
-  return json({ participants: results.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id, rounds: p.rounds, lastAnswered: p.last })) });
+  const inst = await latestInstance(env, id);
+  const rows = await participantRows(env, id, inst && inst.id);
+  return json({ participants: rows.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id,
+    rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to })) });
 }
-// Body: { lines: "Anna\nBen, ben@example.com" }
+// People from the page: [{ name, email }] (email optional). Legacy: "Anna\nBen, ben@example.com".
+function peopleInput(b) {
+  let list;
+  if (Array.isArray(b.people)) list = b.people;
+  else list = str(b.lines, 20000, 'Names', true).split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    .map((l) => { const [n, ...rest] = l.split(','); return { name: n, email: rest.join(',').trim() }; });
+  if (!list.length) throw new HttpError(400, 'Add at least one person');
+  if (list.length > 200) throw new HttpError(400, 'At most 200 people at once');
+  return list.map((x) => { const name = personName(x && x.name); return { name, email: email((x && x.email) || '', `Email for ${name}`).toLowerCase() }; });
+}
+// Adds people, or finds them if they're already in the poll (same email, or same guest name).
+// A guest found by name without an email gets the new one. Returns the participant ids per person (null = skipped).
+async function upsertPeople(env, id, people) {
+  const added = [], updated = [], skipped = [], ids = [];
+  for (const x of people) {
+    let p = x.email ? await env.DB.prepare(
+      `SELECT p.* FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? AND (LOWER(p.email) = ? OR LOWER(u.email) = ?) LIMIT 1`)
+      .bind(id, x.email, x.email).first() : null;
+    if (!p) {
+      p = await findParticipant(env, id, nameKey(x.name));
+      if (p && x.email) {
+        if (p.email && p.email.toLowerCase() !== x.email) { skipped.push(`${x.name} (already there with another email)`); ids.push(null); continue; }
+        if (!p.email) { await env.DB.prepare('UPDATE participants SET email = ? WHERE id = ?').bind(x.email, p.id).run(); updated.push(x.name); ids.push(p.id); continue; }
+      }
+    }
+    if (p) { skipped.push(p.name); ids.push(p.id); continue; }
+    p = await newParticipant(env, id, x.name, x.email);
+    added.push(x.name); ids.push(p.id);
+  }
+  return { added, updated, skipped, ids };
+}
+// Body: { people: [{ name, email }] } or legacy { lines }
 async function addParticipants(request, env, id) {
   await adminPoll(request, env, id);
-  const b = await body(request);
-  const text = str(b.lines, 20000, 'Names', true);
-  const added = [], skipped = [];
-  for (const line of text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
-    const [rawName, ...rest] = line.split(',');
-    const name = personName(rawName);
-    const mail = email(rest.join(',').trim(), `Email for ${name}`);
-    if (await findParticipant(env, id, nameKey(name))) { skipped.push(name); continue; }
-    await newParticipant(env, id, name, mail);
-    added.push(name);
-  }
-  return json({ added, skipped });
+  const r = await upsertPeople(env, id, peopleInput(await body(request)));
+  return json(r);
 }
 async function updateParticipant(request, env, id, pid) {
   await adminPoll(request, env, id);
@@ -1377,6 +1439,7 @@ async function mergeParticipant(request, env, id, pid) {
     src.user_id
       ? env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(src.user_id, src.name_key, src.email, dst.id)
       : env.DB.prepare("UPDATE participants SET email = CASE WHEN email = '' THEN ? ELSE email END WHERE id = ?").bind(src.email, dst.id),
+    env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ? AND (invited_at IS NULL OR invited_at < ?)').bind(src.invited_at, dst.id, src.invited_at),
   ]);
   return json({ ok: true, removedAnswers: drop.length });
 }
