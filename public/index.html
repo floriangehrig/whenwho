@@ -207,6 +207,9 @@
   .btn:disabled{opacity:.45;cursor:default;transform:none}
   .btn.onbrand{background:transparent;border-color:rgba(255,255,255,.3);color:#fff}
   .btn.onbrand:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5)}
+  /* compact buttons (ib()): full label on wide screens, icon (+ optional short label .bs) on phones */
+  .btn .bs,.sm-only{display:none}
+  .btn.sm.withic svg{width:15px;height:15px}
 
   /* ---------- tabs + segmented controls ---------- */
   .tabs{display:flex;gap:4px;margin-top:var(--s5);border-bottom:1px solid var(--line-strong)}
@@ -221,6 +224,7 @@
   .card.atabs::-webkit-scrollbar{display:none}
   .card.atabs button{white-space:nowrap;padding-bottom:14px}
   .card.atabs button.on::after{bottom:0}
+  .card.atabs .ti{display:none}
   .card-h+.section{margin-top:var(--s2);padding-top:0;border-top:0}
   .section>h3{margin-bottom:var(--s2)}
   .card.danger-zone{border-color:color-mix(in srgb,var(--no) 30%,var(--line))}
@@ -228,6 +232,7 @@
   .seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;display:inline-flex;align-items:center}
   .seg button:hover{color:var(--ink)}
   .seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm),0 0 0 1px var(--line)}
+  .seg .segic{display:inline-flex;margin-right:6px} .seg .segic svg{width:15px;height:15px}
   .seg .dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:7px}
 
   /* ---------- feedback ---------- */
@@ -412,7 +417,7 @@
   .mbatch-r .help{align-self:center;margin:0}
   @media (max-width:560px){ .mbatch-g{grid-template-columns:minmax(0,1fr)} .mbatch-g>label{padding-top:0}
     .mlist{padding:8px;gap:8px} .meet{gap:11px;padding:12px 12px 12px 10px} .mtile{width:48px} .mtile .dn{font-size:20px}
-    .mhead{display:contents} .mhead .btn{order:1;align-self:flex-start;margin-top:4px} .mfoot{order:2} .mfoot>.btn{flex:1 1 100%;margin:0 0 4px} .mstat{flex-basis:100%;margin:4px 0 0} .mmeta{flex-direction:column;gap:3px} }
+    .mfoot{gap:2px} .mfoot>.btn{flex:1 1 auto;min-width:0;margin:0 4px 0 0} .mfoot .qb{flex:none} .mstat{flex-basis:100%;margin:4px 0 0} .mmeta{flex-direction:column;gap:3px} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
@@ -431,6 +436,7 @@
   .dd{position:relative;display:inline-block;margin-top:12px}
   .dd>summary{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;min-height:36px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);font-size:14px;font-weight:500}
   .dd>summary::before{display:none}
+  .dd .ddic{line-height:0;color:var(--muted)} .dd .ddic svg{width:16px;height:16px}
   .dd>summary::after{content:"";width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:4px}
   .dd>summary:hover{border-color:var(--accent);color:var(--ink)}
   .dd .ddp{position:absolute;z-index:50;top:calc(100% + 6px);left:0;min-width:240px;max-width:min(320px,calc(100vw - 32px));max-height:340px;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:var(--shadow-pop)}
@@ -723,7 +729,42 @@
     .savebar .btn{flex:none}
     body:has(.savebar) .toast,body:has(.new-bar) .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
     .card.atabs{padding:4px 2px 0;gap:0} .card.atabs button{padding:12px 6px 14px;font-size:13px} .card.atabs button.on::after{left:4px;right:4px}
+    .card.atabs button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 10px;font-size:11.5px;position:relative}
+    .card.atabs .ti{display:block;line-height:0} .card.atabs .ti svg{width:20px;height:20px}
+    .card.atabs button .count{position:absolute;top:4px;left:calc(50% + 6px);margin:0;min-width:17px;height:17px;padding:0 4px;font-size:10.5px}
+    /* compact buttons: icon only (or icon + short label) */
+    .btn .bl{display:none} .btn .bs,.sm-only{display:inline}
+    .btn.ib{padding-inline:10px;min-width:38px;gap:5px}
+    .btn.ib.sm{padding-inline:8px;min-width:36px}
+    .row.tight,.tight{flex-wrap:nowrap;gap:6px}
+    .tight>.grow,.tight>.minw{min-width:0}
+    .card-h{gap:8px} .card-h h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .card-h>.muted.small{display:none}
+    .chip{font-size:12px;padding:3px 9px;gap:5px} .meta{gap:6px}
+    .chip .bl{display:none}
+    .ws-h #wsmeta{flex-basis:100%;margin-left:0}
+    .list li{padding:10px 8px;margin:0 -8px}
+    .wknav{gap:6px}
+    .linkbox .btn{flex:none}
+    .btn.keep .bl{display:inline} .btn.keep .bs{display:none}
+    .plist .acts{flex-wrap:nowrap;gap:4px} .plist select.inline{max-width:118px;min-width:0;flex:1 1 auto}
+    .ptools{gap:6px}
+    .seg .bl{display:none} .seg .segic{margin-right:0}
+    .ws-tools .seg button{padding-inline:9px} .ws-tools .seg .dot{margin-right:5px}
+    .ws-tools .seg~.btn .bs{display:none} .ws-tools .seg~.btn.ib{min-width:40px}
+    /* home: poll cards become compact rows (tile left, text right) */
+    .pcards{grid-template-columns:minmax(0,1fr);gap:8px}
+    .pcard{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:12px;row-gap:1px;align-items:center;min-height:0;padding:12px 52px 12px 14px}
+    .pcard>.tile{grid-row:1/4;margin:0;align-self:center}
+    .pcard>:not(.tile):not(.pc-copy){grid-column:2}
+    .pc-foot{margin-top:4px;padding-top:0}
+    .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px}
+    .pcard.new{display:grid;grid-template-columns:44px minmax(0,1fr);text-align:left;justify-items:start}
+    .pcard.new>.tile{grid-row:1/3}
+    .drafts .dft{gap:6px 8px} .drafts .dft .when{flex-basis:100%;min-width:0} .drafts .dft [data-deldraft]{margin-left:auto}
+    #series .list li{flex-wrap:wrap} #series .list li>.grow{flex:1 1 60%} #series .acts{gap:4px;margin-left:auto}
   }
+  @media (max-width:380px){ .crumb{display:none} }
 </style>
 </head>
 <body>
@@ -776,9 +817,9 @@ function peopleBox(id){
     <div class="field"><label for="pin_${esc(id)}">Names or email addresses <span class="opt">press Enter after each, or paste a list</span></label>
       <div class="emails" data-emailsbox="${esc(id)}"><input type="text" id="pin_${esc(id)}" data-people="${esc(id)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Anna, ben@example.com, Carl &lt;carl@example.com&gt;"></div></div>
     <div class="stage" id="stg_${esc(id)}"></div>
-    <div class="row mt-3">${srv?`<button type="button" class="btn primary" data-padd="${esc(id)}" data-send="1">Add &amp; send invite</button>`:''}
-      <button type="button" class="btn${srv?'':' primary'}" data-padd="${esc(id)}">Add${srv?' only':''}</button>
-      <button type="button" class="btn" data-padd="${esc(id)}" data-mailapp="1">Add &amp; open in my email app</button></div>
+    <div class="row tight mt-3">${srv?ib('send','Add & send invite',`data-padd="${esc(id)}" data-send="1"`,'primary','Send'):''}
+      ${ib('plus',srv?'Add only':'Add',`data-padd="${esc(id)}"`,srv?'':'primary','Add')}
+      ${ib('mail','Add & open in my email app',`data-padd="${esc(id)}" data-mailapp="1"`,'','Email app')}</div>
     <div class="help">${srv?`“Send invite” emails the poll link from when-who's address under your name, everyone in BCC. Replies go to your account email. People without an address are just added to the list.`
       :`Adds them to the list, then opens your email app with the poll link and everyone's address in BCC.`} Guests who answer with the same name are matched to their row.</div>
     <div class="help" id="pres_${esc(id)}"></div></div>`;
@@ -1005,6 +1046,37 @@ const ICON = {
   pin:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>`,
   lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>`,
 };
+// More line icons in the same style, for compact buttons on phones.
+const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+Object.assign(ICON,{
+  send:svgI('<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5 21 3z"/>'),
+  check:svgI('<path d="m4.5 12.5 5 5 10-11"/>'),
+  x:svgI('<path d="M6 6l12 12M18 6 6 18"/>'),
+  bell:svgI('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2zM10 21h4"/>'),
+  upload:svgI('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
+  download:svgI('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
+  rss:svgI('<path d="M5 11a8 8 0 0 1 8 8M5 5a14 14 0 0 1 14 14"/><circle cx="6" cy="18" r="1.3" fill="currentColor"/>'),
+  select:svgI('<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5-6"/>'),
+  zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
+  eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
+  unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
+  next:svgI('<path d="M5 12h12M13 7l5 5-5 5"/>'),
+  note:svgI('<path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h6"/>'),
+  star:svgI('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'),
+  erase:svgI('<path d="m14.5 4.5 5 5-9 9H6l-2.5-2.5 11-11.5zM9 10l5 5M10.5 18.5H20"/>'),
+  share:svgI('<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4M8.2 13.2l7.6 4"/>'),
+  gear:svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'),
+  repeat:svgI('<path d="M17 2.5 20.5 6 17 9.5"/><path d="M3.5 11.5V10a4 4 0 0 1 4-4h13M7 21.5 3.5 18 7 14.5"/><path d="M20.5 12.5V14a4 4 0 0 1-4 4h-13"/>'),
+});
+// A button whose text label hides on phones (icon only there); the full label stays as title + aria-label.
+// short: optional label shown on phones next to the icon. cls: extra classes, attrs: raw attributes (escape values!).
+function ib(icon,label,attrs='',cls='',short=''){
+  return `<button type="button" class="btn withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}<span class="bl">${esc(label)}</span>${short?`<span class="bs">${esc(short)}</span>`:''}</button>`;
+}
+// The same as a link (href is escaped here).
+function ibl(icon,label,href,cls='',short='',title=''){
+  return `<a class="btn withic ib ${cls}" href="${esc(href)}" title="${esc(title||label)}" aria-label="${esc(label)}">${ICON[icon]}<span class="bl">${esc(label)}</span>${short?`<span class="bs">${esc(short)}</span>`:''}</a>`;
+}
 // Navy app bar shown on every page: logo, optional "All polls" link, account menu or sign-in.
 function appbar(crumb){
   return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>when-who</a>
@@ -1563,7 +1635,7 @@ function renderCreated(id, body, kind){
     <section class="band"><div class="wrap"><div class="hero-me">${tile({img:body.image,emoji:body.icon,text:body.title,seed:id},'ptile-icon xl')}
       <div><div class="eyebrow">Poll created</div><h1>${esc(body.title)}</h1><p class="lead">Send people the link. They can answer straight away, no account needed.</p></div></div></div></section>
     <main class="wrap"><div class="card accent"><div class="card-h"><h2>Share it</h2><span class="tag y">Created</span></div>
-      <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}"><button class="btn" data-copy="${esc(shareLink(id))}">Copy</button></div>
+      <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}">${ib('copy','Copy',`data-copy="${esc(shareLink(id))}"`)}</div>
       <div class="help">You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.</div></div>
       ${peopleBox(id)}
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">Open poll</a><a class="btn" href="?new">Create another</a></div>
@@ -1857,7 +1929,7 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null;
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':p.kind==='weekly'?'Weekly schedule':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?'meeting':'meetings'}</a>`:''}${i.deadline?`<span class="chip">${ICON.clock}Answer by ${esc(dayLabel(i.deadline))}</span>`:''}${n!=null?`<span class="chip">${ICON.users}${n} ${n===1?'response':'responses'}</span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip">${ICON.lock}Password</span>`:''}</div>
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?'meeting':'meetings'}</a>`:''}${i.deadline?`<span class="chip" title="Answer by ${esc(dayLabel(i.deadline))}">${ICON.clock}<span><span class="bl">Answer by </span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?`<span class="chip" title="${n} ${n===1?'response':'responses'}">${ICON.users}<span>${n}<span class="bl"> ${n===1?'response':'responses'}</span></span></span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="Password">${ICON.lock}<span class="bl">Password</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">Only the organiser can see everyone\'s answers.</div>':''}`;
@@ -1883,10 +1955,10 @@ function renderSeries(){
   const rows=[...d.instances].reverse().map(x=>`<li>
       <span class="grow minw">${x.id===cur.id?'<b>':''}${esc(instLabel(x))}${x.id===cur.id?'</b> <span class="muted small">(viewing)</span>':''}
         <div class="muted small">${x.status==='open'?'<span class="tag y">open</span>':'<span class="tag x">closed</span>'} ${x.responses} ${x.responses===1?'answer':'answers'}${x.meetings.length?` · ★ ${x.meetings.length}`:''}${x.deadline?` · reply by ${esc(dayLabel(x.deadline))}`:''}</div></span>
-      ${x.id!==cur.id?`<button class="btn" data-inst="${x.id}">View</button>`:''}
-      ${x.manualStatus==='open'?`<button class="btn" data-istatus="${x.id}" data-to="closed">Close</button>`:`<button class="btn" data-istatus="${x.id}" data-to="open">Reopen</button>`}
-      <button class="btn" data-iedit="${x.id}">Edit</button>
-      ${d.instances.length>1?`<button class="btn danger" data-idel="${x.id}">Delete</button>`:''}
+      <span class="acts">${x.id!==cur.id?ib('eye','View',`data-inst="${x.id}"`):''}
+      ${x.manualStatus==='open'?ib('lock','Close',`data-istatus="${x.id}" data-to="closed"`):ib('unlock','Reopen',`data-istatus="${x.id}" data-to="open"`)}
+      ${ib('edit','Edit',`data-iedit="${x.id}"`)}
+      ${d.instances.length>1?ib('trash','Delete',`data-idel="${x.id}"`,'danger'):''}</span>
       ${P.iedit===x.id?`<form class="sched full" id="ieditForm">
         <div class="grid2">${isWeekly()?'':`<div class="field"><label>From</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>To</label><input type="date" id="ie_e" value="${x.endDate}"></div>`}
         <div class="field"><label>Reply by</label><input type="date" id="ie_d" value="${x.deadline||''}"></div></div>
@@ -1894,7 +1966,7 @@ function renderSeries(){
         <div class="row mt-3"><button class="btn primary">Save</button><button type="button" class="btn" data-iedit="">Cancel</button></div></form>`:''}
     </li>`).join('');
   el.innerHTML = `<div class="card"><div class="card-h"><h2>Rounds</h2><span class="muted small">every ${p.every>1?p.every+' ':''}${p.unit}${p.every>1?'s':''}</span>
-      <button class="btn" data-nextinst>Open next round now</button></div>
+      ${ib('next','Open next round now','data-nextinst','','Next round')}</div>
       ${d.next?`<p class="help">Next: <b>${esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate))}</b> opens automatically on ${esc(dayLabel(d.next.opens))}. The share link always shows the newest open round.</p>`:''}
       <ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
@@ -1980,23 +2052,24 @@ function renderMeetings(){
     if(d.isAdmin&&!sel){ const noMail=invited(m).filter(r=>!r.email);
       const stat=[m.sentAt?`<span title="${esc(new Date(m.sentAt).toLocaleString())}">Invite emailed ${esc(new Date(m.sentAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}.</span>`:'',
         noMail.length?`No email for ${esc(noMail.map(r=>r.name).join(', '))}.`:''].filter(Boolean).join(' ');
-      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}${m.sentAt?'Send again':'Send invite'}</button>${qb('data-mail',m.id,'mail','Write the invite in my own email app')}`
-          :`<button class="btn sm primary withic" data-mail="${m.id}" title="Opens your email app with the invitees who left an address in BCC">${ICON.mail}Email invite</button>`}
+      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?'Send again':'Send invite'}</span><span class="bs">${m.sentAt?'Resend':'Send'}</span></button>${qb('data-mail',m.id,'mail','Write the invite in my own email app')}`
+          :`<button class="btn sm primary withic" data-mail="${m.id}" title="Opens your email app with the invitees who left an address in BCC">${ICON.mail}<span>Email<span class="bl"> invite</span></span></button>`}
         ${qb('data-copyinvite',m.id,'copy','Copy invite text')}${edit?'':qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')}${qb('data-delmeet',m.id,'trash','Delete meeting',' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
-      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':`<a class="btn sm withic" href="${esc(icsUrl(m.id,true))}">${ICON.cal}Add to calendar</a>`}</div>
+      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal','Add to calendar',icsUrl(m.id,true),'sm')}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?'All day':`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
         ${edit?descEditor(m.id,m.note||'',''):m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${foot}</div></div>`; };
-  const cal=`<span class="mcal"><a class="btn sm ghost withic" href="${esc(icsUrl(null,true))}">${ICON.cal}Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></span>`;
-  if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2>Scheduled meetings <span class="count">${ms.length}</span></h2>
-      ${cal}<button class="btn sm${sel?' primary':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button></div>
+  const cal=`<span class="mcal">${ibl('download','Download all',icsUrl(null,true),'sm ghost')}${ibl('rss','Subscribe',sub,'sm ghost','','Subscribe: calendar apps keep this up to date as meetings are added')}</span>`;
+  const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>Done</button>`:ib('select','Select','data-mselect title="Select several meetings to edit, move or delete them together"','sm '+cls);
+  if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2><span class="hide-sm">Scheduled meetings</span><span class="sm-only">Meetings</span> <span class="count">${ms.length}</span></h2>
+      ${cal}${selBtn(sel?'primary':'')}</div>
     ${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
   else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?'Show':'Hide'} scheduled meetings"><h3>★ Scheduled <span class="count">${ms.length}</span></h3></button>
-      ${d.isAdmin&&!fold?`<button class="btn sm ghost${sel?' on':''}" data-mselect title="Select several meetings to edit, move or delete them together">${sel?'Done':'Select'}</button>`:''}<span class="mcal"><a class="btn sm ghost" href="${esc(icsUrl(null,true))}">Download all</a><a class="btn sm ghost" href="${esc(sub)}" title="Calendar apps keep this up to date as meetings are added">Subscribe</a></span></div>
+      ${d.isAdmin&&!fold?selBtn(sel?'ghost on':'ghost'):''}${cal}</div>
     ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
@@ -2011,7 +2084,7 @@ function batchPanel(ms,n){
       <label for="mb_desc">Description</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="Agenda, what to bring, a call link … (empty clears it)">${esc(b.desc??same('note'))}</textarea><button class="btn sm" data-mbatch="desc"${dis}>Set</button></div>
       <label for="mb_n">Move by</label><div class="mbatch-r"><input type="number" id="mb_n" step="1" min="-365" max="365" value="${esc(b.n??'1')}" inputmode="numeric"><select id="mb_u" aria-label="Unit"><option value="h"${b.u==='h'?' selected':''}>hours</option><option value="d"${b.u!=='h'?' selected':''}>days</option></select><button class="btn sm" data-mbatch="shift"${dis}>Move</button><span class="help">Negative moves earlier.</span></div>
     </div>
-    <div class="row"><button class="btn sm danger withic" data-mbatch="del"${dis}>${ICON.trash}Delete ${n||''} selected</button></div></div>`;
+    <div class="row"><button class="btn sm danger withic" data-mbatch="del"${dis}>${ICON.trash}<span>Delete ${n||''}<span class="bl"> selected</span></span></button></div></div>`;
 }
 // A meeting moved by n days or hours; null if it can't be (it would run past midnight).
 function shiftMeeting(m,n,unit){
@@ -2094,13 +2167,13 @@ function renderMine(el){
   // "Show others": overlay how many other people said yes / maybe (only when results are visible).
   const oth=d.responses?others():[], on=P.hint&&oth.length>0, n=oth.length;
   const names=(a,b)=>[a.length?'Available: '+a.join(', '):'',b.length?'Maybe: '+b.join(', '):''].filter(Boolean).join(' · ');
-  const othBtn=n?`<button type="button" class="btn sm ml-auto${on?' on':''}" data-hint aria-pressed="${on}" title="Show where the others are available">👥 ${on?'Hide':'Show'} others (${n})</button>`:'';
+  const othBtn=n?`<button type="button" class="btn sm ml-auto${on?' on':''}" data-hint aria-pressed="${on}" title="${on?'Hide':'Show'} where the others are available" aria-label="${on?'Hide':'Show'} others (${n})"><span>👥<span class="bl"> ${on?'Hide':'Show'} others</span> ${n}</span></button>`:'';
   let h=am==='both'||n?tools(`${am==='both'?`<div class="seg">
       <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}${othBtn}`):'';
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
-    h+=tools(`<button class="btn sm" data-bulk="all">All available</button><button class="btn sm${P.qfOpen?' on':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>
-      ${calButton()}<button class="btn sm ghost" data-bulk="clear">Clear all</button>`)+quickFill()+calPanel()+
+    h+=tools(`${ib('check','All available','data-bulk="all"','sm','All')}${qfButton()}
+      ${calButton()}${ib('x','Clear all','data-bulk="clear"','sm ghost','Clear')}`)+quickFill()+calPanel()+
       `<p class="help">Tap a day to cycle <b>available</b> → <b>maybe</b> → blank. Blank counts as not available.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe); hover or long-press for names.`:''}</p>`;
     h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v), o=S[k];
       let hint='', tip='';
@@ -2114,7 +2187,7 @@ function renderMine(el){
     h+=`<div class="row ws-tools"><div class="seg" role="group" aria-label="Brush">
       <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
       <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
-      <button data-brush="x" class="${P.brush==='x'?'on':''}">Erase</button></div><button class="btn sm${P.qfOpen?' on':''}" data-qf aria-expanded="${!!P.qfOpen}">Quick fill…</button>${calButton()}</div>${quickFill()}${calPanel()}
+      <button data-brush="x" class="${P.brush==='x'?'on':''}" title="Erase" aria-label="Erase"><span class="segic">${ICON.erase}</span><span class="bl">Erase</span></button></div>${qfButton()}${calButton()}</div>${quickFill()}${calPanel()}
       <p class="help">${TOUCH?'Pick a brush, then tap the hours you can make, or press and hold an hour and drag to paint several. Painting over the same colour clears it.':'Pick a brush, then drag (or tap) across the hours you can make; dragging over the same colour clears it.'} Blank counts as not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}</p>
       ${isWeekly()?'':`<div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>`}
@@ -2333,16 +2406,17 @@ async function importCalendar(useSaved){
     applyCalendar(text);
   }catch(e){ toast(e.message); btns.forEach(b=>b.disabled=false); }
 }
-function calButton(){ return `<button class="btn sm${P.calOpen?' on':''}" data-cal aria-expanded="${!!P.calOpen}">From calendar…</button>`; }
+function calButton(){ return ib('cal','From calendar…',`data-cal aria-expanded="${!!P.calOpen}"`,'sm'+(P.calOpen?' on':'')); }
+function qfButton(){ return ib('zap','Quick fill…',`data-qf aria-expanded="${!!P.qfOpen}"`,'sm'+(P.qfOpen?' on':''),'Fill'); }
 function calPanel(){
   if(!P.calOpen) return '';
   const u=ME.user, saved=u&&u.calendar;
   return `<div class="qf">
-    ${saved?`<div class="row"><button type="button" class="btn sm primary" data-calsaved>Use my saved calendar</button><span class="muted small">${esc(saved)}</span></div>
+    ${saved?`<div class="row">${ib('check','Use my saved calendar','data-calsaved','sm primary','Use saved')}<span class="muted small">${esc(saved)}</span></div>
       <p class="help mt-2">Or use another one:</p>`:''}
-    <div class="row mt-2"><input type="url" id="cal_url" class="cal-in" placeholder="iCal link (https://… or webcal://…)" autocomplete="off" spellcheck="false" aria-label="iCal link">
+    <div class="row tight mt-2"><input type="url" id="cal_url" class="cal-in" placeholder="iCal link (https://… or webcal://…)" autocomplete="off" spellcheck="false" aria-label="iCal link">
       <button type="button" class="btn sm${saved?'':' primary'}" data-calimport>Import</button>
-      <label class="btn sm">Choose .ics file<input type="file" id="cal_file" accept=".ics,text/calendar" hidden></label></div>
+      <label class="btn sm withic ib" title="Choose .ics file">${ICON.upload}<span class="bl">Choose .ics file</span><span class="bs">.ics</span><input type="file" id="cal_file" accept=".ics,text/calendar" hidden></label></div>
     ${u?`<label class="check"><input type="checkbox" id="cal_save"${saved?'':' checked'}> ${saved?'Save this link on my account instead':'Remember this link on my account'}</label>`:''}
     <p class="help">Free hours on blank days are marked available; busy times stay blank. Nothing is sent until you press Send.
       Find the link in Google Calendar (Settings › your calendar › <i>Secret address in iCal format</i>), Outlook (Settings › Calendar › Shared calendars › Publish) or Apple Calendar (share as a public calendar).</p></div>`;
@@ -2402,7 +2476,7 @@ function selParticipants(){ return P.who?sel().map(r=>({id:r.id,name:r.name})):'
 function whoDropdown(){
   const rs=P.data.responses||[], n=sel().length;
   const lbl=!P.who?`Everyone (${rs.length})`:`${n} of ${rs.length} ${rs.length===1?'person':'people'}`;
-  return `<details class="dd" id="whodd" ${P.whoOpen?'open':''}><summary><span class="muted small">Participants:</span> <b>${esc(lbl)}</b></summary><div class="ddp">
+  return `<details class="dd" id="whodd" ${P.whoOpen?'open':''}><summary aria-label="Participants: ${esc(lbl)}"><span class="muted small hide-sm">Participants:</span><span class="sm-only ddic">${ICON.users}</span> <b>${esc(lbl)}</b></summary><div class="ddp">
     <div class="ddb"><button type="button" class="btn" data-whoall>All</button><button type="button" class="btn" data-whonone>None</button></div>
     ${rs.map(r=>`<label><input type="checkbox" data-who="${esc(r.id)}" ${!P.who||P.who.has(r.id)?'checked':''}> ${esc(r.name||'Someone')}</label>`).join('')}</div></details>`;
 }
@@ -2479,7 +2553,7 @@ function renderGroup(el){
     h+=`<div class="dpanel">
       <div class="row"><div class="grow"><h3>${esc(dLabel(P.ovDay))}</h3>
         <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best ${esc(s.window)}`:''}</div></div>
-        ${d.isAdmin?`${sr?'<button class="btn sm ghost" data-clearrange>Clear time</button>':''}<button class="btn sm primary" data-schedule="${P.ovDay}">★ Schedule${sr?` ${esc(rg)}`:''}</button>`:''}
+        ${d.isAdmin?`${sr?ib('x','Clear time','data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="Schedule${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> Schedule</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
         <button class="btn sm ghost" data-ov="${P.ovDay}" aria-label="Close">✕</button></div>
       ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
@@ -2491,7 +2565,7 @@ function renderGroup(el){
     `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span class="grow minw">${md.has(o.k)?'<span class="acc">★</span> ':''}${esc(dLabel(o.k))}
       <span class="muted small">· ${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span>
       <div class="ratio"><i class="ry" style="width:${o.s.peak/tot*100}%"></i><i class="rm" style="width:${o.s.peakMaybe/tot*100}%"></i></div></span>
-      ${d.isAdmin?`<button class="btn sm" data-schedule="${o.k}">★ Schedule</button>`:''}</li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+      ${d.isAdmin?`<button class="btn sm" data-schedule="${o.k}" title="Schedule a meeting on this day" aria-label="Schedule"><span>★<span class="bl"> Schedule</span></span></button>`:''}</li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
   const withC=sel().filter(r=>r.comment);
   if(withC.length) h+=`<details class="section comments"${P.cOpen?' open':''} data-keep="cOpen"><summary>Comments (${withC.length})</summary>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
   if(d.isAdmin) h+=`<details class="section"${P.rOpen?' open':''} data-keep="rOpen"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
@@ -2602,7 +2676,7 @@ function renderPlan(el){
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people answer, you can plan meetings around when they're free.</span><button class="btn sm mt-2" data-atab="people">Share the poll</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,'Who should come?','Each meeting invites the people selected when you add it.',
-    tools(whoDropdown()+`<button class="btn sm" data-suggest${tot?'':' disabled'}>✨ Suggest best times</button>`,'mt-2'));
+    tools(whoDropdown()+`<button class="btn sm" data-suggest${tot?'':' disabled'} aria-label="Suggest best times"><span>✨<span class="bl"> Suggest best times</span><span class="bs"> Suggest</span></span></button>`,'mt-2'));
   h+=step(2,'Pick the times',tot?(slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).':'<b>Drag down a day</b> to add a meeting.')+' Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.'
       :'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.'):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>Nobody selected.</b><span class="muted small">Pick at least one person in step 1.</span></div>`);
@@ -2618,7 +2692,7 @@ function draftTray(){
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
       <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
-      <button class="btn sm${x.ownDesc?' on':''}" data-ddesc="${x.key}" title="Add text for this meeting only, shown below the shared description">${x.ownDesc?'Remove extra description':'Extra description'}</button>
+      ${ib('note',x.ownDesc?'Remove extra description':'Extra description',`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,'sm'+(x.ownDesc?' on':''))}
       <button class="btn sm danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
       <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span>
       ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="Extra description for this meeting only, shown below the shared one">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
@@ -2679,10 +2753,11 @@ async function saveDrafts(btn){
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
 // Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
 const adminTabList = () => [['answers','Answers'],['meetings','Meetings'],...(P.data.poll.kind==='series'?[['rounds','Rounds']]:[]),['people','People'],['settings','Settings']];
+const TAB_ICON = {answers:'check',meetings:'star',rounds:'repeat',people:'users',settings:'gear'};
 function adminTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
   if(!adminTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
-  return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}">${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
+  return `<nav class="card tabs atabs" aria-label="Manage this poll">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
 }
 function setAdminTab(k){
   if(k==='participants'||k==='share') k='people';
@@ -2704,7 +2779,7 @@ function adminPanes(){
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>People</h2><span class="muted small">Who's invited and who answered</span></div>
-    <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link"><button class="btn primary" data-copy="${esc(shareLink(p.id))}">Copy link</button></div>
+    <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link">${ib('copy','Copy link',`data-copy="${esc(shareLink(p.id))}"`,'primary','Copy')}</div>
       <div class="help">${series?'The link always shows the newest open round, so you can share it once for the whole series. ':''}Anyone with the link can answer, no account needed.</div></div>
     ${peopleBox(p.id)}
     <div class="section"><h3>In this poll</h3><div id="parts"><p class="help">Loading…</p></div></div></div></div>
@@ -2725,7 +2800,7 @@ function adminPanes(){
       <div class="field"><label for="s_pw">Password ${p.hasPassword?'(currently set)':'(none)'}</label>
         <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div></div>
     <div class="section"><h3>Email</h3>
-      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from when-who's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span><button type="button" class="btn" id="testMail">Send test email</button></div></div>
+      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from when-who's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span>${ib('send','Send test email','id="testMail"','','Test')}</div></div>
         ${series?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone in the series when a new round opens</label>`:''}
         <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
       :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}</div>
@@ -2733,14 +2808,14 @@ function adminPanes(){
     <div class="row mt-4"><button class="btn primary">Save settings</button></div></form>
     <div class="card danger-zone"><div class="card-h"><h2>Delete</h2></div>
       <div class="row"><p class="help m0 grow">Deletes ${series?'the whole series, all its rounds':'this poll'} and every answer. This can’t be undone.</p>
-      <button type="button" class="btn danger" id="delPoll">Delete ${series?'whole series':'poll'}</button></div></div></div>`;
+      ${ib('trash',`Delete ${series?'whole series':'poll'}`,'id="delPoll"','danger keep')}</div></div></div>`;
 }
 // Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
 function datesSection(){
   const i=inst(), open=i.status==='open';
   return `<div class="section"><h3>Dates</h3>
     <div class="row field"><span class="grow">${open?'<span class="tag y">open</span> People can answer.':`<span class="tag x">closed</span> Answers can't be changed.`}</span>
-      ${i.manualStatus==='open'?`<button type="button" class="btn" data-istatus="${i.id}" data-to="closed">Close poll</button>`:`<button type="button" class="btn" data-istatus="${i.id}" data-to="open">Reopen poll</button>`}</div>
+      ${i.manualStatus==='open'?`${ib('lock','Close poll',`data-istatus="${i.id}" data-to="closed"`,'','Close')}`:`${ib('unlock','Reopen poll',`data-istatus="${i.id}" data-to="open"`,'','Reopen')}`}</div>
     ${isWeekly()?'':`<div class="grid2"><div class="field"><label for="s_from">From</label><input type="date" id="s_from" value="${i.startDate}"></div>
       <div class="field"><label for="s_to">To</label><input type="date" id="s_to" value="${i.endDate}"></div></div>`}
     <div class="field"><label for="s_dl">Reply by (optional)</label><input type="date" id="s_dl" value="${i.deadline||''}">
@@ -2770,17 +2845,17 @@ function renderParts(){
   el.innerHTML=ps.length?`<div class="ptools">
       <label class="check m0"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''}> <span>${sel.size?`${sel.size} selected`:`${plural(ps.length,'person','people')} · ${answered} answered${series?' this round':''}`}</span></label>
       <span class="grow"></span>
-      ${sel.size?`${srv?`<button type="button" class="btn sm primary" data-pmailsel ${selMail.length?'':'disabled'}>Email ${selMail.length}</button>`:''}
-        <button type="button" class="btn sm" data-pmailapp ${selMail.length?'':'disabled'}>Open in my email app</button>
-        <button type="button" class="btn sm ghost" data-pselnone>Clear</button>`
-      :srv&&waiting.length?`<button type="button" class="btn sm" data-premind title="${esc(waiting.map(p=>p.name).join(', '))}">Remind ${plural(waiting.length,'person','people')} who haven't answered</button>`:''}</div>
+      ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="Email ${selMail.length}">${ICON.send}<span><span class="bl">Email </span>${selMail.length}</span></button>`:''}
+        ${ib('mail','Open in my email app',`data-pmailapp ${selMail.length?'':'disabled'}`,'sm')}
+        ${ib('x','Clear selection','data-pselnone','sm ghost')}`
+      :srv&&waiting.length?`<button type="button" class="btn sm withic" data-premind title="${esc(waiting.map(p=>p.name).join(', '))}" aria-label="Remind ${plural(waiting.length,'person','people')} who haven't answered">${ICON.bell}<span>Remind ${waiting.length}<span class="bl"> ${waiting.length===1?'person':'people'} who haven't answered</span></span></button>`:''}</div>
     <ul class="list plist">${ps.map(p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="Select ${esc(p.name)}">
       <span class="grow"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their account, not by name">Account</span>':''} ${partStatus(p)}<br>
         <span class="muted small">${p.email?`${esc(p.email)} · `:''}${p.rounds?`${plural(p.rounds,'answer','answers')} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
-      <span class="acts">${srv&&p.canMail?`<button class="btn sm" data-pinvite="${esc(p.id)}">${p.invitedAt?'Resend':'Invite'}</button>`:''}
-        <button class="btn sm" data-pedit="${esc(p.id)}">Edit</button>
+      <span class="acts">${srv&&p.canMail?`${ib('send',p.invitedAt?'Resend invite':'Invite',`data-pinvite="${esc(p.id)}"`,'sm')}`:''}
+        ${ib('edit','Edit',`data-pedit="${esc(p.id)}"`,'sm')}
         ${ps.length>1?`<select class="inline sm" data-pmerge="${esc(p.id)}" aria-label="Merge ${esc(p.name)} into someone else"><option value="">Merge into…</option>${ps.filter(x=>x.id!==p.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
-        <button class="btn sm danger" data-pdel="${esc(p.id)}">Remove</button></span></li>`).join('')}</ul>`
+        ${ib('trash','Remove',`data-pdel="${esc(p.id)}"`,'sm danger')}</span></li>`).join('')}</ul>`
     :'<p class="help">Nobody yet. Add people above, or share the link.</p>';
   el.insertAdjacentHTML('beforeend',`<p class="help">Guests are matched by name, which is unique in this poll${series?' and stays the same across rounds':''}. People who answer while signed in are matched by their account, so their names may repeat.</p>`);
 }
