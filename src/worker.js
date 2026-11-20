@@ -148,6 +148,7 @@ async function route(request, env, ctx, url) {
   if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
+  if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
   if (a === 'participants') {
     if (!b && m === 'GET') return listParticipants(request, env, id);
     if (!b && m === 'POST') return addParticipants(request, env, id);
@@ -388,7 +389,7 @@ function publicPoll(poll, admin) {
     id: poll.id, title: poll.title, description: poll.description, kind: poll.kind,
     unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
     answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end, dayPattern: patternOf(poll),
-    hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, hasPassword: !!poll.password_hash,
+    hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, requireEmail: !!poll.require_email, hasPassword: !!poll.password_hash,
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
@@ -1200,6 +1201,7 @@ function readPollSettings(b, existing) {
   }
   if (!existing || has('hideResults')) p.hide_results = b.hideResults ? 1 : 0;
   if (!existing || has('allowComments')) p.allow_comments = b.allowComments === false ? 0 : 1;
+  if (!existing || has('requireEmail')) p.require_email = b.requireEmail ? 1 : 0;
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
   if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
@@ -1569,6 +1571,61 @@ async function sendInvite(request, env, url, id, iid, mid) {
   return json({ ok: true, sent, missing: invited.filter((r) => !r.email).map((r) => r.name) });
 }
 
+// "Email all meetings": every meeting of the poll (all rounds) in one email to the people the owner picks,
+// with the .ics of all of them attached and the subscription link. Body: { ids: [participantId], emails: [address], message? }.
+async function sendAllMeetings(request, env, url, id) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, poll);
+  await adoptLang(request, env, poll);
+  const b = await body(request);
+  const message = str(b.message, 1000, 'Message');
+  const ids = Array.isArray(b.ids) ? b.ids.filter((x) => typeof x === 'string' && ID_RE.test(x)) : [];
+  const extra = Array.isArray(b.emails) ? b.emails.filter((x) => typeof x === 'string').map((x) => x.trim().toLowerCase()).filter(Boolean) : [];
+  if (ids.length > 500 || extra.length > 50) throw new HttpError(400, 'Too many people');
+  if (extra.some((e) => !EMAIL_RE.test(e))) throw new HttpError(400, 'Invalid email');
+  const { results } = await env.DB.prepare('SELECT meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
+  const meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]'));
+  if (!meetings.length) throw new HttpError(400, 'There are no meetings yet');
+  const want = new Set(ids);
+  const rows = ids.length ? (await participantRows(env, id, '')).filter((p) => want.has(p.id)) : [];
+  const missing = rows.filter((p) => !EMAIL_RE.test(p.mail_to)).map((p) => p.name);
+  const to = [...new Set([...rows.filter((p) => EMAIL_RE.test(p.mail_to)).map((p) => p.mail_to.toLowerCase()), ...extra])];
+  if (!to.length) throw new HttpError(400, 'None of the picked people has an email address');
+
+  const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
+  // The subscription link needs the poll password if there is one: take it from the owner's request when it's right.
+  const pw = request.headers.get('x-poll-password');
+  const pwq = poll.password_hash && (await passwordOk(poll, pw)) ? `?pw=${encodeURIComponent(pw)}` : '';
+  const feed = `${base}/api/polls/${poll.id}/calendar.ics${pwq}`;
+  const de = poll.lang === 'de';
+  const L = de ? { where: 'Wo', who: 'Wer', all: 'Alle', poll: 'Umfrage', past: (n) => `(+ ${n} vergangene${n === 1 ? 'r Termin' : ' Termine'} in der Kalenderdatei)`,
+    head: (n) => `${n === 1 ? 'Der Termin' : `Alle ${n} Termine`} für „${poll.title}“:`,
+    ics: 'Alle Termine sind als Kalenderdatei angehängt. Öffne sie, um sie in deinen Kalender zu übernehmen.',
+    sub: 'Oder abonnieren (dein Kalender bleibt dann aktuell, wenn Termine dazukommen oder sich ändern):',
+    google: 'Google Kalender: Weitere Kalender › Per URL', footer: `\n\n—\nDu bekommst diese E-Mail, weil dir die Organisatorin oder der Organisator von „${poll.title}“ die Termine geschickt hat.`,
+    subject: `Termine: ${poll.title}` }
+    : { where: 'Where', who: 'Who', all: 'Everyone', poll: 'Poll', past: (n) => `(+ ${n} past meeting${n === 1 ? '' : 's'} in the calendar file)`,
+      head: (n) => `${n === 1 ? 'The meeting' : `All ${n} meetings`} for “${poll.title}”:`,
+      ics: 'All meetings are attached as a calendar file. Open it to add them to your calendar.',
+      sub: 'Or subscribe (your calendar then stays up to date as meetings are added or changed):',
+      google: 'Google Calendar: Other calendars › From URL', footer: `\n\n—\nYou're getting this because the organiser of “${poll.title}” sent you its meetings.`,
+      subject: `Meetings: ${poll.title}` };
+  const today = now().slice(0, 10);
+  const lastDay = (mt) => (mt.repeat ? mt.repeat.until || '9999-12-31' : mt.date);
+  const sorted = [...meetings].sort((x, y) => meetingStart(x).localeCompare(meetingStart(y)) || (x.start || 0) - (y.start || 0));
+  const upcoming = sorted.filter((mt) => lastDay(mt) >= today), past = sorted.length - upcoming.length;
+  const block = (mt) => [`• ${mt.title || poll.title}`, `  ${meetingWhen(mt, poll.lang)}`, mt.location ? `  ${L.where}: ${mt.location}` : null,
+    `  ${L.who}: ${mt.participants === 'all' ? L.all : whoText(mt)}`, ...[mt.note, mt.extra].filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))]
+    .filter((x) => x !== null).join('\n');
+  const text = [message || null, message ? '' : null, L.head(sorted.length), '', (upcoming.length ? upcoming : sorted).map(block).join('\n\n'),
+    upcoming.length && past ? '\n' + L.past(past) : null, '', L.ics, '', L.sub, feed.replace(/^https?:/, 'webcal:'), `${L.google}: ${feed}`, '', `${L.poll}: ${link}`]
+    .filter((x) => x !== null).join('\n') + L.footer;
+  const name = poll.title.replace(/[^\w\- ]+/g, '').trim() || 'meetings';
+  const sent = await sendMail(env, poll, { to, subject: L.subject, text, quota: true,
+    attachments: [{ content: enc.encode(buildIcs(poll, sorted, link)), filename: `${name}.ics` }] });
+  return json({ ok: true, sent, missing });
+}
+
 // "Invite by email" for the poll itself: sent from MAIL_FROM (the site's domain), everyone in BCC, replies go to the organiser.
 // Who gets it, one of:
 //   { people: [{ name, email }] }  adds them to the poll's participants (or finds them), then emails those with an address
@@ -1759,6 +1816,7 @@ async function createResponse(request, env, id, iid) {
   const name = user && user.name ? user.name : personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
   const mail = user ? user.email : email(b.email);
+  if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
@@ -1891,6 +1949,7 @@ async function updateResponse(request, env, id, rid) {
     stmts.push(env.DB.prepare('UPDATE participants SET name = ? WHERE id = ?').bind(name, cur.id));
     stmts.push(env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id = ?').bind(name, cur.id));
   }
+  if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);

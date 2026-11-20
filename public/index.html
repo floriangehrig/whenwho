@@ -417,6 +417,9 @@
   .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
   .mstrip.folded .mstrip-h{border-bottom:0}
   .mcal{display:flex;gap:6px}
+  .mm-list{gap:6px 14px;padding-top:6px}
+  .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
+  .mm-p.off{opacity:.5;cursor:default}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfold::before{content:"";width:7px;height:7px;border-right:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(45deg);transition:transform .15s;margin:0 4px 3px 2px;flex:none}
   .folded .mfold::before{transform:rotate(-45deg);margin-bottom:0}
@@ -1857,6 +1860,7 @@ function renderNew(){
         <div class="field"><label for="pw">${t('Password')} <span class="opt">${t('optional')}</span></label><input type="password" id="pw" maxlength="100" placeholder="${t('Only people with the password can open the poll')}" autocomplete="new-password"></div>
         <label class="check"><input type="checkbox" id="hide"> ${t("Hide everyone's answers from respondents (only you see results)")}</label>
         <label class="check"><input type="checkbox" id="comments" checked> ${t('Let people add a comment')}</label>
+        <label class="check"><input type="checkbox" id="reqmail"> ${t('Require name and email to answer')}${tip(t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.'))}</label>
       </div>
       ${mail?`<div class="section step"><h3>${t('Email')}</h3>
         <label class="check hide" id="notifyRow"><input type="checkbox" id="notify" checked> ${t('When a new poll in the series opens, email everyone in the series')}</label>
@@ -1954,7 +1958,7 @@ function renderNew(){
       return true; };
     if(!check()) return;
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
-      hideResults:$('hide').checked, allowComments:$('comments').checked, password:v('pw')||undefined };
+      hideResults:$('hide').checked, allowComments:$('comments').checked, requireEmail:$('reqmail').checked, password:v('pw')||undefined };
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
     else if(kind==='weekly'){ body.deadline=v('dlw')||null; }
@@ -2305,6 +2309,7 @@ function changed(){
 async function save(retried){
   if(P.saving||!P.dirty) return false;
   if(!P.mine.name.trim()){ if(P.tab!=='mine'){ P.tab='mine'; renderBody(); } saveBar('Enter your name first'); const nm=$('name'); if(nm) nm.focus(); return false; }
+  if(!ME.user&&P.data.poll.requireEmail&&!EMAIL_RE.test((P.mine.email||'').trim())){ if(P.tab!=='mine'){ P.tab='mine'; renderBody(); } saveBar('Enter your email address first'); const em=$('email'); if(em) em.focus(); return false; }
   P.saving=true; P.dirty=false; saveBar();
   const em=(P.mine.email||'').trim(), key=respKey(), had=!!P.myResp;
   const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries};
@@ -2409,7 +2414,7 @@ function render(){
 // "You" strip at the top of the Mine view: name (and email / comment) that go with the answer.
 // One compact row: name (+ email), comment toggle and an ⓘ tip; email (phones) and comment open from icon buttons.
 function meFields(d,p){
-  const comOpen=P.comOpen||!!(P.mine.comment||'').trim(), emOpen=P.emOpen||!!(P.mine.email||'').trim();
+  const req=!!p.requireEmail, comOpen=P.comOpen||!!(P.mine.comment||'').trim(), emOpen=req||P.emOpen||!!(P.mine.email||'').trim();
   const comBtn=p.allowComments?ib('chat',t('Comment'),`data-metog="com" aria-expanded="${comOpen}"`,'sm ghost'+(comOpen?' on':'')):'';
   const com=p.allowComments?`<textarea id="comment" class="me-com${comOpen?'':' hide'}" maxlength="500" rows="2" aria-label="${t('Comment')}" placeholder="${t('Comment (optional), e.g. only evenings in week 1')}"></textarea>`:'';
   const help=`<span id="ansHelp">${ansHelp()}</span>`;
@@ -2418,10 +2423,10 @@ function meFields(d,p){
       :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}
       ${comBtn}${tip(help,'right')}</div>${com}`;
   return `<div class="me-row">
-      <input type="text" id="name" class="grow" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off">
+      <input type="text" id="name" class="grow" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off">
       <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
-      <input type="email" id="email" class="me-em${emOpen?' open':''}" maxlength="200" aria-label="${t('Email (optional, only the organiser sees it)')}" placeholder="${t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}">
-      ${ib('mail',t('Email (optional)'),`data-metog="em" aria-expanded="${emOpen}"`,'sm ghost me-emb'+(emOpen?' on':''))}${comBtn}${tip(help,'right')}</div>
+      <input type="email" id="email" class="me-em${emOpen?' open':''}" maxlength="200"${req?' required':''} aria-label="${req?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" placeholder="${req?t('Email (required)'):t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}">
+      ${req?'':ib('mail',t('Email (optional)'),`data-metog="em" aria-expanded="${emOpen}"`,'sm ghost me-emb'+(emOpen?' on':''))}${comBtn}${tip(help,'right')}</div>
     <div id="nameHint"></div>${com}`;
 }
 // The ⋯ menu closes after a pick or a tap elsewhere; an ⓘ tip closes on a tap elsewhere.
@@ -2584,14 +2589,46 @@ function renderMeetings(){
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):`${m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra" title="${t('Only for this meeting')}">${esc(m.extra)}</div>`:''}`}${foot}</div></div>`; };
   const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
+  const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2><span class="hide-sm">${t('Scheduled meetings')}</span><span class="sm-only">${t('Meetings')}</span> <span class="count">${ms.length}</span></h2>
-      ${cal}${selBtn(sel?'primary':'')}</div>
-    ${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
+      ${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
+    ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
   else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>
       ${d.isAdmin&&!fold?selBtn(sel?'ghost on':'ghost'):''}${cal}</div>
     ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
+}
+// "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
+function mailAllPanel(){
+  const M=P.mmail, parts=M.parts;
+  const list=!parts?`<span class="muted small">${t('Loading…')}</span>`:!parts.length?`<span class="muted small">${t('No people yet')}</span>`
+    :parts.map(p=>`<label class="mm-p${p.canMail?'':' off'}" title="${esc(p.canMail?(p.email||''):t('No email address'))}"><input type="checkbox" data-mmpick="${esc(p.id)}"${M.pick.has(p.id)?' checked':''}${p.canMail?'':' disabled'}><span>${esc(p.name)}</span></label>`).join('');
+  const n=parts?parts.filter(p=>M.pick.has(p.id)).length:0, all=parts&&parts.filter(p=>p.canMail);
+  return `<div class="mbatch"><div class="mbatch-g">
+      <label>${t('Recipients')}</label><div class="mbatch-r mm-list">${list}${all&&all.length>1?`<button type="button" class="btn sm ghost" data-mmall>${n===all.length?t('Select none'):t('Select all')}</button>`:''}</div>
+      <label for="mm_extra">${t('Others')}</label><div class="mbatch-r"><input id="mm_extra" type="text" maxlength="2000" placeholder="${t('More email addresses, separated by commas')}" value="${esc(M.extra)}" autocomplete="off" spellcheck="false"></div>
+      <label for="mm_msg">${t('Message')}</label><div class="mbatch-r"><textarea id="mm_msg" maxlength="1000" placeholder="${t('Optional, shown above the meetings')}">${esc(M.msg)}</textarea></div>
+    </div><div class="row"><button class="btn sm primary withic" data-mmsend>${ICON.send}<span>${t('Send')}</span></button><button class="btn sm" data-mailall>${t('Cancel')}</button>
+      ${tip(t('One email with every meeting (when, where, who, description), all of them as a calendar file, and the link to subscribe so calendars stay up to date.'))}</div></div>`;
+}
+async function openMailAll(){
+  P.mmail={parts:null,pick:new Set(),extra:'',msg:''}; renderMeetings();
+  try{ const r=await api('GET',`/polls/${P.id}/participants`,null,headers()); if(!P.mmail) return;
+    P.mmail.parts=r.participants; P.mmail.pick=new Set(r.participants.filter(p=>p.canMail).map(p=>p.id)); }
+  catch(ex){ toast(ex.message); if(P.mmail) P.mmail.parts=[]; }
+  renderMeetings();
+}
+async function sendMailAll(btn){
+  const M=P.mmail, emails=M.extra.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean), bad=emails.find(x=>!EMAIL_RE.test(x));
+  if(bad){ toast(t('That address doesn’t look right: {e}',{e:bad})); return; }
+  const ids=(M.parts||[]).filter(p=>M.pick.has(p.id)).map(p=>p.id);
+  if(!ids.length&&!emails.length){ toast(t('Pick at least one person')); return; }
+  btn.disabled=true;
+  try{ const r=await api('POST',`/polls/${P.id}/meetings/send`,{ids,emails,message:M.msg},headers());
+    P.mmail=null; renderMeetings();
+    toast(t('Meetings sent to {n}',{n:plural(r.sent,t('person'),t('people'))})+(r.missing&&r.missing.length?' '+t('No email for {names}.',{names:r.missing.join(', ')}):'')); }
+  catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 // Batch tools for the selected meetings (select mode): location, description, move, delete.
 function batchPanel(ms,n){
@@ -2636,10 +2673,14 @@ async function runBatch(kind,btn){
   if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch]'); if(!t||!P.data) return;
+  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend]'); if(!t||!P.data) return;
   const ds=t.dataset, ms=inst().meetings;
+  if(ds.mailall!==undefined){ if(P.mmail){ P.mmail=null; renderMeetings(); } else openMailAll(); return; }
+  if(ds.mmpick&&P.mmail){ t.checked?P.mmail.pick.add(ds.mmpick):P.mmail.pick.delete(ds.mmpick); renderMeetings(); return; }
+  if(ds.mmall!==undefined&&P.mmail){ const ok=P.mmail.parts.filter(p=>p.canMail), all=ok.every(p=>P.mmail.pick.has(p.id)); P.mmail.pick=new Set(all?[]:ok.map(p=>p.id)); renderMeetings(); return; }
+  if(ds.mmsend!==undefined&&P.mmail){ sendMailAll(t); return; }
   if(ds.mfold!==undefined){ P.mfold=!P.mfold; store.set('mfold:'+P.id,P.mfold); renderMeetings(); return; }
-  if(ds.mselect!==undefined){ P.msel=P.msel?null:new Set(); P.mbatch={}; P.mdesc=null; renderMeetings(); return; }
+  if(ds.mselect!==undefined){ P.msel=P.msel?null:new Set(); P.mbatch={}; P.mdesc=null; P.mmail=null; renderMeetings(); return; }
   if(ds.mpick){ e.preventDefault(); if(!P.msel) return; P.msel.has(ds.mpick)?P.msel.delete(ds.mpick):P.msel.add(ds.mpick); renderMeetings(); return; }
   if(ds.mselall!==undefined){ P.msel=P.msel.size===ms.length?new Set():new Set(ms.map(m=>m.id)); renderMeetings(); return; }
   if(ds.mbatch){ runBatch(ds.mbatch,t); }
@@ -2647,7 +2688,8 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{ const c=e.target.closest&&e.target.closest('.meet[data-mpick]');
   if(c&&e.target===c&&(e.key===' '||e.key==='Enter')){ e.preventDefault(); const id=c.dataset.mpick; c.click(); const n=document.querySelector(`.meet[data-mpick="${CSS.escape(id)}"]`); if(n) n.focus(); } });
 // Remember what was typed in the batch fields across re-renders (untouched fields follow the selection).
-document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n:'n',mb_u:'u'}[e.target.id]; if(f) (P.mbatch||(P.mbatch={}))[f]=e.target.value; });
+document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n:'n',mb_u:'u'}[e.target.id]; if(f) (P.mbatch||(P.mbatch={}))[f]=e.target.value;
+  const g={mm_extra:'extra',mm_msg:'msg'}[e.target.id]; if(g&&P.mmail) P.mmail[g]=e.target.value; });
 document.addEventListener('change',e=>{ if(e.target.id==='mb_u') (P.mbatch||(P.mbatch={})).u=e.target.value; });
 // Inline editor for a meeting's description; id '*' = every scheduled meeting of this round.
 // For one meeting it also has the extra description, shown below the shared one.
@@ -3478,7 +3520,8 @@ function adminPanes(){
       <div class="row field"><label class="m0" for="s_ans">${t('People answer with')}</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>${t('Whole days')}</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>${t('Time slots')}</option><option value="both" ${p.answerMode==='both'?'selected':''}>${t('Both')}</option></select></div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.'))}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
-      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> ${t('Allow comments')}</label>`)}
+      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> ${t('Allow comments')}</label>
+      <label class="check"><input type="checkbox" id="s_reqmail" ${p.requireEmail?'checked':''}> ${t('Require name and email to answer')}${tip(t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.'))}</label>`)}
     ${sset('privacy','lock',t('Privacy'),`
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> ${t('Hide answers from respondents')}</label>
       <div class="field"><label for="s_pw">${t('Password')} ${p.hasPassword?t('(currently set)'):t('(none)')}</label>
@@ -3671,7 +3714,7 @@ function wireAdmin(){
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
-    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(PAT.sp.periods.length>1?t('Pick at least one day in every period'):t('Pick at least one day of the week')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(PAT.sp.periods.length>1?t('Pick at least one day in every period'):t('Pick at least one day of the week')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
     if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
@@ -4757,6 +4800,25 @@ function germanText(){ return {
 "To": "Bis",
 "Toggle sound": "Ton an/aus",
 "Too many people": "Zu viele Personen",
+"Email all": "Alle mailen",
+"Require name and email to answer": "Name und E-Mail zum Antworten verlangen",
+"Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.": "Gäste müssen neben ihrem Namen auch ihre E-Mail-Adresse angeben, bevor sie antworten können. Angemeldete Personen antworten mit der E-Mail ihres Kontos.",
+"Email (required, only the organiser sees it)": "E-Mail (Pflicht, nur die Organisator:in sieht sie)",
+"Email (required)": "E-Mail (Pflicht)",
+"Enter your email address first": "Gib zuerst deine E-Mail-Adresse ein",
+"This poll asks for your email address": "Diese Umfrage verlangt deine E-Mail-Adresse",
+"Email all meetings with the calendar file and the subscription link": "Alle Termine per E-Mail schicken, mit Kalenderdatei und Abo-Link",
+"Recipients": "Empfänger",
+"No people yet": "Noch keine Personen",
+"More email addresses, separated by commas": "Weitere E-Mail-Adressen, durch Kommas getrennt",
+"Optional, shown above the meetings": "Optional, steht über den Terminen",
+"One email with every meeting (when, where, who, description), all of them as a calendar file, and the link to subscribe so calendars stay up to date.": "Eine E-Mail mit allen Terminen (wann, wo, wer, Beschreibung), allen Terminen als Kalenderdatei und dem Abo-Link, damit Kalender aktuell bleiben.",
+"That address doesn’t look right: {e}": "Diese Adresse sieht nicht richtig aus: {e}",
+"Pick at least one person": "Wähle mindestens eine Person",
+"Meetings sent to {n}": "Termine an {n} gesendet",
+"There are no meetings yet": "Es gibt noch keine Termine",
+"None of the picked people has an email address": "Keine der ausgewählten Personen hat eine E-Mail-Adresse",
+"Invalid email": "Ungültige E-Mail-Adresse",
 "Tuesday works for everyone! …except Tuesday": "Dienstag passt allen! …außer Dienstag",
 "Type a name or an email address.": "Gib einen Namen oder eine E-Mail-Adresse ein.",
 "Unit": "Einheit",
