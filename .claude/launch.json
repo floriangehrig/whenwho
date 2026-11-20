@@ -74,6 +74,24 @@
       ],
       "port": 8792,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-friends",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8793",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8793",
+        "--persist-to",
+        ".wrangler/friends-state"
+      ],
+      "port": 8793,
+      "autoPort": false
     }
   ]
 }
