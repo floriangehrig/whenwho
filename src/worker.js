@@ -117,6 +117,11 @@ async function route(request, env, ctx, url) {
       if (parts[3] && parts[4] === 'accept' && !parts[5] && m === 'POST') return acceptFriend(request, env, parts[3]);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteFriend(request, env, parts[3]);
     }
+    if (parts[2] === 'favourites') {
+      if (!parts[3] && m === 'POST') return addFavourite(request, env);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteFavourite(request, env, parts[3]);
+    }
+    if (parts[2] === 'contacts' && parts[3] && !parts[4] && m === 'GET') return accountContacts(request, env, parts[3]);
     if (parts[2] === 'calendars') {
       if (!parts[3] && m === 'GET') return listCalendars(request, env);
       if (!parts[3] && m === 'POST') return addCalendar(request, env);
@@ -149,6 +154,11 @@ async function route(request, env, ctx, url) {
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
   if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
+  if (a === 'chat') {
+    if (!b && m === 'GET') return listChat(request, env, url, id);
+    if (!b && m === 'POST') return postChat(request, env, id);
+    if (b && !c && m === 'DELETE') return deleteChat(request, env, id, b);
+  }
   if (a === 'participants') {
     if (!b && m === 'GET') return listParticipants(request, env, id);
     if (!b && m === 'POST') return addParticipants(request, env, id);
@@ -679,7 +689,9 @@ async function listFriends(request, env) {
      WHERE p.owner_id = ? AND pa.user_id IS NULL AND pa.email != '' GROUP BY LOWER(TRIM(pa.email))
      ORDER BY pa.name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
   const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
+  const { results: favs } = await env.DB.prepare('SELECT id, name, email FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
   return json({
+    favourites: favs.map((f) => ({ id: f.id, name: f.name, email: f.email })),
     contacts: guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email })),
     friends: friends.map((u) => ({ id: u.fid, ...personOut(u) })),
     incoming: incoming.map((u) => ({ id: u.fid, ...personOut(u) })),
@@ -749,6 +761,107 @@ async function deleteFriend(request, env, fid) {
   if (!ID_RE.test(fid)) throw new HttpError(404, 'Request not found');
   await claimFriendRequests(env, user);
   await env.DB.prepare('DELETE FROM friends WHERE id = ? AND (from_id = ? OR to_id = ?)').bind(fid, user.id, user.id).run();
+  return json({ ok: true });
+}
+// ---------- favourites ----------
+// A private starred list (name + email) per account, shown first when adding people. Nobody is told.
+const MAX_FAVOURITES = 500;
+// Body: { name, email }. Starring an address again updates the name.
+async function addFavourite(request, env) {
+  const user = requireUser(request);
+  const b = await body(request);
+  const addr = email(b.email || '').toLowerCase();
+  if (!addr) throw new HttpError(400, 'Enter an email address');
+  const name = String(b.name || '').trim().slice(0, 60) || addr.split('@')[0];
+  const had = await env.DB.prepare('SELECT id FROM favourites WHERE user_id = ? AND email = ?').bind(user.id, addr).first('id');
+  if (had) { await env.DB.prepare('UPDATE favourites SET name = ? WHERE id = ?').bind(name, had).run(); return json({ id: had }); }
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favourites WHERE user_id = ?').bind(user.id).first('n');
+  if (n >= MAX_FAVOURITES) throw new HttpError(409, `You can have at most ${MAX_FAVOURITES} favourites`);
+  const id = randomId(12);
+  await env.DB.prepare('INSERT INTO favourites (id, user_id, name, email, created_at) VALUES (?, ?, ?, ?, ?)').bind(id, user.id, name, addr, now()).run();
+  return json({ id });
+}
+async function deleteFavourite(request, env, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Not found');
+  await env.DB.prepare('DELETE FROM favourites WHERE id = ? AND user_id = ?').bind(fid, user.id).run();
+  return json({ ok: true });
+}
+// ---------- chat ----------
+// One chat per poll (a series shares it). Readable and writable by the owner and by participants answering with an account.
+// The page polls for new messages while the chat is open; there are no emails, only unread counts.
+const CHAT_MAX_LEN = 2000, CHAT_PAGE = 200, CHAT_MAX_PER_POLL = 5000, CHAT_BURST = 30, CHAT_BURST_MIN = 10;
+async function chatAllowed(env, poll, user) {
+  if (!user) return false;
+  if (poll.owner_id && poll.owner_id === user.id) return true;
+  return !!(await accountParticipant(env, poll.id, user.id));
+}
+// Throws unless the signed-in person may use this poll's chat. Returns { poll, user, owner }.
+async function chatAccess(request, env, id) {
+  const user = requireUser(request);
+  const poll = await loadPoll(env, id);
+  const owner = isAdmin(request, poll);
+  if (!owner) await checkPassword(request, poll);
+  if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Answer the poll with your account to join the chat');
+  return { poll, user, owner };
+}
+// Unread messages in a poll's chat for a user (written by others after they last read it).
+const chatUnread = (env, pollId, userId) => env.DB.prepare(
+  `SELECT COUNT(*) AS n FROM messages m WHERE m.poll_id = ?1 AND m.user_id != ?2
+   AND m.created_at > COALESCE((SELECT read_at FROM chat_reads WHERE poll_id = ?1 AND user_id = ?2), '')`).bind(pollId, userId).first('n');
+const markChatRead = (env, pollId, userId) => env.DB.prepare(
+  'INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
+  .bind(pollId, userId, now()).run();
+const msgOut = (m, user) => ({ id: m.id, uid: m.user_id, body: m.body, at: m.created_at, mine: m.user_id === user.id });
+// ?after=<iso>: only messages from then on (>=, the page drops ones it has). Without it: the newest CHAT_PAGE plus who wrote them.
+async function listChat(request, env, url, id) {
+  const { poll, user, owner } = await chatAccess(request, env, id);
+  const after = url.searchParams.get('after');
+  let msgs;
+  if (after) {
+    if (!/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(after)) throw new HttpError(400, 'Invalid time');
+    ({ results: msgs } = await env.DB.prepare('SELECT * FROM messages WHERE poll_id = ? AND created_at >= ? ORDER BY created_at, id LIMIT ?')
+      .bind(id, after, CHAT_PAGE).all());
+  } else {
+    ({ results: msgs } = await env.DB.prepare('SELECT * FROM (SELECT * FROM messages WHERE poll_id = ? ORDER BY created_at DESC LIMIT ?) ORDER BY created_at, id')
+      .bind(id, CHAT_PAGE).all());
+  }
+  // now: the server's clock, so the page can ask for "messages after this" even while the chat is empty.
+  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: now() };
+  // Who wrote them (pictures only on the first load; a later message from someone new makes the page reload once).
+  if (!after) {
+    const ids = [...new Set([user.id, ...msgs.map((m) => m.user_id)])];
+    const { results: us } = await env.DB.prepare(`SELECT id, email, name, avatar, avatar_img FROM users WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
+    out.people = Object.fromEntries(us.map((u) => { const p = personOut(u); delete p.email; delete p.uid; return [u.id, p]; }));
+  }
+  if (!after || msgs.some((m) => m.user_id !== user.id)) await markChatRead(env, id, user.id);
+  return json(out);
+}
+// Body: { body }.
+async function postChat(request, env, id) {
+  const { user } = await chatAccess(request, env, id);
+  const b = await body(request);
+  const text = str(b.body, CHAT_MAX_LEN, 'Message', true);
+  const since = new Date(Date.now() - CHAT_BURST_MIN * 60000).toISOString();
+  const c = await env.DB.prepare('SELECT COUNT(*) AS total, SUM(user_id = ? AND created_at > ?) AS recent FROM messages WHERE poll_id = ?').bind(user.id, since, id).first();
+  if ((c.recent || 0) >= CHAT_BURST) throw new HttpError(429, 'You’re sending a lot of messages. Wait a few minutes.');
+  if ((c.total || 0) >= CHAT_MAX_PER_POLL) throw new HttpError(409, 'This chat is full. Delete old messages first.');
+  const m = { id: randomId(12), poll_id: id, user_id: user.id, body: text, created_at: now() };
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO messages (id, poll_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)').bind(m.id, id, user.id, text, m.created_at),
+    env.DB.prepare('INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
+      .bind(id, user.id, m.created_at),
+  ]);
+  return json({ message: msgOut(m, user) }, 201);
+}
+// Your own message, or any message in a poll you own.
+async function deleteChat(request, env, id, mid) {
+  const { user, owner } = await chatAccess(request, env, id);
+  if (!ID_RE.test(mid)) throw new HttpError(404, 'Message not found');
+  const m = await env.DB.prepare('SELECT user_id FROM messages WHERE id = ? AND poll_id = ?').bind(mid, id).first();
+  if (!m) throw new HttpError(404, 'Message not found');
+  if (m.user_id !== user.id && !owner) throw new HttpError(403, 'You can only delete your own messages');
+  await env.DB.prepare('DELETE FROM messages WHERE id = ?').bind(mid).run();
   return json({ ok: true });
 }
 // ---------- external calendar (iCal feed) ----------
@@ -825,18 +938,22 @@ const OAUTH = {
     name: 'Google', id: 'GOOGLE_CLIENT_ID', secret: 'GOOGLE_CLIENT_SECRET',
     auth: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token',
     scope: 'openid email https://www.googleapis.com/auth/calendar.readonly',
+    contacts: 'https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/contacts.other.readonly',
     extra: { access_type: 'offline', prompt: 'consent' },
   },
   microsoft: {
     name: 'Outlook', id: 'MS_CLIENT_ID', secret: 'MS_CLIENT_SECRET',
     auth: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize', token: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     scope: 'openid email offline_access User.Read Calendars.Read',
+    contacts: 'Contacts.Read',
     extra: { prompt: 'select_account' },
   },
 };
 const providerOn = (env, p) => !!(OAUTH[p] && env[OAUTH[p].id] && env[OAUTH[p].secret] && env.CAL_TOKEN_KEY);
 const calProviders = (env) => ({ google: providerOn(env, 'google'), microsoft: providerOn(env, 'microsoft') });
 const calColor = (c) => (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c.toLowerCase() : '');
+// Whether the provider granted reading contacts (Google: contacts.readonly; Microsoft: Contacts.Read, maybe as a full URI).
+const hasContacts = (acct) => /contacts\.read/i.test(acct.scope || '');
 const icalHost = (url) => { try { return new URL(url).host; } catch (e) { return ''; } };
 
 // Tokens are stored encrypted (AES-GCM, key derived from the CAL_TOKEN_KEY secret).
@@ -864,13 +981,13 @@ async function unseal(env, s) {
 async function listCalendars(request, env) {
   const user = requireUser(request);
   const [a, c] = await env.DB.batch([
-    env.DB.prepare('SELECT id, provider, email, status FROM calendar_accounts WHERE user_id = ? ORDER BY created_at').bind(user.id),
+    env.DB.prepare('SELECT id, provider, email, status, scope FROM calendar_accounts WHERE user_id = ? ORDER BY created_at').bind(user.id),
     env.DB.prepare('SELECT id, account_id, url, name, color, auto FROM user_calendars WHERE user_id = ? ORDER BY position, created_at').bind(user.id),
   ]);
   // iCal links are secrets: the page only learns which host they point at.
   return json({
     providers: calProviders(env),
-    accounts: a.results.map((x) => ({ id: x.id, provider: x.provider, email: x.email, status: x.status })),
+    accounts: a.results.map((x) => ({ id: x.id, provider: x.provider, email: x.email, status: x.status, contacts: hasContacts(x) })),
     calendars: c.results.map((x) => ({ id: x.id, accountId: x.account_id || null, name: x.name, color: x.color || '', auto: !!x.auto, host: x.url ? icalHost(x.url) : '' })),
   });
 }
@@ -960,7 +1077,10 @@ async function calThrottle(env, request, user) {
 // ---------- OAuth (Google / Outlook) ----------
 // SITE_URL decides the address (under `wrangler dev` the request URL carries the production host); it must match
 // the redirect URI registered with Google / Microsoft. Local testing: --var SITE_URL:http://localhost:8787.
-const oauthBack = (env, url, result) => new Response(null, { status: 302, headers: { location: `${siteUrl(env, url.origin)}/?account&cal=${result}` } });
+// After a contacts sign-in started from a poll (ret = poll id), go back to that poll's People tab instead of the Account page.
+const oauthBack = (env, url, result, ret, p) => new Response(null, { status: 302, headers: { location: ret
+  ? `${siteUrl(env, url.origin)}/?p=${ret}&contacts=${result === 'ok' ? p : 'err-' + result}`
+  : `${siteUrl(env, url.origin)}/?account&cal=${result}` } });
 const redirectUri = (env, url, p) => `${siteUrl(env, url.origin)}/api/oauth/${p}/callback`;
 async function oauthStart(request, env, url, p) {
   if (!providerOn(env, p)) throw new HttpError(404, 'Not found');
@@ -970,10 +1090,14 @@ async function oauthStart(request, env, url, p) {
   await recordFail(env, request, 'oauth', 'u:' + user.id);
   const state = secret(), verifier = secret() + secret();
   const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(verifier))));
-  await env.DB.prepare('INSERT INTO oauth_states (state, user_id, provider, verifier, created_at) VALUES (?, ?, ?, ?, ?)').bind(state, user.id, p, verifier, now()).run();
+  // ?contacts=1 also asks to read contacts (for adding people to a poll); ?ret=<poll id> comes back to that poll.
+  const contacts = url.searchParams.get('contacts') === '1', retRaw = url.searchParams.get('ret') || '';
+  const ret = ID_RE.test(retRaw) ? retRaw : null;
+  await env.DB.prepare('INSERT INTO oauth_states (state, user_id, provider, verifier, created_at, ret) VALUES (?, ?, ?, ?, ?, ?)').bind(state, user.id, p, verifier, now(), ret).run();
   const o = OAUTH[p];
-  const q = new URLSearchParams({ client_id: env[o.id], redirect_uri: redirectUri(env, url, p), response_type: 'code', scope: o.scope, state,
+  const q = new URLSearchParams({ client_id: env[o.id], redirect_uri: redirectUri(env, url, p), response_type: 'code', scope: contacts ? `${o.scope} ${o.contacts}` : o.scope, state,
     code_challenge: challenge, code_challenge_method: 'S256', ...o.extra });
+  if (contacts && p === 'google') q.set('include_granted_scopes', 'true');
   const hint = url.searchParams.get('hint');
   if (hint && EMAIL_RE.test(hint) && hint.length <= 200) q.set('login_hint', hint);
   return new Response(null, { status: 302, headers: { location: `${o.auth}?${q}` } });
@@ -998,29 +1122,31 @@ async function oauthCallback(request, env, url, p) {
   if (!user) return oauthBack(env, url, 'signin');
   const st = state && state.length <= 100 ? await env.DB.prepare('SELECT * FROM oauth_states WHERE state = ?').bind(state).first() : null;
   if (st) await env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run();
-  if (!st || st.user_id !== user.id || st.provider !== p || Date.now() - Date.parse(st.created_at) > 15 * 60000) return oauthBack(env, url, 'error');
-  if (qs.get('error') || !qs.get('code')) return oauthBack(env, url, 'denied');
+  const ret = st && st.ret && ID_RE.test(st.ret) ? st.ret : null, back = (r) => oauthBack(env, url, r, ret, p);
+  if (!st || st.user_id !== user.id || st.provider !== p || Date.now() - Date.parse(st.created_at) > 15 * 60000) return back('error');
+  if (qs.get('error') || !qs.get('code')) return back('denied');
   try {
     const t = await tokenRequest(env, p, { grant_type: 'authorization_code', code: qs.get('code'), redirect_uri: redirectUri(env, url, p), code_verifier: st.verifier });
-    if (!t.ok || !t.out.access_token || !t.out.refresh_token) { console.error('oauth token', p, t.status, t.out.error); return oauthBack(env, url, 'error'); }
+    if (!t.ok || !t.out.access_token || !t.out.refresh_token) { console.error('oauth token', p, t.status, t.out.error); return back('error'); }
     const cl = idClaims(t.out.id_token);
     const mail = String(cl.email || cl.preferred_username || '').slice(0, 200).toLowerCase();
     const sealed = { r: await seal(env, t.out.refresh_token), a: await seal(env, t.out.access_token), exp: Date.now() + (+t.out.expires_in || 3600) * 1000 };
+    const scope = String(t.out.scope || '').slice(0, 1000);
     let acct = await env.DB.prepare('SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = ? AND email = ?').bind(user.id, p, mail).first();
     if (acct) {
-      await env.DB.prepare("UPDATE calendar_accounts SET refresh_token = ?, access_token = ?, expires_at = ?, status = 'ok' WHERE id = ?").bind(sealed.r, sealed.a, sealed.exp, acct.id).run();
+      await env.DB.prepare("UPDATE calendar_accounts SET refresh_token = ?, access_token = ?, expires_at = ?, status = 'ok', scope = ? WHERE id = ?").bind(sealed.r, sealed.a, sealed.exp, scope, acct.id).run();
     } else {
       const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM calendar_accounts WHERE user_id = ?').bind(user.id).first('n');
-      if (n >= MAX_CAL_ACCOUNTS) return oauthBack(env, url, 'toomany');
+      if (n >= MAX_CAL_ACCOUNTS) return back('toomany');
       acct = { id: randomId(12), user_id: user.id, provider: p, email: mail };
-      await env.DB.prepare('INSERT INTO calendar_accounts (id, user_id, provider, email, refresh_token, access_token, expires_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .bind(acct.id, user.id, p, mail, sealed.r, sealed.a, sealed.exp, 'ok', now()).run();
+      await env.DB.prepare('INSERT INTO calendar_accounts (id, user_id, provider, email, refresh_token, access_token, expires_at, status, created_at, scope) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(acct.id, user.id, p, mail, sealed.r, sealed.a, sealed.exp, 'ok', now(), scope).run();
     }
     await syncCalendars(env, acct, t.out.access_token);
-    return oauthBack(env, url, 'ok');
+    return back('ok');
   } catch (e) {
     console.error('oauth callback', p, e);
-    return oauthBack(env, url, 'error');
+    return back('error');
   }
 }
 // A valid access token for the account, refreshed when it is about to expire.
@@ -1030,7 +1156,7 @@ async function accessToken(env, acct) {
   if (acct.access_token && acct.expires_at > Date.now() + 60000) return unseal(env, acct.access_token);
   const p = acct.provider;
   const params = { grant_type: 'refresh_token', refresh_token: await unseal(env, acct.refresh_token) };
-  if (p === 'microsoft') params.scope = OAUTH[p].scope;
+  if (p === 'microsoft') params.scope = hasContacts(acct) ? `${OAUTH[p].scope} ${OAUTH[p].contacts}` : OAUTH[p].scope;
   const t = await tokenRequest(env, p, params);
   if (!t.ok || !t.out.access_token) {
     if (t.out.error === 'invalid_grant' || t.status === 401) {
@@ -1078,6 +1204,37 @@ async function syncCalendars(env, acct, token) {
   if (stmts.length) await env.DB.batch(stmts);
 }
 const clip = (s, n) => String(s || '').slice(0, n);
+// The account's address book as [{ name, email }] (Google: contacts + "other contacts"; Outlook: contacts). Nothing is stored:
+// the page shows them in the add-people popup and only the people picked are sent back. 409 { consent } = sign in again with contacts.
+const CONTACT_PAGES = 4;
+async function accountContacts(request, env, aid) {
+  const user = requireUser(request);
+  const acct = await ownCalAccount(env, user, aid);
+  if (!providerOn(env, acct.provider)) throw new HttpError(404, 'Not found');
+  if (!hasContacts(acct)) throw new HttpError(409, `Allow when-who to read your ${OAUTH[acct.provider].name} contacts`, { consent: true });
+  await calThrottle(env, request, user);
+  const token = await accessToken(env, acct), out = new Map();
+  const add = (name, mail) => { const e = String(mail || '').trim().toLowerCase();
+    if (e.length <= 200 && EMAIL_RE.test(e) && !out.has(e)) out.set(e, { name: clip(String(name || '').trim(), 60) || e.split('@')[0], email: e }); };
+  if (acct.provider === 'google') {
+    const get = async (base) => { let page = '';
+      for (let i = 0; i < CONTACT_PAGES; i++) {
+        const r = await providerGet(acct, token, base + (page ? '&pageToken=' + encodeURIComponent(page) : ''));
+        for (const x of r.connections || r.otherContacts || []) { const n = (x.names || [])[0]; for (const m of x.emailAddresses || []) add(n && n.displayName, m.value); }
+        if (!(page = r.nextPageToken)) break;
+      } };
+    await get('https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=1000');
+    await get('https://people.googleapis.com/v1/otherContacts?readMask=names,emailAddresses&pageSize=1000');
+  } else {
+    let next = 'https://graph.microsoft.com/v1.0/me/contacts?$top=999&$select=displayName,emailAddresses';
+    for (let i = 0; i < CONTACT_PAGES && next && next.startsWith('https://graph.microsoft.com/'); i++) {
+      const r = await providerGet(acct, token, next);
+      for (const x of r.value || []) for (const m of x.emailAddresses || []) add(x.displayName || m.name, m.address);
+      next = r['@odata.nextLink'];
+    }
+  }
+  return json({ contacts: [...out.values()].sort((a, b) => a.name.localeCompare(b.name)) });
+}
 // GET ?from=<ms>&to=<ms>. iCal: the raw feed. Google / Outlook: { events: [{ s, e, allDay, title }] },
 // with s / e in ms (timed) or 'YYYY-MM-DD' (all-day, end exclusive). Free and cancelled events are left out.
 async function calendarBusy(request, env, url, cid) {
@@ -1135,11 +1292,18 @@ async function myPolls(request, env) {
        (SELECT MAX(r.updated_at) FROM responses r WHERE r.participant_id = pa.id) AS last
      FROM participants pa JOIN polls p ON p.id = pa.poll_id
      WHERE pa.user_id = ? AND (p.owner_id IS NULL OR p.owner_id != ?) ORDER BY last DESC`).bind(user.id, user.id).all();
+  // Unread chat messages per poll (others' messages since I last read that chat), only for polls I can chat in.
+  const { results: ur } = await env.DB.prepare(
+    `SELECT m.poll_id, COUNT(*) AS n FROM messages m LEFT JOIN chat_reads cr ON cr.poll_id = m.poll_id AND cr.user_id = ?1
+     WHERE m.user_id != ?1 AND m.created_at > COALESCE(cr.read_at, '') AND m.poll_id IN (
+       SELECT id FROM polls WHERE owner_id = ?1 UNION SELECT poll_id FROM participants WHERE user_id = ?1)
+     GROUP BY m.poll_id`).bind(user.id).all();
+  const unread = Object.fromEntries(ur.map((r) => [r.poll_id, r.n]));
   return json({
-    polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at,
+    polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at, unread: unread[p.id] || 0,
       current: p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
         status: effStatus({ status: p.status, end_date: p.end_date }) } : null })),
-    answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last })),
+    answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last, unread: unread[p.id] || 0 })),
   });
 }
 // Move a poll that was only reachable by its (old) admin link into the signed-in account.
@@ -1279,6 +1443,8 @@ async function getPoll(request, env, ctx, url, id) {
     const part = await accountParticipant(env, id, user.id);
     out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null,
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
+    const can = admin || !!part;
+    out.chat = { can, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
   }
   return json(out);
 }
@@ -1314,6 +1480,8 @@ async function deletePoll(request, env, id) {
     env.DB.prepare('DELETE FROM responses WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM participants WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM instances WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM messages WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM chat_reads WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id),
   ]);
   return json({ ok: true });
