@@ -894,6 +894,7 @@
   .wknav.pill .btn{min-width:32px;min-height:32px;padding:0;border-radius:999px;border:0;background:transparent}
   .wknav.pill .btn:not(:disabled):hover{background:var(--card)}
   .wknav.pill .lbl{font-size:13px;padding:0 8px;white-space:nowrap}
+  .wknav.mnav{margin:0 auto var(--s3)} .mnav .lbl{min-width:120px;text-align:center;font-weight:600}
   /* compact legend chips */
   .legend{gap:6px;font-size:11.5px;margin:10px 0 12px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
@@ -2201,7 +2202,7 @@ async function loadPoll(first){
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
@@ -2669,14 +2670,19 @@ function calendar(dates, cell){
   const set=new Set(dates), groups=monthsOf(dates);
   if(isWeekly()) return `<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}${WD.map((w,i)=>{ const k=addDaysL(WEEK0,i);
     return set.has(k)?cell(k,''):'<div class="day off"><div class="n"></div></div>'; }).join('')}</div>`;
-  return groups.map(g=>{
-    const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
-    let h=`${groups.length>1?`<div class="mlabel">${esc(monthLabel(g.ym))}</div>`:''}<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}`;
-    for(let i=0;i<wdOf(`${g.ym}-01`);i++) h+='<div class="blank"></div>';
-    for(let d=1; d<=n; d++){ const k=`${g.ym}-${pad(d)}`; h+= set.has(k) ? cell(k,d) : `<div class="day off"><div class="n">${d}</div></div>`; }
-    return h+'</div>';
-  }).join('');
+  // One month at a time; several months get a ‹ month › pager (starts at the current month when it's in the poll).
+  if(P.month==null){ const now=isoL(new Date()).slice(0,7); P.month=Math.max(0,groups.findIndex(g=>g.ym>=now)); }
+  const mi=P.month=Math.min(Math.max(0,P.month),groups.length-1), g=groups[mi];
+  const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
+  let h=groups.length>1?`<div class="wknav pill mnav"><button class="btn" data-mon="-1" ${mi===0?'disabled':''} aria-label="${t('Previous month')}">‹</button><span class="lbl">${esc(monthLabel(g.ym))}</span>
+    <button class="btn" data-mon="1" ${mi===groups.length-1?'disabled':''} aria-label="${t('Next month')}">›</button></div>`:'';
+  h+=`<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}`;
+  for(let i=0;i<wdOf(`${g.ym}-01`);i++) h+='<div class="blank"></div>';
+  for(let d=1; d<=n; d++){ const k=`${g.ym}-${pad(d)}`; h+= set.has(k) ? cell(k,d) : `<div class="day off"><div class="n">${d}</div></div>`; }
+  return h+'</div>';
 }
+// Turn the month pager to the month of day k (e.g. after picking it from the Best days list).
+function showMonth(k){ const i=monthsOf(P.data.dates).findIndex(g=>g.ym===k.slice(0,7)); if(i>=0) P.month=i; }
 function weeks(dates){
   const out=[]; let cur=null, last=null;
   dates.forEach(k=>{ const wd=wdOf(k); if(!cur||wd===0||(last!=null&&wd<=last)){ cur=Array(7).fill(null); out.push(cur);} cur[wd]=k; last=wd; });
@@ -3281,6 +3287,7 @@ function planPages(S){
 }
 // Make sure the planner shows day k.
 function planShow(k){
+  showMonth(k);
   if(P.data.poll.answerMode==='days') return;
   const S={}; P.data.dates.forEach(x=>S[x]=stats(x));
   let {pages}=planPages(S), i=pages.findIndex(pg=>pg.includes(k));
@@ -3677,7 +3684,7 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const tg=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
+  const tg=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
   if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
@@ -3722,8 +3729,9 @@ document.addEventListener('click',async e=>{
   if(ds.mode){ P.mode=ds.mode; renderBody(); return; }
   if(ds.brush){ P.brush=ds.brush; renderBody(); return; }
   if(ds.wk){ P.week+=+ds.wk; renderBody(); return; }
+  if(ds.mon){ P.month+=+ds.mon; renderBody(); return; }
   if(ds.schedule){ scheduleDay(ds.schedule); return; }
-  if(ds.ov){ P.ovDay=P.ovDay===ds.ov?null:ds.ov; renderBody(); return; }
+  if(ds.ov){ P.ovDay=P.ovDay===ds.ov?null:ds.ov; if(P.ovDay) showMonth(P.ovDay); renderBody(); return; }
   if(ds.clearrange!==undefined){ P.range=null; renderBody(); return; }
   if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); const ta=$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
   if(ds.mdesccancel!==undefined){ P.mdesc=null; renderMeetings(); return; }
