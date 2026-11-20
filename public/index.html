@@ -2162,7 +2162,7 @@ function renderMeetings(){
   if(adm){ const n=$('mtabn'); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } }
   if(!ms.length){ P.msel=null;
     el.innerHTML=adm?`<div class="card mcard"><div class="card-h"><h2>Scheduled meetings</h2></div>
-      <div class="empty-v"><b>No meetings yet.</b><span class="muted small">Pick people and times below, or use ★ Schedule on a day in the Group view.</span></div></div>`:'';
+      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>No meetings yet</b><span class="muted small">Plan them below, or ★ a day in Group.</span></div></div>`:'';
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
@@ -2786,9 +2786,10 @@ function renderPlanner(S){
     const {avail,pages}=planPages(S);
     if(!pages.length) return `<div class="empty-v"><b>No free hours yet.</b><span class="muted small">None of the selected people has marked any hours as available.</span></div>`;
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
-    h+=`<div class="wknav"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="Previous">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">(${P[pk]+1}/${pages.length})</span>`:''}</span>
-      <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="Next">›</button>
-      <div class="seg ml-auto"><button data-pview="avail" class="${P.pavail?'on':''}">Free days (${avail.length})</button><button data-pview="week" class="${P.pavail?'':'on'}">Weeks</button></div></div>
+    // One row: date pager pill + icon toggle (free days / weeks).
+    h+=`<div class="row tight pnav"><div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="Previous">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">${P[pk]+1}/${pages.length}</span>`:''}</span>
+      <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="Next">›</button></div>
+      <div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="Only days when someone is free (${avail.length})" aria-label="Free days (${avail.length})"><span class="segic">${ICON.users}</span><span class="bl">Free days</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="Whole weeks" aria-label="Weeks"><span class="segic">${ICON.cal}</span><span class="bl">Weeks</span></button></div></div>
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.date===k&&x.allDay);
       h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="Add an all-day meeting on ${esc(dLabel(k))}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
@@ -2812,15 +2813,15 @@ function renderPlanner(S){
 }
 // The organiser's Meetings tab, lower card: 1 who, 2 when (grid), 3 details of the drafts + create.
 function step(n,title,help,body,extra=''){
-  return `<section class="pstep"><div class="pstep-h"><span class="pstep-n" aria-hidden="true">${n}</span><div class="grow minw"><h3>${title}</h3>${help?`<p class="help">${help}</p>`:''}</div>${extra}</div>${body}</section>`;
+  return `<section class="pstep"><div class="pstep-h"><span class="pstep-n" aria-hidden="true">${n}</span><div class="grow minw row tight"><h3>${title}</h3>${help?tip(help):''}</div>${extra}</div>${body}</section>`;
 }
 function renderPlan(el){
   const d=P.data, rs=d.responses||[], slotsOn=d.poll.answerMode!=='days', tot=sel().length, nd=P.drafts.length;
-  let h=`<div class="card-h"><h2>Plan new meetings</h2><span class="muted small">Pick people, draw the times, create</span></div>`;
+  let h=`<div class="card-h"><h2>Plan new meetings</h2></div>`;
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people answer, you can plan meetings around when they're free.</span><button class="btn sm mt-2" data-atab="people">Share the poll</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,'Who should come?','Each meeting invites the people selected when you add it.',
-    tools(whoDropdown()+`<button class="btn sm" data-suggest${tot?'':' disabled'} aria-label="Suggest best times"><span>✨<span class="bl"> Suggest best times</span><span class="bs"> Suggest</span></span></button>`,'mt-2'));
+    tools(whoDropdown()+ib('zap','Suggest best times','data-suggest'+(tot?'':' disabled'),'sm','Suggest'),'mt-2 tbar'));
   h+=step(2,'Pick the times',tot?(slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).':'<b>Drag down a day</b> to add a meeting.')+' Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.'
       :'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.'):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>Nobody selected.</b><span class="muted small">Pick at least one person in step 1.</span></div>`);
@@ -2835,18 +2836,17 @@ function draftTray(){
     return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
-      <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available or maybe for the whole time">${free}/${inv.length} free</span>
+      <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="Invited people who are available, available if needed, or maybe for the whole time">${ICON.users}${free}/${inv.length}</span>
       ${ib('note',x.ownDesc?'Remove extra description':'Extra description',`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,'sm'+(x.ownDesc?' on':''))}
-      <button class="btn sm danger" data-deldraft="${x.key}" title="Remove draft">✕</button>
-      <span class="who">Who: ${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span>
+      ${ib('x','Remove draft',`data-deldraft="${x.key}"`,'sm ghost danger')}
+      <span class="who">${ICON.users}${esc(x.participants==='all'?'Everyone':x.participants.map(p=>p.name).join(', '))}</span>
       ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="Extra description for this meeting only, shown below the shared one">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
   return `<div id="drafts"><div class="drafts">${rows}</div>
     <div class="grid2 mt-2">
       <div class="field"><label>Title (for all)</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
       <div class="field"><label for="dm_loc">Location (optional)</label><div class="locbox"><input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="Search a place or address" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div></div>
     ${repeatFields()}
-    <div class="field"><label>Description (optional${P.drafts.length>1?', for all':''})</label><textarea id="dm_note" maxlength="1000" placeholder="Agenda, what to bring, a call link …">${esc(dm.note)}</textarea>
-      ${P.drafts.length>1?'<div class="help">Use <b>Extra description</b> on a draft to add text for just that meeting below this one.</div>':''}</div>
+    <div class="field"><label class="row tight">Description (optional${P.drafts.length>1?', for all':''})${P.drafts.length>1?tip('Use the note icon on a draft to add text for just that meeting, below this one.'):''}</label><textarea id="dm_note" maxlength="1000" placeholder="Agenda, what to bring, a call link …">${esc(dm.note)}</textarea></div>
     <div class="err" id="dm_err"></div>
     <div class="row mt-4"><button class="btn primary" data-savedrafts>Create ${P.drafts.length} ${P.drafts.length===1?'meeting':'meetings'}</button></div></div>`;
 }
@@ -2915,54 +2915,57 @@ function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide';
   return `<div id="pane-meetings" class="${hid('meetings')}"><div id="meetings"></div><div class="card" id="mplan"></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
-    <div class="card"><div class="card-h"><h2>Schedule for new rounds</h2></div><form id="rf">
-      <div class="row field"><label class="m0">Open each new poll</label><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span class="small">days before it starts · reply by</span>
-        <input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span class="small">days before it starts</span></div>
-      <div class="help">Applies to rounds opened from now on. To change the dates of an existing round, use “Edit” above. To change how often it repeats, create a new series.</div>
+    <div class="card"><div class="card-h"><h2 class="row tight">Schedule for new rounds${tip('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.')}</h2></div><form id="rf">
+      <div class="grid2">
+        <div class="field"><label for="s_open">Opens</label><div class="unit-in"><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span>days before it starts</span></div></div>
+        <div class="field"><label for="s_dld">Reply by <span class="opt">optional</span></label><div class="unit-in"><input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span>days before it starts</span></div></div></div>
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>People</h2></div>
-    <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link">${ib('copy','Copy link',`data-copy="${esc(shareLink(p.id))}"`,'primary','Copy')}</div>
-      <div class="help">${series?'The link always shows the newest open round, so you can share it once for the whole series. ':''}Anyone with the link can answer, no account needed.</div></div>
+    <div class="field"><label class="row tight">Share link${tip(`${series?'The link always shows the newest open round, so you can share it once for the whole series. ':''}Anyone with the link can answer, no account needed.`)}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link">${ib('copy','Copy link',`data-copy="${esc(shareLink(p.id))}"`,'primary','Copy')}${navigator.share?ib('share','Share…','data-nshare','',''):''}</div></div>
     <div class="section">${peoplePanel(p.id,{title:p.title,series,deadline:inst()&&inst().status==='open'?inst().deadline:null})}</div></div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>Settings</h2></div>
-    <div class="section"><h3>Details</h3>
+    ${sset('details','edit','Details',`
       <div class="field"><label for="s_title">Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
-      <div class="field"><label for="s_desc">Description</label><textarea id="s_desc" maxlength="1000">${esc(p.description)}</textarea></div>
-      <div class="field"><label>Icon or picture</label>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div></div>
+      <div class="field"><label for="s_desc">Description</label><textarea id="s_desc" maxlength="1000" rows="2">${esc(p.description)}</textarea></div>
+      <details class="field iconpk"><summary>${pollTile(p,'')}<span>Icon or picture</span><span class="btn sm ghost">Change</span></summary>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</details>`)}
     ${series?'':datesSection()}
-    <div class="section"><h3>Answering</h3>
+    ${sset('answering','check','Answering',`
       <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
-      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}
-        <div class="help">Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.</div></div>
-      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label></div>
-    <div class="section"><h3>Privacy</h3>
+      <div class="field"><label class="row tight">Which days and times${tip('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.')}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
+      <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label>`)}
+    ${sset('privacy','lock','Privacy',`
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> Hide answers from respondents</label>
       <div class="field"><label for="s_pw">Password ${p.hasPassword?'(currently set)':'(none)'}</label>
-        <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div></div>
-    <div class="section"><h3>Email</h3>
-      ${d.emailEnabled?`<div class="field"><div class="row"><span class="grow help m0">Emails come from when-who's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.</span>${ib('send','Send test email','id="testMail"','','Test')}</div></div>
+        <div class="row"><input type="password" id="s_pw" class="grow" placeholder="${p.hasPassword?'New password':'Set a password'}" autocomplete="new-password">${p.hasPassword?'<label class="check m0"><input type="checkbox" id="s_pwclear"> Remove password</label>':''}</div></div>`,
+      p.hideResults||p.hasPassword?`${p.hideResults?ICON.eye:''}${p.hasPassword?ICON.lock:''}`:'')}
+    ${sset('email','mail','Email',d.emailEnabled?`<div class="field"><div class="row tight"><span class="grow muted small">From when-who, under your name${tip(`Emails come from when-who's address under your name. Replies and your copy go to your account email${ME.user?`, <b>${esc(ME.user.email)}</b>`:''}.`)}</span>${ib('send','Send test email','id="testMail"','sm','Test')}</div></div>
         ${series?`<label class="check"><input type="checkbox" id="s_notify" ${p.notifyOpen?'checked':''}> Email everyone in the series when a new round opens</label>`:''}
         <label class="check"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}> Email a reminder <input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-sm"> days before the reply-by date</label>`
-      :`<p class="help">Email sending from the site isn't set up. Invites open in your own email app. See the README to turn it on.</p>`}</div>
+      :`<div class="row tight muted small">Not set up: invites open in your email app.${tip('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.')}</div>`)}
     <div class="err" id="serr"></div>
-    <div class="row mt-4"><button class="btn primary">Save settings</button></div></form>
-    <div class="card danger-zone"><div class="card-h"><h2>Delete</h2></div>
-      <div class="row"><p class="help m0 grow">Deletes ${series?'the whole series, all its rounds':'this poll'} and every answer. This can’t be undone.</p>
-      ${ib('trash',`Delete ${series?'whole series':'poll'}`,'id="delPoll"','danger keep')}</div></div></div>`;
+    <div class="savebar setbar"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>Save<span class="bl"> settings</span></span></button></div></form>
+    <div class="card danger-zone dz-row"><span class="row tight grow"><b>Danger zone</b>${tip(`Deletes ${series?'the whole series, all its rounds':'this poll'} and every answer. This can’t be undone.`)}</span>
+      ${ib('trash',`Delete ${series?'whole series':'poll'}`,'id="delPoll"','danger keep sm')}</div></div>`;
 }
+// A collapsible Settings section (open state kept while the page is open). body is trusted markup; extra = icons shown when closed.
+function sset(k,icon,title,body,extra=''){
+  const o=P.setOpen||(P.setOpen={details:true});
+  return `<details class="section sset" data-sset="${k}"${o[k]?' open':''}><summary>${ICON[icon]}<span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
+}
+document.addEventListener('toggle',e=>{ const k=e.target.dataset&&e.target.dataset.sset; if(k) (P.setOpen||(P.setOpen={}))[k]=e.target.open; },true);
 // Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
 function datesSection(){
   const i=inst(), open=i.status==='open';
-  return `<div class="section"><h3>Dates</h3>
-    <div class="row field"><span class="grow">${open?'<span class="tag y">open</span> People can answer.':`<span class="tag x">closed</span> Answers can't be changed.`}</span>
-      ${i.manualStatus==='open'?`${ib('lock','Close poll',`data-istatus="${i.id}" data-to="closed"`,'','Close')}`:`${ib('unlock','Reopen poll',`data-istatus="${i.id}" data-to="open"`,'','Reopen')}`}</div>
-    ${isWeekly()?'':`<div class="grid2"><div class="field"><label for="s_from">From</label><input type="date" id="s_from" value="${i.startDate}"></div>
-      <div class="field"><label for="s_to">To</label><input type="date" id="s_to" value="${i.endDate}"></div></div>`}
-    <div class="field"><label for="s_dl">Reply by (optional)</label><input type="date" id="s_dl" value="${i.deadline||''}">
-      <div class="help">The poll closes after this day.</div></div>
-    ${i.note?`<div class="field"><label for="s_note">Note shown at the top of this poll</label><textarea id="s_note" maxlength="1000">${esc(i.note)}</textarea></div>`:''}</div>`;
+  return sset('dates','cal','Dates',`
+    <div class="row tight field"><span class="grow">${open?'<span class="tag y">open</span> People can answer':`<span class="tag x">closed</span> Answers are final`}</span>
+      ${i.manualStatus==='open'?`${ib('lock','Close poll',`data-istatus="${i.id}" data-to="closed"`,'sm','Close')}`:`${ib('unlock','Reopen poll',`data-istatus="${i.id}" data-to="open"`,'sm','Reopen')}`}</div>
+    <div class="dgrid">${isWeekly()?'':`<div class="field"><label for="s_from">From</label><input type="date" id="s_from" value="${i.startDate}"></div>
+      <div class="field"><label for="s_to">To</label><input type="date" id="s_to" value="${i.endDate}"></div>`}
+    <div class="field"><label for="s_dl" class="row tight">Reply by${tip('Optional. The poll closes after this day.')}</label><input type="date" id="s_dl" value="${i.deadline||''}"></div></div>
+    ${i.note?`<div class="field"><label for="s_note">Note shown at the top of this poll</label><textarea id="s_note" maxlength="1000">${esc(i.note)}</textarea></div>`:''}`,
+    `<span class="tag ${open?'y':'x'}">${open?'open':'closed'}</span>`);
 }
 // PEOPLE is the poll whose list is on screen: { id, title, deadline, series, parts, sel, edit, focus }.
 let PEOPLE=null;
@@ -2979,11 +2982,13 @@ async function loadParts(){
   renderParts();
 }
 // One status per person: answered this round, invited (when), or why they can't be emailed.
+// Shown as a small round icon badge; the words are its tooltip (and visible text for screen readers).
 function partStatus(p,series){
-  if(p.answeredNow) return `<span class="tag y" title="${series?'Answered the current round':'Has answered'}">Answered</span>`;
-  if(p.invitedAt) return `<span class="tag m" title="Invite emailed ${esc(new Date(p.invitedAt).toLocaleString())}">Invited ${esc(new Date(p.invitedAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</span>`;
-  if(!p.canMail) return `<span class="tag x" title="${p.email?'Removed their email when answering':'No email address'}">No email</span>`;
-  return `<span class="tag x">Not invited</span>`;
+  const b=(cls,ic,t)=>`<span class="pst ${cls}" title="${esc(t)}" role="img" aria-label="${esc(t)}">${ic}</span>`;
+  if(p.answeredNow) return b('y',ICON.check,series?'Answered the current round':'Answered');
+  if(p.invitedAt) return b('m',ICON.mail,'Invited '+new Date(p.invitedAt).toLocaleString());
+  if(!p.canMail) return b('x',ICON.x,p.email?'Removed their email when answering':'No email address');
+  return b('o','','Not invited yet');
 }
 const pqb=(ic,label,attrs,cls='')=>`<button type="button" class="qb${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[ic]}</button>`;
 function renderParts(){
@@ -2995,8 +3000,8 @@ function renderParts(){
   const selMail=ps.filter(p=>sel.has(p.id)&&p.canMail);
   const typed={n:$('padd_n')?$('padd_n').value:'', e:$('padd_e')?$('padd_e').value:''}, active=document.activeElement&&document.activeElement.id;
   const view=p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="Select ${esc(p.name)}">
-      <span class="grow pmain"><span class="pname"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their account, not by name">Account</span>':''} ${partStatus(p,series)}</span>
-        <span class="muted small">${p.email?`${esc(p.email)} · `:''}${p.rounds?`${plural(p.rounds,'answer','answers')} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
+      ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="Signed in: identified by their account, not by name">${ICON.users}</span>`:''}</span>
+        <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${esc(plural(p.rounds,'answer','answers'))}, last ${esc(new Date(p.lastAnswered).toLocaleDateString())}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</span>`:'no answers yet'}</span></span>
       <span class="acts">${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?'Send the invite again':'Send invite'):`Email ${p.name}`,`data-pinvite="${esc(p.id)}"`):''}${pqb('edit','Rename',`data-pedit="${esc(p.id)}"`)}${pqb('trash','Remove',`data-pdel="${esc(p.id)}"`,' danger')}</span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
         <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="Name" data-pekey="${esc(p.id)}" autocomplete="off">
@@ -3010,13 +3015,12 @@ function renderParts(){
         ${ib('x','Clear selection','data-pselnone','sm ghost')}`
       :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>Email ${waiting.length}<span class="bl"> who haven't answered</span></span></button>`:''}</div>`:'';
   el.innerHTML=`${tools}
-    ${ps.length?`<ul class="list pplist">${ps.map(p=>PEOPLE.edit===p.id?edit(p):view(p)).join('')}</ul>`:'<p class="help mt-0">Nobody yet. Add people here, or just share the link.</p>'}
+    ${ps.length?`<ul class="list pplist">${ps.map(p=>PEOPLE.edit===p.id?edit(p):view(p)).join('')}</ul>`:'<p class="help mt-0">Nobody yet. Add people or share the link.</p>'}
     <div class="padd padd-new">
-      <input type="text" id="padd_n" maxlength="2000" placeholder="Name" aria-label="Name, or paste a list" autocomplete="off" enterkeyhint="done">
+      <input type="text" id="padd_n" maxlength="2000" placeholder="Add a name or paste a list" aria-label="Name, or paste a list" autocomplete="off" enterkeyhint="done">
       <input type="email" id="padd_e" maxlength="200" placeholder="Email (optional)" aria-label="Email (optional)" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
-      <button type="button" class="btn primary padd-btn" data-padd title="Add" aria-label="Add">${ICON.plus}</button></div>
-    <div class="err" id="padd_err"></div>
-    <p class="help">Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row${series?' in every round':''}; people signed in are matched by their account.</p>`;
+      <button type="button" class="btn primary padd-btn" data-padd title="Add" aria-label="Add">${ICON.plus}</button>${tip(`Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row${series?' in every round':''}; people signed in are matched by their account.`,'right')}</div>
+    <div class="err" id="padd_err"></div>`;
   $('padd_n').value=typed.n; $('padd_e').value=typed.e;
   if(PEOPLE.edit){ const n=$('pe_n'); if(n&&active!=='pe_e'){ n.focus(); n.select(); } else if(active==='pe_e') $('pe_e').focus(); }
   else if(PEOPLE.focus||active==='padd_n'||active==='padd_e'){ $(active==='padd_e'?'padd_e':'padd_n').focus(); }
