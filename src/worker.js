@@ -286,6 +286,17 @@ const WEEK0 = '2001-01-01';
 const isWeek0 = (inst) => inst.start_date === WEEK0;
 const effStatus = (inst) => (inst.status === 'closed' || (!isWeek0(inst) && inst.end_date < today()) ? 'closed' : 'open');
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+// Email language: 'en' or 'de'. Polls store theirs (polls.lang, from the organiser's page language); sign-in codes use the request's.
+const langOf = (x) => (x === 'de' ? 'de' : 'en');
+const LOCALE = { en: 'en-GB', de: 'de-DE' };
+// The page sends its language in x-lang. Actions by the poll's owner (create, settings, invites) set the poll's email language.
+const reqLang = (request) => langOf(request.headers.get('x-lang'));
+async function adoptLang(request, env, poll) {
+  if (!request.headers.get('x-lang') || reqLang(request) === langOf(poll.lang)) return;
+  poll.lang = reqLang(request);
+  await env.DB.prepare('UPDATE polls SET lang = ? WHERE id = ?').bind(poll.lang, poll.id).run();
+}
+const WEEKDAYS_DE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const wdOf = (d) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7; // 0 = Monday
 // First date on or after `from` that falls on weekday wd.
 const firstOnWeekday = (from, wd) => addDays(from, (wd - wdOf(from) + 7) % 7);
@@ -497,20 +508,26 @@ async function sendLoginCode(request, env, url) {
   await env.DB.prepare('INSERT OR REPLACE INTO login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)')
     .bind(addr, await codeHash(addr, code), expires, now()).run();
 
-  const site = siteUrl(env, url.origin);
-  const text = `Your when-who sign-in code is:\n\n    ${code}\n\nIt is valid for ${CODE_MINUTES} minutes. Enter it on ${site} to sign in.\n\nIf you didn't ask for this, you can ignore this email: nobody can sign in without the code.`;
+  const site = siteUrl(env, url.origin), de = reqLang(request) === 'de';
+  const host = site.replace(/^https?:\/\//, ''), mins = CODE_MINUTES;
+  const ignore = de ? 'Falls du das nicht angefordert hast, kannst du diese E-Mail ignorieren: Ohne den Code kann sich niemand anmelden.'
+    : "If you didn't ask for this, you can ignore this email: nobody can sign in without the code.";
+  const text = de ? `Dein when-who-Anmeldecode:\n\n    ${code}\n\nEr ist ${mins} Minuten gültig. Gib ihn auf ${site} ein, um dich anzumelden.\n\n${ignore}`
+    : `Your when-who sign-in code is:\n\n    ${code}\n\nIt is valid for ${mins} minutes. Enter it on ${site} to sign in.\n\n${ignore}`;
+  const intro = de ? `Gib diesen Code auf <a href="${escHtml(site)}" style="color:#1F5EFF">${escHtml(host)}</a> ein, um dich anzumelden. Er ist ${mins} Minuten gültig.`
+    : `Enter this code on <a href="${escHtml(site)}" style="color:#1F5EFF">${escHtml(host)}</a> to sign in. It is valid for ${mins} minutes.`;
   if (emailEnabled(env)) {
     await sendEmail(env, {
       fromName: 'when-who', to: [addr],
-      subject: `Your sign-in code: ${code}`, text,
-      html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">Your sign-in code</h1>
-        <p style="margin:0 0 20px;color:#334155">Enter this code on <a href="${escHtml(site)}" style="color:#1F5EFF">${escHtml(site.replace(/^https?:\/\//, ''))}</a> to sign in. It is valid for ${CODE_MINUTES} minutes.</p>
+      subject: de ? `Dein Anmeldecode: ${code}` : `Your sign-in code: ${code}`, text,
+      html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">${de ? 'Dein Anmeldecode' : 'Your sign-in code'}</h1>
+        <p style="margin:0 0 20px;color:#334155">${intro}</p>
         <div style="margin:0 0 24px;padding:18px;background:#E8EFFF;border-radius:10px;text-align:center;font-size:32px;font-weight:700;letter-spacing:10px;color:#0B1F3A;font-family:ui-monospace,Menlo,Consolas,monospace">${code}</div>
-        <p style="margin:0;font-size:13px;color:#5B6578">If you didn't ask for this, you can ignore this email: nobody can sign in without the code.</p>`,
-        { preheader: `Your sign-in code is ${code}`, site }),
+        <p style="margin:0;font-size:13px;color:#5B6578">${escHtml(ignore)}</p>`,
+        { preheader: de ? `Dein Anmeldecode ist ${code}` : `Your sign-in code is ${code}`, site, lang: de ? 'de' : 'en' }),
     });
   } else {
-    console.log(`[dev] sign-in code for ${addr}: ${code}`); // email not set up: local development
+    console.log(`[dev] sign-in code for ${addr}: ${code}\n${text}`); // email not set up: local development
   }
   // Same answer whether or not the address has an account.
   return json({ ok: true, minutes: CODE_MINUTES });
@@ -732,7 +749,7 @@ async function createPoll(request, env) {
   const b = await body(request);
   const p = readPollSettings(b, null);
   const id = randomId(10), t = now();
-  p.id = id; p.owner_id = user.id;
+  p.id = id; p.owner_id = user.id; p.lang = reqLang(request);
   p.admin_hash = await sha256('admin:' + secret()); // column is required; admin links are no longer handed out
   p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
   p.created_at = t; p.updated_at = t;
@@ -804,6 +821,7 @@ async function updatePoll(request, env, id) {
   const b = await body(request);
   const p = readPollSettings(b, poll);
   if (b.password !== undefined) p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
+  if (request.headers.get('x-lang')) p.lang = reqLang(request);
   p.updated_at = now();
   const cols = Object.keys(p);
   await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
@@ -955,14 +973,21 @@ async function sendEmail(env, m) {
   throw new HttpError(502, 'The email couldn’t be sent. Try again later.');
 }
 const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, '');
-const fmtDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const fmtDay = (d, lang) => new Date(d + 'T00:00:00Z').toLocaleDateString(LOCALE[langOf(lang)], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const hh = (h) => `${pad(h % 24)}:00`;
-const shortDay = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const shortDay = (d, lang) => new Date(d + 'T00:00:00Z').toLocaleDateString(LOCALE[langOf(lang)], { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 // "Monday 12 January 2026, 19:00–21:00", or for a weekly meeting "Every Tuesday, 19:00–21:00, from 13 Jan 2026 until 30 Jun 2026".
-function meetingWhen(mt) {
-  const time = mt.allDay ? ' (all day)' : `, ${hh(mt.start)}–${hh(mt.end)}`;
-  if (!mt.repeat) return fmtDay(mt.date) + time;
-  const r = mt.repeat, wd = WEEKDAYS[wdOf(mt.date)];
+function meetingWhen(mt, lang) {
+  const de = langOf(lang) === 'de';
+  const time = mt.allDay ? (de ? ' (ganztägig)' : ' (all day)') : `, ${hh(mt.start)}–${hh(mt.end)}`;
+  if (!mt.repeat) return fmtDay(mt.date, lang) + time;
+  const r = mt.repeat, i = wdOf(mt.date);
+  if (de) {
+    const wd = WEEKDAYS_DE[i];
+    const every = r.every === 1 ? `Jeden ${wd}` : r.every === 2 ? `Jeden zweiten ${wd}` : `Alle ${r.every} Wochen am ${wd}`;
+    return `${every}${time}, ab ${shortDay(meetingStart(mt), lang)}${r.until ? ` bis ${shortDay(r.until, lang)}` : ''}`;
+  }
+  const wd = WEEKDAYS[i];
   const every = r.every === 1 ? `Every ${wd}` : r.every === 2 ? `Every other ${wd}` : `Every ${r.every} weeks on ${wd}`;
   return `${every}${time}, from ${shortDay(meetingStart(mt))}${r.until ? ` until ${shortDay(r.until)}` : ''}`;
 }
@@ -970,7 +995,7 @@ const escHtml = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;
 // Branded HTML email (navy header with the logo, white card), matching the web app. The logo is public/logo-email.png on `site`
 // (email clients block data: and SVG images); without a site address it falls back to a plain check mark. Inline styles and tables so email clients render it.
 // bodyHtml must already be escaped. button: optional { href, label } shown as a blue button above the body.
-function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) {
+function emailHtml(bodyHtml, { preheader = '', button = null, site = '', lang = 'en' } = {}) {
   const font = "Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
   const btn = button ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px"><tr><td style="border-radius:8px;background:#1F5EFF">
     <a href="${escHtml(button.href)}" style="display:inline-block;padding:12px 22px;font-family:${font};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${escHtml(button.label)}</a></td></tr></table>` : '';
@@ -987,17 +1012,18 @@ function emailHtml(bodyHtml, { preheader = '', button = null, site = '' } = {}) 
     <tr><td style="background:#ffffff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 14px 14px;padding:32px 28px;font-family:${font};font-size:15px;line-height:1.6;color:#0F172A">
       ${btn}${bodyHtml}</td></tr>
     <tr><td style="padding:16px 28px;font-family:${font};font-size:12px;line-height:1.5;color:#5B6578;text-align:center">
-      Sent by when-who${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
+      ${lang === 'de' ? 'Gesendet von' : 'Sent by'} when-who${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
   </table></td></tr></table></body></html>`;
 }
 const linkify = (escaped) => escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1F5EFF;word-break:break-all">$1</a>');
 function periodText(poll, inst) {
-  if (isWeek0(inst)) return 'a typical week';
+  const loc = LOCALE[langOf(poll.lang)];
+  if (isWeek0(inst)) return poll.lang === 'de' ? 'eine typische Woche' : 'a typical week';
   if (poll.unit === 'month' && inst.start_date.endsWith('-01') && addDays(inst.end_date, 1).endsWith('-01')) {
-    const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString(loc, { month: 'long', year: 'numeric', timeZone: 'UTC' });
     return f(inst.start_date) === f(inst.end_date) ? f(inst.start_date) : `${f(inst.start_date)} – ${f(inst.end_date)}`;
   }
-  const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   return `${f(inst.start_date)} – ${f(inst.end_date)}`;
 }
 // Emails started by a person (invites, test emails) count against a daily cap per account, or per poll without one.
@@ -1023,7 +1049,8 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   const reply = replyTo || ownerMail;
   const pollLink = (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
   const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
-    preheader: subject, button: pollLink ? { href: pollLink, label: 'Open poll' } : null, site: siteUrl(env, ''),
+    preheader: subject, button: pollLink ? { href: pollLink, label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
+    site: siteUrl(env, ''), lang: langOf(poll.lang),
   });
   let sent = 0;
   for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
@@ -1040,12 +1067,17 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   }
   return sent;
 }
-const footer = (poll) => `\n\n—\nYou're getting this because you left your email address in the poll “${poll.title}”. To stop these emails, open the poll and remove your email from your answer.`;
-const seriesFooter = (poll) => `\n\n—\nYou're getting this because you're a participant in the poll “${poll.title}”. To stop these emails, remove your email from your answer in the poll, or reply to ask the organiser to take you off the list.`;
+const footer = (poll) => poll.lang === 'de'
+  ? `\n\n—\nDu bekommst diese E-Mail, weil du in der Umfrage „${poll.title}“ deine E-Mail-Adresse angegeben hast. Um keine E-Mails mehr zu bekommen, öffne die Umfrage und entferne deine E-Mail-Adresse aus deiner Antwort.`
+  : `\n\n—\nYou're getting this because you left your email address in the poll “${poll.title}”. To stop these emails, open the poll and remove your email from your answer.`;
+const seriesFooter = (poll) => poll.lang === 'de'
+  ? `\n\n—\nDu bekommst diese E-Mail, weil du an der Umfrage „${poll.title}“ teilnimmst. Um keine E-Mails mehr zu bekommen, entferne deine E-Mail-Adresse aus deiner Antwort in der Umfrage oder antworte auf diese E-Mail und bitte die Organisatorin oder den Organisator, dich von der Liste zu nehmen.`
+  : `\n\n—\nYou're getting this because you're a participant in the poll “${poll.title}”. To stop these emails, remove your email from your answer in the poll, or reply to ask the organiser to take you off the list.`;
 
 async function sendInvite(request, env, url, id, iid, mid) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
+  await adoptLang(request, env, poll);
   const inst = await loadInstance(env, id, iid);
   const meetings = JSON.parse(inst.meetings || '[]');
   const mt = meetings.find((x) => x.id === mid);
@@ -1055,9 +1087,14 @@ async function sendInvite(request, env, url, id, iid, mid) {
   const withMail = invited.filter((r) => r.email);
   if (!withMail.length) throw new HttpError(400, 'None of the invited people left an email address');
   const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
-  const when = meetingWhen(mt);
-  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}\nMap: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `Who: ${whoText(mt)}`, mt.note || mt.extra ? `\n${[mt.note, mt.extra].filter(Boolean).join('\n\n')}` : null,
-    '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
+  const de = poll.lang === 'de', when = meetingWhen(mt, poll.lang);
+  const L = de ? { when: 'Wann', where: 'Wo', map: 'Karte', who: 'Wer', all: 'Alle', poll: 'Umfrage',
+    ics: 'Die Kalenderdatei ist angehängt. Öffne sie, um den Termin in deinen Kalender zu übernehmen.' }
+    : { when: 'When', where: 'Where', map: 'Map', who: 'Who', all: 'Everyone', poll: 'Poll',
+      ics: 'The calendar file is attached. Open it to add the meeting to your calendar.' };
+  const who = mt.participants === 'all' ? L.all : whoText(mt);
+  const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `${L.who}: ${who}`, mt.note || mt.extra ? `\n${[mt.note, mt.extra].filter(Boolean).join('\n\n')}` : null,
+    '', L.ics, `${L.poll}: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
     attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }], quota: true });
@@ -1076,6 +1113,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
 async function invitePoll(request, env, url, id) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
+  await adoptLang(request, env, poll);
   const b = await body(request);
   const message = str(b.message, 1000, 'Message');
   const inst = await latestInstance(env, id);
@@ -1106,13 +1144,25 @@ async function invitePoll(request, env, url, id) {
   const user = userOf(request) || {};
   const deadline = inst && inst.status === 'open' && inst.deadline ? inst.deadline.slice(0, 10) : null;
   const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
-  const who = user.name || 'The organiser';
-  const text = [message || (again ? `A reminder: ${who} would like to know when you're free for “${poll.title}”.` : `${who} would like to know when you're free for “${poll.title}”.`), '',
-    poll.description ? poll.description + '\n' : null,
-    'Mark your availability here (no account needed):', link,
-    deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
-    + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
-  const sent = await sendMail(env, poll, { to: emails, subject: `${again ? 'Reminder: when' : 'When'} are you free? ${poll.title}`, text, quota: true });
+  let text, subject;
+  if (poll.lang === 'de') {
+    const who = user.name || 'Jemand';
+    text = [message || (again ? `Eine Erinnerung: ${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.` : `${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.`), '',
+      poll.description ? poll.description + '\n' : null,
+      'Trag hier ein, wann du Zeit hast (kein Konto nötig):', link,
+      deadline ? `\nBitte antworte bis ${fmtDay(deadline, 'de')}.` : null].filter((x) => x !== null).join('\n')
+      + `\n\n—\nDu bekommst diese E-Mail, weil ${user.name || 'jemand'} dich zu einer Umfrage auf when-who eingeladen hat.`;
+    subject = `${again ? 'Erinnerung: Wann' : 'Wann'} hast du Zeit? ${poll.title}`;
+  } else {
+    const who = user.name || 'The organiser';
+    text = [message || (again ? `A reminder: ${who} would like to know when you're free for “${poll.title}”.` : `${who} would like to know when you're free for “${poll.title}”.`), '',
+      poll.description ? poll.description + '\n' : null,
+      'Mark your availability here (no account needed):', link,
+      deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
+      + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
+    subject = `${again ? 'Reminder: when' : 'When'} are you free? ${poll.title}`;
+  }
+  const sent = await sendMail(env, poll, { to: emails, subject, text, quota: true });
   if (pids.length) {
     const at = now();
     await env.DB.batch(pids.map((pid) => env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ?').bind(at, pid)));
@@ -1123,9 +1173,13 @@ async function invitePoll(request, env, url, id) {
 async function testEmail(request, env, url, id) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
+  await adoptLang(request, env, poll);
   const owner = await ownerOf(env, poll);
   if (!owner || !owner.email) throw new HttpError(400, 'This poll has no owner account');
-  await sendMail(env, poll, { to: [owner.email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${siteUrl(env, url.origin)}/?p=${poll.id}`, quota: true });
+  const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
+  await sendMail(env, poll, poll.lang === 'de'
+    ? { to: [owner.email], subject: `Test-E-Mail von „${poll.title}“`, text: `Der E-Mail-Versand funktioniert.\n\nUmfrage: ${link}`, quota: true }
+    : { to: [owner.email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${link}`, quota: true });
   return json({ ok: true });
 }
 
@@ -1150,6 +1204,11 @@ async function notifyOpened(env, poll, inst, origin) {
   if (!to.length) return;
   const base = siteUrl(env, origin); if (!base) return;
   const period = periodText(poll, inst);
+  if (poll.lang === 'de') {
+    const text = `Die Umfrage für ${period} ist offen.\n\nBitte trag ein, wann du Zeit hast${inst.deadline ? ` (bis ${fmtDay(inst.deadline, 'de')})` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
+    await sendMail(env, poll, { to, subject: `${poll.title}: Wann hast du Zeit (${period})?`, text });
+    return;
+  }
   const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
   await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text });
 }
@@ -1160,8 +1219,10 @@ async function remind(env, poll, inst) {
   const to = await participantEmails(env, poll, inst);
   if (!to.length) return;
   const period = periodText(poll, inst);
-  const text = `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
-  await sendMail(env, poll, { to, subject: `Reminder: ${poll.title} (${period})`, text });
+  const de = poll.lang === 'de';
+  const text = (de ? `Erinnerung: Bitte trag bis ${fmtDay(inst.deadline, 'de')} ein, wann du für ${period} Zeit hast.`
+    : `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.`) + `\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
+  await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text });
 }
 async function runScheduled(env) {
   try {
