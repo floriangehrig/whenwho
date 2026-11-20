@@ -474,8 +474,7 @@
   .dd .ddp.signin label{display:block;padding:0;cursor:default;font-weight:600;font-size:13px;color:var(--ink-2);margin-bottom:6px} .dd .ddp.signin label:hover{background:none}
   .signin .code{font-size:24px;letter-spacing:8px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums;min-height:52px}
   .signin .ts{margin-top:12px;min-height:65px;min-width:300px}
-  .signin .ts[hidden]{display:none}
-  .signin .btn.primary{width:100%}
+  .signin .ts[hidden]{display:none}  .signin .btn.primary{width:100%}
   .signin details>summary{padding:6px 0}
 
   /* ---------- tiles: avatars + poll icons ---------- */
@@ -674,7 +673,8 @@
   label .opt{font-weight:500;color:var(--muted);margin-left:4px}
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
   @media (max-width:640px){ .grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
-  .unit-in{display:flex;align-items:center;gap:8px} .unit-in input{flex:none;width:72px} .unit-in span{font-size:13px;color:var(--muted);line-height:1.3}
+  .unit-in{display:flex;align-items:center;gap:8px} .unit-in input{flex:none;width:72px} .unit-in select{flex:1;min-width:0} .unit-in span{font-size:13px;color:var(--muted);line-height:1.3}
+  .series-grid{margin-top:var(--s1)} .series-grid>.field{margin-top:var(--s3)} .series-grid input[type=month],.series-grid input[type=date]{width:100%}
   .choice{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
   .choice.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
   @media (max-width:560px){ .choice,.choice.c3{grid-template-columns:1fr} }
@@ -963,8 +963,8 @@ function patChips(id){
 }
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
-  const st=PAT[id], wd=[...st.wd].sort((a,b)=>a-b);
   if(PAT[id].multi) return patMulti(PAT[id]);
+  const st=PAT[id], wd=[...st.wd].sort((a,b)=>a-b);
   let [a,b]=(st.noDom?['','']:st.dom).map(x=>x===''?null:Math.max(1,Math.min(31,Math.round(+x)||1)));
   let dom=null; if(a!=null||b!=null){ a=a??1; b=b??31; if(b<a) [a,b]=[b,a]; if(!(a===1&&b===31)) dom=[a,b]; }
   const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
@@ -977,7 +977,6 @@ function patSummary(id){
 function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.innerHTML=patSumHtml(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
 function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
 document.addEventListener('click',e=>{
-  const x=e.target.closest('[data-patchip]');
   const ps=e.target.closest('[data-patsel],[data-patdel],[data-patnew]');
   if(ps){ const id=ps.dataset.patsel||ps.dataset.patdel||ps.dataset.patnew, st=PAT[id], i=+ps.dataset.i;
     if(ps.dataset.patsel!=null) patLoad(st,i);
@@ -986,6 +985,7 @@ document.addEventListener('click',e=>{
       const used=new Set(st.periods.flatMap(x=>[...x.wd])), rest=[0,1,2,3,4,5,6].filter(d=>!used.has(d));
       st.periods.push({wd:new Set(rest.length?rest:[0,1,2,3,4,5,6]), dom:['',''], hs:st.hs, he:st.he}); patLoad(st,st.periods.length-1,true); }
     patRefresh(id,true); return; }
+  const x=e.target.closest('[data-patchip]');
   if(x){ patResetDraft(PAT[x.dataset.patchip]); patRefresh(x.dataset.patchip,true); return; }
   const ru=e.target.closest('[data-patrule]'); if(ru){ PAT[ru.dataset.patrule].rules.splice(+ru.dataset.i,1); patRefresh(ru.dataset.patrule,true); return; }
   const ad=e.target.closest('[data-patadd]');
@@ -1469,15 +1469,12 @@ function renderNew(){
           <div class="field"><label for="end">To</label><input type="date" id="end"></div>
           <div class="field"><label for="dl">Reply by <span class="opt">optional</span></label><input type="date" id="dl"></div>
         </div>
-        <div id="seriesBox" class="hide">
-          <div class="row field"><label class="m0" for="every">Repeats every</label><input type="number" id="every" min="1" max="12" value="1">
-            <select id="unit" class="inline" aria-label="Unit"><option value="month">month(s)</option><option value="week">week(s)</option></select></div>
-          <div class="grid3">
-            <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
-            <div class="field"><label for="openDays">Open each poll</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>days before</span></div></div>
-            <div class="field"><label for="dlDays">Reply by <span class="opt">optional</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>days before</span></div></div>
-          </div>
-          <div class="notice neutral small" id="seriesPreview"></div>
+        <div id="seriesBox" class="hide grid2 series-grid">
+          <div class="field"><label for="every">Repeats every</label><div class="unit-in"><input type="number" id="every" min="1" max="12" value="1">
+            <select id="unit" aria-label="Unit"><option value="month">month(s)</option><option value="week">week(s)</option></select></div></div>
+          <div class="field"><label for="first" id="firstLbl">First month</label><input type="month" id="first"></div>
+          <div class="field"><label for="openDays">Open each poll</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>days before it starts</span></div></div>
+          <div class="field"><label for="dlDays">Reply by <span class="opt">optional</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>days before it starts</span></div></div>
         </div>
         <div class="field mt-3"><label>Which days and times</label>${patternPicker('np',{hs:8,he:24,multi:true})}
           <div class="help">Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Use <b>+ Add period</b> for different times on different days (weekdays 17–22, weekends 10–22); click a period to change it.</div></div>
@@ -1515,13 +1512,7 @@ function renderNew(){
   const setUnit=()=>{ const u=$('unit').value, f=$('first');
     if(u==='month'){ f.type='month'; f.value=iso(nextMonth).slice(0,7); $('firstLbl').textContent='First month'; }
     else { f.type='date'; const mon=new Date(today); mon.setDate(mon.getDate()+((8-mon.getDay())%7||7)); f.value=iso(mon); $('firstLbl').textContent='First period starts on'; }
-    preview(); };
-  const preview=()=>{
-    const s=seriesSettings();
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)){ $('seriesPreview').textContent=''; return; }
-    const lines=[0,1,2].map(n=>{ const st=seriesStart(s,n), en=addDaysL(seriesStart(s,n+1),-1), op=addDaysL(st,-s.openDays), dl=s.deadlineDays==null?null:addDaysL(st,-s.deadlineDays);
-      return `${rangeLabel(s.unit,st,en)}: opens ${n===0?'right away':dayLabel(op)}${dl?`, reply by ${dayLabel(dl)}`:''}`; });
-    $('seriesPreview').innerHTML='Schedule: '+lines.map(esc).join(' · ')+' …<br>The share link always shows the current poll.'; };
+  };
 
   // Live summary on the right (and the title in the mobile bar).
   const ANS={days:'Whole days', slots:'Time slots', both:'Whole days or time slots'};
@@ -1548,8 +1539,7 @@ function renderNew(){
     $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
   };
   const f=$('f');
-  f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value);
-    if(['every','first','openDays','dlDays'].includes(e.target.id)) preview(); sum(); });
+  f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value); sum(); });
   f.addEventListener('change',e=>{ const n=e.target.name;
     if(e.target.type==='radio') e.target.closest('.choice').querySelectorAll('.ch').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
     if(e.target.id==='unit') setUnit();
@@ -1574,7 +1564,7 @@ function renderNew(){
   const toggleIcon=()=>{ const box=$('iconBox'), open=box.classList.toggle('hide')===false;
     $('iconBtn').textContent=open?'Done':'Change icon'; $('iconBtn').setAttribute('aria-expanded',open); };
   $('iconBtn').onclick=toggleIcon; $('iconTile').onclick=toggleIcon;
-  preview(); sum(); $('title').focus();
+  sum(); $('title').focus();
 
   f.onsubmit=async e=>{
     e.preventDefault(); const v=id=>$(id).value, err=$('ferr'); err.textContent='';
