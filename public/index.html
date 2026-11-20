@@ -175,6 +175,8 @@
   .pat-chips .em-pill.draft{border-style:dashed;background:transparent}
   .pat-add{flex:none;width:26px;height:26px;padding:0;border-radius:5px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:var(--accent-weak);color:var(--accent-ink);font-size:17px;line-height:1;cursor:pointer}
   .pat-add:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+  .pat-add.pat-addw{width:auto;padding:0 10px;font-size:13.5px;font-weight:600}
+  .pat-chips .em-pill.cur{box-shadow:0 0 0 2px var(--accent);font-weight:650}
   @keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .pat-chips .em-pill{animation:none} }
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
@@ -321,6 +323,8 @@
   .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 75%,#000)}
   .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 75%,#000)}
   .slot.na{background:var(--sunken);cursor:default;opacity:.5}
+  .slot.na,.slot.off:not(.hm):not(.mo){background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 1px,transparent 1px 7px)}
+  .slot.off{background-color:var(--sunken)} /* outside the day's periods: can still be scheduled, but nobody was asked */
 
   /* ---------- overview ---------- */
   .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:14px}
@@ -851,7 +855,9 @@ function rangeLabel(unit, st, en){
 }
 // ---------- day/time patterns ----------
 // pat = {wd:[0..6]|null (0 = Monday), dom:[from,to]|null}; null = every day. Hours are a separate [hs,he).
-const matchPat = (k,pat) => !pat || ((!pat.wd||pat.wd.includes(wdOf(k))) && (!pat.dom||(parseD(k).getDate()>=pat.dom[0]&&parseD(k).getDate()<=pat.dom[1])));
+const matchPat = (k,pat) => !pat || (pat.periods ? pat.periods.some(x=>matchPat(k,x)) : (!pat.wd||pat.wd.includes(wdOf(k))) && (!pat.dom||(parseD(k).getDate()>=pat.dom[0]&&parseD(k).getDate()<=pat.dom[1])));
+// Weekly polls ask about a typical week: days of the month don't apply there.
+const matchDay = (k,p) => matchPat(k, isWeekly()&&p ? (p.wd?{wd:p.wd,dom:null}:null) : p);
 const ord = n => n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
 const hh24 = h => h===24?'24:00':`${pad(h)}:00`;
 function wdText(wd){
@@ -871,8 +877,12 @@ function patText(pat,hs,he,{allDayFrom,allDayTo,hours=true}={}){
 }
 // Picker state: PAT[id] = {wd:Set, dom:[a|'',b|''], hs, he, hmin, hmax, hours, count:()=>string}
 const PAT={};
-function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false,chips=false}={}){
-  if(!keep||!PAT[id]) PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, chips, count:PAT[id]&&PAT[id].count};
+function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false,chips=false,multi=false}={}){
+  if(!keep||!PAT[id]){ PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, chips, multi, count:PAT[id]&&PAT[id].count};
+    // Multi: several periods, each with its own days and time. The fields above are the one being edited (periods[cur]).
+    if(multi){ const st=PAT[id], ps=pat&&pat.periods;
+      st.periods=ps&&ps.length?ps.map(x=>({wd:new Set(x.wd||[0,1,2,3,4,5,6]), dom:x.dom?[...x.dom]:['',''], hs:x.hs, he:x.he})):[{}];
+      st.cur=0; if(ps&&ps.length) patLoad(st,0,true); else patStore(st); } }
   else Object.assign(PAT[id],{hmin,hmax,hours,noDom,chips});
   return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
 }
@@ -886,7 +896,41 @@ function patInner(id){
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">Time</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="From">${opt(st.hmin,st.hmax-1,st.hs)}</select> to
       <select class="inline" data-patto="${id}" aria-label="To">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">All day</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">Evening 18–22</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">From 17:00</button>`:''}</span></div>
-    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.chips?' pat-chips':''}" id="patsum_${id}">${st.chips?patChips(id):esc(patSummary(id))}</div>`;
+    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.chips||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`;
+}
+const patSumHtml = id => PAT[id].chips?patChips(id):PAT[id].multi?patPeriods(id):esc(patSummary(id));
+// ---- several periods (create / settings): copy the edited fields into periods[cur], or load period i into them.
+function patStore(st){ st.periods[st.cur]={wd:new Set(st.wd), dom:[...st.dom], hs:st.hs, he:st.he}; }
+function patLoad(st,i,noStore){ if(!noStore) patStore(st); st.cur=i; const x=st.periods[i]; st.wd=new Set(x.wd); st.dom=[...x.dom]; st.hs=x.hs; st.he=x.he; }
+// One period's reading (same rules as patValue).
+function patOne(st,x){
+  const wd=[...x.wd].sort((a,b)=>a-b);
+  let [a,b]=(st.noDom?['','']:x.dom).map(v=>v===''?null:Math.max(1,Math.min(31,Math.round(+v)||1)));
+  let dom=null; if(a!=null||b!=null){ a=a??1; b=b??31; if(b<a) [a,b]=[b,a]; if(!(a===1&&b===31)) dom=[a,b]; }
+  const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
+  return {pat, empty:!wd.length, hs:x.hs, he:x.he};
+}
+// All periods as one value: {pat:{wd,dom,periods}, hs:min, he:max} (wd/dom = the union). One period = a plain pattern.
+function patMulti(st){
+  patStore(st); const vs=st.periods.map(x=>patOne(st,x));
+  if(vs.length===1) return vs[0];
+  const hrs=st.hours, periods=vs.map(v=>({wd:v.pat&&v.pat.wd||null, dom:v.pat&&v.pat.dom||null, hs:hrs?v.hs:st.hmin, he:hrs?v.he:st.hmax}));
+  const wd=periods.some(x=>!x.wd)?null:[...new Set(periods.flatMap(x=>x.wd))].sort((a,b)=>a-b);
+  const dom=periods.some(x=>!x.dom)?null:[Math.min(...periods.map(x=>x.dom[0])),Math.max(...periods.map(x=>x.dom[1]))];
+  return {pat:{wd:wd&&wd.length<7?wd:null, dom:dom&&!(dom[0]===1&&dom[1]===31)?dom:null, periods}, empty:vs.some(v=>v.empty),
+    hs:Math.min(...periods.map(x=>x.hs)), he:Math.max(...periods.map(x=>x.he))};
+}
+// Text for a value: "Weekdays · 17:00–22:00; Weekends · 10:00–22:00".
+function patLabel(v,o={}){ return v.pat&&v.pat.periods?v.pat.periods.map(x=>patText(x.wd||x.dom?x:null,x.hs,x.he,o)).join('; '):patText(v.pat,v.hs,v.he,o); }
+function patPeriods(id){
+  const st=PAT[id]; patStore(st); const many=st.periods.length>1, o={allDayFrom:st.hmin,allDayTo:st.hmax,hours:st.hours};
+  let h='';
+  if(!many){ const v=patOne(st,st.periods[0]); h+=`<span>${v.empty?'Pick at least one day.':esc(patText(v.pat,v.hs,v.he,o))}</span>`; }
+  else h+=st.periods.map((x,i)=>{ const v=patOne(st,x), t=v.empty?'No days picked':patText(v.pat,v.hs,v.he,o), on=i===st.cur;
+    return `<span class="em-pill${on?' cur':''}${v.empty?' bad':''}"><button type="button" class="pat-brush" data-patsel="${id}" data-i="${i}" aria-pressed="${on}" title="${on?'Editing this period':'Click to change'}" aria-label="${esc((on?'Editing: ':'Change: ')+t)}"><span>${esc(t)}</span></button><button type="button" data-patdel="${id}" data-i="${i}" title="Remove" aria-label="Remove ${esc(t)}">×</button></span>`; }).join('');
+  if(st.periods.length<10) h+=`<button type="button" class="pat-add pat-addw" data-patnew="${id}" title="Add another period with its own days and time">+ Add period</button>`;
+  const v=patMulti(st), c=!v.empty&&st.count?st.count(v):'';
+  return h+(c?`<span class="muted small">${esc(c)}</span>`:'');
 }
 // Chip view of the summary (quick fill): saved rules as chips, then the rule being edited (dashed) with + to save it and start another.
 // Each rule is one criterion: days, dates and time together, e.g. "Weekdays 12:00–15:00".
@@ -916,6 +960,7 @@ function patChips(id){
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
   const st=PAT[id], wd=[...st.wd].sort((a,b)=>a-b);
+  if(PAT[id].multi) return patMulti(PAT[id]);
   let [a,b]=(st.noDom?['','']:st.dom).map(x=>x===''?null:Math.max(1,Math.min(31,Math.round(+x)||1)));
   let dom=null; if(a!=null||b!=null){ a=a??1; b=b??31; if(b<a) [a,b]=[b,a]; if(!(a===1&&b===31)) dom=[a,b]; }
   const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
@@ -925,10 +970,18 @@ function patSummary(id){
   const st=PAT[id], v=patValue(id); if(v.empty) return 'Pick at least one day.';
   const c=st.count?st.count(v):''; return patText(v.pat,v.hs,v.he,{allDayFrom:st.hmin,allDayTo:st.hmax,hours:st.hours})+(c?` · ${c}`:'');
 }
-function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s){ if(PAT[id].chips) s.innerHTML=patChips(id); else s.textContent=patSummary(id); } } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
+function patRefresh(id,full){ const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.innerHTML=patSumHtml(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
 function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
 document.addEventListener('click',e=>{
   const x=e.target.closest('[data-patchip]');
+  const ps=e.target.closest('[data-patsel],[data-patdel],[data-patnew]');
+  if(ps){ const id=ps.dataset.patsel||ps.dataset.patdel||ps.dataset.patnew, st=PAT[id], i=+ps.dataset.i;
+    if(ps.dataset.patsel!=null) patLoad(st,i);
+    else if(ps.dataset.patdel!=null){ patStore(st); st.periods.splice(i,1); st.cur=Math.min(st.cur>i?st.cur-1:st.cur,st.periods.length-1); patLoad(st,st.cur,true); }
+    else { patStore(st); // the new period starts on the days no period has yet (or every day), with the same hours
+      const used=new Set(st.periods.flatMap(x=>[...x.wd])), rest=[0,1,2,3,4,5,6].filter(d=>!used.has(d));
+      st.periods.push({wd:new Set(rest.length?rest:[0,1,2,3,4,5,6]), dom:['',''], hs:st.hs, he:st.he}); patLoad(st,st.periods.length-1,true); }
+    patRefresh(id,true); return; }
   if(x){ patResetDraft(PAT[x.dataset.patchip]); patRefresh(x.dataset.patchip,true); return; }
   const ru=e.target.closest('[data-patrule]'); if(ru){ PAT[ru.dataset.patrule].rules.splice(+ru.dataset.i,1); patRefresh(ru.dataset.patrule,true); return; }
   const ad=e.target.closest('[data-patadd]');
@@ -1422,8 +1475,8 @@ function renderNew(){
           </div>
           <div class="notice neutral small" id="seriesPreview"></div>
         </div>
-        <div class="field mt-3"><label>Which days and times</label>${patternPicker('np',{hs:8,he:24})}
-          <div class="help">Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22.</div></div>
+        <div class="field mt-3"><label>Which days and times</label>${patternPicker('np',{hs:8,he:24,multi:true})}
+          <div class="help">Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Use <b>+ Add period</b> for different times on different days (weekdays 17–22, weekends 10–22); click a period to change it.</div></div>
       </div>
       <div class="section step"><h3>How people answer</h3>
         <div class="field">${choice('ans',[['days','Whole days','Available, maybe or not, for each day'],['slots','Time slots','They paint the hours they can make on a week grid'],['both','Both','Whole days, or hours when they only have some']],'both')}</div>
@@ -1482,7 +1535,7 @@ function renderNew(){
     else { const s=seriesSettings(), u=s.unit==='month'?'month':'week';
       rows.push(['Repeats', s.every===1?`Every ${u}`:`Every ${s.every} ${u}s`]);
       if(/^\d{4}-\d{2}-\d{2}$/.test(s.anchor)) rows.push(['First', rangeLabel(s.unit,seriesStart(s,0),addDaysL(seriesStart(s,1),-1))]); }
-    { const pv=patValue('np'); rows.push(['Days', pv.empty?'Pick at least one day':patText(pv.pat,pv.hs,pv.he,{hours:ans!=='days'})]); }
+    { const pv=patValue('np'); rows.push(['Days', pv.empty?'Pick at least one day':patLabel(pv,{hours:ans!=='days'})]); }
     rows.push(['Answers', ANS[ans]]);
     const priv=[$('pw').value?'Password':'Anyone with the link'];
     if($('hide').checked) priv.push('results hidden'); if(!$('comments').checked) priv.push('no comments');
@@ -1530,7 +1583,7 @@ function renderNew(){
         if(v('end')<v('start')) return fail('The last day is before the first day.','end');
         if(v('dl')&&v('dl')>v('end')) return fail('The reply-by date is after the last day.','dl');
       } else if(kind==='series'&&!v('first')) return fail('Pick when the series starts.','first');
-      const pv=patValue('np'); if(pv.empty) return fail('Pick at least one day of the week.');
+      const pv=patValue('np'); if(pv.empty) return fail(PAT.np.periods.length>1?'Pick at least one day in every period.':'Pick at least one day of the week.');
       if(kind==='single'&&!daysIn(v('start'),v('end'),pv.pat)) return fail('None of the days in this range match the chosen days.');
       return true; };
     if(!check()) return;
@@ -1668,16 +1721,20 @@ function renderPassword(title,msg){
 
 // ---- entry helpers: 'y' | 'm' | {y:[h],m:[h]}. Anything not marked counts as not available.
 // Old answers may still hold 'n' / {n:[h]} (an explicit "can't"); it is treated like blank.
-function hours(){ const p=P.data.poll; return Array.from({length:p.hourEnd-p.hourStart},(_,i)=>p.hourStart+i); }
-function hourMap(v){
-  const H=hours(), map=new Map();
+// hours(k): the hours offered on day k. A poll with several periods (weekdays 17-22, weekends 10-22) offers
+// each day only the hours of its own periods; without k (or without periods) it's the poll's whole range.
+function hours(k){ const p=P.data.poll, H=Array.from({length:p.hourEnd-p.hourStart},(_,i)=>p.hourStart+i);
+  const ps=k&&p.dayPattern&&p.dayPattern.periods?p.dayPattern.periods.filter(x=>matchDay(k,x)):null;
+  return ps&&ps.length?H.filter(h=>ps.some(x=>h>=x.hs&&h<x.he)):H; }
+function hourMap(v,k){
+  const H=hours(k), map=new Map(), ok=new Set(H);
   if(v==='y'||v==='m') H.forEach(h=>map.set(h,v));
-  else if(Array.isArray(v)) v.forEach(h=>map.set(h,'y'));
-  else if(v&&typeof v==='object') ['m','y'].forEach(s=>(v[s]||[]).forEach(h=>map.set(h,s)));
+  else if(Array.isArray(v)) v.forEach(h=>ok.has(h)&&map.set(h,'y'));
+  else if(v&&typeof v==='object') ['m','y'].forEach(s=>(v[s]||[]).forEach(h=>ok.has(h)&&map.set(h,s)));
   return map;
 }
-function fromMap(map){
-  const H=hours(), o={y:[],m:[]};
+function fromMap(map,k){
+  const H=hours(k), o={y:[],m:[]};
   H.forEach(h=>{ const s=map.get(h); if(s==='y'||s==='m') o[s].push(h); });
   for(const s of ['y','m']) if(o[s].length===H.length) return s;
   if(!o.y.length&&!o.m.length) return null;
@@ -1685,22 +1742,22 @@ function fromMap(map){
 }
 const isPartial = v => Array.isArray(v)||(v&&typeof v==='object');
 // Drops old explicit "can't" marks from my own answer, so saving rewrites it without them.
-function cleanEntries(en){ const o={}; for(const k in en||{}){ const x=fromMap(hourMap(en[k])); if(x!=null) o[k]=x; } return o; }
-function counts(v){ const H=hours(), c={y:0,m:0,e:0}; const map=hourMap(v); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
-function ratioBar(v){ const c=counts(v), t=hours().length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.e}h not available">${['y','m'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
-function hoursOf(v,s){ return [...hourMap(v)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
-function partialText(v){ const y=hoursOf(v,'y'), m=hoursOf(v,'m'); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
-function statusOf(v){
+function cleanEntries(en){ const o={}; for(const k in en||{}){ const x=fromMap(hourMap(en[k],k),k); if(x!=null) o[k]=x; } return o; }
+function counts(v,k){ const H=hours(k), c={y:0,m:0,e:0}; const map=hourMap(v,k); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
+function ratioBar(v,k){ const c=counts(v,k), t=hours(k).length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.e}h not available">${['y','m'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
+function hoursOf(v,s,k){ return [...hourMap(v,k)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
+function partialText(v,k){ const y=hoursOf(v,'y',k), m=hoursOf(v,'m',k); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
+function statusOf(v,k){
   if(v==='y') return {t:'Available',c:'var(--yes-dark)',cls:'y'};
   if(v==='m') return {t:'Maybe',c:'var(--maybe-ink)',cls:'m'};
-  if(isPartial(v)&&fromMap(hourMap(v))!=null) return {t:partialText(v),c:'var(--ink)',cls:'part'};
+  if(isPartial(v)&&fromMap(hourMap(v,k),k)!=null) return {t:partialText(v,k),c:'var(--ink)',cls:'part'};
   return {t:'',c:'var(--muted)',cls:''};
 }
 // availability of a person for a window [start,end) on a day: 'y' all hours available, 'm' none unavailable but some maybe/blank-maybe, 'x' otherwise
-function windowStatus(v,start,end,allDay){
+function windowStatus(v,start,end,allDay,k){
   if(v==null) return 'x';
   if(v==='y'||v==='m') return v; if(!isPartial(v)) return 'x';
-  const map=hourMap(v), H=hours(); const span=allDay?H:H.filter(h=>h>=start&&h<end);
+  const map=hourMap(v,k), H=hours(k); const span=allDay?H:H.filter(h=>h>=start&&h<end);
   if(!span.length) return 'x';
   const st=span.map(h=>map.get(h));
   if(st.every(s=>s==='y')) return 'y';
@@ -2096,13 +2153,13 @@ function renderMine(el){
     h+=tools(`${ib('check','All available','data-bulk="all"','sm','All')}${qfButton()}
       ${calButton()}${ib('x','Clear all','data-bulk="clear"','sm ghost','Clear')}`)+quickFill()+calPanel()+
       `<p class="help">Tap a day to cycle <b>available</b> → <b>maybe</b> → blank. Blank counts as not available.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe); hover or long-press for names.`:''}</p>`;
-    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v), o=S[k];
+    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
       let hint='', tip='';
       if(o&&(o.peak||o.peakMaybe||o.part)){
-        const ys=o.list.filter(x=>fromMap(hourMap(x.v))==='y').map(x=>x.name), ps=o.list.filter(x=>{ const f=fromMap(hourMap(x.v)); return f&&f!=='y'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fromMap(hourMap(x.v))==='m').map(x=>x.name);
+        const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
         tip=names([...ys,...ps],ms);
         hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div>${heatBar(o.peak,o.peakMaybe,n)}`; }
-      return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+      return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
     h+=`<div class="row ws-tools"><div class="seg" role="group" aria-label="Brush">
@@ -2116,10 +2173,10 @@ function renderMine(el){
     wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
-        if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
-        const st=hourMap(me[k]).get(hr);
+        if(!k||!hours(k).includes(hr)){ h+=`<div class="slot na${pos}"></div>`; return; }
+        const st=hourMap(me[k],k).get(hr);
         let extra='';
-        if(on){ const ys=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k]).get(hr); if(s==='y') ys.push(r.name||'Someone'); else if(s==='m') ms.push(r.name||'Someone'); });
+        if(on){ const ys=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k],k).get(hr); if(s==='y') ys.push(r.name||'Someone'); else if(s==='m') ms.push(r.name||'Someone'); });
           if(ys.length||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${ys.length?Math.round(6+ys.length/n*30):0}%" data-n="${ys.length?ys.length:''}${ms.length?(ys.length?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,ms))}`; }
         h+=`<div class="slot${pos}${st?' s'+st:''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
@@ -2158,10 +2215,11 @@ document.addEventListener('keydown',e=>{
 });
 function applyQuickFill(){
   const rs=patRules('qf'); if(!rs.length){ toast('Pick at least one day'); return; }
-  const H=hours(), en=Object.assign({},P.mine.entries), done=new Set();
-  rs.forEach(r=>{ const st=r.st||'y', whole=!PAT.qf.hours||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
-    P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
-      const m=hourMap(en[k]); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; }); });
+  const en=Object.assign({},P.mine.entries), done=new Set();
+  rs.forEach(r=>{ const st=r.st||'y';
+    P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ const H=hours(k), whole=!PAT.qf.hours||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
+      done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
+      const m=hourMap(en[k],k); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; }); });
   const n=done.size; P.mine.entries=en; changed(); renderBody(); toast(n?`${rs.every(r=>r.st==='x')?'Cleared':'Filled'} ${n} day${n===1?'':'s'}`:'No days in this poll match');
 }
 document.addEventListener('click',e=>{
@@ -2290,16 +2348,16 @@ function parseIcs(text,fromMs,toMsX){
 }
 // Free hours (in blank cells only) become "available"; busy hours stay blank, which means not available.
 function calendarFill(busy){
-  const H=hours(), days=ansMode()==='days', en=Object.assign({},P.mine.entries); let changedDays=0;
+  const days=ansMode()==='days', en=Object.assign({},P.mine.entries); let changedDays=0;
   const busyAt=(k,h)=>{ const a=parseD(k); a.setHours(h); const s=a.getTime(), e=s+3600000; return busy.some(([x,y])=>x<e&&y>s); };
   // Weekly schedule polls have no real dates: look at the next 4 weeks, busy if busy in at least 2 of them.
   const mon=(()=>{ const t=new Date(); return addDaysL(isoL(t),-((t.getDay()+6)%7)); })();
   const isBusy=(k,h)=>isWeekly()?[0,1,2,3].filter(w=>busyAt(addDaysL(mon,wdOf(k)+7*w),h)).length>=2:busyAt(k,h);
   P.data.dates.forEach(k=>{
-    const m=hourMap(en[k]); if(days&&m.size) return;
+    const H=hours(k), m=hourMap(en[k],k); if(days&&m.size) return;
     const free=H.filter(h=>!m.has(h)&&!isBusy(k,h)); if(!free.length) return;
     if(days){ en[k]=free.length===H.length?'y':'m'; changedDays++; return; }
-    free.forEach(h=>m.set(h,'y')); const x=fromMap(m); if(x==null) delete en[k]; else en[k]=x; changedDays++;
+    free.forEach(h=>m.set(h,'y')); const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; changedDays++;
   });
   P.mine.entries=en; return changedDays;
 }
@@ -2360,10 +2418,10 @@ function wireGrid(){
   let paint=null, touched=new Map();
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
   const stateOf=el=>['y','m'].find(s=>el.classList.contains('s'+s))||null;
-  const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k]));
+  const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k],k));
     const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
     ['y','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
-  const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map))); touched=new Map(); changed(); renderBody(); };
+  const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map,k))); touched=new Map(); changed(); renderBody(); };
   gridGestures(grid,cellAt,{
     start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
     move:el=>{ if(paint!==null) apply(el); },
@@ -2414,8 +2472,8 @@ function others(){ return (P.data.responses||[]).filter(r=>!P.myResp||r.id!==P.m
 function stats(k, rs=sel()){
   const H=hours(), cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
   const list=rs.map(r=>{ const v=(r.entries||{})[k];
-    const x=fromMap(hourMap(v)); if(x==='y') full++; else if(x==='m') maybe++; else if(x) part++; else no++;
-    hourMap(v).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
+    const x=fromMap(hourMap(v,k),k); if(x==='y') full++; else if(x==='m') maybe++; else if(x) part++; else no++;
+    hourMap(v,k).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
     return {id:r.id,name:r.name||'Someone',v}; });
   const peak=Math.max(0,...cy), bestHours=peak?H.filter((h,i)=>cy[i]===peak):[];
   const peakMaybe=peak?Math.max(0,...H.map((h,i)=>cy[i]===peak?cm[i]:0)):Math.max(0,...cm);
@@ -2479,7 +2537,7 @@ function renderGroup(el){
       ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
       ${legend('yes','best','maybe')}`:''}
-      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v):''}</div>`; }).join('')}</div></div>`;
+      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
   h+=`<div class="section"><h3>Best days</h3><ul class="list best">${ranked.map(o=>
@@ -2573,7 +2631,7 @@ function renderPlanner(S){
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
         const c=S[k].cy[ri], m=S[k].cm[ri];
-        let cls='slot'+pos;
+        let cls='slot'+pos+(c||m||hours(k).includes(hr)?'':' off');
         if(c===tot) cls+=' allfree'; else if(c) cls+=' hm'; else if(m) cls+=' mo';
         if(c<tot&&m&&c+m>=tot) cls+=' mb';
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
@@ -2608,7 +2666,7 @@ function renderPlan(el){
 function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
   if(!P.drafts.length) return `<div id="drafts"></div>`;
-  const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay)!=='x').length;
+  const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay,x.date)!=='x').length;
     return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
       <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> All day</label>
       ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> to <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
@@ -2712,7 +2770,7 @@ function adminPanes(){
     <div class="section"><h3>Answering</h3>
       <div class="row field"><label class="m0" for="s_ans">People answer with</label><select id="s_ans" class="inline">
         <option value="days" ${p.answerMode==='days'?'selected':''}>Whole days</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>Time slots</option><option value="both" ${p.answerMode==='both'?'selected':''}>Both</option></select></div>
-      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly'})}
+      <div class="field"><label>Which days and times</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}
         <div class="help">Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.</div></div>
       <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> Allow comments</label></div>
     <div class="section"><h3>Privacy</h3>
@@ -2867,7 +2925,7 @@ function wireAdmin(){
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
-    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast('Pick at least one day of the week'); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(PAT.sp.periods.length>1?'Pick at least one day in every period':'Pick at least one day of the week'); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
     if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');

@@ -225,7 +225,10 @@ function checkRange(s, e) {
   if (daysBetween(s, e) + 1 > MAX_RANGE_DAYS) throw new HttpError(400, `A poll can cover at most ${MAX_RANGE_DAYS} days`);
 }
 // Day pattern: which days of a round are offered. {wd:[0..6]|null (0 = Monday), dom:[from,to]|null}; null = every day.
-function parsePattern(v) {
+// Several periods (e.g. Mon-Fri 17-22 and Sat-Sun 10-22): {wd, dom, periods:[{wd,dom,hs,he}]}, where the top-level
+// wd/dom are the union of the periods (a superset, for older pages) and hour_start/hour_end span all of them.
+const MAX_PERIODS = 10;
+function parseDays(v) {
   if (v == null || v === '') return null;
   if (typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'Invalid day pattern');
   let wd = null, dom = null;
@@ -243,16 +246,38 @@ function parsePattern(v) {
   }
   return wd || dom ? { wd, dom } : null;
 }
+function parsePattern(v) {
+  const base = parseDays(v);
+  if (!v || typeof v !== 'object' || v.periods == null) return base;
+  if (!Array.isArray(v.periods) || !v.periods.length || v.periods.length > MAX_PERIODS) throw new HttpError(400, `Add 1 to ${MAX_PERIODS} periods`);
+  const periods = v.periods.map((x) => {
+    const d = parseDays(x) || { wd: null, dom: null };
+    const hs = int(x.hs, 0, 23, 'First hour'), he = int(x.he, 1, 24, 'Last hour');
+    if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
+    return { wd: d.wd, dom: d.dom, hs, he };
+  });
+  const allWd = periods.some((p) => !p.wd), allDom = periods.some((p) => !p.dom);
+  const wd = allWd ? null : [...new Set(periods.flatMap((p) => p.wd))].sort((a, b) => a - b);
+  const dom = allDom ? null : [Math.min(...periods.map((p) => p.dom[0])), Math.max(...periods.map((p) => p.dom[1]))];
+  return { wd: wd && wd.length < 7 ? wd : null, dom: dom && !(dom[0] === 1 && dom[1] === 31) ? dom : null, periods };
+}
 function patternOf(poll) { try { return poll.day_pattern ? JSON.parse(poll.day_pattern) : null; } catch (e) { return null; } }
 function matchesPattern(d, pat) {
   if (!pat) return true;
   const x = new Date(d + 'T00:00:00Z');
   return (!pat.wd || pat.wd.includes((x.getUTCDay() + 6) % 7)) && (!pat.dom || (x.getUTCDate() >= pat.dom[0] && x.getUTCDate() <= pat.dom[1]));
 }
+// A typical week (weekly polls) has no days of the month, so dom is ignored there.
+const isWeekDate = (d) => d >= WEEK0 && d <= '2001-01-07';
+const dayMatch = (d, p) => matchesPattern(d, isWeekDate(d) ? (p.wd ? { wd: p.wd, dom: null } : null) : p);
+// The periods that apply to date d (null = the poll has no periods).
+function periodsOn(pat, d) { return pat && Array.isArray(pat.periods) ? pat.periods.filter((p) => dayMatch(d, p)) : null; }
 function datesOf(inst, poll) {
-  let pat = poll ? patternOf(poll) : null; const out = [];
-  if (pat && isWeek0(inst)) pat = pat.wd ? { wd: pat.wd, dom: null } : null; // a typical week has no days of the month
-  for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) if (matchesPattern(d, pat)) out.push(d);
+  const pat = poll ? patternOf(poll) : null; const out = [];
+  for (let d = inst.start_date; d <= inst.end_date; d = addDays(d, 1)) {
+    const ps = periodsOn(pat, d);
+    if (ps ? ps.length : !pat || dayMatch(d, pat)) out.push(d);
+  }
   return out;
 }
 // Weekly schedule polls ask about a typical week. Their one round covers this fixed Monday-Sunday,
@@ -343,9 +368,11 @@ function validateEntries(entries, poll, dates) {
   if (entries == null) return {};
   if (typeof entries !== 'object' || Array.isArray(entries)) throw new HttpError(400, 'Invalid answers');
   const allowed = new Set(dates), out = {};
-  const hourOk = (h) => Number.isInteger(h) && h >= poll.hour_start && h < poll.hour_end;
+  const pat = patternOf(poll);
   for (const [k, v] of Object.entries(entries)) {
     if (!allowed.has(k)) continue;
+    const ps = periodsOn(pat, k);
+    const hourOk = (h) => Number.isInteger(h) && (ps ? ps.some((p) => h >= p.hs && h < p.he) : h >= poll.hour_start && h < poll.hour_end);
     if (v === 'y' || v === 'm' || v === 'n') { out[k] = v; continue; }
     if (poll.answer_mode === 'days') throw new HttpError(400, 'This poll only takes whole days');
     if (v && typeof v === 'object' && !Array.isArray(v)) {
@@ -678,7 +705,15 @@ function readPollSettings(b, existing) {
     if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
     p.hour_start = hs; p.hour_end = he;
   }
-  if (!existing || has('dayPattern')) { const pat = parsePattern(b.dayPattern); p.day_pattern = pat ? JSON.stringify(pat) : null; }
+  if (!existing || has('dayPattern')) {
+    let pat = parsePattern(b.dayPattern);
+    if (pat && pat.periods) {
+      const ps = pat.periods;
+      if (ps.length === 1) pat = ps[0].wd || ps[0].dom ? { wd: ps[0].wd, dom: ps[0].dom } : null;
+      p.hour_start = Math.min(...ps.map((x) => x.hs)); p.hour_end = Math.max(...ps.map((x) => x.he));
+    }
+    p.day_pattern = pat ? JSON.stringify(pat) : null;
+  }
   if (!existing || has('hideResults')) p.hide_results = b.hideResults ? 1 : 0;
   if (!existing || has('allowComments')) p.allow_comments = b.allowComments === false ? 0 : 1;
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
