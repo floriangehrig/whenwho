@@ -124,20 +124,23 @@
   input[readonly]{background:var(--sunken);color:var(--ink-2)}
   textarea{min-height:76px;resize:vertical;line-height:1.45}
   /* email entry: each address becomes a square-ish pill */
-  .emails{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:76px;align-content:flex-start;padding:7px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);cursor:text;transition:border-color .12s,box-shadow .12s}
-  .emails:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
-  .emails:focus-within{border-color:var(--accent);box-shadow:var(--ring)}
-  .emails input[type=text]{flex:1 1 160px;min-width:120px;min-height:30px;width:auto;padding:4px 4px;border:0;background:transparent;box-shadow:none}
-  .stage{display:flex;flex-direction:column;gap:6px;margin-top:8px} .stage:empty{display:none}
-  .stg-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto;gap:6px;align-items:center}
-  .stg-row input{min-height:36px;padding:6px 9px;font-size:14px} .stg-row input.bad{border-color:var(--no)}
-  .stg-note{font-size:12.5px;max-width:14em} .stg-note:empty{display:none}
-  @media (max-width:560px){ .stg-row{grid-template-columns:minmax(0,1fr) auto;padding-bottom:6px;border-bottom:1px solid var(--line)} .stg-row input[data-f=email]{grid-row:2;grid-column:1} .stg-row .stg-note{grid-row:3;grid-column:1/-1;max-width:none} .stg-row button{grid-row:1;grid-column:2} }
   .ptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0 8px;border-bottom:1px solid var(--line)}
-  .plist li>input[type=checkbox]{flex:none;width:18px;height:18px;margin:0}
-  .plist li.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
-  .plist .acts{flex-wrap:wrap;align-items:center} .plist select.inline{min-height:32px;font-size:13px;padding:4px 8px}
-  @media (max-width:560px){ .plist li>.grow{flex:1 1 calc(100% - 40px)} .plist .acts{width:100%;padding-left:28px} }
+  .pplist{margin-top:0}
+  .pplist li{flex-wrap:nowrap;align-items:center;gap:10px}
+  .pplist li>input[type=checkbox]{flex:none;width:18px;height:18px;margin:0}
+  .pplist li.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+  .pplist .pmain{display:flex;flex-direction:column;min-width:0}
+  .pplist .pname{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0} .pplist .pname b{overflow-wrap:anywhere}
+  .pplist .pmain>.small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pplist .acts{flex:none;gap:2px;align-items:center}
+  .qb.ok{color:var(--accent)}
+  .padd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:6px;align-items:center;min-width:0}
+  .padd input{min-height:38px;padding:6px 10px}
+  .padd-new{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .pplist li.pediting{background:var(--sunken)} .pediting .padd{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+  .padd-btn{width:40px;min-height:38px;padding:0} .padd-btn svg{width:18px;height:18px;flex:none}
+  @media (max-width:560px){ .padd{grid-template-columns:minmax(0,1fr) auto} .padd input+input{grid-row:2;grid-column:1} .padd-btn{grid-row:1/3;grid-column:2;align-self:stretch;height:auto}
+    .pediting .padd{grid-template-columns:minmax(0,1fr)} }
   .em-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;font-size:13.5px;font-weight:500;line-height:1.3;padding:4px 4px 4px 9px;border-radius:5px;background:var(--accent-weak);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
   .em-pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .em-pill.bad{background:var(--no-bg);color:var(--no);border-color:color-mix(in srgb,var(--no) 40%,transparent)}
@@ -747,7 +750,6 @@
     .wknav{gap:6px}
     .linkbox .btn{flex:none}
     .btn.keep .bl{display:inline} .btn.keep .bs{display:none}
-    .plist .acts{flex-wrap:nowrap;gap:4px} .plist select.inline{max-width:118px;min-width:0;flex:1 1 auto}
     .ptools{gap:6px}
     .seg .bl{display:none} .seg .segic{margin-right:0}
     .ws-tools .seg button{padding-inline:9px} .ws-tools .seg .dot{margin-right:5px}
@@ -789,11 +791,7 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show
 async function copy(text){ try{ await navigator.clipboard.writeText(text); toast('Copied'); }catch(e){ prompt('Copy this:', text); } }
 const origin = location.origin + location.pathname.replace(/index\.html$/,'');
 const shareLink = id => `${origin}?p=${id}`;
-// ---- "Add people": one box for names and/or email addresses (People tab and the "Poll created" screen) ----
-// Each entry becomes an editable row (name + email). "Add & send invite" adds them to the poll's participants and
-// emails those with an address from when-who (replies go to the organiser); "Open in my email app" adds them and
-// opens the organiser's own email app with the link (addresses in BCC). STAGE[pollId] holds the rows.
-const STAGE={};
+// ---- People list (People tab and the "Poll created" screen): everyone in the poll plus an add row ----
 // "anna.m-b@x.com" -> "Anna M B"
 const nameFromEmail = e => e.split('@')[0].split(/[._+\-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ').slice(0,60) || e.split('@')[0].slice(0,60);
 // Accepts "Anna", "ben@x.com", "Carl <carl@x.com>", "Dora dora@x.com", "Eve, eve@x.com" and lists of them
@@ -811,85 +809,8 @@ function parsePeople(raw){
     }); });
   return out;
 }
-function peopleBox(id){
-  const srv=CONFIG.emailEnabled;
-  return `<div class="section"><h3>Add people</h3>
-    <div class="field"><label for="pin_${esc(id)}">Names or email addresses <span class="opt">press Enter after each, or paste a list</span></label>
-      <div class="emails" data-emailsbox="${esc(id)}"><input type="text" id="pin_${esc(id)}" data-people="${esc(id)}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Anna, ben@example.com, Carl &lt;carl@example.com&gt;"></div></div>
-    <div class="stage" id="stg_${esc(id)}"></div>
-    <div class="row tight mt-3">${srv?ib('send','Add & send invite',`data-padd="${esc(id)}" data-send="1"`,'primary','Send'):''}
-      ${ib('plus',srv?'Add only':'Add',`data-padd="${esc(id)}"`,srv?'':'primary','Add')}
-      ${ib('mail','Add & open in my email app',`data-padd="${esc(id)}" data-mailapp="1"`,'','Email app')}</div>
-    <div class="help">${srv?`“Send invite” emails the poll link from when-who's address under your name, everyone in BCC. Replies go to your account email. People without an address are just added to the list.`
-      :`Adds them to the list, then opens your email app with the poll link and everyone's address in BCC.`} Guests who answer with the same name are matched to their row.</div>
-    <div class="help" id="pres_${esc(id)}"></div></div>`;
-}
-// Existing people (People tab only) to flag duplicates while typing.
-function stageNote(x){
-  if(x.email&&!EMAIL_RE.test(x.email)) return `<span class="err m0">Check the address</span>`;
-  if(!x.name.trim()) return `<span class="err m0">Name needed</span>`;
-  const ps=P.parts||[], have=ps.find(p=>(x.email&&p.email&&p.email.toLowerCase()===x.email)||(!p.account&&nameKey(p.name)===nameKey(x.name)));
-  return have?`<span class="muted small">Already in the list${x.email&&have.invitedAt?', invites again':''}</span>`:'';
-}
-function stageRender(id){
-  const el=$('stg_'+id); if(!el) return; const rows=STAGE[id]||[];
-  el.innerHTML=rows.length?rows.map((x,i)=>`<div class="stg-row">
-    <input type="text" maxlength="60" value="${esc(x.name)}" placeholder="Name" aria-label="Name" data-stg="${esc(id)}" data-i="${i}" data-f="name">
-    <input type="email" maxlength="200" value="${esc(x.email)}" placeholder="Email (optional)" aria-label="Email" data-stg="${esc(id)}" data-i="${i}" data-f="email" class="${x.email&&!EMAIL_RE.test(x.email)?'bad':''}">
-    <span class="stg-note">${stageNote(x)}</span>
-    <button type="button" class="btn sm ghost" data-stgdel="${esc(id)}" data-i="${i}" aria-label="Remove ${esc(x.name||x.email)}">×</button></div>`).join(''):'';
-}
-function stageAdd(id,raw){
-  const rows=STAGE[id]||(STAGE[id]=[]);
-  parsePeople(raw).forEach(x=>{ if(!rows.some(r=>(x.email&&r.email===x.email)||(!x.email&&!r.email&&nameKey(r.name)===nameKey(x.name)))) rows.push(x); });
-  stageRender(id);
-}
-// Commits whatever is still typed, then returns the rows.
-function stageValue(id){ const inp=$('pin_'+id); if(inp&&inp.value.trim()){ stageAdd(id,inp.value); inp.value=''; } return STAGE[id]||[]; }
-// Enter or ; commits. A comma commits only after an address, so "Carl, carl@x.com" can be typed as one person.
-document.addEventListener('keydown',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return; const id=inp.dataset.people, v=inp.value;
-  if(e.key==='Enter'||e.key===';'||(e.key===','&&/@\S*$/.test(v.trim()))||(e.key==='Tab'&&v.trim())){ if(!v.trim()&&e.key!==';') return; e.preventDefault(); stageAdd(id,v); inp.value=''; }
-  else if(e.key==='Backspace'&&!v){ const rows=STAGE[id]||[]; if(rows.length){ e.preventDefault(); const x=rows.pop(); inp.value=x.email?(x.name&&x.name!==nameFromEmail(x.email)?`${x.name} <${x.email}>`:x.email):x.name; stageRender(id); } }
-});
-document.addEventListener('paste',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return;
-  const t=(e.clipboardData||window.clipboardData).getData('text'); if(!/[\n,;\t]/.test(t.trim())) return;
-  e.preventDefault(); stageAdd(inp.dataset.people, inp.value+t); inp.value=''; });
-// Mobile keyboards often send no usable keydown: commit on ; or newline, and on a comma right after an address.
-document.addEventListener('input',e=>{
-  const s=e.target.closest&&e.target.closest('[data-stg]');
-  if(s){ const x=(STAGE[s.dataset.stg]||[])[+s.dataset.i]; if(!x) return; x[s.dataset.f]=s.dataset.f==='email'?s.value.trim().toLowerCase():s.value;
-    if(s.dataset.f==='email') s.classList.toggle('bad',!!x.email&&!EMAIL_RE.test(x.email));
-    const n=s.parentNode.querySelector('.stg-note'); if(n) n.innerHTML=stageNote(x); return; }
-  const inp=e.target.closest&&e.target.closest('[data-people]'); if(!inp) return;
-  if(/[;\n]/.test(inp.value)||/@[^\s,;]*\.[^\s,;]+,/.test(inp.value)){ stageAdd(inp.dataset.people,inp.value); inp.value=''; } });
-document.addEventListener('focusout',e=>{ const inp=e.target.closest&&e.target.closest('[data-people]'); if(inp&&inp.value.trim()){ stageAdd(inp.dataset.people,inp.value); inp.value=''; } });
-document.addEventListener('mousedown',e=>{ if(e.target.closest('[data-stgdel]')) e.preventDefault(); });
-document.addEventListener('click',e=>{
-  const d=e.target.closest('[data-stgdel]');
-  if(d){ const id=d.dataset.stgdel; (STAGE[id]||[]).splice(+d.dataset.i,1); stageRender(id); $('pin_'+id)?.focus(); return; }
-  const b=e.target.closest('[data-emailsbox]'); if(b&&e.target===b) b.querySelector('input').focus();
-});
 const pollHeaders = id => id===P.id ? headers() : (store.get('pw:'+id,null) ? {'x-poll-password':store.get('pw:'+id,null)} : {});
 const plural = (n,one,many) => `${n} ${n===1?one:many}`;
-// data-padd: add the staged people; data-send also emails them from the site, data-mailapp opens the email app.
-async function peopleAdd(t){
-  const id=t.dataset.padd, rows=stageValue(id).map(x=>({name:x.name.trim(),email:x.email.trim()}));
-  if(!rows.length){ toast('Type a name or an email address first'); $('pin_'+id)?.focus(); return; }
-  if(rows.some(x=>x.email&&!EMAIL_RE.test(x.email))){ toast("One of the addresses doesn't look right"); return; }
-  if(rows.some(x=>!x.name)){ toast('Every person needs a name'); return; }
-  const send=!!t.dataset.send, mailapp=!!t.dataset.mailapp;
-  t.disabled=true;
-  try{
-    const r=await api('POST',`/polls/${id}/${send?'invite':'participants'}`,{people:rows},pollHeaders(id));
-    const bits=[r.added.length?`Added ${r.added.length}`:'', r.updated.length?`updated ${r.updated.length}`:'', send?(r.sent?`invite sent to ${plural(r.sent,'person','people')}`:'no invites sent (no email addresses)'):''].filter(Boolean);
-    const res=$('pres_'+id); if(res) res.textContent=[bits.join(', '), r.skipped.length?`Already in the list: ${r.skipped.join(', ')}.`:''].filter(Boolean).join('. ');
-    toast(bits.join(', ')||'Already in the list');
-    STAGE[id]=[]; stageRender(id);
-    if(mailapp){ const to=rows.filter(x=>x.email).map(x=>x.email); location.href=pollInviteMail(id, P.id===id?P.data.poll.title:document.title.replace(/ · when-who$/,''), P.id===id&&inst()&&inst().status==='open'?inst().deadline:null, to.join('\n')).href; }
-    if(P.id===id&&P.data) await partsChanged();
-  }catch(ex){ toast(ex.message); }
-  t.disabled=false;
-}
 function pollInviteMail(id,title,deadline,raw){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
   const ok=[...new Set(parts.filter(x=>EMAIL_RE.test(x)).map(x=>x.toLowerCase()))], bad=parts.filter(x=>!EMAIL_RE.test(x));
@@ -1637,10 +1558,10 @@ function renderCreated(id, body, kind){
     <main class="wrap"><div class="card accent"><div class="card-h"><h2>Share it</h2><span class="tag y">Created</span></div>
       <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}">${ib('copy','Copy',`data-copy="${esc(shareLink(id))}"`)}</div>
       <div class="help">You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.</div></div>
-      ${peopleBox(id)}
+      <div class="section"><h3>People</h3>${peoplePanel(id,{title:body.title,series:kind==='series'})}</div>
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">Open poll</a><a class="btn" href="?new">Create another</a></div>
     </div></main>`;
-  window.scrollTo({top:0});
+  window.scrollTo({top:0}); loadParts();
 }
 
 // ================= ACCOUNT =================
@@ -2778,11 +2699,10 @@ function adminPanes(){
       <div class="help">Applies to rounds opened from now on. To change the dates of an existing round, use “Edit” above. To change how often it repeats, create a new series.</div>
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">Save schedule</button></div></form></div></div>`:''}
-  <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>People</h2><span class="muted small">Who's invited and who answered</span></div>
+  <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>People</h2></div>
     <div class="field"><label>Share link</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="Share link">${ib('copy','Copy link',`data-copy="${esc(shareLink(p.id))}"`,'primary','Copy')}</div>
       <div class="help">${series?'The link always shows the newest open round, so you can share it once for the whole series. ':''}Anyone with the link can answer, no account needed.</div></div>
-    ${peopleBox(p.id)}
-    <div class="section"><h3>In this poll</h3><div id="parts"><p class="help">Loading…</p></div></div></div></div>
+    <div class="section">${peoplePanel(p.id,{title:p.title,series,deadline:inst()&&inst().status==='open'?inst().deadline:null})}</div></div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>Settings</h2></div>
     <div class="section"><h3>Details</h3>
       <div class="field"><label for="s_title">Title</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
@@ -2822,63 +2742,122 @@ function datesSection(){
       <div class="help">The poll closes after this day.</div></div>
     ${i.note?`<div class="field"><label for="s_note">Note shown at the top of this poll</label><textarea id="s_note" maxlength="1000">${esc(i.note)}</textarea></div>`:''}</div>`;
 }
+// PEOPLE is the poll whose list is on screen: { id, title, deadline, series, parts, sel, edit, focus }.
+let PEOPLE=null;
+function peoplePanel(id,o){
+  const keep=PEOPLE&&PEOPLE.id===id?PEOPLE:null;
+  PEOPLE={ id, title:o.title, deadline:o.deadline||null, series:!!o.series, parts:keep?keep.parts:null, sel:keep?keep.sel:new Set(), edit:keep?keep.edit:null, focus:keep?keep.focus:false };
+  return `<div id="parts"><p class="help">Loading…</p></div>`;
+}
 async function loadParts(){
-  const el=$('parts'); if(!el) return;
-  try{ const r=await api('GET',`/polls/${P.id}/participants`,null,headers()); P.parts=r.participants; }
+  const el=$('parts'); if(!el||!PEOPLE) return; const id=PEOPLE.id;
+  if(PEOPLE.parts) renderParts();
+  try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants; }
   catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
   renderParts();
 }
 // One status per person: answered this round, invited (when), or why they can't be emailed.
-function partStatus(p){
-  const series=P.data.poll.kind==='series';
+function partStatus(p,series){
   if(p.answeredNow) return `<span class="tag y" title="${series?'Answered the current round':'Has answered'}">Answered</span>`;
   if(p.invitedAt) return `<span class="tag m" title="Invite emailed ${esc(new Date(p.invitedAt).toLocaleString())}">Invited ${esc(new Date(p.invitedAt).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</span>`;
   if(!p.canMail) return `<span class="tag x" title="${p.email?'Removed their email when answering':'No email address'}">No email</span>`;
   return `<span class="tag x">Not invited</span>`;
 }
+const pqb=(ic,label,attrs,cls='')=>`<button type="button" class="qb${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[ic]}</button>`;
 function renderParts(){
-  const el=$('parts'); if(!el||!P.parts) return;
-  const ps=P.parts, srv=P.data.emailEnabled, series=P.data.poll.kind==='series';
-  const sel=P.psel=new Set([...(P.psel||[])].filter(id=>ps.some(p=>p.id===id)));
+  const el=$('parts'); if(!el||!PEOPLE||!PEOPLE.parts) return;
+  const {parts:ps,series}=PEOPLE, srv=CONFIG.emailEnabled;
+  const sel=PEOPLE.sel=new Set([...PEOPLE.sel].filter(id=>ps.some(p=>p.id===id)));
+  if(PEOPLE.edit&&!ps.some(p=>p.id===PEOPLE.edit)) PEOPLE.edit=null;
   const answered=ps.filter(p=>p.answeredNow).length, waiting=ps.filter(p=>p.canMail&&!p.answeredNow);
   const selMail=ps.filter(p=>sel.has(p.id)&&p.canMail);
-  el.innerHTML=ps.length?`<div class="ptools">
+  const typed={n:$('padd_n')?$('padd_n').value:'', e:$('padd_e')?$('padd_e').value:''}, active=document.activeElement&&document.activeElement.id;
+  const view=p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="Select ${esc(p.name)}">
+      <span class="grow pmain"><span class="pname"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their account, not by name">Account</span>':''} ${partStatus(p,series)}</span>
+        <span class="muted small">${p.email?`${esc(p.email)} · `:''}${p.rounds?`${plural(p.rounds,'answer','answers')} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
+      <span class="acts">${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?'Send the invite again':'Send invite'):`Email ${p.name}`,`data-pinvite="${esc(p.id)}"`):''}${pqb('edit','Rename',`data-pedit="${esc(p.id)}"`)}${pqb('trash','Remove',`data-pdel="${esc(p.id)}"`,' danger')}</span></li>`;
+  const edit=p=>`<li class="pediting"><span class="padd grow">
+        <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="Name" data-pekey="${esc(p.id)}" autocomplete="off">
+        <input type="email" id="pe_e" maxlength="200" value="${esc(p.email||'')}" aria-label="Email" placeholder="Email (optional)" data-pekey="${esc(p.id)}" autocomplete="off" autocapitalize="off" spellcheck="false"${p.account?' readonly title="Linked to their account"':''}></span>
+      <span class="acts">${pqb('check','Save',`data-psave="${esc(p.id)}"`,' ok')}${pqb('x','Cancel','data-pcancel=""')}</span></li>`;
+  const tools=ps.length?`<div class="ptools">
       <label class="check m0"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''}> <span>${sel.size?`${sel.size} selected`:`${plural(ps.length,'person','people')} · ${answered} answered${series?' this round':''}`}</span></label>
       <span class="grow"></span>
-      ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="Email ${selMail.length}">${ICON.send}<span><span class="bl">Email </span>${selMail.length}</span></button>`:''}
-        ${ib('mail','Open in my email app',`data-pmailapp ${selMail.length?'':'disabled'}`,'sm')}
+      ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="Email ${selMail.length}">${ICON.send}<span>Email ${selMail.length}</span></button>`
+          :`<button type="button" class="btn sm withic" data-pmailapp ${selMail.length?'':'disabled'} title="Opens your email app with their addresses in BCC">${ICON.mail}<span>Email ${selMail.length}</span></button>`}
         ${ib('x','Clear selection','data-pselnone','sm ghost')}`
-      :srv&&waiting.length?`<button type="button" class="btn sm withic" data-premind title="${esc(waiting.map(p=>p.name).join(', '))}" aria-label="Remind ${plural(waiting.length,'person','people')} who haven't answered">${ICON.bell}<span>Remind ${waiting.length}<span class="bl"> ${waiting.length===1?'person':'people'} who haven't answered</span></span></button>`:''}</div>
-    <ul class="list plist">${ps.map(p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="Select ${esc(p.name)}">
-      <span class="grow"><b>${esc(p.name)}</b>${p.account?' <span class="pill soft" title="Answered while signed in: identified by their account, not by name">Account</span>':''} ${partStatus(p)}<br>
-        <span class="muted small">${p.email?`${esc(p.email)} · `:''}${p.rounds?`${plural(p.rounds,'answer','answers')} · last ${esc(new Date(p.lastAnswered).toLocaleDateString())}`:'no answers yet'}</span></span>
-      <span class="acts">${srv&&p.canMail?`${ib('send',p.invitedAt?'Resend invite':'Invite',`data-pinvite="${esc(p.id)}"`,'sm')}`:''}
-        ${ib('edit','Edit',`data-pedit="${esc(p.id)}"`,'sm')}
-        ${ps.length>1?`<select class="inline sm" data-pmerge="${esc(p.id)}" aria-label="Merge ${esc(p.name)} into someone else"><option value="">Merge into…</option>${ps.filter(x=>x.id!==p.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
-        ${ib('trash','Remove',`data-pdel="${esc(p.id)}"`,'sm danger')}</span></li>`).join('')}</ul>`
-    :'<p class="help">Nobody yet. Add people above, or share the link.</p>';
-  el.insertAdjacentHTML('beforeend',`<p class="help">Guests are matched by name, which is unique in this poll${series?' and stays the same across rounds':''}. People who answer while signed in are matched by their account, so their names may repeat.</p>`);
+      :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>Email ${waiting.length}<span class="bl"> who haven't answered</span></span></button>`:''}</div>`:'';
+  el.innerHTML=`${tools}
+    ${ps.length?`<ul class="list pplist">${ps.map(p=>PEOPLE.edit===p.id?edit(p):view(p)).join('')}</ul>`:'<p class="help mt-0">Nobody yet. Add people here, or just share the link.</p>'}
+    <div class="padd padd-new">
+      <input type="text" id="padd_n" maxlength="2000" placeholder="Name" aria-label="Name, or paste a list" autocomplete="off" enterkeyhint="done">
+      <input type="email" id="padd_e" maxlength="200" placeholder="Email (optional)" aria-label="Email (optional)" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+      <button type="button" class="btn primary padd-btn" data-padd title="Add" aria-label="Add">${ICON.plus}</button></div>
+    <div class="err" id="padd_err"></div>
+    <p class="help">Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row${series?' in every round':''}; people signed in are matched by their account.</p>`;
+  $('padd_n').value=typed.n; $('padd_e').value=typed.e;
+  if(PEOPLE.edit){ const n=$('pe_n'); if(n&&active!=='pe_e'){ n.focus(); n.select(); } else if(active==='pe_e') $('pe_e').focus(); }
+  else if(PEOPLE.focus||active==='padd_n'||active==='padd_e'){ $(active==='padd_e'?'padd_e':'padd_n').focus(); }
+  PEOPLE.focus=false;
 }
+// After a change: on the poll page reload the poll (Answers and Meetings use the list too), else just the list.
+async function peopleChanged(msg){ if(msg) toast(msg); if(PEOPLE.id===P.id&&P.data) await loadPoll(false); else await loadParts(); }
+// The + button (or Enter): one person from the two fields, or a whole list typed or pasted into the name field.
+async function peopleAdd(btn){
+  const n=$('padd_n'), m=$('padd_e'), err=$('padd_err'); if(!n||!PEOPLE) return; err.textContent='';
+  const raw=n.value.trim(), mail=m.value.trim().toLowerCase();
+  let rows=parsePeople(raw);
+  if(!(rows.length>1||(rows.length===1&&rows[0].email))) rows=raw||mail?[{name:raw||(EMAIL_RE.test(mail)?nameFromEmail(mail):''),email:mail}]:[];
+  else if(mail) rows.push({name:nameFromEmail(mail),email:mail});
+  if(!rows.length){ err.textContent='Type a name or an email address.'; n.focus(); return; }
+  if(rows.some(x=>x.email&&!EMAIL_RE.test(x.email))){ err.textContent="That email address doesn't look right."; (mail&&!EMAIL_RE.test(mail)?m:n).focus(); return; }
+  if(rows.some(x=>!x.name.trim())){ err.textContent='Every person needs a name.'; n.focus(); return; }
+  if(await addPeople(rows.map(x=>({name:x.name.trim().slice(0,60),email:x.email})),btn)){ n.value=''; m.value=''; }
+}
+async function addPeople(rows,btn){
+  if(btn) btn.disabled=true;
+  try{ const r=await api('POST',`/polls/${PEOPLE.id}/participants`,{people:rows},pollHeaders(PEOPLE.id));
+    const bits=[r.added.length?`Added ${r.added.length}`:'', r.updated.length?`updated ${r.updated.length}`:'', r.skipped.length?`already in the list: ${r.skipped.join(', ')}`:''].filter(Boolean).join(' · ');
+    $('padd_n').value=''; $('padd_e').value=''; PEOPLE.focus=true;
+    await peopleChanged(bits.charAt(0).toUpperCase()+bits.slice(1)); return true; }
+  catch(ex){ const err=$('padd_err'); if(err) err.textContent=ex.message; return false; }
+  finally{ if(btn) btn.disabled=false; }
+}
+async function peopleSave(id){
+  const p=PEOPLE.parts.find(x=>x.id===id); if(!p) return;
+  const name=$('pe_n').value.trim(), mail=p.account?p.email:$('pe_e').value.trim();
+  if(!name){ toast('Every person needs a name'); $('pe_n').focus(); return; }
+  if(mail&&!EMAIL_RE.test(mail)){ toast("That email address doesn't look right"); $('pe_e').focus(); return; }
+  if(name===p.name&&(mail||'')===(p.email||'')){ PEOPLE.edit=null; renderParts(); return; }
+  try{ await api('PATCH',`/polls/${PEOPLE.id}/participants/${id}`,{name,email:mail},pollHeaders(PEOPLE.id)); PEOPLE.edit=null; await peopleChanged('Saved'); }
+  catch(ex){ toast(ex.message); }
+}
+document.addEventListener('keydown',e=>{
+  const t=e.target; if(!t.id) return;
+  if((t.id==='padd_n'||t.id==='padd_e')&&e.key==='Enter'){ e.preventDefault(); peopleAdd(document.querySelector('[data-padd]')); }
+  else if(t.dataset&&t.dataset.pekey){ if(e.key==='Enter'){ e.preventDefault(); peopleSave(t.dataset.pekey); } else if(e.key==='Escape'){ e.preventDefault(); PEOPLE.edit=null; renderParts(); } }
+});
+// A pasted list (one per line, or separated by commas or semicolons) is added straight away.
+document.addEventListener('paste',e=>{
+  if(e.target.id!=='padd_n') return;
+  const t=(e.clipboardData||window.clipboardData).getData('text'); if(!/[\n,;\t]/.test(t.trim())) return;
+  const rows=parsePeople(e.target.value+' '+t); if(rows.length<2&&!(rows[0]&&rows[0].email)) return;
+  e.preventDefault(); e.target.value=e.target.value+t.replace(/\s*\r?\n\s*/g,', '); peopleAdd(document.querySelector('[data-padd]'));
+});
 // Sends the poll invite from the site to participants: { ids } or { remind:true }.
 async function partsInvite(t,body,what){
   t.disabled=true;
-  try{ const r=await api('POST',`/polls/${P.id}/invite`,body,headers());
+  try{ const r=await api('POST',`/polls/${PEOPLE.id}/invite`,body,pollHeaders(PEOPLE.id));
     toast(`${what} sent to ${plural(r.sent,'person','people')}${r.missing&&r.missing.length?` · no email: ${r.missing.join(', ')}`:''}`); await loadParts(); }
   catch(ex){ toast(ex.message); t.disabled=false; }
 }
+// Without email sending: open the organiser's email app with these addresses in BCC.
+const peopleMailApp = ps => { location.href=pollInviteMail(PEOPLE.id,PEOPLE.title,PEOPLE.deadline,ps.filter(p=>p.canMail&&p.email).map(p=>p.email).join('\n')).href; };
 document.addEventListener('change',e=>{
-  const c=e.target.closest('[data-psel],[data-pselall]'); if(!c||!P.parts) return;
-  if(c.dataset.psel!==undefined){ P.psel=P.psel||new Set(); c.checked?P.psel.add(c.dataset.psel):P.psel.delete(c.dataset.psel); }
-  else P.psel=new Set(c.checked?P.parts.map(p=>p.id):[]);
+  const c=e.target.closest('[data-psel],[data-pselall]'); if(!c||!PEOPLE||!PEOPLE.parts) return;
+  if(c.dataset.psel!==undefined){ c.checked?PEOPLE.sel.add(c.dataset.psel):PEOPLE.sel.delete(c.dataset.psel); }
+  else PEOPLE.sel=new Set(c.checked?PEOPLE.parts.map(p=>p.id):[]);
   renderParts();
-});
-async function partsChanged(msg){ if(msg) toast(msg); await loadPoll(false); }
-document.addEventListener('change',async e=>{
-  const sel=e.target.closest('[data-pmerge]'); if(!sel||!sel.value) return;
-  const src=P.parts.find(x=>x.id===sel.dataset.pmerge), dst=P.parts.find(x=>x.id===sel.value);
-  if(!confirm(`Merge “${src.name}” into “${dst.name}”? All answers move to “${dst.name}”. Where both answered the same round, the newer answer is kept.`)){ sel.value=''; return; }
-  try{ const r=await api('POST',`/polls/${P.id}/participants/${src.id}/merge`,{into:dst.id},headers()); partsChanged(`Merged${r.removedAnswers?` (${r.removedAnswers} older ${r.removedAnswers===1?'answer':'answers'} removed)`:''}`); }
-  catch(ex){ toast(ex.message); sel.value=''; }
 });
 function wireAdmin(){
   if(P.atab==='people') loadParts();
@@ -2912,27 +2891,28 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!t) return;
   const ds=t.dataset;
   if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
-  if(ds.padd){ peopleAdd(t); return; }
-  if(ds.pinvite){ const p=P.parts.find(x=>x.id===ds.pinvite); if(p) partsInvite(t,{ids:[p.id]},p.invitedAt?'Reminder':'Invite'); return; }
-  if(ds.premind!==undefined){ const n=P.parts.filter(p=>p.canMail&&!p.answeredNow).length;
-    if(confirm(`Email a reminder to ${plural(n,'person','people')} who haven't answered yet?`)) partsInvite(t,{remind:true},'Reminder'); return; }
-  if(ds.pmailsel!==undefined){ const ids=P.parts.filter(p=>P.psel.has(p.id)&&p.canMail).map(p=>p.id); if(ids.length){ await partsInvite(t,{ids},'Invite'); P.psel=new Set(); renderParts(); } return; }
-  if(ds.pmailapp!==undefined){ const to=P.parts.filter(p=>P.psel.has(p.id)&&p.canMail&&p.email).map(p=>p.email);
-    location.href=pollInviteMail(P.id,P.data.poll.title,inst()&&inst().status==='open'?inst().deadline:null,to.join('\n')).href; return; }
-  if(ds.pselnone!==undefined){ P.psel=new Set(); renderParts(); return; }
-  if(ds.pedit){ const p=P.parts.find(x=>x.id===ds.pedit); if(!p) return;
-    const name=prompt('Name', p.name); if(name===null) return; const mail=p.account?p.email:prompt(`Email for ${name} (optional)`, p.email||''); if(mail===null) return;
-    try{ await api('PATCH',`/polls/${P.id}/participants/${p.id}`,{name,email:mail},headers()); partsChanged('Saved'); }catch(ex){ toast(ex.message); } return; }
-  if(ds.pdel){ const p=P.parts.find(x=>x.id===ds.pdel); if(!p) return;
+  if(ds.padd!==undefined){ peopleAdd(t); return; }
+  const pp=PEOPLE&&PEOPLE.parts||[];
+  if(ds.pinvite){ const p=pp.find(x=>x.id===ds.pinvite); if(!p) return;
+    if(CONFIG.emailEnabled) partsInvite(t,{ids:[p.id]},p.invitedAt?'Reminder':'Invite'); else peopleMailApp([p]); return; }
+  if(ds.premind!==undefined){ const n=pp.filter(p=>p.canMail&&!p.answeredNow).length;
+    if(confirm(`Email ${plural(n,'person','people')} who haven't answered yet?`)) partsInvite(t,{remind:true},'Reminder'); return; }
+  if(ds.pmailsel!==undefined){ const ids=pp.filter(p=>PEOPLE.sel.has(p.id)&&p.canMail).map(p=>p.id); if(ids.length){ await partsInvite(t,{ids},'Invite'); PEOPLE.sel=new Set(); renderParts(); } return; }
+  if(ds.pmailapp!==undefined){ peopleMailApp(ds.pmailapp==='waiting'?pp.filter(p=>!p.answeredNow):pp.filter(p=>PEOPLE.sel.has(p.id))); return; }
+  if(ds.pselnone!==undefined){ PEOPLE.sel=new Set(); renderParts(); return; }
+  if(ds.pedit){ PEOPLE.edit=ds.pedit; renderParts(); return; }
+  if(ds.psave){ peopleSave(ds.psave); return; }
+  if(ds.pcancel!==undefined){ PEOPLE.edit=null; renderParts(); return; }
+  if(ds.pdel){ const p=pp.find(x=>x.id===ds.pdel); if(!p) return;
     if(!confirm(`Remove “${p.name}” from this poll?`)) return;
     const answers = p.rounds ? confirm(`Also delete ${p.name}'s ${p.rounds} ${p.rounds===1?'answer':'answers'}?\n\nOK = delete them\nCancel = keep them (no longer linked to the name)`) : false;
-    try{ await api('DELETE',`/polls/${P.id}/participants/${p.id}${answers?'?answers=1':''}`,null,headers()); partsChanged('Removed'); }catch(ex){ toast(ex.message); } return; }
+    try{ await api('DELETE',`/polls/${PEOPLE.id}/participants/${p.id}${answers?'?answers=1':''}`,null,pollHeaders(PEOPLE.id)); await peopleChanged('Removed'); }catch(ex){ toast(ex.message); } return; }
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
   if(ds.inst){ if(P.data.isAdmin){ P.atab='answers'; store.set('atab:'+P.id,'answers'); } switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
