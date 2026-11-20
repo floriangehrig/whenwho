@@ -432,6 +432,24 @@ function validateEntries(entries, poll, dates) {
   return out;
 }
 
+// Quick fill behind an answer: { rules: [{ pat, hs, he, st }], base: {entries} } (base = the hand-made marks).
+// Returns the JSON to store, or '' when there are no rules.
+const MAX_FILL_RULES = 20;
+function parseFill(v, poll, dates) {
+  if (v == null || v === '') return '';
+  if (typeof v !== 'object' || Array.isArray(v) || !Array.isArray(v.rules)) throw new HttpError(400, 'Invalid quick fill');
+  if (v.rules.length > MAX_FILL_RULES) throw new HttpError(400, `At most ${MAX_FILL_RULES} quick fill rules`);
+  if (!v.rules.length) return '';
+  const rules = v.rules.map((r) => {
+    if (!r || typeof r !== 'object') throw new HttpError(400, 'Invalid quick fill');
+    const pat = parseDays(r.pat), hs = int(r.hs, 0, 23, 'First hour'), he = int(r.he, 1, 24, 'Last hour');
+    if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
+    if (!['y', 'i', 'm', 'x'].includes(r.st)) throw new HttpError(400, 'Invalid quick fill');
+    return { pat, hs, he, st: r.st };
+  });
+  return JSON.stringify({ rules, base: validateEntries(v.base, poll, dates) });
+}
+
 function validateMeetings(list, poll) {
   if (!Array.isArray(list) || list.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid meetings');
   const weekly = poll.kind === 'weekly';
@@ -2000,6 +2018,7 @@ async function createResponse(request, env, id, iid) {
   const mail = user ? user.email : email(b.email);
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
+  const fill = parseFill(b.fill, poll, datesOf(inst, poll));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
@@ -2034,6 +2053,7 @@ async function createResponse(request, env, id, iid) {
   const rid = randomId(12), editKey = secret(), t = now();
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
+  if (fill) await env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid).run(); // column from migration 0015
   return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
@@ -2076,7 +2096,8 @@ async function getOwnResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
-  return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries) });
+  return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries),
+    fill: r.fill ? JSON.parse(r.fill) : null });
 }
 async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
@@ -2094,6 +2115,7 @@ async function updateResponse(request, env, id, rid) {
   let mail = b.email !== undefined ? email(b.email) : r.email;
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
   const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst, poll))) : r.entries;
+  const fill = b.fill !== undefined ? parseFill(b.fill, poll, datesOf(inst, poll)) : undefined;
   let partId = r.participant_id;
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
@@ -2134,6 +2156,7 @@ async function updateResponse(request, env, id, rid) {
   }
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
+  if (fill !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
   return json({ ok: true, name });

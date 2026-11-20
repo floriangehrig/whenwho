@@ -41,6 +41,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `?after=` every 15 s while the chat is on screen (no WebSockets, no emails). `chat_reads.read_at` drives unread counts
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`).
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
+  `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
+  Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
 
 ## Commands
 - `npm install` once.

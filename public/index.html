@@ -1130,6 +1130,7 @@ function setLang(l){ try{ localStorage.setItem('lang',JSON.stringify(l)); }catch
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-setlang]'); if(b){ e.preventDefault(); setLang(b.dataset.setlang); } });
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
+  [/^At most (\d+) quick fill rules$/, (m,n)=>`Höchstens ${n} Regeln für Schnell ausfüllen`],
   [/^(.+) needs an email address$/, (m,n)=>`${n} braucht eine E-Mail-Adresse`],
   [/^You can have at most (\d+) favourites$/, (m,n)=>`Du kannst höchstens ${n} Favoriten haben`],
   [/^Allow when-who to read your (Google|Outlook) contacts$/, (m,p)=>`Erlaube when-who, deine ${p}-Kontakte zu lesen`],
@@ -2459,12 +2460,12 @@ async function loadPoll(first){
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
-      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; }
+      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; qfRestore(r.fill); }
       catch(e){ if(e.status===404||e.status===403){ store.del(respKey()); P.myResp=null; } }
     }
   }
@@ -2565,7 +2566,8 @@ async function save(retried){
   if(!ME.user&&P.data.poll.requireEmail&&!EMAIL_RE.test((P.mine.email||'').trim())){ if(P.tab!=='mine'){ P.tab='mine'; renderBody(); } saveBar('Enter your email address first'); const em=$('email'); if(em) em.focus(); return false; }
   P.saving=true; P.dirty=false; saveBar();
   const em=(P.mine.email||'').trim(), key=respKey(), had=!!P.myResp;
-  const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries};
+  const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries,
+    fill:qfActive()?{rules:P.qfApplied.map(r=>({pat:r.pat||null,hs:r.hs,he:r.he,st:r.st||'y'})),base:qfCurrentBase()}:null};
   let msg, retry=false, ok=false;
   try{
     if(P.myResp){ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
@@ -2614,7 +2616,7 @@ async function recallMine(){
     P.myResp={id:r.responseId,editKey:null,name:r.name};
     const a=await api('GET',`/polls/${P.id}/responses/${r.responseId}`,null,headers());
     store.set(respKey(),P.myResp); P.dirty=false;
-    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:cleanEntries(a.entries)};
+    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:cleanEntries(a.entries)}; qfReset(); qfRestore(a.fill);
     render(); toast(t('Your answer is loaded'));
   }catch(e){ P.myResp=null; toast(e.message); }
 }
@@ -2625,7 +2627,7 @@ function wireDel(){
   const dm=$('delMine');
   if(dm) dm.onclick=async e=>{ e.preventDefault(); if(!confirm(t('Remove your answer from this poll?'))) return;
     try{ await api('DELETE',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); }catch(err){}
-    store.del(respKey()); P.myResp=null; P.mine={name:P.mine.name,email:P.mine.email,comment:'',entries:{}}; P.mineFor=null; await loadPoll(false); };
+    store.del(respKey()); P.myResp=null; qfReset(); P.mine={name:P.mine.name,email:P.mine.email,comment:'',entries:{}}; P.mineFor=null; await loadPoll(false); };
 }
 
 // ---- render ----
@@ -3007,8 +3009,9 @@ function renderMine(el){
   const menuOn=ME.user&&ME.user.calendarsAuto&&editable();
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
-  const qfIc=io('zap',t('Quick fill…'),`data-qf aria-expanded="${!!P.qfOpen}"`,P.qfOpen?'on':'');
-  const clrIc=io('x',t('Clear all'),'data-bulk="clear"','danger');
+  const qfN=qfActive()?P.qfApplied.length:0;
+  const qfIc=`<button type="button" class="btn sm withic ib${qfN?' badgeb':''} ${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
+  const clrIc=io('x',qfN?t('Clear my own marks'):t('Clear all'),'data-bulk="clear"','danger');
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${on?` ${t('👥 = how many of the {n} others are free at the best time (+ maybe).',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('👥 numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
@@ -3060,6 +3063,7 @@ function quickFill(){
   // A new poll (or new hours) starts the quick-fill fresh.
   if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
   patternPicker('qf',o); PAT.qf.poll=P.id;
+  if(!(PAT.qf.rules&&PAT.qf.rules.length)&&qfActive()) PAT.qf.rules=P.qfApplied.map(r=>({...r})); // saved with the answer
   PAT.qf.ruleExtra=()=>({st:P.qfs||'y'});
   // The brush is part of the rule being built, so it sits with the other criteria (above the rule tags).
   PAT.qf.extraRow=()=>{ const b=P.qfs||'y'; return `<div class="pat-row"><span class="pat-l">${t('Mark as')}</span><div class="seg">
@@ -3068,7 +3072,7 @@ function quickFill(){
     <button type="button" data-qfs="m" class="${b==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</button>
     <button type="button" data-qfs="x" class="${b==='x'?'on':''}">${t('Clear')}</button></div>
     <span class="pat-keys muted small">${t('Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule')}</span></div>`; };
-  PAT.qf.sumEnd=()=>`<button type="button" class="btn sm primary qf-apply" data-qfapply>${t('Apply')}</button>`;
+  PAT.qf.sumEnd=()=>`${(PAT.qf.rules||[]).length?pqb('trash',t('Remove all Quick fill'),'data-qfclearall',' danger qf-clr'):''}<button type="button" class="btn sm primary qf-apply" data-qfapply>${t('Apply')}</button>`;
   return `<div class="qf">${patternPicker('qf',o)}</div>`;
 }
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
@@ -3083,24 +3087,49 @@ document.addEventListener('keydown',e=>{
 // Applied rules stay live: the entries from before the first Apply are kept (P.qfBase), and every Apply or rule change
 // (removing a tag, switching its brush) rebuilds the answer from them, so removing a rule reverts what it filled.
 // Days changed by hand since the last fill count as part of the base, so they survive.
+// The applied rules (P.qfApplied) and the hand-made layer (P.qfBase) are saved with the answer (fill), so they survive
+// closing the panel and reloading; ✕ then clears only the hand-made layer.
 const qfSame=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const qfActive=()=>!!(P.qfApplied&&P.qfApplied.length&&P.qfFor===P.id&&P.qfBase);
+function qfReset(){ P.qfApplied=null; P.qfBase=P.qfLast=null; P.qfFor=null; delete PAT.qf; }
+// A saved rule as a rule tag (same label as patRule builds while picking).
+function qfRuleObj(r){
+  const p=P.data.poll, slots=ansMode()!=='days', pat=r.pat||null;
+  const days=[pat&&pat.wd?wdText(pat.wd):'', pat&&pat.dom?t('{a}–{b} of the month',{a:ord(pat.dom[0]),b:ord(pat.dom[1])}):''].filter(Boolean).join(', ');
+  const all=!slots||(r.hs<=p.hourStart&&r.he>=p.hourEnd), time=all?'':(r.he===24?t('from {h}',{h:hh24(r.hs)}):`${hh24(r.hs)}–${hh24(r.he)}`);
+  return {pat, hs:r.hs, he:r.he, st:r.st||'y', dflt:false, text:`${days||t('Every day')}${time?' '+time:''}`};
+}
+function qfRestore(f){
+  if(!f||!Array.isArray(f.rules)||!f.rules.length) return;
+  P.qfApplied=f.rules.map(qfRuleObj); P.qfBase=cleanEntries(f.base||{}); P.qfLast=Object.assign({},P.mine.entries); P.qfFor=P.id;
+}
+// The hand-made layer now: the base from the last fill, plus days changed by hand since then.
+function qfCurrentBase(){
+  const cur=P.mine.entries; if(P.qfFor!==P.id||!P.qfBase) return Object.assign({},cur);
+  const base=Object.assign({},P.qfBase);
+  if(P.qfLast) new Set([...Object.keys(cur),...Object.keys(P.qfLast)]).forEach(k=>{ if(!qfSame(cur[k],P.qfLast[k])){ if(cur[k]==null) delete base[k]; else base[k]=cur[k]; } });
+  return base;
+}
+// base + rules → the answer (and which days the rules touched).
+function qfCompute(base,rs){
+  const en=Object.assign({},base), done=new Set(), hrs=ansMode()!=='days';
+  rs.forEach(r=>{ const st=r.st||'y';
+    P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ const H=hours(k), whole=!hrs||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
+      done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
+      const m=hourMap(en[k],k); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; }); });
+  return {en,done};
+}
 function applyQuickFill(live){
   if(!live){ const st=PAT.qf, d=patRule('qf'); if(d&&!d.dflt){ (st.rules||(st.rules=[])).push(d); patResetDraft(st); } }
   const rs=live?(PAT.qf.rules||[]).slice():patRules('qf'); if(!rs.length&&!live){ toast(t('Pick at least one day')); return; }
-  if(P.qfFor!==P.id){ P.qfBase=null; P.qfLast=null; }
-  const cur=P.mine.entries, base=Object.assign({},P.qfBase||cur);
-  if(P.qfLast) new Set([...Object.keys(cur),...Object.keys(P.qfLast)]).forEach(k=>{ if(!qfSame(cur[k],P.qfLast[k])){ if(cur[k]==null) delete base[k]; else base[k]=cur[k]; } });
-  const en=Object.assign({},base), done=new Set();
-  rs.forEach(r=>{ const st=r.st||'y';
-    P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ const H=hours(k), whole=!PAT.qf.hours||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
-      done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
-      const m=hourMap(en[k],k); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; }); });
-  P.qfBase=base; P.qfLast=Object.assign({},en); P.qfFor=P.id;
+  const cur=P.mine.entries, base=qfCurrentBase(), {en,done}=qfCompute(base,rs);
+  P.qfBase=base; P.qfLast=Object.assign({},en); P.qfFor=P.id; P.qfApplied=rs.map(r=>({...r}));
   const n=done.size; if(!qfSame(en,cur)){ P.mine.entries=en; changed(); } renderBody();
   if(!live) toast(n?(rs.every(r=>r.st==='x')?(n===1?t('Cleared {n} day',{n}):t('Cleared {n} days',{n})):(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n}))):t('No days in this poll match'));
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; if(!P.qfOpen){ P.qfBase=P.qfLast=null; } renderBody(); return; }
+  if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; renderBody(); return; } // closing keeps the rules (they're saved with the answer)
+  if(e.target.closest('[data-qfclearall]')){ if(PAT.qf) PAT.qf.rules=[]; if(P.qfBase&&P.qfFor===P.id&&editable()) applyQuickFill(true); else patRefresh('qf',true); return; }
   // After an Apply, removing a rule tag updates the answer right away (the picker's own handler has already removed it).
   if(e.target.closest('[data-patrule="qf"]')&&P.qfBase&&P.qfFor===P.id&&editable()){ applyQuickFill(true); return; }
   if(e.target.closest('[data-hint]')){ P.hint=!P.hint; store.set('showOthers',P.hint); renderBody(); return; }
@@ -4270,6 +4299,9 @@ document.addEventListener('click',async e=>{
   }
   if(ds.delresp){ if(!confirm(t('Delete this response?'))) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
+  if(ds.bulk==='clear'&&qfActive()){ // only the hand-made marks go; the Quick fill rules fill in again
+    const {en}=qfCompute({},P.qfApplied); P.qfBase={}; P.qfLast=Object.assign({},en);
+    if(!qfSame(en,P.mine.entries)){ P.mine.entries=en; changed(); } renderBody(); toast(t('Your own marks are cleared; Quick fill stays')); return; }
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
     if(ds.bulk==='clear') Object.keys(en).forEach(k=>delete en[k]);
@@ -4539,6 +4571,10 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Clear my own marks": "Nur meine eigenen Markierungen löschen",
+"Your own marks are cleared; Quick fill stays": "Deine eigenen Markierungen sind gelöscht, Schnell ausfüllen bleibt",
+"Remove all Quick fill": "Schnell ausfüllen ganz entfernen",
+"Invalid quick fill": "Ungültiges Schnell ausfüllen",
 "Change avatar": "Avatar ändern",
 "Only invited people can answer": "Nur eingeladene Personen können antworten",
 "Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.": "Nur Personen, die du im Tab <b>Personen</b> hinzugefügt hast, können antworten. Sie melden sich mit der E-Mail-Adresse an, die du eingetragen hast (sie bekommen einen 6-stelligen Code per E-Mail), so kann niemand sonst in ihrem Namen antworten.",
