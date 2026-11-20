@@ -965,7 +965,13 @@
   .tbar>.ml-auto{flex:1}
   .tbar .dd{margin-top:0} .tbar .row.tight{flex-wrap:nowrap;gap:6px} .tbar .btn{white-space:nowrap}
   @media (max-width:1040px){ .tbar .brush .bl{display:none} }
-  /* Suggest: how many meetings (a number, or all free days) */
+  /* Suggest panel (planner ⚡): steppers for each setting (a number, or a toggle like All / Auto) */
+  .sugp .pat-l{width:74px} .sugp .patp{margin-top:0} .sugp .sug-end{justify-content:flex-end;margin-top:8px}
+  .sugp .check{display:inline-flex;align-items:center;gap:5px;font-size:14px}
+  .sugp .check .dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c)}
+  .sugp .pat-row>.muted{white-space:nowrap} .sugp .pat-row{position:relative} .sugp .pat-row .tip{position:static} /* tip bubbles line up with the row, so they stay on screen */
+  @media (max-width:560px){ .sugp .sug-al{display:none} .sugp .seg{order:9} }
+  .sugn button:disabled{opacity:.35;cursor:default} .sugn button:disabled:hover{background:transparent}
   .sugn{display:inline-flex;align-items:center;flex:none;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
   .sugn button{border:0;background:transparent;color:var(--ink);min-width:28px;min-height:28px;font:inherit;font-size:15px;cursor:pointer}
   .sugn button:hover{background:var(--sunken)} .sugn button.all{font-size:12.5px;font-weight:600;padding:0 9px;border-left:1px solid var(--line)}
@@ -1090,7 +1096,7 @@
     .ws-tools.tbar{flex-wrap:wrap;row-gap:6px} /* last resort: wrap rather than spill out of the card */
     .badgeb{min-width:36px;justify-content:center} .badgeb .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;font-size:10.5px;box-shadow:0 0 0 2px var(--card)}
     .tbar .tip{width:26px}
-    .tbar [data-suggest]{flex:none} .tbar [data-suggest] .bs{display:none} .tbar .sugn button{min-width:26px} .tbar .sugn button.all{padding:0 7px} .tbar .sugn input{width:26px}
+    .tbar [data-sugopen]{flex:none}
     .menu .sm-flex{display:flex}
     .legend{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;margin-right:-2px} .legend::-webkit-scrollbar{display:none}
     .savebar .btn{padding-inline:14px} .savebar #status.sstat{display:inline-flex}
@@ -3687,30 +3693,13 @@ function renderPlan(el){
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t("Once people answer, you can plan meetings around when they're free.")}</span><button class="btn sm mt-2" data-atab="people">${t('Share the poll')}</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,t('Who should come?'),t('Each meeting invites the people selected when you add it.'),
-    tools(whoDropdown()+ib('zap',t('Suggest best times'),'data-suggest'+(tot?'':' disabled'),'sm',t('Suggest'))+sugCount(),'mt-2 tbar ptbar'));
+    tools(whoDropdown()+sugButton(),'mt-2 tbar ptbar')+sugPanel());
   h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.')
       :t('<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.')):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`);
   h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
     draftTray(),nd?'<button class="btn sm ghost" data-cleardrafts>'+t('Clear all')+'</button>':'');
-  el.innerHTML=h; wireWho(); wireSugCount(); wirePlanner();
-}
-// How many meetings "Suggest" adds: a number (1-99), or 0 = one on every day that has free times. Remembered per browser.
-const sugN = () => { const n=store.get('sugn',3); return n===0?0:Math.min(99,Math.max(1,+n||3)); };
-function sugCount(){
-  const n=sugN();
-  return `<span class="sugn" role="group" aria-label="${t('How many meetings to suggest')}" title="${t('How many meetings to suggest')}">
-    <button type="button" data-sugstep="-1" aria-label="${t('Fewer')}">−</button>
-    <input type="number" id="sugn" min="1" max="99" inputmode="numeric" value="${n||''}" placeholder="${t('All')}" aria-label="${t('Number of meetings')}">
-    <button type="button" data-sugstep="1" aria-label="${t('More')}">+</button>
-    <button type="button" class="all${n?'':' on'}" data-sugall aria-pressed="${!n}" title="${t('One meeting on every day with free times')}">${t('All')}</button></span>`;
-}
-function wireSugCount(){
-  const inp=$('sugn'); if(!inp) return; const all=document.querySelector('[data-sugall]');
-  const set=n=>{ store.set('sugn',n); inp.value=n||''; all.classList.toggle('on',!n); all.setAttribute('aria-pressed',String(!n)); };
-  inp.onchange=()=>{ const v=parseInt(inp.value,10); set(v>0?Math.min(99,v):0); };
-  document.querySelectorAll('[data-sugstep]').forEach(b=>b.onclick=()=>{ const n=sugN(); set(Math.min(99,Math.max(1,(n||1)+ +b.dataset.sugstep))); });
-  all.onclick=()=>set(sugN()?0:3);
+  el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
@@ -3754,13 +3743,122 @@ function wirePlanner(){
     move:el=>{ if(drag&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; paint(); } },
     end, cancel:()=>{ drag=null; renderBody(); } });
 }
+// ---- Suggest (planner): ⚡ opens a settings panel like Quick fill. Settings are remembered per browser (sugopt);
+// days and hours (PAT.sug) are per poll, in memory.
+// n: how many (0 = all) per 'all' | 'week' | 'month'; len: hours per meeting (0 = auto: longest best block);
+// min: at least this many of the selected people free (0 = all of them); gap: days between meetings; ifn / maybe: count those answers as free.
+const SUG0={n:3,per:'all',len:0,min:1,gap:0,ifn:true,maybe:false};
+function sugOpts(){
+  const s=store.get('sugopt',null), o=Object.assign({},SUG0,s&&typeof s==='object'?s:{});
+  if(!s){ const n=store.get('sugn',null); if(n!=null) o.n=+n||0; } // the old count stepper
+  o.n=Math.min(99,Math.max(0,+o.n||0)); o.len=Math.min(24,Math.max(0,+o.len||0)); o.min=Math.min(99,Math.max(0,+o.min||0)); o.gap=Math.min(60,Math.max(0,+o.gap||0));
+  if(!['all','week','month'].includes(o.per)) o.per='all'; o.ifn=!!o.ifn; o.maybe=!!o.maybe;
+  return o;
+}
+const sugSet = ch => store.set('sugopt',Object.assign(sugOpts(),ch));
+const sugCustom = () => { const o=sugOpts(); return Object.keys(SUG0).filter(k=>o[k]!==SUG0[k]).length+(PAT.sug&&PAT.sug.poll===P.id&&patRule('sug')&&!patRule('sug').dflt?1:0); };
+// − value + (and an optional toggle button, e.g. "All") for one setting.
+function sugStep(key,val,{min=0,max=99,ph='',tog='',togOn=false,label}){
+  return `<span class="sugn" role="group" aria-label="${esc(label)}" title="${esc(label)}">
+    <button type="button" data-sugstep="${key}" data-d="-1" aria-label="${t('Fewer')}" ${!togOn&&val<=min?'disabled':''}>−</button>
+    <input type="number" data-sugin="${key}" min="${min}" max="${max}" inputmode="numeric" value="${togOn?'':val}" placeholder="${esc(ph)}" aria-label="${esc(label)}">
+    <button type="button" data-sugstep="${key}" data-d="1" aria-label="${t('More')}" ${!togOn&&val>=max?'disabled':''}>+</button>
+    ${tog?`<button type="button" class="all${togOn?' on':''}" data-sugtog="${key}" aria-pressed="${togOn}">${esc(tog)}</button>`:''}</span>`;
+}
+function sugPanel(){
+  if(!P.sugOpen) return '';
+  const p=P.data.poll, slotsOn=p.answerMode!=='days', o=sugOpts(), tot=sel().length, wk=isWeekly(), maxLen=Math.max(1,p.hourEnd-p.hourStart);
+  if(PAT.sug&&(PAT.sug.poll!==P.id||PAT.sug.hmin!==p.hourStart||PAT.sug.hmax!==p.hourEnd)) delete PAT.sug;
+  const pp=patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true}); PAT.sug.poll=P.id;
+  const seg=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button type="button" data-sugseg="${key}" data-v="${v}" class="${o[key]===v?'on':''}" aria-pressed="${o[key]===v}">${esc(l)}</button>`).join('')}</div>`;
+  const row=(label,body,help)=>`<div class="pat-row"><span class="pat-l">${label}</span>${body}${help?tip(help,'right'):''}</div>`;
+  let h=row(t('How many'),sugStep('n',o.n,{min:1,max:99,tog:t('All'),togOn:!o.n,label:t('How many meetings to suggest')})
+      +tip(t('How many meetings to add: in total, or in each week or month. All = one on every day that fits. Meetings already planned count too.'),'right')
+      +(wk?'':seg('per',[['all',t('In total')],['week',t('Per week')],['month',t('Per month')]])));
+  if(slotsOn) h+=row(t('Length'),sugStep('len',o.len,{min:1,max:maxLen,tog:t('Auto'),togOn:!o.len,label:t('Hours per meeting')})+`<span class="muted small">${t('hours')}</span>`,
+    t('How long each meeting is. Auto = the longest stretch of the best hours.'));
+  const need=o.min?Math.min(o.min,tot||1):tot;
+  h+=row(t('People'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('min',need,{min:1,max:Math.max(1,tot),ph:String(tot),tog:t('All'),togOn:!o.min,label:t('Minimum number of people free')})+`<span class="muted small">${t('of {n} free',{n:tot})}</span>`,
+    t('Only suggest times when at least this many of the selected people are free for the whole meeting.'));
+  h+=row(t('Gap'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('gap',o.gap,{min:0,max:60,label:t('Days between meetings')})+`<span class="muted small">${t('days apart')}</span>`,
+    t('Keep meetings at least this many days apart, so they don’t bunch up. 0 = any day.'));
+  h+=row(t('Counts'),`<label class="check m0"><input type="checkbox" data-sugck="ifn" ${o.ifn?'checked':''}> <span class="dot" style="--c:var(--ifn)"></span>${t('If needed')}</label>
+      <label class="check m0"><input type="checkbox" data-sugck="maybe" ${o.maybe?'checked':''}> <span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</label>`,
+    t('Which answers count as free. Available always does.'));
+  PAT.sug.extraRow=()=>h;
+  PAT.sug.sumEnd=null;
+  const end=`<div class="row tight sug-end">${sugCustom()?`<button type="button" class="btn sm ghost" data-sugreset>${t('Reset')}</button>`:''}<button type="button" class="btn sm primary" data-suggest ${tot?'':'disabled'}>${ICON.zap}${t('Suggest')}</button></div>`;
+  return `<div class="qf sugp" id="sugp">${patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true})}${end}</div>`;
+}
+function sugRedraw(){ const el=$('sugp'); if(el) el.outerHTML=sugPanel(); const b=document.querySelector('[data-sugopen]'); if(b){ const n=sugCustom(); b.querySelector('.badge')?.remove(); b.classList.toggle('badgeb',!!n); if(n) b.insertAdjacentHTML('beforeend',`<span class="badge">${n}</span>`); } }
+function sugButton(){
+  const n=sugCustom(), tot=sel().length;
+  return `<button type="button" class="btn sm withic ib${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Suggest best times…'))}" aria-label="${esc(t('Suggest best times…'))}">${ICON.zap}<span class="bl">${t('Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-sugopen]')){ P.sugOpen=!P.sugOpen; renderBody(); return; }
+  if(!e.target.closest('#sugp')) return;
+  const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset]'); if(!b) return;
+  const ds=b.dataset, o=sugOpts(), tot=sel().length, maxLen=Math.max(1,P.data.poll.hourEnd-P.data.poll.hourStart);
+  const lim={n:[1,99],len:[1,maxLen],min:[1,Math.max(1,tot)],gap:[0,60]};
+  if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
+  if(ds.sugseg){ sugSet({[ds.sugseg]:ds.v}); sugRedraw(); return; }
+  if(ds.sugtog){ const k=ds.sugtog; sugSet({[k]:o[k]?0:(k==='n'?3:k==='len'?2:Math.max(1,tot-1))}); sugRedraw(); return; }
+  if(ds.sugstep){ const k=ds.sugstep, [lo,hi]=lim[k], cur=k==='min'&&!o.min?tot:(o[k]||(k==='gap'?0:lo-(+ds.d>0?1:0)));
+    sugSet({[k]:Math.min(hi,Math.max(lo,cur+ +ds.d))}); sugRedraw(); return; }
+});
+document.addEventListener('change',e=>{
+  const x=e.target; if(!x.closest||!x.closest('#sugp')) return;
+  if(x.dataset.sugck){ sugSet({[x.dataset.sugck]:x.checked}); sugRedraw(); return; }
+  if(x.dataset.sugin){ const k=x.dataset.sugin, v=parseInt(x.value,10); sugSet({[k]:v>0?v:0}); sugRedraw(); }
+});
+// Free for a whole window [s,e) on day k? Per person: 'y' / 'i' / 'm' = the weakest answer used, null = not free.
+function sugFree(v,k,s,e,allDay,o){
+  if(allDay){ const x=fromMap(hourMap(v,k),k); return x==='y'?'y':x==='i'&&o.ifn?'i':x==='m'&&o.maybe?'m':null; }
+  const m=hourMap(v,k); let w='y';
+  for(let h=s;h<e;h++){ const x=m.get(h); if(x==='y') continue; if(x==='i'&&o.ifn){ if(w==='y') w='i'; continue; } if(x==='m'&&o.maybe){ w='m'; continue; } return null; }
+  return w;
+}
+// The best window on day k within the picked hours: most people free for all of it, then fewest "if needed", then fewest maybe,
+// then (auto length) the longest, then the earliest. null when nobody is free.
+function sugBest(k,rs,o,slotsOn,hs,he){
+  const score=(s,e,allDay)=>{ let free=0,ifn=0,may=0; rs.forEach(r=>{ const w=sugFree((r.entries||{})[k],k,s,e,allDay,o); if(w){ free++; if(w==='i') ifn++; if(w==='m') may++; } }); return {k,start:s,end:e,allDay,free,ifn,may}; };
+  if(!slotsOn) { const x=score(0,0,true); return x.free?x:null; }
+  const H=hours(k).filter(h=>h>=hs&&h<he); if(!H.length) return null;
+  const better=(a,b)=>!b||a.free-b.free||b.ifn-a.ifn||b.may-a.may||(o.len?0:(a.end-a.start)-(b.end-b.start))||b.start-a.start;
+  let best=null;
+  for(let i=0;i<H.length;i++){
+    for(let j=i;j<H.length&&(j===i||H[j]===H[j-1]+1);j++){ const len=H[j]+1-H[i];
+      if(o.len&&len<o.len) continue; if(o.len&&len>o.len) break;
+      const x=score(H[i],H[j]+1,false); if(!x.free) break; // a longer window can't have more people
+      if(better(x,best)>0) best=x; } }
+  if(!best) return null;
+  // Auto length and everyone free all day (with no hour limit): an all-day meeting, as before.
+  const all=hours(k); if(!o.len&&best.free===rs.length&&best.start===all[0]&&best.end===all[all.length-1]+1&&hs<=all[0]&&he>all[all.length-1]) best.allDay=true;
+  return best;
+}
+const dayDiff = (a,b) => Math.round(Math.abs(parseD(a)-parseD(b))/864e5);
 function suggestDrafts(){
-  const slotsOn=P.data.poll.answerMode!=='days', tot=sel().length, taken=new Set(P.drafts.map(x=>x.date));
-  const ranked=P.data.dates.filter(k=>!taken.has(k)).map(k=>({k,s:stats(k)})).filter(o=>o.s.peak>0)
-    .sort(rankCmp).slice(0,sugN()||undefined);
-  if(!ranked.length){ toast(t('No free times found for the selected people')); return; }
-  ranked.forEach(o=>{ if(slotsOn&&o.s.full+o.s.ifn<tot){ const [st,en]=bestBlock(o.s); addDraft(o.k,false,st,Math.min(en,24)); } else addDraft(o.k,true,null,null); });
-  renderBody(); toast(ranked.length===1?t('Added {n} draft',{n:1}):t('Added {n} drafts',{n:ranked.length}));
+  const d=P.data, slotsOn=d.poll.answerMode!=='days', rs=sel(), tot=rs.length, o=sugOpts(), wk=isWeekly(), per=wk?'all':o.per;
+  if(!tot) return;
+  const pr=PAT.sug&&PAT.sug.poll===P.id?patRule('sug'):null;
+  if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ toast(t('Pick at least one day')); return; }
+  const pat=pr?pr.pat:null, hs=pr?pr.hs:d.poll.hourStart, he=pr?pr.he:d.poll.hourEnd;
+  const need=o.min?Math.min(o.min,tot):tot;
+  const used=[...P.drafts.map(x=>x.date),...inst().meetings.map(m=>m.date)], usedSet=new Set(used);
+  const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
+  used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
+  const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
+    .sort((a,b)=>b.free-a.free||a.ifn-b.ifn||a.may-b.may||a.k.localeCompare(b.k));
+  const picked=[];
+  for(const x of cands){
+    const b=bucket(x.k); if(o.n&&(cnt[b]||0)>=o.n) continue;
+    if(o.gap&&[...used,...picked.map(y=>y.k)].some(k=>dayDiff(k,x.k)<o.gap)) continue;
+    picked.push(x); cnt[b]=(cnt[b]||0)+1;
+  }
+  if(!picked.length){ toast(cands.length?t('No more times fit these settings'):t('No times match these settings')); return; }
+  picked.forEach(x=>addDraft(x.k,x.allDay,x.allDay?null:x.start,x.allDay?null:x.end));
+  renderBody(); toast(picked.length===1?t('Added {n} draft',{n:1}):t('Added {n} drafts',{n:picked.length}));
 }
 async function saveDrafts(btn){
   const dm=P.dmeta||{title:'',location:'',note:''}, ms=inst().meetings, err=$('dm_err');
@@ -4571,6 +4669,29 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"How many": "Wie viele",
+"In total": "Insgesamt",
+"Per week": "Pro Woche",
+"Per month": "Pro Monat",
+"How many meetings to add: in total, or in each week or month. All = one on every day that fits. Meetings already planned count too.": "Wie viele Termine hinzukommen: insgesamt oder in jeder Woche bzw. jedem Monat. Alle = einer an jedem passenden Tag. Schon geplante Termine zählen mit.",
+"Length": "Dauer",
+"Auto": "Auto",
+"Hours per meeting": "Stunden pro Termin",
+"How long each meeting is. Auto = the longest stretch of the best hours.": "Wie lange jeder Termin dauert. Auto = der längste Block der besten Stunden.",
+"At least": "Mindestens",
+"Minimum number of people free": "Mindestanzahl freier Leute",
+"of {n} free": "von {n} frei",
+"Only suggest times when at least this many of the selected people are free for the whole meeting.": "Nur Zeiten vorschlagen, zu denen mindestens so viele der ausgewählten Leute den ganzen Termin über frei sind.",
+"Gap": "Abstand",
+"Days between meetings": "Tage zwischen Terminen",
+"days apart": "Tage Abstand",
+"Keep meetings at least this many days apart, so they don’t bunch up. 0 = any day.": "Termine mindestens so viele Tage auseinander halten, damit sie sich nicht häufen. 0 = beliebig.",
+"Counts": "Zählt",
+"Which answers count as free. Available always does.": "Welche Antworten als frei zählen. Verfügbar zählt immer.",
+"Reset": "Zurücksetzen",
+"Suggest best times…": "Beste Zeiten vorschlagen…",
+"No more times fit these settings": "Mit diesen Einstellungen passen keine weiteren Zeiten",
+"No times match these settings": "Keine Zeiten passen zu diesen Einstellungen",
 "Clear my own marks": "Nur meine eigenen Markierungen löschen",
 "Your own marks are cleared; Quick fill stays": "Deine eigenen Markierungen sind gelöscht, Schnell ausfüllen bleibt",
 "Remove all Quick fill": "Schnell ausfüllen ganz entfernen",
@@ -5024,7 +5145,6 @@ function germanText(){ return {
 "No email for {names}.": "Keine E-Mail für {names}.",
 "No emoji found for “{q}”.": "Kein Emoji für „{q}“ gefunden.",
 "No free hours yet.": "Noch keine freien Stunden.",
-"No free times found for the selected people": "Keine freien Zeiten für die ausgewählten Leute gefunden",
 "No meetings yet": "Noch keine Termine",
 "No password needed: we email you a 6-digit code.": "Kein Passwort nötig: Wir mailen dir einen 6-stelligen Code.",
 "No password needed: we’ll email you a 6-digit code to confirm your address. Already have an account? <a href=\"#\" data-simode=\"signin\">Sign in</a>": "Kein Passwort nötig: Wir mailen dir einen 6-stelligen Code, um deine Adresse zu bestätigen. Schon ein Konto? <a href=\"#\" data-simode=\"signin\">Anmelden</a>",
@@ -5055,11 +5175,9 @@ function germanText(){ return {
 "Note": "Notiz",
 "Note shown at the top of this poll": "Hinweis oben in dieser Umfrage",
 "Nothing to fill: no free time in blank days": "Nichts auszufüllen: keine freie Zeit an leeren Tagen",
-"Number of meetings": "Anzahl Termine",
 "Once people answer, you can plan meetings around when they're free.": "Sobald Leute antworten, kannst du Termine nach ihrer freien Zeit planen.",
 "Once people respond, the best days show up here.": "Sobald Leute antworten, erscheinen hier die besten Tage.",
 "One date range, like a trip or a single meeting": "Ein Zeitraum, z. B. ein Ausflug oder ein einzelner Termin",
-"One meeting on every day with free times": "Ein Termin an jedem Tag mit freien Zeiten",
 "One-off": "Einmalig",
 "Only days when someone is free ({n})": "Nur Tage, an denen jemand frei ist ({n})",
 "Only for this meeting": "Nur für diesen Termin",
@@ -5292,7 +5410,6 @@ function germanText(){ return {
 "Subscribe": "Abonnieren",
 "Subscribe: calendar apps keep this up to date as meetings are added": "Abonnieren: Kalender-Apps halten das aktuell, wenn Termine hinzukommen",
 "Suggest": "Vorschlagen",
-"Suggest best times": "Beste Zeiten vorschlagen",
 "Switch to 🕒 to mark only certain hours.": "Wechsle zu 🕒, um nur bestimmte Stunden zu markieren.",
 "Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.": "Tipp auf einen Tagesnamen für einen ganztägigen Termin, tipp auf einen Entwurf, um ihn zu entfernen. Dunkler = mehr von ihnen frei.",
 "Tap a day to cycle <b>available</b> → <b>if needed</b> → <b>maybe</b> → blank.": "Tippe auf einen Tag zum Wechseln: <b>verfügbar</b> → <b>wenn nötig</b> → <b>vielleicht</b> → leer.",
