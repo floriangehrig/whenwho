@@ -444,7 +444,7 @@
   .sc{font-weight:700;min-width:48px;text-align:center;font-size:12.5px;padding:3px 8px;border-radius:999px;background:var(--yes-bg);color:var(--yes-dark);font-variant-numeric:tabular-nums}
   .comments .c{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
   .comments .c:first-of-type{border-top:0}
-  /* ---------- availability workspace (Mine / Group / Schedule in one card) ---------- */
+  /* ---------- availability workspace (My answer / Everyone views in one card) ---------- */
   .ws{padding-top:14px}
   .ws-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .ws-views button{padding:7px 16px;font-size:13.5px}
@@ -1908,7 +1908,7 @@ function renderLanding(localOnly){
       <p class="lh-note">${t('Free · answering takes 20 seconds · works on any phone')}</p>
     </div>
     <div class="demo" id="demo" aria-label="${t('Example: five people answer a poll for team dinner (available, if needed or maybe), and Thursday works for all of them')}" role="img">
-      <div class="demo-h"><span class="tile sm has-e"><span class="tile-e">🍝</span></span><div><b>${t('Team dinner')}</b><span class="demo-sub">${t('Next week · Group')}</span></div>
+      <div class="demo-h"><span class="tile sm has-e"><span class="tile-e">🍝</span></span><div><b>${t('Team dinner')}</b><span class="demo-sub">${t('Next week · Everyone')}</span></div>
         <span class="demo-count">${ICON.users}<span id="demoCount">${t('{a}/{b} answered',{a:0,b:5})}</span></span></div>
       <div class="demo-who">${who}</div>
       <div class="cal" id="demoCal"></div>
@@ -2637,8 +2637,8 @@ function render(){
     <div id="pane-answers" class="${d.isAdmin&&P.atab!=='answers'?'hide':''}">
     <div class="card ws">
       <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
-        <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('Mine')}</button>
-        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Group')}</button></div>
+        <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('My answer')}</button>
+        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div>
         <span class="wsmeta ml-auto" id="wsmeta"></span></div>
       ${d.isAdmin?'':'<div id="meetings"></div>'}
       ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
@@ -2811,7 +2811,7 @@ function renderMeetings(){
   if(adm){ const n=$('mtabn'); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } }
   if(!ms.length){ P.msel=null;
     el.innerHTML=adm?`<div class="card mcard"><div class="card-h"><h2>${t('Scheduled meetings')}</h2></div>
-      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them below, or ★ a day in Group.')}</span></div></div>`:'';
+      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them below, or ★ a day under Everyone.')}</span></div></div>`:'';
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
@@ -4951,7 +4951,7 @@ function germanText(){ return {
 "Meetings you add in step 2 show up here. Set the details, then create them in one go.": "Termine aus Schritt 2 erscheinen hier. Leg die Details fest und erstelle sie dann alle auf einmal.",
 "Message": "Nachricht",
 "Method not allowed": "Methode nicht erlaubt",
-"Mine": "Meine",
+"My answer": "Meine Antwort",
 "More": "Mehr",
 "Move": "Verschieben",
 "Move by": "Verschieben um",
@@ -4970,7 +4970,7 @@ function germanText(){ return {
 "Next emoji page": "Nächste Emoji-Seite",
 "Next round": "Nächste Runde",
 "Next week": "Nächste Woche",
-"Next week · Group": "Nächste Woche · Gruppe",
+"Next week · Everyone": "Nächste Woche · Alle",
 "Next: <b>{range}</b> opens automatically on {date}. The share link always shows the newest open round.": "Als Nächstes: <b>{range}</b> öffnet automatisch am {date}. Der geteilte Link zeigt immer die neueste offene Runde.",
 "No account needed, just open the link.": "Du brauchst kein Konto, öffne einfach den Link.",
 "No answers yet.": "Noch keine Antworten.",
@@ -5103,7 +5103,7 @@ function germanText(){ return {
 "Pigeon: Gadgetroid, CC BY-SA 3.0 (edited)": "Taube: Gadgetroid, CC BY-SA 3.0 (bearbeitet)",
 "Places from OpenStreetMap (via Photon)": "Orte von OpenStreetMap (über Photon)",
 "Plan new meetings": "Neue Termine planen",
-"Plan them below, or ★ a day in Group.": "Plane sie unten oder markiere in „Gruppe“ einen Tag mit ★.",
+"Plan them below, or ★ a day under Everyone.": "Plane sie unten oder markiere unter „Alle“ einen Tag mit ★.",
 "Plans cancelled. Rain check?": "Abgesagt. Ein andermal?",
 "Please answer by {date}.": "Bitte antworte bis {date}.",
 "Please complete the “I’m human” check": "Bitte bestätige, dass du ein Mensch bist",
