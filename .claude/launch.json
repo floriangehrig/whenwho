@@ -38,6 +38,24 @@
       ],
       "port": 8790,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-ui",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8791",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8791",
+        "--persist-to",
+        ".wrangler/ui-state"
+      ],
+      "port": 8791,
+      "autoPort": false
     }
   ]
 }
