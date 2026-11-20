@@ -33,6 +33,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `status` `pending` → `ok` when the other person accepts on their Account page. `POST /api/me/friends` answers the same whether or not
   the address has an account (no probing). Picking a friend in a poll's People tab adds them as their account (`people: [{ uid }]`).
   `contacts` in `GET /api/me/friends` = guests the owner added to their polls by email (from `participants`, not stored separately).
+  The page no longer shows friend requests (API kept): the Account page's **Contacts** card and the Add-people popup share one
+  contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
+  people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
   Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't. The page polls
   `?after=` every 15 s while the chat is on screen (no WebSockets, no emails). `chat_reads.read_at` drives unread counts

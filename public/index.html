@@ -150,12 +150,15 @@
   .pd-list .acts{flex:none;display:flex;gap:2px} .pd-list .help{padding-top:12px;margin:0}
   .qb.fav[aria-pressed=true] svg{fill:currentColor}
   .pd-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
-  .pplist .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
+  .pplist .qb.fav[aria-pressed=true],.ct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
+  .pd-add.ct-add{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto}
+  .ct-list{padding:0;max-height:min(460px,60dvh);margin-top:4px} .ct-list .list li{margin-left:0;margin-right:0}
   @media (max-width:560px){
     .dlg{width:100vw;max-width:100vw;max-height:88dvh;margin:auto 0 0;border-radius:16px 16px 0 0;border-bottom:0}
     .dlg-h::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
     .dlg-h{position:relative;padding-top:16px}
     .pd-add{grid-template-columns:minmax(0,1fr) auto auto} .pd-add #pd_n{grid-column:1/-1}
+    .pd-add.ct-add{grid-template-columns:minmax(0,1fr) auto} .pd-add #ct_n{grid-column:1/-1}
     .pd-add .padd-btn{grid-row:auto;grid-column:auto;align-self:center;height:38px}
     .pd-imp .bl{display:none} }
   .ptools .padd-btn{margin-left:auto}
@@ -392,12 +395,7 @@
   .callist .acts{flex:none;gap:2px;align-items:center}
   .callist li .cdot{flex:none;width:12px;height:12px;border-radius:4px;background:var(--c,var(--accent))}
   .callist li.off .cname{color:var(--muted)}
-  .frlist li .tile.avatar{flex:none}
-  .padd.padd1{grid-template-columns:minmax(0,1fr) auto} @media (max-width:560px){ .padd.padd1 .padd-btn{grid-row:auto;grid-column:auto} }
-  .appbar .dd.me>summary{position:relative} .ndot{position:absolute;top:2px;left:26px;width:10px;height:10px;border-radius:50%;background:#E5484D;box-shadow:0 0 0 2px var(--navy,#0B1F3A)}
-  .menu .nbadge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#E5484D;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
   .padd-new{position:relative}
-  .frcon>summary{cursor:pointer;list-style:none} .frcon>summary::-webkit-details-marker{display:none}
   .qb.tog[aria-pressed=true]{color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
   .caladd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
   .caladd .padd{flex:1 1 100%}
@@ -682,6 +680,25 @@
   .pk-e.on{background:var(--accent-weak);border-color:var(--accent);box-shadow:var(--ring)}
   label.btn{margin:0;color:var(--ink)}
   @media (max-width:560px){ .picker{flex-direction:column;align-items:center} .pk-body{width:100%} }
+  .pk-top{display:flex;gap:6px;align-items:center;margin-bottom:8px} .pk-top .pk-search{flex:1;min-width:0;margin:0}
+  .pk-act{flex:none;width:40px;height:40px;border-color:var(--line-strong);background:var(--card);color:var(--ink-2,var(--ink))} .pk-act:hover{border-color:var(--accent);color:var(--accent)}
+  .pk-act svg{width:18px;height:18px}
+  /* Account: profile = avatar button + name / email; the picker opens from the avatar */
+  .pf-id{display:flex;gap:14px;align-items:center}
+  .pf-av{position:relative;flex:none;padding:0;border:0;background:none;cursor:pointer;border-radius:50%}
+  .pf-av .pf-tile{width:64px;height:64px} .pf-av .pf-tile .tile-i{font-size:26px} .pf-av .pf-tile .tile-e{font-size:34px}
+  .pf-av:focus-visible{outline:none;box-shadow:var(--ring)}
+  .pf-badge{position:absolute;right:-2px;bottom:-2px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;box-shadow:0 0 0 2px var(--card);transition:transform .12s}
+  .pf-badge svg{width:13px;height:13px}
+  .pf-av:hover .pf-badge,.pf-av[aria-expanded=true] .pf-badge{transform:scale(1.1)}
+  .pf-av[aria-expanded=true] .pf-tile{box-shadow:0 0 0 3px var(--accent)}
+  .pf-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .pf-row{display:flex;gap:6px;align-items:center} .pf-row input{flex:1;min-width:0}
+  .pf-save{flex:none} .pf-save:disabled{opacity:.45}
+  .pf-mail{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;color:var(--muted)}
+  .pf-mail svg{flex:none;width:14px;height:14px} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pf-pk{margin-top:14px} .pf-pk .pk-preview{display:none} .pf-pk .picker{padding:10px}
+  @media (max-width:560px){ .pf-id{gap:10px;align-items:flex-start} .pf-av .pf-tile{width:56px;height:56px} .pf-save{min-width:40px;padding-inline:10px} }
 
   /* ---------- poll cards ---------- */
   .pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:14px}
@@ -1587,11 +1604,10 @@ function picker(key,{emoji='',img='',text='',seed='',round=false,size=256}={}){
 function pickerInner(key){
   const st=PICK[key];
   return `<div class="pk-preview">${tile({img:st.data||st.img,emoji:st.emoji,text:st.text,seed:st.seed},st.round?'avatar xl':'ptile-icon xl')}</div>
-    <div class="pk-body"><input type="text" class="pk-search" data-pksearch="${key}" value="${esc(st.q)}" placeholder="${t('Search emoji, e.g. pizza, dog, france')}" aria-label="${t('Search emoji')}" autocomplete="off" spellcheck="false" enterkeyhint="search">
-    <div id="pkres_${key}">${pickerResults(key)}</div>
-    <div class="row mt-3"><label class="btn sm">${t('Upload picture')}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-pkfile="${key}" hidden></label>
-      ${st.emoji||st.data||st.img?`<button type="button" class="btn sm ghost" data-pkclear="${key}">${st.round?t('Use initial'):t('Use first letter')}</button>`:''}
-      <span class="small muted">${t('Pictures are cropped to a square.')}</span></div><div class="err" id="pkerr_${key}"></div></div>`;
+    <div class="pk-body"><div class="pk-top"><input type="text" class="pk-search" data-pksearch="${key}" value="${esc(st.q)}" placeholder="${t('Search emoji, e.g. pizza, dog, france')}" aria-label="${t('Search emoji')}" autocomplete="off" spellcheck="false" enterkeyhint="search">
+      <label class="qb pk-act" title="${esc(t('Upload picture')+' · '+t('Pictures are cropped to a square.'))}" aria-label="${t('Upload picture')}">${ICON.upload}<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-pkfile="${key}" hidden></label>
+      ${st.emoji||st.data||st.img?pqb('repeat',st.round?t('Use initial'):t('Use first letter'),`data-pkclear="${key}"`,' pk-act'):''}</div>
+    <div id="pkres_${key}">${pickerResults(key)}</div><div class="err" id="pkerr_${key}"></div></div>`;
 }
 // The page arrows and grid. Without a search: page 0 is the favourites, then the rest in pages of EMOJI_PAGE.
 // With one: the matches, in pages of EMOJI_PAGE.
@@ -1613,7 +1629,9 @@ function pickerResults(key){
     <div class="pk-grid" role="listbox" aria-label="${t('Pick an emoji')}">${list.length?list.map(e=>`<button type="button" class="pk-e${st.emoji===e&&!(st.data||st.img)?' on':''}" data-pkemoji="${e}" data-pk="${key}" aria-label="${esc(emojiLabel(e))}" title="${esc(emojiLabel(e))}">${e}</button>`).join('')
       :`<p class="small muted pk-none">${t('No emoji found for “{q}”.',{q:esc(q)})}</p>`}</div>`;
 }
-function pickerRefresh(key){ const el=$('pk_'+key); if(el) el.innerHTML=pickerInner(key); }
+function pickerRefresh(key){ const el=$('pk_'+key); if(el) el.innerHTML=pickerInner(key);
+  const pv=document.querySelector(`[data-pkprev="${key}"]`), st=PICK[key]; // e.g. the profile's avatar button
+  if(pv) pv.innerHTML=tile({img:st.data||st.img,emoji:st.emoji,text:st.text,seed:st.seed},(st.round?'avatar ':'')+'pf-tile'); }
 function pickerRefreshResults(key){ const el=$('pkres_'+key); if(el) el.innerHTML=pickerResults(key); }
 function pickerSetText(key,text){ if(PICK[key]){ PICK[key].text=text; const st=PICK[key]; if(!st.emoji&&!st.data&&!st.img) pickerRefresh(key); } }
 // Values to send: icon/avatar emoji always; picture only when it changed ('' removes it).
@@ -1656,9 +1674,9 @@ document.addEventListener('change',async e=>{
 });
 
 function accountBar(){
-  if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}${ME.user.friendRequests?`<span class="ndot" title="${esc(t('Friend requests: {n}',{n:ME.user.friendRequests}))}"></span>`:''}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
+  if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account &amp; profile')}${ME.user.friendRequests?`<span class="nbadge" title="${esc(t('Friend requests: {n}',{n:ME.user.friendRequests}))}">${ME.user.friendRequests}</span>`:''}</a><a href="${esc(origin)}">${t('Your polls')}</a>
+    <a href="?account">${t('Account &amp; profile')}</a><a href="${esc(origin)}">${t('Your polls')}</a>
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -2116,8 +2134,9 @@ function renderCreated(id, body, kind){
 // ================= ACCOUNT =================
 // ---------- account: calendars ----------
 const CALUI={edit:null};
-// ---------- friends ----------
-// FRIENDS: GET /me/friends result { friends, incoming, outgoing, suggestions }, loaded once per page.
+// ---------- contacts ----------
+// FRIENDS: GET /me/friends result { favourites, contacts, friends, … }, loaded once per page. The page shows it as
+// contacts: favourites, people from your polls (guests added by email + accounts that were friends) and imported ones.
 let FRIENDS=null;
 async function loadFriends(force){
   if(!ME.user) return null;
@@ -2126,53 +2145,123 @@ async function loadFriends(force){
   loadFriends._p=api('GET','/me/friends').then(r=>(FRIENDS=r)).catch(()=>null).finally(()=>{ loadFriends._p=null; });
   return loadFriends._p;
 }
-async function renderFriendsCard(){
-  const box=$('frbox'); if(!box) return;
-  const r=await loadFriends(); if(!$('frbox')) return;
-  if(!r){ box.innerHTML=`<p class="err">${t('Couldn’t load your friends.')}</p>`; return; }
-  const who=f=>`${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(displayName(f))}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}</span>`;
-  const grp=(ic,title,items)=>items.length?`<div class="cgrp">${ICON[ic]}<span class="grow">${title}</span></div><ul class="list">${items.join('')}</ul>`:'';
-  const typed=$('fradd_e')?$('fradd_e').value:'';
-  box.innerHTML=`<div class="callist frlist">
-      ${grp('bell',t('Requests'),r.incoming.map(f=>`<li>${who(f)}<span class="acts">${pqb('check',t('Accept {name}',{name:displayName(f)}),`data-fracc="${esc(f.id)}"`,' ok')}${pqb('x',t('Decline'),`data-frdel="${esc(f.id)}" data-frwhat="decline"`,' danger')}</span></li>`))}
-      ${grp('star',t('Favourites'),(r.favourites||[]).map(f=>`<li>${avatarOf({name:f.name,email:f.email})}<span class="grow pmain"><b class="ell">${esc(f.name)}</b><span class="muted small ell">${esc(f.email)}</span></span><span class="acts">${favBtn(f,new Set([f.email]))}</span></li>`))}
-      ${grp('users',t('Friends'),r.friends.map(f=>`<li>${who(f)}<span class="acts">${pqb('trash',t('Remove {name} from your friends',{name:displayName(f)}),`data-frdel="${esc(f.id)}" data-frwhat="remove" data-frname="${esc(displayName(f))}"`,' danger')}</span></li>`))}
-      ${grp('mail',t('Waiting for an answer'),r.outgoing.map(f=>`<li>${avatarOf({email:f.email})}<span class="grow pmain"><b class="ell">${esc(f.email)}</b><span class="muted small">${t('asked {date}',{date:esc(new Date(f.at).toLocaleDateString(LOC,{day:'numeric',month:'short'}))})}</span></span><span class="acts">${pqb('x',t('Take back the request'),`data-frdel="${esc(f.id)}" data-frwhat="cancel"`)}</span></li>`))}
-      ${!r.incoming.length&&!r.friends.length&&!r.outgoing.length&&!(r.favourites||[]).length?`<p class="help mt-0">${t('No friends yet. Add someone by email below.')}</p>`:''}
-      ${(r.contacts||[]).length?`<details class="frcon"><summary class="cgrp">${ICON.mail}<span class="grow">${t('Added by email ({n})',{n:r.contacts.length})}</span>${tip(t('People you added to your polls with an email address. Pick them in the People tab like friends. If they have (or make) a when-who account, ask them to be friends.'),'right')}</summary>
-        <ul class="list">${r.contacts.map(c=>`<li>${avatarOf({name:c.name,email:c.email})}<span class="grow pmain"><b class="ell">${esc(c.name)}</b><span class="muted small ell">${esc(c.email)}</span></span><span class="acts">${pqb('plus',t('Ask {name} to be friends',{name:c.name}),`data-frmail="${esc(c.email)}"`,' ok')}</span></li>`).join('')}</ul></details>`:''}
-      ${grp('star',t('From your polls'),r.suggestions.map(f=>`<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(displayName(f))}</b></span><span class="acts">${pqb('plus',t('Ask {name} to be friends',{name:displayName(f)}),`data-frsugg="${esc(f.uid)}"`,' ok')}</span></li>`))}
-    </div>
-    <div class="padd padd1 padd-new"><input type="email" id="fradd_e" maxlength="200" placeholder="${t('Friend’s email address')}" aria-label="${t('Friend’s email address')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" value="${esc(typed)}">
-      <button type="button" class="btn primary padd-btn" data-fradd title="${t('Send friend request')}" aria-label="${t('Send friend request')}">${ICON.plus}</button></div>
-    <div class="err" id="fradd_err"></div>`;
+// The contacts engine, shared by the Account page's Contacts card and the Add-people popup.
+// contactKeep(q,skip): filter for search text, duplicates (first group wins) and skip(f,key) (e.g. already in the poll).
+function contactKeep(q,skip){
+  const seen=new Set(); q=String(q||'').trim().toLowerCase();
+  return f=>{ const k=f.email?f.email.toLowerCase():'n:'+f.name.toLowerCase();
+    if(seen.has(k)||(skip&&skip(f,k))) return false;
+    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
 }
-async function friendsChanged(msg){ await loadFriends(true); try{ Object.assign(ME, await api('GET','/me')); }catch(e){}
-  const bar=document.querySelector('.appbar .acct'); if(bar) bar.innerHTML=langButton()+accountBar();
-  await renderFriendsCard(); if(msg) toast(msg); }
-async function friendAdd(btn){
-  const x=$('fradd_e'), err=$('fradd_err'); if(!x) return; err.textContent='';
-  const mail=x.value.trim().toLowerCase();
-  if(!EMAIL_RE.test(mail)){ err.textContent=t("That email address doesn't look right."); x.focus(); return; }
+// [{ic,title,list,imp}]: Favourites, From your polls, Imported (imported = this page's list).
+function contactGroups(imported,keep){
+  const F=FRIENDS||{};
+  return [{ic:'star',title:t('Favourites'),list:(F.favourites||[]).map(f=>({name:f.name,email:f.email}))},
+    {ic:'users',title:t('From your polls'),list:[...(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true})),...(F.contacts||[])]},
+    {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)}));
+}
+// Group headers + rows. items collects the people shown (rows refer to them by index), acts(f,i) = the row's buttons,
+// head(g) = extra buttons in a group header.
+function contactListHtml(groups,items,acts,head){
+  let h='';
+  for(const g of groups){ if(!g.list.length) continue;
+    h+=`<div class="cgrp">${ICON[g.ic]}<span class="grow">${esc(g.title)} <span class="muted">(${g.list.length})</span></span>${head?head(g):''}</div><ul class="list">`
+      +g.list.slice(0,300).map(f=>{ const i=items.push(f)-1;
+        return `<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(f.name)}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}</span>
+          <span class="acts">${acts(f,i)}</span></li>`; }).join('')+'</ul>'; }
+  return h;
+}
+// Import buttons (phone, vCard file, Google / Outlook); attr = the data attribute the clicks are caught by.
+function contactImportButtons(attr){
+  const prov=Object.assign({google:false,microsoft:false},CONFIG.calProviders||{});
+  const imp=(k,ic,label)=>`<button type="button" class="btn sm withic" ${attr}="${k}" title="${esc(label)}" aria-label="${esc(label)}">${ic}<span>${esc(k==='google'?'Google':k==='microsoft'?'Outlook':k==='phone'?t('Phone'):'vCard')}</span></button>`;
+  return `${canPhone()?imp('phone',ICON.users,t('Pick people from your phone’s contacts')):''}
+    ${imp('vcf',ICON.upload,t('Pick a .vcf file exported from your contacts app (iPhone, Mac, Android, Outlook)'))}
+    ${ME.user&&prov.google?imp('google',ICON.cal,t('Your Google contacts (asks Google for permission the first time)')):''}
+    ${ME.user&&prov.microsoft?imp('microsoft',ICON.cal,t('Your Outlook contacts (asks Microsoft for permission the first time)')):''}`;
+}
+// Imported contacts → st.imported (deduplicated by email, or by name when there is none), then render().
+function addImported(st,list,src,render){
+  const have=new Set(st.imported.map(x=>x.email||'n:'+x.name.toLowerCase())); let n=0;
+  for(const c of list){ const email=String(c.email||'').trim().toLowerCase(), name=String(c.name||'').trim().slice(0,60)||(email&&EMAIL_RE.test(email)?nameFromEmail(email):'');
+    if(!name||(email&&!EMAIL_RE.test(email))) continue; const k=email||'n:'+name.toLowerCase(); if(have.has(k)) continue; have.add(k); st.imported.push({name,email}); n++; }
+  st.imported.sort((a,b)=>a.name.localeCompare(b.name,LOC));
+  toast(n?t('{n} contacts imported from {src}',{n,src}):t('No new contacts found in {src}',{src}));
+  render(); return n;
+}
+// One import source into st (PD or CT). fileId = that view's hidden file input; ret = poll id to come back to after
+// a Google / Outlook sign-in (none = back to the Account page, which picks the import up again via sessionStorage).
+async function importContacts(k,btn,st,render,fileId,ret){
+  if(k==='vcf'){ $(fileId).click(); return; }
+  if(k==='phone'){
+    try{ const r=await navigator.contacts.select(['name','email'],{multiple:true});
+      addImported(st,r.flatMap(c=>{ const name=(c.name||[])[0]||''; return (c.email||[]).length?c.email.map(e=>({name,email:e})):[{name,email:''}]; }),t('your phone'),render); }
+    catch(e){ if(e&&e.name!=='AbortError') toast(t('Couldn’t open your contacts')); }
+    return; }
+  // Google / Outlook: every connected account of that provider that allows reading contacts; otherwise ask for it.
+  const pn=k==='google'?'Google':'Outlook';
+  if(btn) btn.disabled=true; st.busy=t('Loading contacts from {src}…',{src:pn}); render();
+  try{ CALS.list=null; const r=await loadCals(); const accts=((r&&r.accounts)||[]).filter(a=>a.provider===k&&a.status==='ok');
+    const ok=accts.filter(a=>a.contacts);
+    if(!ok.length){ const hint=accts.length===1&&accts[0].email?'&hint='+encodeURIComponent(accts[0].email):'';
+      if(!btn||confirm(t('when-who will ask {src} for permission to read your contacts. They are only shown to you here and never saved. Continue?',{src:pn}))){
+        if(!ret) try{ sessionStorage.setItem('ct_import',k); }catch(e){}
+        location.href=`/api/oauth/${k}/start?contacts=1${ret?'&ret='+encodeURIComponent(ret):''}${hint}`; }
+      return; }
+    const all=[]; for(const a of ok){ const d=await api('GET','/me/contacts/'+encodeURIComponent(a.id)); all.push(...(d.contacts||[])); }
+    st.busy=''; addImported(st,all,pn,render); }
+  catch(ex){ toast(ex.message); }
+  finally{ st.busy=''; if(btn) btn.disabled=false; render(); }
+}
+
+// Account page Contacts card: favourites only, unless "Show all" is on or something is typed in the search.
+const CT={q:'',all:false,imported:[],items:[],busy:''};
+function renderContactsCard(){
+  const box=$('ctbox'); if(!box) return;
+  if(!box.dataset.ready){ box.dataset.ready='1';
+    box.innerHTML=`<div class="pd-add ct-add"><input type="text" id="ct_n" maxlength="60" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off" enterkeyhint="next">
+        <input type="email" id="ct_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+        <button type="button" class="btn primary padd-btn" data-ctadd title="${t('Add to favourites')}" aria-label="${t('Add to favourites')}">${ICON.plus}</button></div>
+      <div class="err" id="ct_err"></div>
+      <div class="pd-imp mt-2">${contactImportButtons('data-ctimp')}<input type="file" id="ct_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
+      <div class="row mt-2"><label class="pd-q grow">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
+        <button type="button" class="btn sm" id="ct_all" aria-pressed="false"></button></div>
+      <div id="ct_list" class="pd-list ct-list"></div>`; }
+  const list=$('ct_list'); if(!FRIENDS){ list.innerHTML=`<p class="help mt-0">${t('Loading…')}</p>`; loadFriends().then(r=>{ if(r) renderContactsCard(); else if($('ct_list')) $('ct_list').innerHTML=`<p class="err">${t('Couldn’t load your contacts.')}</p>`; }); return; }
+  const groups=contactGroups(CT.imported,contactKeep(CT.q)), favs=favEmails();
+  const others=groups.slice(1).reduce((n,g)=>n+g.list.length,0), wide=CT.all||!!CT.q.trim();
+  const b=$('ct_all'); b.setAttribute('aria-pressed',String(CT.all)); b.textContent=CT.all?t('Favourites only'):t('Show all ({n})',{n:others}); b.hidden=!!CT.q.trim();
+  CT.items=[];
+  let h=contactListHtml(wide?groups:groups.slice(0,1),CT.items,f=>f.email?favBtn(f,favs):'');
+  if(CT.busy) h=`<p class="help mt-0">${esc(CT.busy)}</p>`+h;
+  list.innerHTML=h||`<p class="help mt-0">${CT.q.trim()?t('Nobody found.'):t('No favourites yet. Add someone above, or star people under Show all.')}</p>`;
+}
+async function contactAdd(btn){
+  const n=$('ct_n'), m=$('ct_e'), err=$('ct_err'); if(!n) return; err.textContent='';
+  const mail=m.value.trim().toLowerCase(), name=n.value.trim().slice(0,60)||(EMAIL_RE.test(mail)?nameFromEmail(mail):'');
+  if(!EMAIL_RE.test(mail)){ err.textContent=mail?t("That email address doesn't look right."):t('Every person needs an email address.'); m.focus(); return; }
   btn.disabled=true;
-  try{ await api('POST','/me/friends',{email:mail}); x.value=''; await friendsChanged(t('Request sent to {email}',{email:mail})); }
+  try{ await api('POST','/me/favourites',{name,email:mail}); n.value=''; m.value=''; await loadFriends(true); renderContactsCard(); toast(t('Added to favourites')); n.focus(); }
   catch(ex){ err.textContent=ex.message; }
   finally{ btn.disabled=false; }
 }
-document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-fracc],[data-frdel],[data-fradd],[data-frsugg],[data-frmail]'); if(!b||!$('frbox')) return; const d=b.dataset;
-  if(d.fradd!==undefined){ friendAdd(b); return; }
-  if(d.frwhat==='remove'&&!confirm(t('Remove {name} from your friends?',{name:d.frname}))) return;
-  b.disabled=true;
-  try{
-    if(d.fracc){ await api('POST',`/me/friends/${encodeURIComponent(d.fracc)}/accept`); await friendsChanged(t('You’re now friends')); }
-    else if(d.frsugg){ await api('POST','/me/friends',{uid:d.frsugg}); await friendsChanged(t('Request sent')); }
-    else if(d.frmail){ await api('POST','/me/friends',{email:d.frmail}); await friendsChanged(t('Request sent to {email}',{email:d.frmail})); }
-    else if(d.frdel){ await api('DELETE',`/me/friends/${encodeURIComponent(d.frdel)}`);
-      await friendsChanged({decline:t('Request declined'),cancel:t('Request taken back'),remove:t('Removed from your friends')}[d.frwhat]); }
-  }catch(ex){ toast(ex.message); b.disabled=false; }
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-ctadd],[data-ctimp],#ct_all'); if(!b||!$('ctbox')) return;
+  if(b.id==='ct_all'){ CT.all=!CT.all; renderContactsCard(); }
+  else if(b.dataset.ctadd!==undefined) contactAdd(b);
+  else importContacts(b.dataset.ctimp,b,CT,renderContactsCard,'ct_file',null);
 });
-document.addEventListener('keydown',e=>{ if(e.target.id==='fradd_e'&&e.key==='Enter'){ e.preventDefault(); const b=document.querySelector('[data-fradd]'); if(b) friendAdd(b); } });
+document.addEventListener('input',e=>{ if(e.target.id==='ct_q'){ CT.q=e.target.value; renderContactsCard(); } });
+document.addEventListener('keydown',e=>{ if((e.target.id==='ct_n'||e.target.id==='ct_e')&&e.key==='Enter'){ e.preventDefault();
+  if(e.target.id==='ct_n'&&!$('ct_e').value.trim()) $('ct_e').focus(); else contactAdd(document.querySelector('[data-ctadd]')); } });
+// Back on the Account page from a Google / Outlook contacts sign-in started in the Contacts card: true if it was one.
+function contactsImportResume(res){
+  let k=''; try{ k=sessionStorage.getItem('ct_import')||''; sessionStorage.removeItem('ct_import'); }catch(e){}
+  if(!k) return false;
+  if(res==='ok'&&(k==='google'||k==='microsoft')){ CT.all=true; importContacts(k,null,CT,renderContactsCard,'ct_file',null); }
+  else setTimeout(()=>toast(res==='denied'?t('Access to your contacts wasn’t granted'):t('Connecting didn’t work. Please try again.')),300);
+  return true;
+}
 
 async function renderCalCard(){
   const box=$('calbox'); if(!box) return;
@@ -2252,7 +2341,7 @@ function calReturn(qs){
   const res=qs.get('cal'), add=qs.get('addcal'); if(!res&&!add) return;
   const msg={ok:t('Calendar connected'),denied:t('Calendar access wasn’t granted'),signin:t('Sign in first, then connect your calendar'),
     toomany:t('You can connect at most 5 calendar accounts'),error:t('Connecting the calendar didn’t work. Please try again.')}[res];
-  if(msg) setTimeout(()=>toast(msg),300);
+  if(res&&contactsImportResume(res)) {} else if(msg) setTimeout(()=>toast(msg),300);
   if(add) setTimeout(()=>{ const u=$('caladd_u'); if(u){ u.value=add.replace(/^web\+?webcal:/,'').trim(); u.focus(); } },400);
   qs.delete('cal'); qs.delete('addcal');
   history.replaceState(null,'',location.pathname+(String(qs)?'?'+String(qs).replace(/=(&|$)/g,'$1'):'')+location.hash);
@@ -2274,13 +2363,17 @@ function renderAccount(){
     <main class="wrap"><div class="home-grid">
       <div class="card"><div class="card-h"><h2>${t('Profile')}</h2></div>
         <form id="pf">
-          <div class="field"><label for="pf_name">${t('Name')}</label><input type="text" id="pf_name" maxlength="60" autocomplete="name" placeholder="${esc(u.email.split('@')[0])}" value="${esc(u.name)}">
-            <div class="help mt-1">${t('Shown in the app and as your name on polls you answer. Changing it updates your earlier answers too.')}</div></div>
-          <div class="field"><label>${t('Avatar')}</label>${picker('avatar',{emoji:u.avatar,img:u.avatarImg,text:displayName(u),seed:u.email,round:true,size:192})}</div>
-          <div class="field"><label>${t('Email')}</label><input type="email" value="${esc(u.email)}" readonly>
-            <div class="help mt-1">${t('You sign in with this address. Polls you answer while signed in are linked to it, not to your name.')}</div></div>
+          <div class="pf-id">
+            <button type="button" class="pf-av" data-pftoggle aria-expanded="false" aria-controls="pf_pk" title="${t('Change avatar')}" aria-label="${t('Change avatar')}"><span data-pkprev="avatar">${avatarOf(u,'pf-tile')}</span><span class="pf-badge">${ICON.edit}</span></button>
+            <div class="pf-main">
+              <div class="pf-row"><input type="text" id="pf_name" maxlength="60" autocomplete="name" placeholder="${esc(u.email.split('@')[0])}" value="${esc(u.name)}" aria-label="${t('Name')}">
+                ${tip(t('Shown in the app and as your name on polls you answer. Changing it updates your earlier answers too.'),'right')}
+                <button type="submit" class="btn primary withic ib pf-save" id="pf_save" disabled title="${t('Save profile')}" aria-label="${t('Save profile')}">${ICON.check}<span class="bl">${t('Save')}</span></button></div>
+              <div class="pf-mail">${ICON.mail}<span class="ell">${esc(u.email)}</span>${ICON.lock}${tip(t('You sign in with this address. Polls you answer while signed in are linked to it, not to your name.'),'right')}</div>
+            </div>
+          </div>
+          <div class="pf-pk" id="pf_pk" hidden>${picker('avatar',{emoji:u.avatar,img:u.avatarImg,text:displayName(u),seed:u.email,round:true,size:192})}</div>
           <div class="err" id="pf_err"></div>
-          <div class="row mt-4"><button class="btn primary" id="pf_save">${t('Save profile')}</button></div>
         </form></div>
       <div class="card"><div class="card-h"><h2>${t('Overview')}</h2></div>
         <div class="stats">
@@ -2292,13 +2385,18 @@ function renderAccount(){
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
-      <div class="card span" id="frcard"><div class="card-h"><h2 class="grow">${t('Friends')}</h2>${tip(t('Friends are other when-who accounts. Pick them in a poll’s <b>People</b> tab: they’re added with their account, so their answers always land in their own row. A request needs their OK; it goes to the email address you type, whether or not it has an account yet.'),'right')}</div>
-        <div id="frbox"><p class="help">${t('Loading…')}</p></div></div>
+      <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}</h2>${tip(t('Your favourites come first when you add people to a poll. <b>Show all</b> also lists the people from your polls and contacts you import; star them to keep them as favourites. Imported contacts stay in this browser until you star them.'),'right')}</div>
+        <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}</h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
     </div></main>${siteFoot()}`;
-  renderCalCard(); renderFriendsCard();
-  $('pf_name').addEventListener('input',e=>pickerSetText('avatar',e.target.value||u.email));
+  renderCalCard(); renderContactsCard();
+  // Save lights up once the name or the avatar changed; the avatar button opens the picker.
+  const pfDirty=()=>{ const b=$('pf_save'); if(b) b.disabled=false; };
+  $('pf_name').addEventListener('input',e=>{ pickerSetText('avatar',e.target.value||u.email); pfDirty(); });
+  $('pf').addEventListener('click',e=>{ if(e.target.closest('#pk_avatar [data-pkemoji],#pk_avatar [data-pkclear]')) pfDirty();
+    const tg=e.target.closest('[data-pftoggle]'); if(tg){ const pk=$('pf_pk'), open=pk.hidden; pk.hidden=!open; tg.setAttribute('aria-expanded',String(open)); if(open&&!TOUCH) pk.querySelector('.pk-search')?.focus(); } });
+  $('pf').addEventListener('change',e=>{ if(e.target.closest('[data-pkfile]')) pfDirty(); });
   $('pf').onsubmit=async e=>{
     e.preventDefault(); const err=$('pf_err'), btn=$('pf_save'); err.textContent=''; btn.disabled=true;
     const pk=pickerValue('avatar'), b={name:$('pf_name').value.trim(), avatar:pk.emoji};
@@ -3887,7 +3985,7 @@ async function favToggle(btn){
   const f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.email===mail);
   try{ if(f) await api('DELETE','/me/favourites/'+encodeURIComponent(f.id)); else await api('POST','/me/favourites',{name:name.slice(0,60),email:mail});
     await loadFriends(true); toast(f?t('Removed from favourites'):t('Added to favourites'));
-    if(PEOPLE&&PEOPLE.parts) renderParts(); else pdRender(); if($('frbox')) renderFriendsCard(); }
+    if(PEOPLE&&PEOPLE.parts) renderParts(); else pdRender(); renderContactsCard(); }
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 const canPhone=()=>!!(navigator.contacts&&navigator.contacts.select);
@@ -3895,8 +3993,7 @@ function pdOpen(){
   let d=$('pdlg');
   if(!d){ d=document.createElement('dialog'); d.id='pdlg'; d.className='dlg'; d.setAttribute('aria-labelledby','pd_h'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
-  const prov=Object.assign({google:false,microsoft:false},CONFIG.calProviders||{}), series=PEOPLE&&PEOPLE.series;
-  const imp=(k,ic,label)=>`<button type="button" class="btn sm withic" data-pdimp="${k}" title="${esc(label)}" aria-label="${esc(label)}">${ic}<span>${esc(k==='google'?'Google':k==='microsoft'?'Outlook':k==='phone'?t('Phone'):'vCard')}</span></button>`;
+  const series=PEOPLE&&PEOPLE.series;
   const help=(series?t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row in every round; people signed in are matched by their account.'):t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row; people signed in are matched by their account.'))
     +' '+t('Imported contacts are only shown here, in your browser. when-who saves only the people you add.');
   d.innerHTML=`<div class="dlg-h"><h2 id="pd_h">${t('Add people')}</h2>${tip(help,'right')}${pqb('x',t('Close'),'data-pdclose=""')}</div>
@@ -3907,10 +4004,7 @@ function pdOpen(){
         <button type="button" class="btn primary padd-btn" data-padd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
       <div class="err" id="pd_err"></div>
       <div class="pd-imp">
-        ${canPhone()?imp('phone',ICON.users,t('Pick people from your phone’s contacts')):''}
-        ${imp('vcf',ICON.upload,t('Pick a .vcf file exported from your contacts app (iPhone, Mac, Android, Outlook)'))}
-        ${ME.user&&prov.google?imp('google',ICON.cal,t('Your Google contacts (asks Google for permission the first time)')):''}
-        ${ME.user&&prov.microsoft?imp('microsoft',ICON.cal,t('Your Outlook contacts (asks Microsoft for permission the first time)')):''}
+        ${contactImportButtons('data-pdimp')}
         <input type="file" id="pd_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
       <label class="pd-q">${ICON.search||''}<input type="search" id="pd_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off" value="${esc(PD.q)}"></label>
     </div>
@@ -3923,33 +4017,13 @@ function pdOpen(){
 function pdRender(){
   const box=$('pd_list'); if(!box||!PEOPLE||!PEOPLE.parts) return;
   const inPoll=new Set(PEOPLE.parts.map(p=>(p.email||'').toLowerCase()).filter(Boolean)), names=new Set(PEOPLE.parts.map(p=>p.name.toLowerCase()));
-  const q=PD.q.trim().toLowerCase(), seen=new Set(), favs=favEmails();
-  const keep=f=>{ const k=f.email?f.email.toLowerCase():'n:'+f.name.toLowerCase();
-    if(seen.has(k)||(f.email?inPoll.has(k):names.has(f.name.toLowerCase()))) return false;
-    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
-  const F=FRIENDS||{};
-  const groups=[['star',t('Favourites'),(F.favourites||[]).map(f=>({name:f.name,email:f.email}))],
-    ['users',t('Friends'),(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true}))],
-    ['mail',t('Added by email'),F.contacts||[]],
-    ['upload',t('Imported'),PD.imported]].map(([ic,title,list])=>[ic,title,list.filter(keep)]);
-  PD.items=[]; let h='';
-  for(const [ic,title,list] of groups){ if(!list.length) continue;
-    const imp=list===groups[3][2];
-    h+=`<div class="cgrp">${ICON[ic]}<span class="grow">${esc(title)} <span class="muted">(${list.length})</span></span>${imp&&list.length>1?`<button type="button" class="btn sm" data-pdall>${t('Add all')}</button>`:''}</div><ul class="list">`
-      +list.slice(0,300).map(f=>{ const i=PD.items.push(f)-1;
-        return `<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(f.name)}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}</span>
-          <span class="acts">${ME.user&&f.email?favBtn(f,favs):''}${pqb('plus',t('Add {name}',{name:f.name}),`data-pdi="${i}"`,' ok')}</span></li>`; }).join('')+'</ul>'; }
+  const q=PD.q.trim(), favs=favEmails();
+  const groups=contactGroups(PD.imported,contactKeep(q,(f,k)=>f.email?inPoll.has(k):names.has(f.name.toLowerCase())));
+  PD.items=[];
+  let h=contactListHtml(groups,PD.items,(f,i)=>`${ME.user&&f.email?favBtn(f,favs):''}${pqb('plus',t('Add {name}',{name:f.name}),`data-pdi="${i}"`,' ok')}`,
+    g=>g.imp&&g.list.length>1?`<button type="button" class="btn sm" data-pdall>${t('Add all')}</button>`:'');
   if(PD.busy) h=`<p class="help mt-0">${esc(PD.busy)}</p>`+h;
-  box.innerHTML=h||`<p class="help mt-0">${q?t('Nobody found.'):ME.user?t('Your favourites, friends and imported contacts show up here.'):t('Imported contacts show up here.')}</p>`;
-}
-// Imported contacts → PD.imported (deduplicated by email, or by name when there is none).
-function pdAddImported(list,src){
-  const have=new Set(PD.imported.map(x=>x.email||'n:'+x.name.toLowerCase())); let n=0;
-  for(const c of list){ const email=String(c.email||'').trim().toLowerCase(), name=String(c.name||'').trim().slice(0,60)||(email&&EMAIL_RE.test(email)?nameFromEmail(email):'');
-    if(!name||(email&&!EMAIL_RE.test(email))) continue; const k=email||'n:'+name.toLowerCase(); if(have.has(k)) continue; have.add(k); PD.imported.push({name,email}); n++; }
-  PD.imported.sort((a,b)=>a.name.localeCompare(b.name,LOC));
-  toast(n?t('{n} contacts imported from {src}',{n,src}):t('No new contacts found in {src}',{src}));
-  pdRender();
+  box.innerHTML=h||`<p class="help mt-0">${q?t('Nobody found.'):ME.user?t('Your favourites, people from your polls and imported contacts show up here.'):t('Imported contacts show up here.')}</p>`;
 }
 // vCard 2.1 / 3.0 / 4.0: FN (or N) and every EMAIL of each card. Quoted-printable names are decoded as UTF-8.
 function parseVcf(text){
@@ -3971,27 +4045,7 @@ function parseVcf(text){
   });
   return out;
 }
-async function pdImport(k,btn){
-  if(k==='vcf'){ $('pd_file').click(); return; }
-  if(k==='phone'){
-    try{ const r=await navigator.contacts.select(['name','email'],{multiple:true});
-      pdAddImported(r.flatMap(c=>{ const name=(c.name||[])[0]||''; return (c.email||[]).length?c.email.map(e=>({name,email:e})):[{name,email:''}]; }),t('your phone')); }
-    catch(e){ if(e&&e.name!=='AbortError') toast(t('Couldn’t open your contacts')); }
-    return; }
-  // Google / Outlook: every connected account of that provider that allows reading contacts; otherwise ask for it.
-  const pn=k==='google'?'Google':'Outlook';
-  if(btn) btn.disabled=true; PD.busy=t('Loading contacts from {src}…',{src:pn}); pdRender();
-  try{ CALS.list=null; const r=await loadCals(); const accts=((r&&r.accounts)||[]).filter(a=>a.provider===k&&a.status==='ok');
-    const ok=accts.filter(a=>a.contacts);
-    if(!ok.length){ const hint=accts.length===1&&accts[0].email?'&hint='+encodeURIComponent(accts[0].email):'';
-      if(!btn||confirm(t('when-who will ask {src} for permission to read your contacts. They are only shown to you here and never saved. Continue?',{src:pn})))
-        location.href=`/api/oauth/${k}/start?contacts=1&ret=${encodeURIComponent(PEOPLE.id)}${hint}`;
-      return; }
-    const all=[]; for(const a of ok){ const d=await api('GET','/me/contacts/'+encodeURIComponent(a.id)); all.push(...(d.contacts||[])); }
-    PD.busy=''; pdAddImported(all,pn); }
-  catch(ex){ toast(ex.message); }
-  finally{ PD.busy=''; if(btn) btn.disabled=false; pdRender(); }
-}
+const pdImport=(k,btn)=>importContacts(k,btn,PD,pdRender,'pd_file',PEOPLE.id);
 document.addEventListener('click',e=>{
   if(e.target.closest('#pd_fav')){ const s=e.target.closest('#pd_fav'); s.setAttribute('aria-pressed',String(s.getAttribute('aria-pressed')!=='true')); return; }
   const b=e.target.closest('[data-paddopen],[data-pdclose],[data-pfav],[data-pdi],[data-pdall],[data-pdimp]'); if(!b) return;
@@ -4006,9 +4060,9 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{ if(e.target.id==='pd_q'){ PD.q=e.target.value; pdRender(); } });
 document.addEventListener('change',async e=>{
-  if(e.target.id!=='pd_file') return; const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
+  const ct=e.target.id==='ct_file'; if(e.target.id!=='pd_file'&&!ct) return; const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
   if(f.size>5e6){ toast(t('That file is too big')); return; }
-  pdAddImported(parseVcf(await f.text()),f.name);
+  if(ct){ CT.all=true; addImported(CT,parseVcf(await f.text()),f.name,renderContactsCard); } else addImported(PD,parseVcf(await f.text()),f.name,pdRender);
 });
 // Back from the Google / Outlook contacts sign-in (?contacts=google|microsoft|err-…): open People and the popup again.
 async function contactsReturn(qs){
@@ -4452,6 +4506,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Change avatar": "Avatar ändern",
 "Only invited people can answer": "Nur eingeladene Personen können antworten",
 "Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.": "Nur Personen, die du im Tab <b>Personen</b> hinzugefügt hast, können antworten. Sie melden sich mit der E-Mail-Adresse an, die du eingetragen hast (sie bekommen einen 6-stelligen Code per E-Mail), so kann niemand sonst in ihrem Namen antworten.",
 "Only invited people can answer. Sign in with the email address you were invited with.": "Nur eingeladene Personen können antworten. Melde dich mit der E-Mail-Adresse an, mit der du eingeladen wurdest.",
@@ -4507,7 +4562,6 @@ function germanText(){ return {
 "Add all": "Alle hinzufügen",
 "Add {name}": "{name} hinzufügen",
 "Nobody found.": "Niemand gefunden.",
-"Your favourites, friends and imported contacts show up here.": "Hier erscheinen deine Favoriten, Freund*innen und importierten Kontakte.",
 "Imported contacts show up here.": "Hier erscheinen importierte Kontakte.",
 "{n} contacts imported from {src}": "{n} Kontakte aus {src} importiert",
 "No new contacts found in {src}": "Keine neuen Kontakte in {src} gefunden",
@@ -4836,32 +4890,14 @@ function germanText(){ return {
 "Line = share of your hours": "Linie = Anteil deiner Stunden",
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
-"Added by email ({n})": "Per E-Mail hinzugefügt ({n})",
-"Added by email": "Per E-Mail hinzugefügt",
-"People you added to your polls with an email address. Pick them in the People tab like friends. If they have (or make) a when-who account, ask them to be friends.": "Personen, die du mit E-Mail-Adresse zu deinen Umfragen hinzugefügt hast. Wähl sie im Tab Personen aus wie Freund*innen. Wenn sie ein when-who-Konto haben (oder anlegen), schick ihnen eine Freundschaftsanfrage.",
-"Friend requests: {n}": "Freundschaftsanfragen: {n}",
-"Friends": "Freund*innen",
-"Friends are other when-who accounts. Pick them in a poll’s <b>People</b> tab: they’re added with their account, so their answers always land in their own row. A request needs their OK; it goes to the email address you type, whether or not it has an account yet.": "Freund*innen sind andere when-who-Konten. Wähl sie im Tab <b>Personen</b> einer Umfrage aus: Sie werden mit ihrem Konto hinzugefügt, ihre Antworten landen also immer in ihrer eigenen Zeile. Eine Anfrage braucht ihr OK; sie geht an die E-Mail-Adresse, die du eingibst, egal ob es dazu schon ein Konto gibt.",
-"Couldn’t load your friends.": "Deine Freund*innen konnten nicht geladen werden.",
-"Requests": "Anfragen",
-"Accept {name}": "{name} annehmen",
-"Decline": "Ablehnen",
-"Remove {name} from your friends": "{name} aus deinen Freund*innen entfernen",
-"Waiting for an answer": "Wartet auf Antwort",
-"asked {date}": "angefragt am {date}",
-"Take back the request": "Anfrage zurückziehen",
-"No friends yet. Add someone by email below.": "Noch keine Freund*innen. Füg unten jemanden per E-Mail hinzu.",
+"Contacts": "Kontakte",
+"Your favourites come first when you add people to a poll. <b>Show all</b> also lists the people from your polls and contacts you import; star them to keep them as favourites. Imported contacts stay in this browser until you star them.": "Deine Favoriten stehen ganz oben, wenn du Personen zu einer Umfrage hinzufügst. <b>Alle zeigen</b> listet auch die Personen aus deinen Umfragen und importierte Kontakte; markier sie mit dem Stern, um sie als Favoriten zu behalten. Importierte Kontakte bleiben in diesem Browser, bis du sie markierst.",
+"Couldn’t load your contacts.": "Deine Kontakte konnten nicht geladen werden.",
+"Favourites only": "Nur Favoriten",
+"Show all ({n})": "Alle zeigen ({n})",
+"No favourites yet. Add someone above, or star people under Show all.": "Noch keine Favoriten. Füg oben jemanden hinzu oder markier Personen unter Alle zeigen.",
+"Your favourites, people from your polls and imported contacts show up here.": "Hier erscheinen deine Favoriten, Personen aus deinen Umfragen und importierte Kontakte.",
 "From your polls": "Aus deinen Umfragen",
-"Ask {name} to be friends": "{name} eine Freundschaftsanfrage schicken",
-"Friend’s email address": "E-Mail-Adresse der Person",
-"Send friend request": "Freundschaftsanfrage senden",
-"Request sent to {email}": "Anfrage an {email} gesendet",
-"Remove {name} from your friends?": "{name} aus deinen Freund*innen entfernen?",
-"You’re now friends": "Ihr seid jetzt befreundet",
-"Request sent": "Anfrage gesendet",
-"Request declined": "Anfrage abgelehnt",
-"Request taken back": "Anfrage zurückgezogen",
-"Removed from your friends": "Aus deinen Freund*innen entfernt",
 "Pick someone from the list": "Wähl jemanden aus der Liste",
 "Enter an email address": "Gib eine E-Mail-Adresse ein",
 "That’s your own address": "Das ist deine eigene Adresse",
