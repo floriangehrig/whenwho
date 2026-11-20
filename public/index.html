@@ -449,6 +449,7 @@
   .ws-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .ws-views button{padding:7px 16px;font-size:13.5px}
   .ws-views button:disabled{opacity:.4;cursor:default}
+  .msubbar{margin-bottom:var(--s3,12px)} .msub .count{margin-left:6px}
   .ws-views button.on{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(31,94,255,.25)}
   .ws-me{margin-top:var(--s4);padding:14px 16px;border-radius:var(--r-lg);background:var(--sunken);border:1px solid var(--line)}
   .ws-me .help{margin-top:8px}
@@ -2524,7 +2525,7 @@ const ansMode = () => P.data.poll.answerMode;
 const instLabel = i => P.data.poll.kind==='weekly' ? t('A typical week') : P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
 
 async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.tab=store.get('view:'+id,'mine');
-  if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; } // the old "★ Schedule" view now lives in the Meetings tab
+  P.msub=null; if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; P.msub='plan'; } // the old "★ Schedule" view now lives in the Meetings tab
   P.password=store.get('pw:'+id,null); await loadPoll(true); }
 async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
 async function loadPoll(first){
@@ -2782,7 +2783,7 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):t('Poll')}${d.isAdmin?'<span class="pill accent">'+t('Your poll')+'</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?t('meeting'):t('meetings')}</a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" data-msubgo="list" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?t('meeting'):t('meetings')}</a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${i.status==='closed'?'<span class="chip closed">'+t('Closed')+'</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
@@ -2800,8 +2801,9 @@ function renderBody(){
     mt.innerHTML=rs&&P.who&&P.tab!=='mine'?`${ICON.users}<b>${sel().length}/${rs.length}</b>`:''; }
   // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
   const mp=$('mplan');
-  if(mp&&P.atab==='meetings'){ b.innerHTML=''; renderPlan(mp); }
+  if(mp&&P.atab==='meetings'){ b.innerHTML=''; if(msub()==='plan') renderPlan(mp); else mp.innerHTML=''; }
   else { if(mp) mp.innerHTML=''; if(P.tab==='mine') renderMine(b); else renderGroup(b); }
+  const dn=$('msubd'); if(dn){ dn.textContent=P.drafts.length; dn.hidden=!P.drafts.length; }
   saveBar();
 }
 
@@ -2893,10 +2895,10 @@ function dateTile(m){
 function renderMeetings(){
   const el=$('meetings'); if(!el) return;
   const d=P.data, ms=inst().meetings, adm=d.isAdmin;
-  if(adm){ const n=$('mtabn'); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } }
+  if(adm) ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } });
   if(!ms.length){ P.msel=null;
     el.innerHTML=adm?`<div class="card mcard"><div class="card-h"><h2>${t('Scheduled meetings')}</h2></div>
-      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them below, or ★ a day under Everyone.')}</span></div></div>`:'';
+      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Schedule them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Scheduling')}</span></button></div></div>`:'';
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
@@ -3618,7 +3620,7 @@ function scheduleDay(k){
   if(!P.drafts.some(x=>x.date===k&&(x.allDay||(r&&x.start===r[0]&&x.end===r[1])))){
     if(!slotsOn) addDraft(k,true,null,null);
     else { const [st,en]=r||bestBlock(stats(k)); addDraft(k,false,st,Math.min(en,24)); } }
-  P.range=null; planShow(k);
+  P.range=null; planShow(k); setMsub('plan',false);
   if(P.atab==='meetings') renderBody(); else setAdminTab('meetings');
   toast(t('Draft added. Set the details, then create the meeting.'));
   const tr=$('drafts'); if(tr) tr.closest('.pstep').scrollIntoView({block:'start'});
@@ -3943,7 +3945,7 @@ async function saveDrafts(btn){
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
-  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; renderBody(); toast(n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
+  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; setMsub('list',false); renderBody(); toast(n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
   else btn.disabled=false;
 }
 
@@ -4075,6 +4077,16 @@ function adminTabs(){
   const chatN=(P.data.chat&&P.data.chat.unread)||0;
   return `<nav class="card tabs atabs" aria-label="${t('Manage this poll')}">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='chat'?`<span class="count" id="ctabn"${chatN&&P.atab!=='chat'?'':' hidden'}>${chatN}</span>`:''}</button>`).join('')}</nav>`;
 }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
+// Meetings tab sub-view: 'list' (scheduled meetings) or 'plan' (the scheduler). Remembered per poll;
+// without a saved choice it opens the list when there are meetings, else the scheduler.
+function msub(){ if(!P.msub) P.msub=store.get('msub:'+P.id,'')||(P.data&&inst()&&inst().meetings.length?'list':'plan'); return P.msub; }
+function setMsub(v,render=true){
+  P.msub=v; store.set('msub:'+P.id,v);
+  document.querySelectorAll('[data-msub]').forEach(b=>{ if(!b.closest('.msub')) return; const on=b.dataset.msub===v; b.classList.toggle('on',on); b.setAttribute('aria-selected',on); });
+  const l=$('meetings'), p=$('mplan'); if(l&&P.data.isAdmin) l.classList.toggle('hide',v!=='list'); if(p) p.classList.toggle('hide',v!=='plan');
+  if(render&&P.atab==='meetings') renderBody();
+}
 function setAdminTab(k){
   if(k==='participants'||k==='share') k='people';
   if(!adminTabList().some(x=>x[0]===k)) k='answers';
@@ -4088,7 +4100,11 @@ function setAdminTab(k){
 function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
   const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
-  return `<div id="pane-meetings" class="${hid('meetings')}"><div id="meetings"></div><div class="card" id="mplan"></div></div>
+  const ms=msub();
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="msubbar"><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
+      <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Meetings')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
+      <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Scheduling')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
+    <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="card${ms==='plan'?'':' hide'}" id="mplan"></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
       <div class="grid2">
@@ -4421,7 +4437,7 @@ function wireAdmin(){
 document.addEventListener('click',async e=>{
   const tg=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
-  if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
+  if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setAdminTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
@@ -5143,6 +5159,8 @@ function germanText(){ return {
 "Hide scheduled meetings": "Geplante Termine ausblenden",
 "Hide where the others are available": "Ausblenden, wann die anderen verfügbar sind",
 "Hours": "Stunden",
+"Scheduling": "Planung",
+"Schedule them, or ★ a day under Everyone.": "Plane sie, oder markiere einen Tag unter Alle mit ★.",
 "Answer with": "Antwort mit",
 "Days and time slots": "Tage und Zeitfenster",
 "Email required": "E-Mail Pflicht",
