@@ -304,8 +304,9 @@
   .wknav{display:flex;align-items:center;gap:10px;margin-top:16px}
   .wknav .btn{min-width:36px;padding:0 10px;font-size:16px}
   .wknav .lbl{font-weight:600;font-size:14px}
+  .dgridp{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y} .dgridp .day{cursor:pointer}
   .grid{display:grid;margin-top:12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
-  .grid.painting{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:4px;border-radius:10px}
+  .dgridp.painting,.grid.painting{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:4px;border-radius:10px}
   .grid .hd{font-size:11px;font-weight:600;text-align:center;padding:4px 2px 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .grid .hd b{display:block;color:var(--ink);font-size:15px;text-transform:none;letter-spacing:0}
   .grid .hr{font-size:11px;color:var(--muted);text-align:right;padding-right:8px;line-height:26px;font-variant-numeric:tabular-nums}
@@ -2321,7 +2322,7 @@ function renderMine(el){
   const othBtn=n?`<button type="button" class="btn sm withic badgeb${on?' on':''}" data-hint aria-pressed="${on}" title="${on?'Hide':'Show'} where the others are available" aria-label="${on?'Hide':'Show'} others (${n})">${ICON.users}<span class="bl">Others</span><i class="badge">${n}</i></button>`:'';
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="Answer by">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="Whole days" aria-label="Whole days"><span class="segic">${ICON.day}</span><span class="bl">Days</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="Time slots" aria-label="Time slots"><span class="segic">${ICON.clock}</span><span class="bl">Hours</span></button></div>`:'';
-  const brushSeg=P.mode==='days'?'':`<div class="seg iseg brush" role="group" aria-label="Brush">${[['y','yes','Available'],['i','ifn','If needed'],['m','maybe','Maybe']].map(([b,c,t])=>
+  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="Brush">${[['y','yes','Available'],['i','ifn','If needed'],['m','maybe','Maybe']].map(([b,c,t])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${t}" aria-label="${t}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${t}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="Erase" aria-label="Erase"><span class="segic">${ICON.erase}</span></button></div>`;
   const mi=(icon,label,attrs,cls='')=>`<button type="button" class="${cls}" ${attrs}>${ICON[icon]}<span>${esc(label)}</span></button>`;
@@ -2330,20 +2331,20 @@ function renderMine(el){
       ${mi('zap','Quick fill…','data-qf','sm-flex')}${mi('cal','From calendar…','data-cal','sm-flex')}
       ${mi('x','Clear all','data-bulk="clear"','danger')}</div></details>`;
   const helpTxt=P.mode==='days'
-    ?`Tap a day to cycle <b>available</b> → <b>if needed</b> → <b>maybe</b> → blank. Blank = not available.${am==='both'?' Switch to 🕒 to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe).`:''}`
+    ?`${TOUCH?'Pick a colour, then tap days, or press and hold and drag to paint several.':'Pick a colour, then click (or drag across) the days you can make.'} Tapping a day with the same colour clears it. Blank = not available.${am==='both'?' Switch to 🕒 to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe).`:''}`
     :`${TOUCH?'Pick a colour, then tap hours, or press and hold and drag to paint several.':'Pick a colour, then drag (or tap) across the hours you can make.'} Painting over the same colour clears it. Blank = not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}`;
   // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
   P.modeHelp=helpTxt; updateHelp();
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}<span class="hide-sm row tight">${qfButton()}${calButton()}</span>${menu}`,'tbar')+quickFill()+calPanel();
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
-    h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
+    h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
       let hint='', tip='';
       if(o&&(o.peak||o.peakMaybe||o.part)){
         const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), is=o.list.filter(x=>fk(x)==='i').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='i'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
         tip=names([...ys,...ps],is,ms);
         hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div>${heatBar(o.peak,o.peakIfn,o.peakMaybe,n)}`; }
-      return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
+      return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; })+'</div>';
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
     h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="Previous week">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
@@ -2363,7 +2364,7 @@ function renderMine(el){
   }
   h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'');
   el.innerHTML=h;
-  if(P.mode==='slots') wireGrid();
+  if(P.mode==='slots') wireGrid(); else wireDays();
 }
 // Quick fill: mark every day matching a pattern (optionally only some hours) in one go.
 function quickFill(){
@@ -2594,6 +2595,25 @@ document.addEventListener('change',e=>{
 });
 function setEntry(k,v){ const e=Object.assign({},P.mine.entries); if(v==null) delete e[k]; else e[k]=v; P.mine.entries=e; }
 
+// Whole days: paint with the chosen brush (click/tap, or drag across days). Painting a day that already has that colour clears it.
+function wireDays(){
+  const grid=$('dgrid'); if(!grid) return;
+  let paint=null, touched=new Set(), last=null;
+  const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y), d=el&&el.closest&&el.closest('.day[data-day]'); return d&&grid.contains(d)?d:null; };
+  const dates=P.data.dates, cellOf=k=>grid.querySelector(`.day[data-day="${k}"]`);
+  // A fast drag can jump over days, so a move fills every poll day between the previous day and this one.
+  const span=el=>{ const a=dates.indexOf(last), b=dates.indexOf(el.dataset.day); last=el.dataset.day;
+    if(a<0||b<0) return apply(el); const [lo,hi]=a<b?[a,b]:[b,a]; for(let i=lo;i<=hi;i++){ const c=cellOf(dates[i]); if(c) apply(c); } };
+  const apply=el=>{ const k=el.dataset.day; if(touched.has(k)) return; touched.add(k);
+    setEntry(k,paint==='x'?null:paint); const st=statusOf(P.mine.entries[k],k);
+    el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls);
+    const t=el.querySelector('.t'); if(t) t.textContent=st.t; };
+  const end=()=>{ if(paint===null) return; paint=null; touched=new Set(); changed(); renderBody(); };
+  gridGestures(grid,cellAt,{
+    start:el=>{ const v=P.mine.entries[el.dataset.day]; paint=(P.brush!=='x'&&v===P.brush)?'x':P.brush; touched=new Set(); last=el.dataset.day; apply(el); },
+    move:el=>{ if(paint!==null) span(el); },
+    end, cancel:end });
+}
 function wireGrid(){
   const grid=$('grid'); if(!grid) return;
   let paint=null, touched=new Map();
@@ -3164,7 +3184,7 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-day],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!t) return;
+  const t=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!t) return;
   const ds=t.dataset;
   if(ds.atab){ e.preventDefault(); setAdminTab(ds.atab); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
@@ -3233,7 +3253,6 @@ document.addEventListener('click',async e=>{
   }
   if(ds.delresp){ if(!confirm('Delete this response?')) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
-  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==='y'?'i':v==='i'?'m':v==='m'?null:'y'); changed(); renderBody(); return; }
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
     if(ds.bulk==='all') dates.forEach(k=>en[k]='y');
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
