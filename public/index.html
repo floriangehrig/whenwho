@@ -431,6 +431,9 @@
     .mfoot{gap:2px} .mfoot>.btn{flex:1 1 auto;min-width:0;margin:0 4px 0 0} .mfoot .qb{flex:none} .mstat{flex-basis:100%;margin:4px 0 0} .mmeta{flex-direction:column;gap:3px} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
+  .day.heat.allfree{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 70%,#000)} .day.heat.allfree .n,.day.heat.allfree .t,.day.heat.allfree .t .om{color:#fff}
+  .day.heat.allfree .othbar{background:color-mix(in srgb,#fff 35%,transparent)}
+  .list.best li.everyone .sc{background:var(--yes);color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--yes)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
   .dpanel{margin-top:var(--s4);padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken);animation:chipIn .14s ease-out}
   .dpanel .bars{background:var(--card)} .dpanel .p{background:var(--card)}
@@ -509,31 +512,30 @@
   .display .hl{background:linear-gradient(90deg,#7FE3A8,#6EA8FF);-webkit-background-clip:text;background-clip:text;color:transparent}
   .landing-band .lead{font-size:17.5px;margin-top:16px}
   .lh-note{color:var(--on-brand-muted);font-size:13px;margin:14px 0 0}
-  .demo{background:rgba(255,255,255,.97);color:#0F172A;border-radius:18px;padding:18px;box-shadow:0 30px 60px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.2);transform:rotate(-1.2deg);transition:transform .4s}
+  .demo{background:var(--card);color:var(--ink);border-radius:18px;padding:18px;box-shadow:0 30px 60px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.2);transform:rotate(-1.2deg);transition:transform .4s}
   .demo:hover{transform:none}
-  .demo-h{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .demo-h{display:flex;align-items:center;gap:10px}
   .demo-h b{display:block;font-size:15px}
-  .demo-sub{font-size:12px;color:#5B6578}
-  .demo-count{margin-left:auto;font-size:12px;font-weight:600;background:#EDF1F7;color:#334155;padding:3px 9px;border-radius:999px;white-space:nowrap}
-  .demo-grid{display:grid;gap:6px}
-  .demo-row{display:grid;grid-template-columns:28px 52px repeat(5,minmax(0,1fr));gap:6px;align-items:center;border-radius:10px;transition:background .3s}
-  .demo-row .tile.avatar{width:28px;height:28px;opacity:.35;transition:opacity .3s,box-shadow .3s} .demo-row .tile.avatar .tile-i{font-size:12px}
-  .demo-row.on .tile.avatar{opacity:1;box-shadow:0 0 0 3px #E8EFFF,0 0 0 5px #1F5EFF}
-  .demo-row.done .tile.avatar{opacity:1}
-  .demo-name{font-size:12.5px;font-weight:600;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .demo-days span{font-size:11px;font-weight:600;color:#5B6578;text-align:center;text-transform:uppercase;letter-spacing:.05em}
-  .demo-cell{height:26px;border-radius:7px;background:#EDF1F7;transition:background .25s}
-  .demo-cell.y,.demo-cell.m,.demo-cell.n{animation:demoPop .3s cubic-bezier(.3,1.6,.6,1)}
-  .demo-cell.y{background:#12A150} .demo-cell.m{background:#E8A317} .demo-cell.n{background:#F3C9C9}
-  @keyframes demoPop{from{transform:scale(.6)}to{transform:none}}
-  .demo-heat{margin-top:6px;padding-top:10px;border-top:1px dashed #CBD5E1}
-  .demo-hc{position:relative;height:34px;border-radius:8px;background:#EDF1F7;overflow:hidden;display:grid;place-items:center}
-  .demo-hc i{position:absolute;inset:0;background:#12A150;opacity:var(--h,0);transition:opacity .45s}
-  .demo-hc b{position:relative;font-size:12px;color:#0F172A;transition:color .3s}
-  .demo-hc.full b{color:#fff}
-  .demo.best .demo-hc.full{box-shadow:0 0 0 2px #fff,0 0 0 4px #12A150;animation:demoGlow 1.4s ease-in-out infinite}
-  @keyframes demoGlow{50%{box-shadow:0 0 0 2px #fff,0 0 0 7px color-mix(in srgb,#12A150 45%,transparent)}}
-  .demo-best{margin-top:14px;text-align:center;font-weight:600;font-size:14px;color:#0B7A3B;background:#E3F6EA;border-radius:10px;padding:9px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+  .demo-sub{font-size:12px;color:var(--muted)}
+  .demo-count{margin-left:auto;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--sunken);color:var(--ink)}
+  .demo-count svg{width:14px;height:14px;color:var(--muted)}
+  .demo-who{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+  .demo-p{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);padding:2px 9px 2px 2px;border-radius:999px;background:var(--sunken);opacity:.45;transition:opacity .3s,box-shadow .3s}
+  .demo-p .tile.avatar{width:22px;height:22px} .demo-p .tile.avatar .tile-i{font-size:11px}
+  .demo-p.on{opacity:1;color:var(--ink);box-shadow:0 0 0 2px var(--accent)}
+  .demo-p.done{opacity:1;color:var(--ink)}
+  .demo .cal{gap:5px}
+  .demo .day{min-height:58px;padding:6px 6px;cursor:default;transition:background .25s,border-color .25s}
+  .demo .day:hover{box-shadow:none;border-color:var(--line)} .demo .day.hot:hover{border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
+  .demo .day .t{font-size:10.5px;letter-spacing:-.01em}
+  .demo .day.pop{animation:demoPop .3s cubic-bezier(.3,1.6,.6,1)}
+  @keyframes demoPop{from{transform:scale(.88)}to{transform:none}}
+  .demo.best .day.allfree{animation:demoGlow 1.4s ease-in-out infinite}
+  @keyframes demoGlow{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--yes) 40%,transparent)}}
+  .demo-blh{display:flex;align-items:center;gap:6px;font-size:13.5px;margin:14px 0 0} .demo-blh svg{width:15px;height:15px;color:var(--muted)}
+  .demo-bl{min-height:150px;margin-top:2px}
+  .demo-bl li{cursor:default;padding:7px 10px}
+  .demo-best{margin-top:8px;text-align:center;font-weight:600;font-size:14px;color:var(--yes-dark);background:var(--yes-bg);border-radius:10px;padding:8px;opacity:0;transform:translateY(6px);transition:opacity .4s .25s,transform .4s .25s}
   .demo.best .demo-best{opacity:1;transform:none}
   .landing{padding-top:8px;position:relative;z-index:1}
   .band+.wrap.landing{margin-top:-56px}
@@ -563,13 +565,13 @@
     .landing-band .lead{font-size:16px}
     .lh-ctas .btn{flex:1 1 auto}
     .demo{padding:14px;transform:none}
-    .demo-row{grid-template-columns:24px 44px repeat(5,minmax(0,1fr));gap:4px}
-    .demo-row .tile.avatar{width:24px;height:24px}
+    .demo .cal{gap:3px} .demo .day{min-height:52px;padding:5px 4px;border-radius:9px} .demo .day .n{font-size:13px} .demo .day .t{font-size:9.5px}
+    .demo .day .t .om{margin-left:1px}
     .l-sec{margin-top:52px} .cta-band{margin-top:52px}
   }
   @media (prefers-reduced-motion:reduce){
-    .demo,.demo-cell,.demo-hc i,.demo-best,.feat{transition:none} .demo{transform:none}
-    .demo-cell.y,.demo-cell.m,.demo-cell.n,.demo.best .demo-hc.full{animation:none}
+    .demo,.demo .day,.demo-p,.demo-best,.feat{transition:none} .demo{transform:none}
+    .demo .day.pop,.demo.best .day.allfree{animation:none}
   }
   .poll-h{display:flex;gap:18px;align-items:center}
   .card-h>.tile{margin-right:2px}
@@ -1473,14 +1475,14 @@ function renderHome(){
 }
 
 // ================= LANDING (signed out) =================
-// The hero demo is a scripted pretend poll: people answer one by one, the heat row fills in, the best day lights up.
-const DEMO_DAYS=['Mon','Tue','Wed','Thu','Fri'];
-const DEMO_PEOPLE=[['Ana','ynyym'],['Ben','mynyy'],['Chloé','yymyn'],['Dev','nyyyy'],['Eli','ymnyy']];
-const DEMO_LBL={y:'free',m:'maybe',n:'busy'};
+// The hero demo is a scripted pretend poll drawn with the real Group view pieces (heatDay, bestLi):
+// people answer one by one, the week's heat fills in, then the best days appear and Thursday turns all-free.
+// Answers per day Mon–Sun: y = available, i = if needed, m = maybe, . = blank (not available).
+const DEMO_START=9; // date number of the Monday
+const DEMO_PEOPLE=[['Ana','y.myy.i'],['Ben','myyy..y'],['Chloé','yyiym..'],['Dev','.yyyym.'],['Eli','y.yyy.m']];
 function renderLanding(localOnly){
   const cta = `<a class="btn primary lg withic" href="?new">${ICON.plus}Create a poll</a>`;
-  const rows = DEMO_PEOPLE.map(([n],i)=>`<div class="demo-row" data-r="${i}">${tile({text:n},'avatar')}<span class="demo-name">${esc(n)}</span>
-    ${DEMO_DAYS.map((_,j)=>`<span class="demo-cell" data-c="${j}"></span>`).join('')}</div>`).join('');
+  const who = DEMO_PEOPLE.map(([n],i)=>`<span class="demo-p" data-r="${i}">${tile({text:n},'avatar')}<span>${esc(n)}</span></span>`).join('');
   const feats=[
     [ICON.cal,'Recurring polls','Weekly team sync? A series opens a fresh round each period and keeps everyone\'s answers together.'],
     [ICON.clock,'Days or hours','Ask about whole days, or let people paint the exact hours they\'re free.'],
@@ -1498,15 +1500,13 @@ function renderLanding(localOnly){
       <div class="row mt-5 lh-ctas">${cta}<button type="button" class="btn lg on-band" data-opensignin>Sign in</button></div>
       <p class="lh-note">Free · answering takes 20 seconds · works on any phone</p>
     </div>
-    <div class="demo" id="demo" aria-label="Example: five people answer a poll for team dinner, and Thursday works for all of them" role="img">
-      <div class="demo-h"><span class="tile sm has-e"><span class="tile-e">🍝</span></span><div><b>Team dinner</b><span class="demo-sub">Next week · 5 invited</span></div>
-        <span class="demo-count" id="demoCount">0/5 answered</span></div>
-      <div class="demo-grid">
-        <div class="demo-row demo-days"><span></span><span></span>${DEMO_DAYS.map(d=>`<span>${d}</span>`).join('')}</div>
-        ${rows}
-        <div class="demo-row demo-heat"><span></span><span class="demo-name">Group</span>${DEMO_DAYS.map((_,j)=>`<span class="demo-hc" data-c="${j}"><i></i><b>0</b></span>`).join('')}</div>
-      </div>
-      <div class="demo-best" id="demoBest">🎉 Thursday works for everyone</div>
+    <div class="demo" id="demo" aria-label="Example: five people answer a poll for team dinner (available, if needed or maybe), and Thursday works for all of them" role="img">
+      <div class="demo-h"><span class="tile sm has-e"><span class="tile-e">🍝</span></span><div><b>Team dinner</b><span class="demo-sub">Next week · Group</span></div>
+        <span class="demo-count">${ICON.users}<span id="demoCount">0/5 answered</span></span></div>
+      <div class="demo-who">${who}</div>
+      <div class="cal" id="demoCal"></div>
+      <h3 class="withic demo-blh">${ICON.star}Best days</h3><ul class="list best demo-bl" id="demoBl"></ul>
+      <div class="demo-best">🎉 Thursday works for everyone</div>
     </div>
   </div></section>
   <main class="wrap landing">
@@ -1518,7 +1518,7 @@ function renderLanding(localOnly){
     <section class="l-sec"><div class="eyebrow">How it works</div><h2 class="l-h">Three steps, one link</h2>
       <ol class="steps">
         <li><span class="step-n">1</span><h3>Pick the dates</h3><p>Choose a range or a few days, whole days or hours, and a deadline if you like.</p></li>
-        <li><span class="step-n">2</span><h3>Share the link</h3><p>Drop it in the group chat. People tap <span class="k y">free</span> <span class="k m">maybe</span> <span class="k n">busy</span>, no sign-up.</p></li>
+        <li><span class="step-n">2</span><h3>Share the link</h3><p>Drop it in the group chat. People tap <span class="k y">available</span> <span class="k i">if needed</span> <span class="k m">maybe</span>, no sign-up.</p></li>
         <li><span class="step-n">3</span><h3>See who's free</h3><p>The heatmap shows the best time at a glance. Schedule it and send calendar invites.</p></li>
       </ol></section>
     <section class="l-sec"><div class="eyebrow">Everything you need</div><h2 class="l-h">Small tool, no fuss</h2>
@@ -1530,25 +1530,34 @@ let demoTimer=0;
 function startLandingDemo(){
   clearTimeout(demoTimer);
   const demo=$('demo'); if(!demo) return;
-  const n=DEMO_PEOPLE.length, cells=[...demo.querySelectorAll('.demo-row[data-r] .demo-cell')], heat=[...demo.querySelectorAll('.demo-hc')];
+  const n=DEMO_PEOPLE.length, cal=$('demoCal'), bl=$('demoBl'), cnt=$('demoCount');
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const steps=[]; DEMO_PEOPLE.forEach(([,a],i)=>{ steps.push(['row',i]); [...a].forEach((s,j)=>steps.push(['cell',i,j,s])); steps.push(['done',i]); });
-  let k=0;
-  const setCell=(i,j,s)=>{ const c=cells[i*5+j]; c.className='demo-cell '+s; c.title=`${DEMO_PEOPLE[i][0]}: ${DEMO_LBL[s]}`; };
-  const tally=answered=>DEMO_DAYS.forEach((_,j)=>{ let y=0,m=0; for(let i=0;i<answered;i++){ const s=DEMO_PEOPLE[i][1][j]; if(s==='y') y++; else if(s==='m') m++; }
-    const h=heat[j]; h.style.setProperty('--h',((y+m*.4)/n).toFixed(2)); h.querySelector('b').textContent=y+(m?'+'+m+'?':''); h.classList.toggle('full',y===n); });
-  const reset=()=>{ cells.forEach(c=>{c.className='demo-cell';c.title='';}); demo.querySelectorAll('.demo-row[data-r]').forEach(r=>r.classList.remove('on','done')); tally(0); demo.classList.remove('best'); $('demoCount').textContent=`0/${n} answered`; };
-  const finish=()=>{ DEMO_PEOPLE.forEach(([,a],i)=>{ [...a].forEach((s,j)=>setCell(i,j,s)); demo.querySelector(`[data-r="${i}"]`).classList.add('done'); }); tally(n); $('demoCount').textContent=`${n}/${n} answered`; demo.classList.add('best'); };
+  // Same counting as stats(): free = available + if needed; peakIfn = how many of those only "if needed".
+  const S=()=>WD.map(()=>({peak:0,peakIfn:0,peakMaybe:0}));
+  let st=S();
+  const add=(i,j)=>{ const a=DEMO_PEOPLE[i][1][j], s=st[j]; if(a==='y'||a==='i') s.peak++; if(a==='i') s.peakIfn++; if(a==='m') s.peakMaybe++; return a!=='.'; };
+  const cell=j=>heatDay(DEMO_START+j,st[j],n,`data-c="${j}"`);
+  const draw=()=>{ cal.innerHTML=WD.map(w=>`<div class="wd">${w}</div>`).join('')+WD.map((_,j)=>cell(j)).join(''); };
+  const redraw=j=>{ const old=cal.querySelector(`[data-c="${j}"]`); old.outerHTML=cell(j); cal.querySelector(`[data-c="${j}"]`).classList.add('pop'); };
+  const best=()=>{ const r=WD.map((w,j)=>({j,s:st[j]})).filter(o=>o.s.peak>0)
+      .sort((a,b)=>b.s.peak-a.s.peak||a.s.peakIfn-b.s.peakIfn||b.s.peakMaybe-a.s.peakMaybe||a.j-b.j).slice(0,3);
+    bl.innerHTML=r.length?r.map(o=>bestLi(o.s,n,`${WDL[o.j]} ${DEMO_START+o.j}`,['all day',o.s.peakIfn?`${o.s.peakIfn} if needed`:'',o.s.peakMaybe?`+${o.s.peakMaybe} maybe`:''].filter(Boolean).join(' · '))).join('')
+      :'<li class="muted small">Once people respond, the best days show up here.</li>'; };
+  const who=(i,c)=>demo.querySelector(`.demo-p[data-r="${i}"]`).classList.add(c);
+  const reset=()=>{ st=S(); draw(); best(); demo.querySelectorAll('.demo-p').forEach(x=>x.classList.remove('on','done')); demo.classList.remove('best'); cnt.textContent=`0/${n} answered`; };
+  const finish=()=>{ st=S(); DEMO_PEOPLE.forEach((_,i)=>{ WD.forEach((_,j)=>add(i,j)); who(i,'done'); }); draw(); best(); cnt.textContent=`${n}/${n} answered`; demo.classList.add('best'); };
+  reset(); best();
   if(reduce){ finish(); return; }
-  reset();
+  const steps=[]; DEMO_PEOPLE.forEach((_,i)=>{ steps.push(['on',i]); WD.forEach((_,j)=>{ if(DEMO_PEOPLE[i][1][j]!=='.') steps.push(['cell',i,j]); }); steps.push(['done',i]); });
+  let k=0;
   const tick=()=>{
     if(!document.body.contains(demo)) return;            // navigated away
     if(document.hidden){ demoTimer=setTimeout(tick,600); return; }
-    if(k>=steps.length){ demo.classList.add('best'); demoTimer=setTimeout(()=>{ reset(); k=0; demoTimer=setTimeout(tick,900); },4200); return; }
-    const [t,i,j,s]=steps[k++], row=demo.querySelector(`[data-r="${i}"]`);
-    if(t==='row'){ row.classList.add('on'); demoTimer=setTimeout(tick,350); return; }
-    if(t==='cell'){ setCell(i,j,s); demoTimer=setTimeout(tick,140); return; }
-    row.classList.replace('on','done'); tally(i+1); $('demoCount').textContent=`${i+1}/${n} answered`; demoTimer=setTimeout(tick,500);
+    if(k>=steps.length){ best(); demo.classList.add('best'); demoTimer=setTimeout(()=>{ reset(); k=0; demoTimer=setTimeout(tick,900); },4800); return; }
+    const [t,i,j]=steps[k++];
+    if(t==='on'){ who(i,'on'); demoTimer=setTimeout(tick,380); return; }
+    if(t==='cell'){ add(i,j); redraw(j); demoTimer=setTimeout(tick,150); return; }
+    demo.querySelector(`.demo-p[data-r="${i}"]`).classList.replace('on','done'); cnt.textContent=`${i+1}/${n} answered`; best(); demoTimer=setTimeout(tick,450);
   };
   demoTimer=setTimeout(tick,700);
 }
@@ -2046,10 +2055,11 @@ document.addEventListener('click',e=>{
 });
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
-  const n=d.responses?d.responses.length:null;
+  const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?'Recurring poll':p.kind==='weekly'?'Weekly schedule':'Poll'}${d.isAdmin?'<span class="pill accent">Your poll</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?'meeting':'meetings'}</a>`:''}${i.deadline?`<span class="chip" title="Answer by ${esc(dayLabel(i.deadline))}">${ICON.clock}<span><span class="bl">Answer by </span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?`<span class="chip" title="${n} ${n===1?'response':'responses'}">${ICON.users}<span>${n}<span class="bl"> ${n===1?'response':'responses'}</span></span></span>`:''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="Password">${ICON.lock}<span class="bl">Password</span></span>`:''}</div>
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">Earlier round · see all rounds</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?'meeting':'meetings'}</a>`:''}${i.deadline?`<span class="chip" title="Answer by ${esc(dayLabel(i.deadline))}">${ICON.clock}<span><span class="bl">Answer by </span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${n} of the ${pc} people in this poll answered${d.instances.length>1?' this round':''}">${ICON.users}<span>${n}/${pc}<span class="bl"> answered</span></span></span>`
+      :`<span class="chip" title="${n} ${n===1?'response':'responses'}">${ICON.users}<span>${n}<span class="bl"> ${n===1?'response':'responses'}</span></span></span>`):''}${i.status==='closed'?'<span class="chip closed">Closed</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="Password">${ICON.lock}<span class="bl">Password</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">Only the organiser can see everyone\'s answers.</div>':''}`;
@@ -2662,11 +2672,20 @@ function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map
 function heatBar(y,i,m,tot){ return tot&&(y||m)?`<div class="othbar"><i class="ry" style="width:${(y-i)/tot*100}%"></i>${i?`<i class="ri" style="width:${i/tot*100}%"></i>`:''}<i class="rm" style="width:${m/tot*100}%"></i></div>`:''; }
 function freeTip(y,i,m,tot){ return `${y}/${tot} free${i?` (${i} only if needed)`:''}${m?`, ${m} maybe`:''}`; }
 function countText(y,m,tot){ return tot&&(y||m)?`${y}/${tot}${m?`<span class="om">+${m}?</span>`:''}`:''; }
-// A group day cell: tint by how many are free at the best time.
-function heatCell(k,day,s,tot,attrs,cls=''){
-  const r=tot?s.peak/tot:0;
-  return `<div class="day heat${s.peak?' hot':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}</div>
-    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}${meetingDays().has(k)?'<span class="star">★</span>':''}</div>`;
+// A group day cell: tint by how many are free at the best time; solid green when everyone is.
+// s = {peak, peakIfn, peakMaybe}. Also drawn by the landing demo, so both always look the same.
+function heatDay(day,s,tot,attrs='',cls='',star=false){
+  const r=tot?s.peak/tot:0, all=tot>0&&s.peak===tot;
+  return `<div class="day heat${s.peak?' hot':''}${all?' allfree':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${all?'Everyone free · ':''}${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}</div>
+    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}${star?'<span class="star">★</span>':''}</div>`;
+}
+function heatCell(k,day,s,tot,attrs,cls=''){ return heatDay(day,s,tot,attrs,cls,meetingDays().has(k)); }
+// One "Best days" row: score pill, label + detail, yes/if-needed/maybe bar. Shared with the landing demo.
+function bestLi(s,tot,label,detail,attrs='',acts=''){
+  const all=tot>0&&s.peak===tot;
+  return `<li class="click${all?' everyone':''}" ${attrs}><span class="sc">${s.peak}/${tot}</span><span class="grow minw">${label}${all?' <span class="tag y">Everyone</span>':''}
+      <span class="muted small">· ${detail}</span>
+      <div class="ratio"><i class="ry" style="width:${(s.peak-s.peakIfn)/tot*100}%"></i><i class="ri" style="width:${s.peakIfn/tot*100}%"></i><i class="rm" style="width:${s.peakMaybe/tot*100}%"></i></div></span>${acts}</li>`;
 }
 const tools=(inner,cls='')=>`<div class="row ws-tools${cls?' '+cls:''}">${inner}</div>`;
 // The organiser's way into scheduling from the Group view: add a draft for that day (picked hours or the best block) and open Schedule.
@@ -2690,7 +2709,7 @@ function renderGroup(el){
   let h=tools(`${whoDropdown()}<span class="ml-auto"></span>${tip(`Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.`,'right')}`,'tbar');
   if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person to see when they're free.</p>`; wireWho(); return; }
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
-  h+=legend('heat','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
@@ -2705,11 +2724,10 @@ function renderGroup(el){
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
-  h+=`<div class="section"><h3 class="withic">${ICON.star}Best days</h3><ul class="list best">${ranked.map(o=>
-    `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span class="grow minw">${md.has(o.k)?'<span class="acc">★</span> ':''}${esc(dLabel(o.k))}
-      <span class="muted small">· ${o.s.full+o.s.ifn===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakIfn?` · ${o.s.peakIfn} if needed`:''}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span>
-      <div class="ratio"><i class="ry" style="width:${(o.s.peak-o.s.peakIfn)/tot*100}%"></i><i class="ri" style="width:${o.s.peakIfn/tot*100}%"></i><i class="rm" style="width:${o.s.peakMaybe/tot*100}%"></i></div></span>
-      ${d.isAdmin?ib('star','Schedule',`data-schedule="${o.k}"`,'sm'):''}</li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+  h+=`<div class="section"><h3 class="withic">${ICON.star}Best days</h3><ul class="list best">${ranked.map(o=>bestLi(o.s,tot,
+      `${md.has(o.k)?'<span class="acc">★</span> ':''}${esc(dLabel(o.k))}`,
+      `${o.s.full+o.s.ifn===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakIfn?` · ${o.s.peakIfn} if needed`:''}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}`,
+      `data-ov="${o.k}"`, d.isAdmin?ib('star','Schedule',`data-schedule="${o.k}"`,'sm'):'')).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
   const withC=sel().filter(r=>r.comment);
   if(withC.length) h+=`<details class="section comments"${P.cOpen?' open':''} data-keep="cOpen"><summary class="withic">${ICON.chat}Comments <span class="count">${withC.length}</span></summary>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
   if(d.isAdmin) h+=`<details class="section"${P.rOpen?' open':''} data-keep="rOpen"><summary class="withic">${ICON.gear}Manage responses <span class="count">${all}</span></summary><ul class="list">${d.responses.map(r=>

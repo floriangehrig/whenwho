@@ -787,6 +787,7 @@ async function getPoll(request, env, ctx, url, id) {
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
+    out.participantCount = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(id).first('n');
   }
   const user = userOf(request);
   if (user) { // signed in: their answers are linked to the account
