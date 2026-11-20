@@ -177,6 +177,7 @@
   .qf{margin-top:12px}
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
+  .pat-chips .qf-apply{margin-left:auto}
   .pat-chips .em-pill.pop{animation:chipIn .16s ease-out}
   .em-pill .pat-brush{display:inline-flex;align-items:center;gap:4px;width:auto;height:auto;min-width:0;padding:0;font:inherit;opacity:1;overflow:hidden}
   .em-pill .pat-brush:hover{background:none;text-decoration:underline}
@@ -1239,8 +1240,8 @@ function patChips(id){
   if(!d) h+=`<span class="muted">${t('Pick at least one day.')}</span>`;
   else if(!d.dflt) h+=chip(d,`data-patchip="${id}"`,' draft','d')+`<button type="button" class="pat-add" data-patadd="${id}" title="${t('Add another rule')}" aria-label="${esc(t('Keep {x} and add another rule',{x:d.text}))}">+</button>`;
   else if(!rs.length) h+='<span class="muted">'+t('Every day')+(st.hours?' · '+t('all day'):'')+'</span>';
-  st.seenChips=now; const c=st.countRules?st.countRules(patRules(id)):'';
-  return h+(c?`<span class="muted small">${esc(c)}</span>`:'');
+  st.seenChips=now;
+  return h+(st.sumEnd?st.sumEnd():''); // e.g. quick fill's Apply button, at the end of the rule tags
 }
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
@@ -2846,9 +2847,8 @@ function quickFill(){
     <button type="button" data-qfs="m" class="${b==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</button>
     <button type="button" data-qfs="x" class="${b==='x'?'on':''}">${t('Clear')}</button></div>
     <span class="pat-keys muted small">${t('Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule')}</span></div>`; };
-  PAT.qf.countRules=rs=>{ const n=P.data.dates.filter(k=>rs.some(r=>matchPat(k,r.pat))).length; return n===1?t('{n} day in this poll',{n}):t('{n} days in this poll',{n}); };
-  const box=patternPicker('qf',o);
-  return `<div class="qf">${box}<div class="row mt-3"><button type="button" class="btn sm primary" data-qfapply>${t('Apply')}</button></div></div>`;
+  PAT.qf.sumEnd=()=>`<button type="button" class="btn sm primary qf-apply" data-qfapply>${t('Apply')}</button>`;
+  return `<div class="qf">${patternPicker('qf',o)}</div>`;
 }
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
 // Brush for the rule being built (also from the keyboard: A / I / M / C, + saves the rule).
@@ -4900,6 +4900,8 @@ function germanText(){ return {
 "Protect a poll with a password. Answering never needs an account.": "Schütze eine Umfrage mit einem Passwort. Zum Antworten braucht man nie ein Konto.",
 "Protected poll": "Geschützte Umfrage",
 "Quick fill…": "Schnell ausfüllen…",
+"{n} day in this poll": "{n} Tag in dieser Umfrage",
+"{n} days in this poll": "{n} Tage in dieser Umfrage",
 "Rain check accepted": "Ein andermal, abgemacht",
 "Recurring": "Wiederkehrend",
 "Recurring poll": "Wiederkehrende Umfrage",
@@ -5218,11 +5220,9 @@ function germanText(){ return {
 "{name} (some hours)": "{name} (einige Stunden)",
 "{n} day a week": "{n} Tag pro Woche",
 "{n} day in the first round": "{n} Tag in der ersten Runde",
-"{n} day in this poll": "{n} Tag in dieser Umfrage",
 "{n} days a week": "{n} Tage pro Woche",
 "{n} days before reply-by": "{n} Tage vor Antwortfrist",
 "{n} days in the first round": "{n} Tage in der ersten Runde",
-"{n} days in this poll": "{n} Tage in dieser Umfrage",
 "{n} emoji": "{n} Emoji",
 "{n} if needed": "{n} wenn nötig",
 "{n} matches": "{n} Treffer",
