@@ -111,6 +111,12 @@ async function route(request, env, ctx, url) {
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
+    if (parts[2] === 'friends') {
+      if (!parts[3] && m === 'GET') return listFriends(request, env);
+      if (!parts[3] && m === 'POST') return addFriend(request, env, url);
+      if (parts[3] && parts[4] === 'accept' && !parts[5] && m === 'POST') return acceptFriend(request, env, parts[3]);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteFriend(request, env, parts[3]);
+    }
     if (parts[2] === 'calendars') {
       if (!parts[3] && m === 'GET') return listCalendars(request, env);
       if (!parts[3] && m === 'POST') return addCalendar(request, env);
@@ -601,7 +607,8 @@ async function me(request, env) {
   const cal = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(auto) AS auto, (SELECT url FROM user_calendars WHERE user_id = ?1 AND url IS NOT NULL ORDER BY position, created_at LIMIT 1) AS url FROM user_calendars WHERE user_id = ?1').bind(u.id).first();
   // Feed URLs are secrets: the page only learns which host the first one points at.
   return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created,
-    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0 } });
+    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0,
+    friendRequests: (await friendRequestCount(env, u)) || 0 } });
 }
 // Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
@@ -620,6 +627,127 @@ async function updateProfile(request, env) {
     env.DB.prepare('UPDATE participants SET name = ? WHERE user_id = ?').bind(u.name, user.id),
     env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id IN (SELECT id FROM participants WHERE user_id = ?)').bind(u.name, user.id));
   await env.DB.batch(stmts);
+  return json({ ok: true });
+}
+// ---------- friends ----------
+// A request goes to an email address and is accepted by that person (friends.status 'pending' -> 'ok').
+// Contacts (people I added to my polls by email, no account) aren't stored here: they come from my polls' participants.
+// The answer is the same whether or not the address has an account, so nobody can probe for accounts.
+const UID_RE = /^[A-Za-z0-9_]{4,40}$/;
+const MAX_FRIENDS = 500, MAX_FRIEND_PENDING = 50;
+// Requests to my address made before my account existed (or before the row knew it) become mine.
+const claimFriendRequests = (env, user) =>
+  env.DB.prepare('UPDATE friends SET to_id = ? WHERE to_id IS NULL AND to_email = ?').bind(user.id, user.email.toLowerCase()).run();
+const friendRequestCount = (env, user) =>
+  env.DB.prepare("SELECT COUNT(*) AS n FROM friends WHERE status = 'pending' AND (to_id = ? OR (to_id IS NULL AND to_email = ?))")
+    .bind(user.id, user.email.toLowerCase()).first('n');
+const personOut = (u) => ({ uid: u.id, name: u.name || u.email.split('@')[0], email: u.email, avatar: u.avatar || '', avatarImg: u.avatar_img || '' });
+// Accepted friends of a user: [{ id (friends row), user row }].
+async function friendRows(env, userId) {
+  const { results } = await env.DB.prepare(
+    `SELECT f.id AS fid, u.id, u.email, u.name, u.avatar, u.avatar_img FROM friends f
+     JOIN users u ON u.id = CASE WHEN f.from_id = ?1 THEN f.to_id ELSE f.from_id END
+     WHERE f.status = 'ok' AND (f.from_id = ?1 OR f.to_id = ?1) ORDER BY COALESCE(NULLIF(u.name, ''), u.email) COLLATE NOCASE`).bind(userId).all();
+  return results;
+}
+// Signed-in people from my polls and owners of polls I answered, who aren't friends or asked yet.
+async function friendSuggestions(env, user) {
+  const { results } = await env.DB.prepare(
+    `SELECT u.id, u.email, u.name, u.avatar, u.avatar_img FROM users u WHERE u.id != ?1 AND u.id IN (
+       SELECT pa.user_id FROM participants pa JOIN polls p ON p.id = pa.poll_id WHERE p.owner_id = ?1 AND pa.user_id IS NOT NULL
+       UNION SELECT p.owner_id FROM participants pa JOIN polls p ON p.id = pa.poll_id WHERE pa.user_id = ?1 AND p.owner_id IS NOT NULL)
+     AND NOT EXISTS (SELECT 1 FROM friends f WHERE (f.from_id = ?1 AND (f.to_id = u.id OR f.to_email = LOWER(u.email)))
+                                             OR (f.from_id = u.id AND (f.to_id = ?1 OR f.to_email = ?2)))
+     ORDER BY COALESCE(NULLIF(u.name, ''), u.email) COLLATE NOCASE LIMIT 20`).bind(user.id, user.email.toLowerCase()).all();
+  return results;
+}
+async function listFriends(request, env) {
+  const user = requireUser(request);
+  await claimFriendRequests(env, user);
+  const friends = await friendRows(env, user.id);
+  const { results: incoming } = await env.DB.prepare(
+    `SELECT f.id AS fid, u.id, u.email, u.name, u.avatar, u.avatar_img FROM friends f JOIN users u ON u.id = f.from_id
+     WHERE f.status = 'pending' AND f.to_id = ? ORDER BY f.created_at DESC`).bind(user.id).all();
+  // My open requests: only the address I typed (and the name of an account I picked from suggestions, which I saw already).
+  const { results: outgoing } = await env.DB.prepare(
+    "SELECT id, to_email, created_at FROM friends WHERE status = 'pending' AND from_id = ? ORDER BY created_at DESC").bind(user.id).all();
+  const sugg = await friendSuggestions(env, user);
+  // Contacts: guests I added to my polls by email (no account needed), newest name per address. Friends' addresses are left out.
+  const { results: guests } = await env.DB.prepare(
+    `SELECT pa.name, LOWER(TRIM(pa.email)) AS email, MAX(pa.created_at) AS at FROM participants pa JOIN polls p ON p.id = pa.poll_id
+     WHERE p.owner_id = ? AND pa.user_id IS NULL AND pa.email != '' GROUP BY LOWER(TRIM(pa.email))
+     ORDER BY pa.name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
+  const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
+  return json({
+    contacts: guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email })),
+    friends: friends.map((u) => ({ id: u.fid, ...personOut(u) })),
+    incoming: incoming.map((u) => ({ id: u.fid, ...personOut(u) })),
+    outgoing: outgoing.map((r) => ({ id: r.id, email: r.to_email, at: r.created_at })),
+    suggestions: sugg.map((u) => ({ uid: u.id, name: u.name || u.email.split('@')[0], avatar: u.avatar || '', avatarImg: u.avatar_img || '' })),
+  });
+}
+// Body: { email } or { uid } (a suggestion). Always { ok: true } (plus { friends: true } when they had already asked me).
+async function addFriend(request, env, url) {
+  const user = requireUser(request);
+  const b = await body(request);
+  let addr, toId = null;
+  if (b.uid !== undefined) {
+    if (typeof b.uid !== 'string' || !UID_RE.test(b.uid)) throw new HttpError(400, 'Pick someone from the list');
+    const s = (await friendSuggestions(env, user)).find((u) => u.id === b.uid);
+    if (!s) throw new HttpError(400, 'Pick someone from the list');
+    addr = s.email.toLowerCase(); toId = s.id;
+  } else {
+    addr = email(b.email || '').toLowerCase();
+    if (!addr) throw new HttpError(400, 'Enter an email address');
+  }
+  if (addr === user.email.toLowerCase()) throw new HttpError(400, 'That’s your own address');
+  if (!toId) toId = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(addr).first('id');
+  // They asked me already: that's a yes from both sides.
+  if (toId) {
+    const theirs = await env.DB.prepare("SELECT id, status FROM friends WHERE from_id = ? AND (to_id = ? OR to_email = ?)")
+      .bind(toId, user.id, user.email.toLowerCase()).first();
+    if (theirs) {
+      if (theirs.status !== 'ok') await env.DB.prepare("UPDATE friends SET status = 'ok', to_id = ? WHERE id = ?").bind(user.id, theirs.id).run();
+      return json({ ok: true });
+    }
+  }
+  const mine = await env.DB.prepare('SELECT id FROM friends WHERE from_id = ? AND to_email = ?').bind(user.id, addr).first();
+  if (mine) return json({ ok: true }); // asked before: don't email again
+  const counts = await env.DB.prepare(
+    "SELECT SUM(status = 'ok') AS ok, SUM(status = 'pending' AND from_id = ?1) AS pending FROM friends WHERE from_id = ?1 OR to_id = ?1").bind(user.id).first();
+  if ((counts.ok || 0) >= MAX_FRIENDS) throw new HttpError(409, `You can have at most ${MAX_FRIENDS} friends`);
+  if ((counts.pending || 0) >= MAX_FRIEND_PENDING) throw new HttpError(409, 'Too many open friend requests. Wait for some answers first.');
+  await env.DB.prepare('INSERT INTO friends (id, from_id, to_email, to_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(randomId(12), user.id, addr, toId, 'pending', now()).run();
+  // Tell them, the same way whether or not they have an account (counts against the daily email cap).
+  const site = siteUrl(env, url.origin), de = reqLang(request) === 'de', who = user.name || user.email;
+  const link = `${site}/?account`;
+  const subject = de ? `${who} möchte dich als Freund*in auf when-who hinzufügen` : `${who} wants to add you as a friend on when-who`;
+  const text = de
+    ? `${who} (${user.email}) möchte dich auf when-who als Freund*in hinzufügen. Dann könnt ihr euch gegenseitig ganz einfach zu Umfragen einladen.\n\nMelde dich mit dieser E-Mail-Adresse an, um die Anfrage anzunehmen oder abzulehnen:\n${link}\n\n—\nDu bekommst diese E-Mail, weil ${who} deine Adresse eingegeben hat. Wenn du nichts tust, passiert nichts.`
+    : `${who} (${user.email}) would like to add you as a friend on when-who, so you can easily invite each other to polls.\n\nSign in with this email address to accept or decline:\n${link}\n\n—\nYou're getting this because ${who} entered your address. If you do nothing, nothing happens.`;
+  if (emailEnabled(env)) {
+    await mailQuota(env, { owner_id: user.id }, 1);
+    await sendEmail(env, { fromName: user.name || 'when-who', to: [addr], replyTo: user.email, subject, text,
+      html: emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
+        { preheader: subject, button: { href: link, label: de ? 'Anfrage ansehen' : 'See the request' }, site, lang: de ? 'de' : 'en' }) });
+  } else console.log(`[dev] friend request to ${addr}:\n${text}`);
+  return json({ ok: true });
+}
+async function acceptFriend(request, env, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Request not found');
+  await claimFriendRequests(env, user);
+  const r = await env.DB.prepare("UPDATE friends SET status = 'ok' WHERE id = ? AND to_id = ? AND status = 'pending'").bind(fid, user.id).run();
+  if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Request not found');
+  return json({ ok: true });
+}
+// Decline a request, take back my own, or end a friendship.
+async function deleteFriend(request, env, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Request not found');
+  await claimFriendRequests(env, user);
+  await env.DB.prepare('DELETE FROM friends WHERE id = ? AND (from_id = ? OR to_id = ?)').bind(fid, user.id, user.id).run();
   return json({ ok: true });
 }
 // ---------- external calendar (iCal feed) ----------
@@ -1458,7 +1586,7 @@ async function invitePoll(request, env, url, id) {
   let emails = [], pids = [], missing = [], again = !!b.remind, added = null;
   if (Array.isArray(b.people) || b.remind || Array.isArray(b.ids)) {
     let want;
-    if (Array.isArray(b.people)) { added = await upsertPeople(env, id, peopleInput(b)); want = new Set(added.ids.filter(Boolean)); }
+    if (Array.isArray(b.people)) { added = await upsertPeople(env, id, peopleInput(b), userOf(request)); want = new Set(added.ids.filter(Boolean)); }
     else if (Array.isArray(b.ids)) {
       if (b.ids.length > 500) throw new HttpError(400, 'Too many people');
       want = new Set(b.ids.filter((x) => typeof x === 'string' && ID_RE.test(x)));
@@ -1606,6 +1734,16 @@ async function newParticipant(env, pollId, name, mail = '', userId = null) {
     .bind(p.id, p.poll_id, p.name, p.name_key, p.email, p.user_id, p.created_at).run();
   return p;
 }
+// A guest who gives the email of an existing account: their answers belong to that account, signed in or not.
+const accountByEmail = (env, mail) => mail
+  ? env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(mail.trim().toLowerCase()).first() : null;
+// Links a guest participant to the account with this email, unless the account is already someone in this poll.
+async function linkGuestToAccount(env, pollId, partId, mail) {
+  const acct = await accountByEmail(env, mail);
+  if (!acct || !partId || await accountParticipant(env, pollId, acct.id)) return;
+  await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
+    .bind(acct.id, acctKey(acct.id), acct.email, partId).run();
+}
 const nameTaken = (name, participantId, responseId) =>
   new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
 
@@ -1638,13 +1776,20 @@ async function createResponse(request, env, id, iid) {
       }
     } else part = await newParticipant(env, id, name, user.email, user.id);
   } else {
-    // Same name as an existing guest: that's this person (e.g. the next round of a series),
-    // unless they already answered this round.
-    part = await findParticipant(env, id, nameKey(name));
-    if (part) {
-      const existing = await answerIn(env, part.id, iid);
-      if (existing) throw nameTaken(part.name, part.id, existing);
-    } else part = await newParticipant(env, id, name);
+    // Email of an account that's already in this poll and hasn't answered this round: that's this person.
+    const acct = await accountByEmail(env, mail);
+    const ap = acct && await accountParticipant(env, id, acct.id);
+    if (ap && !(await answerIn(env, ap.id, iid))) part = ap;
+    else {
+      // Same name as an existing guest: that's this person (e.g. the next round of a series),
+      // unless they already answered this round.
+      part = await findParticipant(env, id, nameKey(name));
+      if (part) {
+        const existing = await answerIn(env, part.id, iid);
+        if (existing) throw nameTaken(part.name, part.id, existing);
+      } else part = await newParticipant(env, id, name);
+      if (acct && !ap) await linkGuestToAccount(env, id, part.id, mail);
+    }
   }
   const rid = randomId(12), editKey = secret(), t = now();
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
@@ -1748,6 +1893,7 @@ async function updateResponse(request, env, id, rid) {
   }
   stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
   await env.DB.batch(stmts);
+  if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
   return json({ ok: true, name });
 }
 async function deleteResponse(request, env, id, rid) {
@@ -1798,13 +1944,34 @@ function peopleInput(b) {
     .map((l) => { const [n, ...rest] = l.split(','); return { name: n, email: rest.join(',').trim() }; });
   if (!list.length) throw new HttpError(400, 'Add at least one person');
   if (list.length > 200) throw new HttpError(400, 'At most 200 people at once');
-  return list.map((x) => { const name = personName(x && x.name); return { name, email: email((x && x.email) || '', `Email for ${name}`).toLowerCase() }; });
+  return list.map((x) => {
+    const name = personName(x && x.name), uid = x && x.uid;
+    if (uid !== undefined && uid !== null && (typeof uid !== 'string' || !UID_RE.test(uid))) throw new HttpError(400, 'Pick someone from your friends');
+    return { name, email: email((x && x.email) || '', `Email for ${name}`).toLowerCase(), ...(uid ? { uid } : {}) };
+  });
 }
 // Adds people, or finds them if they're already in the poll (same email, or same guest name).
 // A guest found by name without an email gets the new one. Returns the participant ids per person (null = skipped).
-async function upsertPeople(env, id, people) {
+// A friend ({ uid }, accepted friends of `me` only) is added as their account, so their signed-in answer lands in the same row.
+async function upsertPeople(env, id, people, me = null) {
   const added = [], updated = [], skipped = [], ids = [];
+  const friends = people.some((x) => x.uid) ? new Map((me ? await friendRows(env, me.id) : []).map((u) => [u.id, u])) : null;
   for (const x of people) {
+    if (x.uid) {
+      const f = friends.get(x.uid);
+      if (!f) throw new HttpError(400, 'Pick someone from your friends');
+      const name = f.name || x.name, mail = f.email.toLowerCase();
+      let p = await accountParticipant(env, id, f.id);
+      if (p) { skipped.push(p.name); ids.push(p.id); continue; }
+      // A guest row with their address (added by email earlier) becomes their account's row.
+      p = await env.DB.prepare('SELECT * FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, mail).first();
+      if (p) {
+        await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(f.id, acctKey(f.id), f.email, p.id).run();
+        updated.push(p.name); ids.push(p.id); continue;
+      }
+      p = await newParticipant(env, id, name, f.email, f.id);
+      added.push(name); ids.push(p.id); continue;
+    }
     let p = x.email ? await env.DB.prepare(
       `SELECT p.* FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? AND (LOWER(p.email) = ? OR LOWER(u.email) = ?) LIMIT 1`)
       .bind(id, x.email, x.email).first() : null;
@@ -1824,7 +1991,7 @@ async function upsertPeople(env, id, people) {
 // Body: { people: [{ name, email }] } or legacy { lines }
 async function addParticipants(request, env, id) {
   await adminPoll(request, env, id);
-  const r = await upsertPeople(env, id, peopleInput(await body(request)));
+  const r = await upsertPeople(env, id, peopleInput(await body(request)), userOf(request));
   return json(r);
 }
 async function updateParticipant(request, env, id, pid) {

@@ -348,6 +348,17 @@
   .callist .acts{flex:none;gap:2px;align-items:center}
   .callist li .cdot{flex:none;width:12px;height:12px;border-radius:4px;background:var(--c,var(--accent))}
   .callist li.off .cname{color:var(--muted)}
+  .frlist li .tile.avatar{flex:none}
+  .padd.padd1{grid-template-columns:minmax(0,1fr) auto} @media (max-width:560px){ .padd.padd1 .padd-btn{grid-row:auto;grid-column:auto} }
+  .appbar .dd.me>summary{position:relative} .ndot{position:absolute;top:2px;left:26px;width:10px;height:10px;border-radius:50%;background:#E5484D;box-shadow:0 0 0 2px var(--navy,#0B1F3A)}
+  .menu .nbadge{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#E5484D;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+  .padd-new{position:relative}
+  .frcon>summary{cursor:pointer;list-style:none} .frcon>summary::-webkit-details-marker{display:none}
+  .fpick{position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px;max-height:280px;overflow:auto;background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(11,31,58,.14);padding:4px;list-style:none}
+  .fpick li{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:pointer;min-width:0}
+  .fpick li.hl,.fpick li:hover{background:var(--accent-weak)}
+  .fpick .pmain{display:flex;flex-direction:column;min-width:0} .fpick .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fpick .fh{font-size:12px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px 2px;cursor:default;background:none}
   .qb.tog[aria-pressed=true]{color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
   .caladd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
   .caladd .padd{flex:1 1 100%}
@@ -1331,17 +1342,6 @@ function dpkCal(id){
   }
   root.querySelector('.dpk-cal').innerHTML=`<button type="button" class="btn ghost sm dpk-prev" data-dpknav="-1" aria-label="${t('Previous month')}">‹</button>
     <button type="button" class="btn ghost sm dpk-next" data-dpknav="1" aria-label="${t('Next month')}">›</button><div class="dpk-months">${html}</div>`;
-}
-function dpkOpen(id){
-  const cur=dpkOpenId(); if(cur&&cur!==id) dpkClose(cur);
-  const o=DPK[id], root=$('dpk_'+id), pop=root.querySelector('.dpk-pop');
-  o.pick=false; o.hover=null; o.view=null; pop.classList.remove('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','true');
-  dpkCal(id); dpkSync(id); pop.style.left='0';
-  const r=pop.getBoundingClientRect(); if(r.right>innerWidth-12) pop.style.left=Math.min(0,innerWidth-12-r.right)+'px';
-  pop.scrollIntoView({block:'nearest'});
-}
-function dpkClose(id,focus){
-  const o=DPK[id], root=$('dpk_'+id); if(!root) return;
   dpkPaint(id);
 }
 // Marks the chosen days on the calendar in place (no re-render, so a click under the mouse is never lost).
@@ -1353,6 +1353,17 @@ function dpkPaint(id){
     if(o.mode==='range'){ c.toggle('s',k===a); c.toggle('e',!!end&&k===end); c.toggle('bs',!!ok&&k===a); c.toggle('be',!!ok&&k===end); c.toggle('in',!!ok&&k>a&&k<end); }
     else { c.toggle('sel',k===a); c.toggle('ctx',!!(ca&&cb&&k>=ca&&k<=cb)); }
   });
+}
+function dpkOpen(id){
+  const cur=dpkOpenId(); if(cur&&cur!==id) dpkClose(cur);
+  const o=DPK[id], root=$('dpk_'+id), pop=root.querySelector('.dpk-pop');
+  o.pick=false; o.hover=null; o.view=null; pop.classList.remove('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','true');
+  dpkCal(id); dpkSync(id); pop.style.left='0';
+  const r=pop.getBoundingClientRect(); if(r.right>innerWidth-12) pop.style.left=Math.min(0,innerWidth-12-r.right)+'px';
+  pop.scrollIntoView({block:'nearest'});
+}
+function dpkClose(id,focus){
+  const o=DPK[id], root=$('dpk_'+id); if(!root) return;
   root.querySelector('.dpk-pop').classList.add('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','false');
   o.pick=false; o.hover=null; dpkSync(id); if(focus) root.querySelector('.dpk-btn').focus();
 }
@@ -1554,9 +1565,9 @@ document.addEventListener('change',async e=>{
 });
 
 function accountBar(){
-  if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
+  if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}${ME.user.friendRequests?`<span class="ndot" title="${esc(t('Friend requests: {n}',{n:ME.user.friendRequests}))}"></span>`:''}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account &amp; profile')}</a><a href="${esc(origin)}">${t('Your polls')}</a>
+    <a href="?account">${t('Account &amp; profile')}${ME.user.friendRequests?`<span class="nbadge" title="${esc(t('Friend requests: {n}',{n:ME.user.friendRequests}))}">${ME.user.friendRequests}</span>`:''}</a><a href="${esc(origin)}">${t('Your polls')}</a>
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -1974,6 +1985,63 @@ function renderCreated(id, body, kind){
 // ================= ACCOUNT =================
 // ---------- account: calendars ----------
 const CALUI={edit:null};
+// ---------- friends ----------
+// FRIENDS: GET /me/friends result { friends, incoming, outgoing, suggestions }, loaded once per page.
+let FRIENDS=null;
+async function loadFriends(force){
+  if(!ME.user) return null;
+  if(FRIENDS&&!force) return FRIENDS;
+  if(loadFriends._p&&!force) return loadFriends._p;
+  loadFriends._p=api('GET','/me/friends').then(r=>(FRIENDS=r)).catch(()=>null).finally(()=>{ loadFriends._p=null; });
+  return loadFriends._p;
+}
+async function renderFriendsCard(){
+  const box=$('frbox'); if(!box) return;
+  const r=await loadFriends(); if(!$('frbox')) return;
+  if(!r){ box.innerHTML=`<p class="err">${t('Couldn’t load your friends.')}</p>`; return; }
+  const who=f=>`${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(displayName(f))}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}</span>`;
+  const grp=(ic,title,items)=>items.length?`<div class="cgrp">${ICON[ic]}<span class="grow">${title}</span></div><ul class="list">${items.join('')}</ul>`:'';
+  const typed=$('fradd_e')?$('fradd_e').value:'';
+  box.innerHTML=`<div class="callist frlist">
+      ${grp('bell',t('Requests'),r.incoming.map(f=>`<li>${who(f)}<span class="acts">${pqb('check',t('Accept {name}',{name:displayName(f)}),`data-fracc="${esc(f.id)}"`,' ok')}${pqb('x',t('Decline'),`data-frdel="${esc(f.id)}" data-frwhat="decline"`,' danger')}</span></li>`))}
+      ${grp('users',t('Friends'),r.friends.map(f=>`<li>${who(f)}<span class="acts">${pqb('trash',t('Remove {name} from your friends',{name:displayName(f)}),`data-frdel="${esc(f.id)}" data-frwhat="remove" data-frname="${esc(displayName(f))}"`,' danger')}</span></li>`))}
+      ${grp('mail',t('Waiting for an answer'),r.outgoing.map(f=>`<li>${avatarOf({email:f.email})}<span class="grow pmain"><b class="ell">${esc(f.email)}</b><span class="muted small">${t('asked {date}',{date:esc(new Date(f.at).toLocaleDateString(LOC,{day:'numeric',month:'short'}))})}</span></span><span class="acts">${pqb('x',t('Take back the request'),`data-frdel="${esc(f.id)}" data-frwhat="cancel"`)}</span></li>`))}
+      ${!r.incoming.length&&!r.friends.length&&!r.outgoing.length?`<p class="help mt-0">${t('No friends yet. Add someone by email below.')}</p>`:''}
+      ${(r.contacts||[]).length?`<details class="frcon"><summary class="cgrp">${ICON.mail}<span class="grow">${t('Added by email ({n})',{n:r.contacts.length})}</span>${tip(t('People you added to your polls with an email address. Pick them in the People tab like friends. If they have (or make) a when-who account, ask them to be friends.'),'right')}</summary>
+        <ul class="list">${r.contacts.map(c=>`<li>${avatarOf({name:c.name,email:c.email})}<span class="grow pmain"><b class="ell">${esc(c.name)}</b><span class="muted small ell">${esc(c.email)}</span></span><span class="acts">${pqb('plus',t('Ask {name} to be friends',{name:c.name}),`data-frmail="${esc(c.email)}"`,' ok')}</span></li>`).join('')}</ul></details>`:''}
+      ${grp('star',t('From your polls'),r.suggestions.map(f=>`<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(displayName(f))}</b></span><span class="acts">${pqb('plus',t('Ask {name} to be friends',{name:displayName(f)}),`data-frsugg="${esc(f.uid)}"`,' ok')}</span></li>`))}
+    </div>
+    <div class="padd padd1 padd-new"><input type="email" id="fradd_e" maxlength="200" placeholder="${t('Friend’s email address')}" aria-label="${t('Friend’s email address')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" value="${esc(typed)}">
+      <button type="button" class="btn primary padd-btn" data-fradd title="${t('Send friend request')}" aria-label="${t('Send friend request')}">${ICON.plus}</button></div>
+    <div class="err" id="fradd_err"></div>`;
+}
+async function friendsChanged(msg){ await loadFriends(true); try{ Object.assign(ME, await api('GET','/me')); }catch(e){}
+  const bar=document.querySelector('.appbar .acct'); if(bar) bar.innerHTML=langButton()+accountBar();
+  await renderFriendsCard(); if(msg) toast(msg); }
+async function friendAdd(btn){
+  const x=$('fradd_e'), err=$('fradd_err'); if(!x) return; err.textContent='';
+  const mail=x.value.trim().toLowerCase();
+  if(!EMAIL_RE.test(mail)){ err.textContent=t("That email address doesn't look right."); x.focus(); return; }
+  btn.disabled=true;
+  try{ await api('POST','/me/friends',{email:mail}); x.value=''; await friendsChanged(t('Request sent to {email}',{email:mail})); }
+  catch(ex){ err.textContent=ex.message; }
+  finally{ btn.disabled=false; }
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-fracc],[data-frdel],[data-fradd],[data-frsugg],[data-frmail]'); if(!b||!$('frbox')) return; const d=b.dataset;
+  if(d.fradd!==undefined){ friendAdd(b); return; }
+  if(d.frwhat==='remove'&&!confirm(t('Remove {name} from your friends?',{name:d.frname}))) return;
+  b.disabled=true;
+  try{
+    if(d.fracc){ await api('POST',`/me/friends/${encodeURIComponent(d.fracc)}/accept`); await friendsChanged(t('You’re now friends')); }
+    else if(d.frsugg){ await api('POST','/me/friends',{uid:d.frsugg}); await friendsChanged(t('Request sent')); }
+    else if(d.frmail){ await api('POST','/me/friends',{email:d.frmail}); await friendsChanged(t('Request sent to {email}',{email:d.frmail})); }
+    else if(d.frdel){ await api('DELETE',`/me/friends/${encodeURIComponent(d.frdel)}`);
+      await friendsChanged({decline:t('Request declined'),cancel:t('Request taken back'),remove:t('Removed from your friends')}[d.frwhat]); }
+  }catch(ex){ toast(ex.message); b.disabled=false; }
+});
+document.addEventListener('keydown',e=>{ if(e.target.id==='fradd_e'&&e.key==='Enter'){ e.preventDefault(); const b=document.querySelector('[data-fradd]'); if(b) friendAdd(b); } });
+
 async function renderCalCard(){
   const box=$('calbox'); if(!box) return;
   const r=await loadCals(); if(!r||!$('calbox')) return;
@@ -2091,10 +2159,12 @@ function renderAccount(){
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
+      <div class="card span" id="frcard"><div class="card-h"><h2 class="grow">${t('Friends')}</h2>${tip(t('Friends are other when-who accounts. Pick them in a poll’s <b>People</b> tab: they’re added with their account, so their answers always land in their own row. A request needs their OK; it goes to the email address you type, whether or not it has an account yet.'),'right')}</div>
+        <div id="frbox"><p class="help">${t('Loading…')}</p></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}</h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
     </div></main>`;
-  renderCalCard();
+  renderCalCard(); renderFriendsCard();
   $('pf_name').addEventListener('input',e=>pickerSetText('avatar',e.target.value||u.email));
   $('pf').onsubmit=async e=>{
     e.preventDefault(); const err=$('pf_err'), btn=$('pf_save'); err.textContent=''; btn.disabled=true;
@@ -3432,6 +3502,7 @@ function peoplePanel(id,o){
 }
 async function loadParts(){
   const el=$('parts'); if(!el||!PEOPLE) return; const id=PEOPLE.id;
+  loadFriends();
   if(PEOPLE.parts) renderParts();
   try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants; }
   catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
@@ -3475,7 +3546,7 @@ function renderParts(){
     <div class="padd padd-new">
       <input type="text" id="padd_n" maxlength="2000" placeholder="${t('Add a name or paste a list')}" aria-label="${t('Name, or paste a list')}" autocomplete="off" enterkeyhint="done">
       <input type="email" id="padd_e" maxlength="200" placeholder="${t('Email (optional)')}" aria-label="${t('Email (optional)')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
-      <button type="button" class="btn primary padd-btn" data-padd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button>${tip(series?t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row in every round; people signed in are matched by their account.'):t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row; people signed in are matched by their account.'),'right')}</div>
+      <button type="button" class="btn primary padd-btn" data-padd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button><ul class="fpick" id="fpick" role="listbox" aria-label="${t('Friends')}" hidden></ul>${tip(series?t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row in every round; people signed in are matched by their account.'):t('Paste a list of names or addresses to add several at once. Guests who answer with the same name join their row; people signed in are matched by their account.'),'right')}</div>
     <div class="err" id="padd_err"></div>`;
   $('padd_n').value=typed.n; $('padd_e').value=typed.e;
   if(PEOPLE.edit){ const n=$('pe_n'); if(n&&active!=='pe_e'){ n.focus(); n.select(); } else if(active==='pe_e') $('pe_e').focus(); }
@@ -3484,6 +3555,39 @@ function renderParts(){
 }
 // After a change: on the poll page reload the poll (Answers and Meetings use the list too), else just the list.
 async function peopleChanged(msg){ if(msg) toast(msg); if(PEOPLE.id===P.id&&P.data) await loadPoll(false); else await loadParts(); }
+// Friend picker under the name field: friends (when-who accounts) not in this poll yet, matching what's typed.
+const FPICK={items:[],hl:-1};
+function fpickRender(){
+  const ul=$('fpick'), n=$('padd_n'); if(!ul||!n||!PEOPLE||!PEOPLE.parts) return;
+  const q=n.value.trim().toLowerCase(), inPoll=new Set(PEOPLE.parts.map(p=>(p.email||'').toLowerCase()).filter(Boolean));
+  const hit=f=>!inPoll.has(f.email.toLowerCase())&&(!q||(f.name||'').toLowerCase().includes(q)||f.email.toLowerCase().includes(q));
+  const off=q.length>60||/[\n,;]/.test(q);
+  const fr=off?[]:((FRIENDS&&FRIENDS.friends)||[]).filter(hit).map(f=>({...f,friend:true}));
+  const co=off?[]:((FRIENDS&&FRIENDS.contacts)||[]).filter(hit);
+  FPICK.items=[...fr,...co];
+  if(document.activeElement!==n||!FPICK.items.length){ ul.hidden=true; FPICK.hl=-1; return; }
+  if(FPICK.hl>=FPICK.items.length) FPICK.hl=FPICK.items.length-1;
+  if(q&&FPICK.hl<0) FPICK.hl=0;
+  const row=(f,i)=>`<li role="option" data-fpick="${i}" class="${i===FPICK.hl?'hl':''}" aria-selected="${i===FPICK.hl}">${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(f.friend?displayName(f):f.name)}</b><span class="muted small ell">${esc(f.email)}</span></span></li>`;
+  ul.innerHTML=(fr.length?`<li class="fh" aria-hidden="true">${t('Friends')}</li>`+fr.map(row).join(''):'')
+    +(co.length?`<li class="fh" aria-hidden="true">${t('Added by email')}</li>`+co.map((f,i)=>row(f,fr.length+i)).join(''):'');
+  ul.hidden=false;
+  const h=ul.querySelector('.hl'); if(h) h.scrollIntoView({block:'nearest'});
+}
+async function fpickChoose(i){
+  const f=FPICK.items[i]; if(!f) return; $('fpick').hidden=true;
+  await addPeople([f.friend?{name:displayName(f).slice(0,60),email:f.email,uid:f.uid}:{name:f.name.slice(0,60),email:f.email}],null);
+}
+document.addEventListener('input',e=>{ if(e.target.id==='padd_n'){ FPICK.hl=-1; fpickRender(); } });
+document.addEventListener('focusin',async e=>{ if(e.target.id==='padd_n'){ FPICK.hl=-1; if(!FRIENDS) await loadFriends(); fpickRender(); } });
+document.addEventListener('focusout',e=>{ if(e.target.id==='padd_n'){ const ul=$('fpick'); if(ul) ul.hidden=true; } });
+document.addEventListener('mousedown',e=>{ const li=e.target.closest('[data-fpick]'); if(!li) return; e.preventDefault(); fpickChoose(+li.dataset.fpick); });
+document.addEventListener('keydown',e=>{
+  if(e.target.id!=='padd_n') return; const ul=$('fpick'); if(!ul||ul.hidden) return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); const n=FPICK.items.length; FPICK.hl=e.key==='ArrowDown'?(FPICK.hl+1)%n:(FPICK.hl<=0?n-1:FPICK.hl-1); fpickRender(); }
+  else if(e.key==='Enter'&&FPICK.hl>=0){ e.preventDefault(); e.stopImmediatePropagation(); fpickChoose(FPICK.hl); }
+  else if(e.key==='Escape'){ e.preventDefault(); ul.hidden=true; FPICK.hl=-1; }
+},true);
 // The + button (or Enter): one person from the two fields, or a whole list typed or pasted into the name field.
 async function peopleAdd(btn){
   const n=$('padd_n'), m=$('padd_e'), err=$('padd_err'); if(!n||!PEOPLE) return; err.textContent='';
@@ -3501,6 +3605,7 @@ async function addPeople(rows,btn){
   try{ const r=await api('POST',`/polls/${PEOPLE.id}/participants`,{people:rows},pollHeaders(PEOPLE.id));
     const bits=[r.added.length?t('Added {n}',{n:r.added.length}):'', r.updated.length?t('updated {n}',{n:r.updated.length}):'', r.skipped.length?t('already in the list: {names}',{names:r.skipped.join(', ')}):''].filter(Boolean).join(' · ');
     $('padd_n').value=''; $('padd_e').value=''; PEOPLE.focus=true;
+    if(ME.user&&r.added.length) loadFriends(true); // new people added by email become contacts
     await peopleChanged(bits.charAt(0).toUpperCase()+bits.slice(1)); return true; }
   catch(ex){ const err=$('padd_err'); if(err) err.textContent=ex.message; return false; }
   finally{ if(btn) btn.disabled=false; }
@@ -4229,6 +4334,39 @@ function germanText(){ return {
 "Let people add a comment": "Kommentare erlauben",
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
+"Added by email ({n})": "Per E-Mail hinzugefügt ({n})",
+"Added by email": "Per E-Mail hinzugefügt",
+"People you added to your polls with an email address. Pick them in the People tab like friends. If they have (or make) a when-who account, ask them to be friends.": "Personen, die du mit E-Mail-Adresse zu deinen Umfragen hinzugefügt hast. Wähl sie im Tab Personen aus wie Freund*innen. Wenn sie ein when-who-Konto haben (oder anlegen), schick ihnen eine Freundschaftsanfrage.",
+"Friend requests: {n}": "Freundschaftsanfragen: {n}",
+"Friends": "Freund*innen",
+"Friends are other when-who accounts. Pick them in a poll’s <b>People</b> tab: they’re added with their account, so their answers always land in their own row. A request needs their OK; it goes to the email address you type, whether or not it has an account yet.": "Freund*innen sind andere when-who-Konten. Wähl sie im Tab <b>Personen</b> einer Umfrage aus: Sie werden mit ihrem Konto hinzugefügt, ihre Antworten landen also immer in ihrer eigenen Zeile. Eine Anfrage braucht ihr OK; sie geht an die E-Mail-Adresse, die du eingibst, egal ob es dazu schon ein Konto gibt.",
+"Couldn’t load your friends.": "Deine Freund*innen konnten nicht geladen werden.",
+"Requests": "Anfragen",
+"Accept {name}": "{name} annehmen",
+"Decline": "Ablehnen",
+"Remove {name} from your friends": "{name} aus deinen Freund*innen entfernen",
+"Waiting for an answer": "Wartet auf Antwort",
+"asked {date}": "angefragt am {date}",
+"Take back the request": "Anfrage zurückziehen",
+"No friends yet. Add someone by email below.": "Noch keine Freund*innen. Füg unten jemanden per E-Mail hinzu.",
+"From your polls": "Aus deinen Umfragen",
+"Ask {name} to be friends": "{name} eine Freundschaftsanfrage schicken",
+"Friend’s email address": "E-Mail-Adresse der Person",
+"Send friend request": "Freundschaftsanfrage senden",
+"Request sent to {email}": "Anfrage an {email} gesendet",
+"Remove {name} from your friends?": "{name} aus deinen Freund*innen entfernen?",
+"You’re now friends": "Ihr seid jetzt befreundet",
+"Request sent": "Anfrage gesendet",
+"Request declined": "Anfrage abgelehnt",
+"Request taken back": "Anfrage zurückgezogen",
+"Removed from your friends": "Aus deinen Freund*innen entfernt",
+"Pick someone from the list": "Wähl jemanden aus der Liste",
+"Enter an email address": "Gib eine E-Mail-Adresse ein",
+"That’s your own address": "Das ist deine eigene Adresse",
+"Too many open friend requests. Wait for some answers first.": "Zu viele offene Freundschaftsanfragen. Warte erst auf ein paar Antworten.",
+"Request not found": "Anfrage nicht gefunden",
+"Pick someone from your friends": "Wähl jemanden aus deinen Freund*innen",
+"You can have at most 500 friends": "Du kannst höchstens 500 Freund*innen haben",
 "Location": "Ort",
 "Location (optional)": "Ort (optional)",
 "Location cleared on {pl}": "Ort für {pl} entfernt",
