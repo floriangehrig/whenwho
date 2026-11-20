@@ -1034,6 +1034,26 @@
   .pst svg{width:13px;height:13px;stroke-width:2.6}
   .pst.y{border:0;background:var(--yes);color:#fff} .pst.m{border:0;background:var(--maybe-bg);color:var(--maybe)} .pst.x{border:0;background:var(--sunken);color:var(--muted)}
   .pplist .pname{flex-wrap:nowrap} .pacct{display:inline-flex;color:var(--accent-ink)} .pacct svg{width:14px;height:14px}
+  /* People tab: link + share on one row, counts as icon chips, row actions in ⋯ on phones */
+  .pshare{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .pshare-l{flex:1;min-width:0;display:flex;align-items:center;gap:8px;margin:0;padding:0 10px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);color:var(--muted);cursor:text}
+  .pshare-l svg{flex:none;width:16px;height:16px}
+  .pshare-l input{flex:1;min-width:0;min-height:0;height:100%;padding:0;border:0;background:none;box-shadow:none;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
+  .pshare-copy{flex:none;width:40px;height:40px;border-radius:10px;background:var(--accent);color:#fff} .pshare-copy:hover{background:var(--accent);filter:brightness(1.1);color:#fff}
+  .pshare .btn.ib{flex:none;width:40px;min-width:40px;height:40px;padding:0;justify-content:center;gap:0} .pshare .btn.ib .bl,.pshare .btn.ib .bs{display:none}
+  .pcounts{display:inline-flex;gap:6px;align-items:center}
+  .pcnt{display:inline-flex;align-items:center;gap:4px;padding:3px 9px 3px 7px;border-radius:999px;background:var(--sunken);border:1px solid var(--line);font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+  .pcnt svg{width:14px;height:14px} .pcnt.y{background:color-mix(in srgb,var(--yes) 14%,transparent);border-color:color-mix(in srgb,var(--yes) 35%,transparent);color:var(--yes)}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .pmore{display:none;margin:0} .pmore>summary.qb{min-height:0;padding:0;border-color:transparent;background:none} .pmore .ddp{top:calc(100% + 2px)} .pmore .ddp .danger{color:var(--no)}
+  .pact-w{display:inline-flex;gap:2px}
+  @media (max-width:560px){
+    .ppl .pshare{gap:4px} .ppl .pshare .btn.ib,.ppl .pshare-copy{width:38px;min-width:38px;height:38px}
+    .ppl .ptools{padding:4px 0 6px}
+    .ppl .pplist li{padding:7px 6px;margin:0 -6px;gap:8px}
+    .ppl .pplist .qb{width:34px;height:34px}
+    .ppl .pact-w{display:none} .ppl .pmore{display:inline-block}
+  }
   .padd-new{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto}
   /* Settings */
   details.sset{padding:0;border-top:1px solid var(--line);margin-top:0} details.sset:first-of-type{border-top:0}
@@ -2660,7 +2680,8 @@ function meFields(d,p){
 // The ⋯ menu closes after a pick or a tap elsewhere; an ⓘ tip closes on a tap elsewhere.
 document.addEventListener('pointerdown',e=>{ const m=$('moredd'); if(m&&m.open&&!m.contains(e.target)) m.open=false;
   const t=document.activeElement; if(t&&t.classList&&t.classList.contains('tip')&&!t.contains(e.target)) t.blur(); });
-document.addEventListener('click',e=>{ const m=e.target.closest('#moredd .ddp button'); if(m) m.closest('details').open=false; },true);
+document.addEventListener('click',e=>{ const m=e.target.closest('#moredd .ddp button,.pmore .ddp button'); if(m) m.closest('details').open=false; },true);
+document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.pmore[open]').forEach(d=>{ if(!d.contains(e.target)) d.open=false; }); });
 // Share button: the phone's own share sheet with the whole invite message (the link is inside the text,
 // so WhatsApp doesn't show it twice).
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-nshare]'); if(!b) return;
@@ -3868,9 +3889,10 @@ function adminPanes(){
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
   ${chatPane()}
-  <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>${t('People')}</h2></div>
-    <div class="field"><label class="row tight">${t('Share link')}${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+t('Anyone with the link can answer, no account needed.'))}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}">${shareBtns(info)}</div></div>
-    <div class="section">${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div></div>
+  <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
+    <div class="pshare"><label class="pshare-l">${ICON.link}<input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}"></label>
+      <button type="button" class="qb pshare-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info)}</div>
+    ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>${t('Settings')}</h2></div>
     ${sset('details','edit',t('Details'),`
       <div class="field"><label for="s_title">${t('Title')}</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
@@ -3951,14 +3973,18 @@ function renderParts(){
   const view=p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="${t('Select {name}',{name:esc(p.name)})}">
       ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
-      <span class="acts">${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span></li>`;
+      <span class="acts">${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
+        <details class="dd more pmore"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
+          <button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></div></details></span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
         <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
         <input type="email" id="pe_e" maxlength="200" value="${esc(p.email||'')}" aria-label="${t('Email')}" placeholder="${t('Email (optional)')}" data-pekey="${esc(p.id)}" autocomplete="off" autocapitalize="off" spellcheck="false"${p.account?` readonly title="${t('Linked to their account')}"`:''}></span>
       <span class="acts">${pqb('check',t('Save'),`data-psave="${esc(p.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-pcancel=""')}</span></li>`;
   const addBtn=`<button type="button" class="btn primary padd-btn" data-paddopen title="${t('Add people')}" aria-label="${t('Add people')}" aria-haspopup="dialog">${ICON.plus}</button>`;
   const tools=!ps.length?`<div class="ptools"><span class="grow muted">${t('Nobody yet. Add people or share the link.')}</span>${addBtn}</div>`:`<div class="ptools">
-      <label class="check m0"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''}> <span>${sel.size?t('{n} selected',{n:sel.size}):(series?t('{people} · {n} answered this round',{people:plural(ps.length,t('person'),t('people')),n:answered}):t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered}))}</span></label>
+      <label class="check m0 psall"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''} aria-label="${t('Select all')}"> ${sel.size?`<span>${t('{n} selected',{n:sel.size})}</span>`
+        :(()=>{ const tx=series?t('{people} · {n} answered this round',{people:plural(ps.length,t('person'),t('people')),n:answered}):t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered});
+          return `<span class="pcounts" title="${esc(tx)}"><span class="pcnt">${ICON.users}${ps.length}</span><span class="pcnt y">${ICON.check}${answered}</span><span class="sr">${esc(tx)}</span></span>`; })()}</label>
       <span class="grow"></span>
       ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="${t('Email {n}',{n:selMail.length})}">${ICON.send}<span>${t('Email {n}',{n:selMail.length})}</span></button>`
           :`<button type="button" class="btn sm withic" data-pmailapp ${selMail.length?'':'disabled'} title="${t('Opens your email app with their addresses in BCC')}">${ICON.mail}<span>${t('Email {n}',{n:selMail.length})}</span></button>`}
