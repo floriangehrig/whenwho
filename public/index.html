@@ -667,6 +667,7 @@
   .pgrid .slot.allfree{background:var(--yes-dark);color:#fff}
   .pgrid .slot.mt{outline:2px solid var(--accent);outline-offset:-2px}
   .pgrid .slot.dr{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .grid .hd.fday{cursor:pointer;border-radius:8px} .grid .hd.fday:hover{background:var(--accent-weak)}
   .pgrid .hd{cursor:pointer;border-radius:8px} .pgrid .hd:hover{background:var(--accent-weak)}
   .pgrid .hd.dr{background:var(--accent);color:#fff} .pgrid .hd.dr b{color:#fff}
   .day.dr{outline:3px solid var(--accent);outline-offset:-1px}
@@ -2708,7 +2709,7 @@ function renderMine(el){
       ${mi('x',t('Clear all'),'data-bulk="clear"','danger')}</div></details>`;
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${on?` ${t('👥 = how many of the {n} others are free at the best time (+ maybe).',{n})}`:''}`
-    :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Blank = not available.')}${on?` ${t('👥 numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
+    :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('👥 numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
   // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
   P.modeHelp=helpTxt; updateHelp();
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}<span class="hide-sm row tight">${qfButton()}${calButton()}</span>${menu}`,'tbar')+quickFill()+calPanel();
@@ -2731,7 +2732,8 @@ function renderMine(el){
     h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`}
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
-    wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
+    const fd=editable();
+    wk.forEach((k,i)=>{ h+=`<div class="hd${k&&fd?' fday':''}"${k&&fd?` data-fday="${k}" role="button" tabindex="0" title="${esc(t('Mark the whole day: {day}',{day:dLabel(k)}))}"`:''}>${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k||!hours(k).includes(hr)){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -3092,6 +3094,13 @@ function wireGrid(){
     start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
     move:el=>{ if(paint!==null) apply(el); },
     end, cancel:end });
+  // Tap a day's header to give every hour of that day the chosen colour (again with the same colour, or the eraser, clears the day).
+  const fill=k=>{ if(!editable()) return; const H=hours(k), map=hourMap(P.mine.entries[k],k);
+    const clear=P.brush==='x'||H.every(hr=>map.get(hr)===P.brush);
+    H.forEach(hr=>{ if(clear) map.delete(hr); else map.set(hr,P.brush); });
+    setEntry(k,fromMap(map,k)); changed(); renderBody(); };
+  grid.addEventListener('click',e=>{ const hd=e.target.closest('[data-fday]'); if(hd) fill(hd.dataset.fday); });
+  grid.addEventListener('keydown',e=>{ const hd=e.target.closest('[data-fday]'); if(hd&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); fill(hd.dataset.fday); } });
 }
 // Hour grids: a mouse or pen drag paints straight away. On touch a swipe scrolls the page,
 // a tap does one cell, and press-and-hold (then drag) paints a range. h.start may return false to skip the drag.
@@ -4496,6 +4505,8 @@ function germanText(){ return {
 "PIGEON POST": "TAUBENPOST",
 "Page {n} of {total}": "Seite {n} von {total}",
 "Painting over the same colour clears it.": "Nochmal mit derselben Farbe drüber löscht sie.",
+"Tap a day’s name to mark the whole day.": "Tipp auf den Tagesnamen, um den ganzen Tag zu markieren.",
+"Mark the whole day: {day}": "Ganzen Tag markieren: {day}",
 "Participant not found": "Teilnehmende Person nicht gefunden",
 "Participants:": "Teilnehmende:",
 "Participants: {who}": "Teilnehmende: {who}",
