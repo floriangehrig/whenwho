@@ -193,6 +193,17 @@
   @keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .pat-chips .em-pill{animation:none} }
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
+  /* quick fill: tighter panel; on phones the row labels go (the controls say what they are) and the brush stays on one line */
+  .qf .patp{gap:8px;padding:10px 12px}
+  @media (max-width:560px){
+    .qf .patp{padding:10px;gap:10px}
+    .qf .pat-row{gap:6px 10px}
+    .qf .pat-l,.qf .pat-keys,.qf .pat-in .muted{display:none}
+    .qf .wdchips{display:flex;width:100%;gap:3px} .qf .wdc{flex:1;width:auto;min-width:0;height:34px}
+    .qf .pat-pre{gap:0 12px}
+    .qf .pat-in{font-size:13.5px} .qf .num-sm{width:50px!important;padding-inline:6px}
+    .qf .seg{display:flex;width:100%;gap:1px;padding:2px} .qf .seg button{flex:1 1 auto;justify-content:center;padding:7px 3px;font-size:12px;letter-spacing:-.1px;white-space:nowrap} .qf .seg .dot{width:8px;height:8px;margin-right:3px}
+  }
   .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
   select{appearance:none;-webkit-appearance:none;padding-right:32px;cursor:pointer;
