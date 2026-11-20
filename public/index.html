@@ -899,6 +899,7 @@
   .legend{gap:6px;font-size:11.5px;margin:10px 0 12px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
+  .legend span.ln::before{width:16px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
   /* save bar */
   .savebar{gap:8px;padding:10px 12px;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .sstat{display:inline-flex;align-items:center;gap:7px;margin-right:auto;min-width:0;font-size:13px;font-weight:600;color:var(--muted)}
@@ -2712,7 +2713,8 @@ function renderMine(el){
   P.modeHelp=helpTxt; updateHelp();
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}<span class="hide-sm row tight">${qfButton()}${calButton()}</span>${menu}`,'tbar')+quickFill()+calPanel();
   const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
-  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',bzShown?'busy':'');
+  const dayLines=P.mode==='days', partDays=dayLines&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',dayLines&&on?'line':'',partDays?'myline':'',bzShown?'busy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -3160,8 +3162,9 @@ const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], mayb
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
   mstripe:['var(--maybe)','Rest maybe'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others free'],
-  draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'], busy:['var(--busy-hatch),var(--sunken)','Busy (your calendar)'] };
-function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>`<span style="--c:${LEG[k][0]}">${t(LEG[k][1])}</span>`).join('')}</div>`; }
+  draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'], busy:['var(--busy-hatch),var(--sunken)','Busy (your calendar)'],
+  line:['','Line = how many are free','ln'], myline:['','Line = share of your hours','ln'] };
+function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>`<span${LEG[k][2]?` class="${LEG[k][2]}"`:''} style="--c:${LEG[k][0]}">${t(LEG[k][1])}</span>`).join('')}</div>`; }
 // Thin yes/maybe bar along the bottom of a day cell.
 // y = free (incl. "if needed"), i = how many of those are only "if needed", m = maybe.
 function heatBar(y,i,m,tot){ return tot&&(y||m)?`<div class="othbar"><i class="ry" style="width:${(y-i)/tot*100}%"></i>${i?`<i class="ri" style="width:${i/tot*100}%"></i>`:''}<i class="rm" style="width:${m/tot*100}%"></i></div>`:''; }
@@ -3203,7 +3206,7 @@ function renderGroup(el){
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
   let h=tools(`${whoDropdown()}<span class="ml-auto"></span>${tip(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'),'right')}`,'tbar');
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p>`; wireWho(); return; }
-  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
@@ -3319,7 +3322,7 @@ function renderPlanner(S){
         h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>';
   } else {
-    h+=legend('heat','ifn','maybe','draft','meeting');
+    h+=legend('heat','ifn','maybe','line','draft','meeting');
     h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
   }
   return h;
@@ -4335,6 +4338,8 @@ function germanText(){ return {
 "Last day of the month": "Letzter Tag des Monats",
 "Last hour": "Letzte Stunde",
 "Let people add a comment": "Kommentare erlauben",
+"Line = how many are free": "Linie = wie viele frei sind",
+"Line = share of your hours": "Linie = Anteil deiner Stunden",
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
 "Added by email ({n})": "Per E-Mail hinzugefügt ({n})",
