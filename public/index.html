@@ -775,6 +775,120 @@
     #series .list li{flex-wrap:wrap} #series .list li>.grow{flex:1 1 60%} #series .acts{gap:4px;margin-left:auto}
   }
   @media (max-width:380px){ .crumb{display:none} }
+
+  /* ---------- Answers tab: compact, icon-first ---------- */
+  .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wsmeta{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:var(--sunken);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .wsmeta:empty{display:none} .wsmeta svg{width:14px;height:14px} .wsmeta b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .ws-me{padding:10px 12px;position:relative;z-index:5}
+  .me-row{display:flex;align-items:center;gap:8px;min-width:0}
+  .me-row>input{min-width:0;margin:0} .me-row>.grow{flex:1 1 0;min-width:0}
+  .me-row .me-em{flex:1 1 0} .me-row .me-emb{display:none}
+  .me-row .tile.avatar{width:34px;height:34px;flex:none}
+  .me-com{margin-top:8px;width:100%}
+  .ws .btn.on{background:var(--accent-weak);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+  /* ⓘ tips: hover on desktop, tap/focus on phones */
+  .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;border-radius:999px;color:var(--muted);cursor:help;outline:none}
+  .tip>svg{width:18px;height:18px} .tip:hover,.tip:focus{color:var(--accent-ink);background:var(--accent-weak)}
+  .tipb{position:absolute;z-index:60;top:calc(100% + 6px);left:50%;transform:translateX(-50%);width:max-content;max-width:min(280px,calc(100vw - 32px));padding:9px 12px;border-radius:10px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow-pop);font-size:12.5px;font-weight:400;line-height:1.45;text-align:left;cursor:auto;opacity:0;visibility:hidden;transition:opacity .12s,visibility .12s}
+  .tip.right .tipb{left:auto;right:-4px;transform:none}
+  .tip:hover .tipb,.tip:focus .tipb,.tip:focus-within .tipb{opacity:1;visibility:visible}
+  .bartip{display:flex;justify-content:flex-end;margin:4px 0 -4px} .tipsep{display:block;height:1px;margin:8px 0;background:var(--line)}
+  /* one-row toolbar */
+  .ws-tools.tbar{flex-wrap:nowrap;gap:6px;margin-top:var(--s3)}
+  .tbar>.ml-auto{flex:1}
+  .tbar .dd{margin-top:0} .tbar .row.tight{flex-wrap:nowrap;gap:6px} .tbar .btn{white-space:nowrap}
+  @media (max-width:1040px){ .tbar .brush .bl{display:none} }
+  .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
+  .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
+  .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
+  .badgeb{position:relative;gap:6px} .badgeb svg{width:16px;height:16px}
+  .badge{font-style:normal;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+  .dd.more>summary{list-style:none;min-height:30px;padding:4px 8px;border-color:transparent;background:transparent} .dd.more>summary::-webkit-details-marker{display:none} .dd.more>summary::after{display:none} .dd.more[open]>summary{background:var(--sunken)}
+  .dd.more .ddp{left:auto;right:0;min-width:200px;padding:6px}
+  .menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
+  .menu button:hover{background:var(--sunken)} .menu button svg{width:17px;height:17px;color:var(--muted)}
+  .menu button.danger,.menu button.danger svg{color:var(--no)}
+  .menu .sm-flex{display:none}
+  /* week nav as a centred pill */
+  .wknav.pill{justify-content:center;gap:4px;margin:var(--s3) auto 0;width:max-content;max-width:100%;padding:3px;border-radius:999px;background:var(--sunken);border:1px solid var(--line)}
+  .wknav.pill .btn{min-width:32px;min-height:32px;padding:0;border-radius:999px;border:0;background:transparent}
+  .wknav.pill .btn:not(:disabled):hover{background:var(--card)}
+  .wknav.pill .lbl{font-size:13px;padding:0 8px;white-space:nowrap}
+  /* compact legend chips */
+  .legend{gap:6px;font-size:11.5px;margin-top:12px;padding-top:0;border-top:0}
+  .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
+  .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
+  /* save bar */
+  .savebar{gap:8px;padding:10px 12px;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .sstat{display:inline-flex;align-items:center;gap:7px;margin-right:auto;min-width:0;font-size:13px;font-weight:600;color:var(--muted)}
+  .sstat>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sstat svg{width:16px;height:16px;flex:none}
+  .sstat .sdot{width:9px;height:9px;flex:none;border-radius:999px;background:var(--empty);box-shadow:inset 0 0 0 1.5px var(--line)}
+  .sstat.dirty{color:var(--accent-ink)} .sstat.dirty .sdot{background:var(--accent);box-shadow:none;animation:sdot 1.6s ease-in-out infinite}
+  .sstat.ok{color:var(--yes-dark)} .sstat.err{color:var(--no)} .sstat.err .sdot{background:var(--no);box-shadow:none}
+  @keyframes sdot{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}}
+  #saveBtn svg{width:16px;height:16px}
+  .notice.withic{display:flex;align-items:center;gap:8px} .notice.withic svg{width:16px;height:16px;flex:none}
+  /* group view */
+  .schips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .schips span{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .schips svg{width:13px;height:13px}
+  .schips .sc-y{color:var(--yes-dark)} .schips .sc-i{color:var(--ifn)} .schips .sc-m{color:var(--maybe)} .schips .sc-n{color:var(--muted)} .schips .sc-b{color:var(--accent-ink)}
+  .section h3.withic,.section summary.withic{display:flex;align-items:center;gap:7px} .section h3.withic svg,.section summary.withic svg{width:17px;height:17px;color:var(--muted)}
+  .list.best .sc{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:30px;border-radius:999px;background:color-mix(in srgb,var(--yes) 18%,var(--card));color:var(--yes-dark);font-weight:700;font-size:12.5px}
+  .list.best li:first-child .sc{background:var(--yes);color:#fff}
+  /* Send: part of the answer card (its sticky footer), big and coloured */
+  .ws .savebar.wsfoot{margin:var(--s4) -24px -22px;border:0;border-top:1px solid var(--line);border-radius:0 0 var(--r-lg) var(--r-lg);box-shadow:0 -6px 16px -12px rgba(0,0,0,.25);padding:12px 24px}
+  .ws .savebar.wsfoot.dirty{background:color-mix(in srgb,var(--accent) 9%,var(--card));border-top-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+  .sendbtn{min-height:44px;min-width:180px;padding:0 22px;font-size:15px;font-weight:700;border-radius:12px;justify-content:center;gap:8px}
+  .sendbtn svg{width:18px!important;height:18px!important}
+  .savebar.dirty .sendbtn:not(:disabled){box-shadow:0 6px 18px -6px color-mix(in srgb,var(--accent) 70%,transparent)}
+  /* Meetings */
+  .pstep-h .tip{margin-top:-2px} .pnav{flex-wrap:nowrap;gap:6px;margin-top:var(--s3)} .pnav .wknav.pill{margin:0;flex:1 1 auto;min-width:0;width:auto;justify-content:space-between} .pnav .lbl{overflow:hidden;text-overflow:ellipsis}
+  .ev-ic{display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);margin-bottom:6px} .ev-ic svg{width:18px;height:18px}
+  .drafts .dft .tag{display:inline-flex;align-items:center;gap:4px} .drafts .dft .tag svg,.drafts .dft .who svg{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
+  /* People */
+  .pst{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1.5px dashed var(--line-strong)}
+  .pst svg{width:13px;height:13px;stroke-width:2.6}
+  .pst.y{border:0;background:var(--yes);color:#fff} .pst.m{border:0;background:var(--maybe-bg);color:var(--maybe)} .pst.x{border:0;background:var(--sunken);color:var(--muted)}
+  .pplist .pname{flex-wrap:nowrap} .pacct{display:inline-flex;color:var(--accent-ink)} .pacct svg{width:14px;height:14px}
+  .padd-new{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto}
+  /* Settings */
+  details.sset{padding:0;border-top:1px solid var(--line);margin-top:0} details.sset:first-of-type{border-top:0}
+  details.sset>summary{display:flex;align-items:center;gap:10px;padding:14px 2px;cursor:pointer;list-style:none;font-weight:650;font-size:15px}
+  details.sset>summary::-webkit-details-marker{display:none} details.sset>summary::before,.iconpk>summary::before{display:none}
+  details.sset>summary>svg{width:18px;height:18px;color:var(--muted);flex:none}
+  details.sset>summary::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 6px 3px 4px;transition:transform .15s}
+  details.sset[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
+  details.sset .sx{display:inline-flex;gap:6px;color:var(--muted)} details.sset .sx svg{width:15px;height:15px}
+  details.sset[open] .sx{display:none}
+  .sset-b{padding:0 2px 16px} .sset-b>.field:first-child,.sset-b>.row:first-child{margin-top:0}
+  .iconpk>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-size:14px;font-weight:600} .iconpk>summary::-webkit-details-marker{display:none}
+  .iconpk>summary .tile{width:40px;height:40px;flex:none} .iconpk>summary .btn{margin-left:auto} .iconpk[open]>summary{margin-bottom:10px}
+  .dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px} .dgrid>.field{min-width:0} .dgrid input[type=date]{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+  .setbar{margin:var(--s4) -24px -22px;border:0;border-top:1px solid var(--line);border-radius:0 0 var(--r-lg) var(--r-lg);box-shadow:none}
+  .dz-row{display:flex;align-items:center;gap:10px;padding-top:14px;padding-bottom:14px}
+
+  @media (max-width:560px){
+    .ws .savebar.wsfoot,.setbar{margin:var(--s4) -16px -18px;padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+    .sendbtn{flex:1 1 auto;min-width:0;min-height:46px}
+    .padd-new{grid-template-columns:minmax(0,1fr) auto auto} .padd-new input+input{grid-row:2;grid-column:1/-1} .padd-new .padd-btn{grid-row:auto;grid-column:auto;align-self:center;height:38px}
+    .padd-new:not(:focus-within) #padd_e:placeholder-shown{display:none} .padd-new{gap:4px} .padd-new .tip{width:26px}
+    .dgrid{grid-template-columns:1fr 1fr} .dgrid>.field:last-child:nth-child(odd){grid-column:1/-1}
+    .pnav .iseg button{padding:7px 8px}
+    .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1} .ws-h #wsmeta{flex-basis:auto;margin-left:6px}
+    .ws-views .segic{margin-right:5px}
+    .me-row .me-em{display:none} .me-row .me-em.open{display:block;order:5;flex-basis:100%}
+    .me-row{flex-wrap:wrap} .me-row>#name{flex:1 1 0}
+    .me-row .me-emb{display:inline-flex}
+    .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:13px;height:13px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
+    .badgeb{min-width:36px;justify-content:center} .badgeb .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;font-size:10.5px;box-shadow:0 0 0 2px var(--card)}
+    .tbar .tip{width:26px}
+    .menu .sm-flex{display:flex}
+    .legend{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;margin-right:-2px} .legend::-webkit-scrollbar{display:none}
+    .savebar .btn{padding-inline:14px} .savebar #status.sstat{display:inline-flex}
+  }
 </style>
 </head>
 <body>
@@ -1045,7 +1159,14 @@ Object.assign(ICON,{
   share:svgI('<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4M8.2 13.2l7.6 4"/>'),
   gear:svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'),
   repeat:svgI('<path d="M17 2.5 20.5 6 17 9.5"/><path d="M3.5 11.5V10a4 4 0 0 1 4-4h13M7 21.5 3.5 18 7 14.5"/><path d="M20.5 12.5V14a4 4 0 0 1-4 4h-13"/>'),
+  info:svgI('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/>'),
+  more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
+  day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
+  chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
+  checks:svgI('<path d="m2.5 12.5 4.5 4.5 9-10M11.5 16.5l.5.5 9-10"/>'),
 });
+// An ⓘ icon that shows its text on hover (desktop) or tap/focus (phones). html is trusted markup built by the caller.
+function tip(html,cls=''){ return `<span class="tip ${cls}" tabindex="0" role="note" aria-label="Info">${ICON.info}<span class="tipb">${html}</span></span>`; }
 // A button whose text label hides on phones (icon only there); the full label stays as title + aria-label.
 // short: optional label shown on phones next to the icon. cls: extra classes, attrs: raw attributes (escape values!).
 function ib(icon,label,attrs='',cls='',short=''){
@@ -1773,11 +1894,16 @@ function saveBar(msg){
   bar.classList.toggle('hide', P.tab!=='mine' && !P.dirty && !P.saving);
   bar.classList.toggle('dirty', P.dirty);
   const btn=$('saveBtn');
-  btn.textContent = P.saving ? 'Sending…' : P.myResp ? 'Update answer' : 'Send answer';
+  btn.innerHTML = ICON.send+(P.saving ? '<span>Sending…</span>' : `<span>${P.myResp?'Update':'Send'}<span class="bl"> answer</span></span>`);
   btn.disabled = P.saving || !P.dirty;
-  $('status').textContent = msg!=null ? msg
-    : P.dirty ? (P.mine.name.trim() ? (P.myResp?'You have changes that aren’t sent yet':'Not sent yet') : 'Enter your name, then send')
-    : P.myResp ? 'Saved ✓' : 'Mark your availability, then send your answer';
+  // Short status (icon + a few words); the full sentence is the tooltip.
+  const named=P.mine.name.trim(), st = msg!=null ? (/^Saved/.test(msg)?'ok':'err') : P.dirty ? 'dirty' : P.myResp ? 'ok' : 'idle';
+  const [short,long] = msg!=null ? [msg,msg]
+    : P.dirty ? (named ? (P.myResp?['Unsent changes','You have changes that aren’t sent yet']:['Not sent','Not sent yet']) : ['Add your name','Enter your name, then send'])
+    : P.myResp ? ['Saved','Your answer is saved'] : ['Not answered','Mark your availability, then send your answer'];
+  const s=$('status'); s.className='sstat '+st; s.title=long;
+  s.innerHTML=`${st==='ok'?ICON.check:'<i class="sdot"></i>'}<span>${esc(short.replace(/ ✓$/,''))}</span>`;
+  const dm=$('delMine'); if(dm) dm.classList.toggle('hide',!P.myResp||P.saving);
 }
 function changed(){
   if(!editable()) return;
@@ -1813,11 +1939,11 @@ async function save(retried){
 }
 // The help line under "Your answer" depends on whether an answer exists.
 function updateHelp(){ const h=$('ansHelp'); if(h) h.innerHTML=ansHelp(); wireDel(); }
-function ansHelp(){
-  if(ME.user) return P.myResp?'Your answer is saved. Change it any time and press <b>Update answer</b>. <a href="#" id="delMine">Remove my answer</a>'
-    :'Mark your availability below, then press <b>Send answer</b>.';
-  return P.myResp?'Your answer is saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update answer</b>. <a href="#" id="delMine">Remove my answer</a>'
-    :'Enter your name, mark your availability below, then press <b>Send answer</b>. <a href="#" data-opensignin>Sign in</a> to keep your answers in an account instead.';
+function ansHelp(){ return ansHelp1()+(P.modeHelp?`<span class="tipsep"></span>${P.modeHelp}`:''); }
+function ansHelp1(){
+  if(ME.user) return `Signed in as ${esc(ME.user.email)}: your answer follows you to every device. ${P.myResp?'Change it any time, then press <b>Update</b>.':'Mark your availability, then press <b>Send</b>.'}`;
+  return P.myResp?'Saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update</b>.'
+    :'Mark your availability, then press <b>Send</b>. <a href="#" data-opensignin>Sign in</a> to keep your answers in an account instead.';
 }
 // "Is that you?": shown when the typed name already belongs to someone in this poll.
 function nameHint(force){
@@ -1867,15 +1993,15 @@ function render(){
     <div id="pane-answers" class="${d.isAdmin&&P.atab!=='answers'?'hide':''}">
     <div class="card ws">
       <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="View">
-        <button role="tab" data-tab="mine" ${editable()?'':'disabled'}>Mine</button>
-        <button role="tab" data-tab="group">Group</button></div>
-        <span class="muted small ml-auto" id="wsmeta"></span></div>
+        <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>Mine</button>
+        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>Group</button></div>
+        <span class="wsmeta ml-auto" id="wsmeta"></span></div>
       ${d.isAdmin?'':'<div id="meetings"></div>'}
       ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
-        :`<div class="notice warn">This poll (${esc(instLabel(i))}) is closed. Answers can't be changed any more.</div>`}
+        :`<div class="notice warn withic">${ICON.lock}<span>Closed · answers for ${esc(instLabel(i))} are final.</span></div>`}
       <div id="body"></div>
-    </div>
-    ${editable()?`<div class="savebar" id="savebar"><span class="small muted" id="status"></span><button type="button" class="btn primary" id="saveBtn">Send answer</button></div>`:''}</div>
+      ${editable()?`<div class="savebar wsfoot" id="savebar"><span class="sstat" id="status"></span>${ib('trash','Remove my answer','id="delMine"','ghost danger hide')}<button type="button" class="btn primary withic sendbtn" id="saveBtn"></button></div>`:''}
+    </div></div>
     ${d.isAdmin?adminPanes():''}</main>`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
@@ -1888,19 +2014,36 @@ function render(){
   renderBody();
 }
 // "You" strip at the top of the Mine view: name (and email / comment) that go with the answer.
+// One compact row: name (+ email), comment toggle and an ⓘ tip; email (phones) and comment open from icon buttons.
 function meFields(d,p){
-  const com=p.allowComments?`<div class="field"><label for="comment">Comment <span class="opt">optional</span></label><textarea id="comment" maxlength="500" rows="2" placeholder="e.g. Can only do evenings in the first week"></textarea></div>`:'';
-  if(ME.user) return `<div class="ws-who">${avatarOf(ME.user)}<div class="grow minw">${ME.user.name
-      ?`<div><b>${esc(ME.user.name)}</b> <a href="?account" class="small">Change</a></div>`
-      :`<label for="name" class="m0">Name shown to others</label><input type="text" id="name" maxlength="60" autocomplete="name" class="mt-1">`}
-      <div class="muted small">Signed in as ${esc(ME.user.email)} · your answer follows you to every device</div></div></div>
-    ${com}<p class="help" id="ansHelp">${ansHelp()}</p>`;
-  return `<div class="grid2">
-      <div class="field mt-0"><label for="name">Your name <span class="opt">unique in this poll</span></label><input type="text" id="name" maxlength="60" placeholder="So everyone knows who you are" list="pnames" autocomplete="off">
-        <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist><div id="nameHint"></div></div>
-      <div class="field mt-0"><label for="email">Email <span class="opt">optional</span></label><input type="email" id="email" maxlength="200" placeholder="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}"></div></div>
-    ${com}<p class="help" id="ansHelp">${ansHelp()}</p>`;
+  const comOpen=P.comOpen||!!(P.mine.comment||'').trim(), emOpen=P.emOpen||!!(P.mine.email||'').trim();
+  const comBtn=p.allowComments?ib('chat','Comment',`data-metog="com" aria-expanded="${comOpen}"`,'sm ghost'+(comOpen?' on':'')):'';
+  const com=p.allowComments?`<textarea id="comment" class="me-com${comOpen?'':' hide'}" maxlength="500" rows="2" aria-label="Comment" placeholder="Comment (optional), e.g. only evenings in week 1"></textarea>`:'';
+  const help=`<span id="ansHelp">${ansHelp()}</span>`;
+  if(ME.user) return `<div class="me-row">${avatarOf(ME.user)}${ME.user.name
+      ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="Change name" aria-label="Change name">${ICON.edit}</a>`
+      :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="Name shown to others" aria-label="Name shown to others">`}
+      ${comBtn}${tip(help,'right')}</div>${com}`;
+  return `<div class="me-row">
+      <input type="text" id="name" class="grow" maxlength="60" placeholder="Your name" aria-label="Your name (unique in this poll)" list="pnames" autocomplete="off">
+      <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
+      <input type="email" id="email" class="me-em${emOpen?' open':''}" maxlength="200" aria-label="Email (optional, only the organiser sees it)" placeholder="Email (optional)" title="Only the organiser sees this${d.emailEnabled?' (invites & reminders)':''}">
+      ${ib('mail','Email (optional)',`data-metog="em" aria-expanded="${emOpen}"`,'sm ghost me-emb'+(emOpen?' on':''))}${comBtn}${tip(help,'right')}</div>
+    <div id="nameHint"></div>${com}`;
 }
+// The ⋯ menu closes after a pick or a tap elsewhere; an ⓘ tip closes on a tap elsewhere.
+document.addEventListener('pointerdown',e=>{ const m=$('moredd'); if(m&&m.open&&!m.contains(e.target)) m.open=false;
+  const t=document.activeElement; if(t&&t.classList&&t.classList.contains('tip')&&!t.contains(e.target)) t.blur(); });
+document.addEventListener('click',e=>{ const m=e.target.closest('#moredd .ddp button'); if(m) m.closest('details').open=false; },true);
+// People tab: the phone's own share sheet for the poll link.
+document.addEventListener('click',e=>{ if(!e.target.closest('[data-nshare]')||!P.data) return;
+  navigator.share({title:P.data.poll.title,url:shareLink(P.id)}).catch(()=>{}); });
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-metog]'); if(!t) return;
+  const k=t.dataset.metog, el=k==='com'?$('comment'):$('email'); if(!el) return;
+  const open=k==='com'?el.classList.toggle('hide')===false:el.classList.toggle('open');
+  P[k==='com'?'comOpen':'emOpen']=open; t.classList.toggle('on',open); t.setAttribute('aria-expanded',open); if(open) el.focus();
+});
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null;
@@ -1917,7 +2060,10 @@ function renderBody(){
   document.querySelectorAll('[data-tab]').forEach(x=>{ const on=x.dataset.tab===P.tab; x.classList.toggle('on',on); x.setAttribute('aria-selected',on); });
   const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
   const rs=P.data.responses, mt=$('wsmeta');
-  if(mt) mt.textContent=rs?`${rs.length} ${rs.length===1?'response':'responses'}${P.who&&P.tab!=='mine'?` · ${sel().length} selected`:''}`:'';
+  if(mt){ const full=rs?`${rs.length} ${rs.length===1?'response':'responses'}${P.who&&P.tab!=='mine'?` · ${sel().length} selected`:''}`:'';
+    mt.title=full; mt.setAttribute('aria-label',full);
+    // The header already shows the total; the pill only appears while the Group view is filtered.
+    mt.innerHTML=rs&&P.who&&P.tab!=='mine'?`${ICON.users}<b>${sel().length}/${rs.length}</b>`:''; }
   // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
   const mp=$('mplan');
   if(mp&&P.atab==='meetings'){ b.innerHTML=''; renderPlan(mp); }
@@ -2148,15 +2294,27 @@ function renderMine(el){
   const d=P.data, me=P.mine.entries, md=meetingDays(), am=ansMode();
   // "Show others": overlay how many other people said yes / maybe (only when results are visible).
   const oth=d.responses?others():[], on=P.hint&&oth.length>0, n=oth.length;
-  const names=(a,b)=>[a.length?'Available: '+a.join(', '):'',b.length?'Maybe: '+b.join(', '):''].filter(Boolean).join(' · ');
-  const othBtn=n?`<button type="button" class="btn sm ml-auto${on?' on':''}" data-hint aria-pressed="${on}" title="${on?'Hide':'Show'} where the others are available" aria-label="${on?'Hide':'Show'} others (${n})"><span>👥<span class="bl"> ${on?'Hide':'Show'} others</span> ${n}</span></button>`:'';
-  let h=am==='both'||n?tools(`${am==='both'?`<div class="seg">
-      <button data-mode="days" class="${P.mode==='days'?'on':''}">Whole days</button><button data-mode="slots" class="${P.mode==='slots'?'on':''}">Time slots</button></div>`:''}${othBtn}`):'';
+  const names=(a,i,b)=>[a.length?'Available: '+a.join(', '):'',i.length?'If needed: '+i.join(', '):'',b.length?'Maybe: '+b.join(', '):''].filter(Boolean).join(' · ');
+  // One toolbar row: mode (icons) · brush swatches · others toggle · tools (inline on desktop, ⋯ menu on phones) · ⓘ.
+  const othBtn=n?`<button type="button" class="btn sm withic badgeb${on?' on':''}" data-hint aria-pressed="${on}" title="${on?'Hide':'Show'} where the others are available" aria-label="${on?'Hide':'Show'} others (${n})">${ICON.users}<span class="bl">Others</span><i class="badge">${n}</i></button>`:'';
+  const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="Answer by">
+      <button data-mode="days" class="${P.mode==='days'?'on':''}" title="Whole days" aria-label="Whole days"><span class="segic">${ICON.day}</span><span class="bl">Days</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="Time slots" aria-label="Time slots"><span class="segic">${ICON.clock}</span><span class="bl">Hours</span></button></div>`:'';
+  const brushSeg=P.mode==='days'?'':`<div class="seg iseg brush" role="group" aria-label="Brush">${[['y','yes','Available'],['i','ifn','If needed'],['m','maybe','Maybe']].map(([b,c,t])=>
+      `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${t}" aria-label="${t}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${t}</span></button>`).join('')}
+      <button data-brush="x" class="${P.brush==='x'?'on':''}" title="Erase" aria-label="Erase"><span class="segic">${ICON.erase}</span></button></div>`;
+  const mi=(icon,label,attrs,cls='')=>`<button type="button" class="${cls}" ${attrs}>${ICON[icon]}<span>${esc(label)}</span></button>`;
+  const menu=`<details class="dd more" id="moredd"><summary class="btn sm ghost withic ib" title="More" aria-label="More">${ICON.more}</summary><div class="ddp menu">
+      ${P.mode==='days'?mi('checks','All available','data-bulk="all"'):''}
+      ${mi('zap','Quick fill…','data-qf','sm-flex')}${mi('cal','From calendar…','data-cal','sm-flex')}
+      ${mi('x','Clear all','data-bulk="clear"','danger')}</div></details>`;
+  const helpTxt=P.mode==='days'
+    ?`Tap a day to cycle <b>available</b> → <b>if needed</b> → <b>maybe</b> → blank. Blank = not available.${am==='both'?' Switch to 🕒 to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe).`:''}`
+    :`${TOUCH?'Pick a colour, then tap hours, or press and hold and drag to paint several.':'Pick a colour, then drag (or tap) across the hours you can make.'} Painting over the same colour clears it. Blank = not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}`;
+  // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
+  P.modeHelp=helpTxt; updateHelp();
+  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}<span class="hide-sm row tight">${qfButton()}${calButton()}</span>${menu}`,'tbar')+quickFill()+calPanel();
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
-    h+=tools(`${ib('check','All available','data-bulk="all"','sm','All')}${qfButton()}
-      ${calButton()}${ib('x','Clear all','data-bulk="clear"','sm ghost','Clear')}`)+quickFill()+calPanel()+
-      `<p class="help">Tap a day to cycle <b>available</b> → <b>maybe</b> → blank. Blank counts as not available.${am==='both'?' Use <b>Time slots</b> to mark only certain hours.':''}${on?` 👥 = how many of the ${n} others are free at the best time (+ maybe); hover or long-press for names.`:''}</p>`;
     h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
       let hint='', tip='';
       if(o&&(o.peak||o.peakMaybe||o.part)){
@@ -2166,13 +2324,8 @@ function renderMine(el){
       return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
-    h+=`<div class="row ws-tools"><div class="seg" role="group" aria-label="Brush">
-      <button data-brush="y" class="${P.brush==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
-      <button data-brush="m" class="${P.brush==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
-      <button data-brush="x" class="${P.brush==='x'?'on':''}" title="Erase" aria-label="Erase"><span class="segic">${ICON.erase}</span><span class="bl">Erase</span></button></div>${qfButton()}${calButton()}</div>${quickFill()}${calPanel()}
-      <p class="help">${TOUCH?'Pick a brush, then tap the hours you can make, or press and hold an hour and drag to paint several. Painting over the same colour clears it.':'Pick a brush, then drag (or tap) across the hours you can make; dragging over the same colour clears it.'} Blank counts as not available.${on?` 👥 numbers = how many of the ${n} others are free (+ maybe).`:''}</p>
-      ${isWeekly()?'':`<div class="wknav"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''}>‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
-      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''}>›</button></div>`}
+    h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="Previous week">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
+      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="Next week">›</button></div>`}
       <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
     wk.forEach((k,i)=>{ h+=`<div class="hd">${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
@@ -2534,9 +2687,8 @@ function renderGroup(el){
   const all=d.responses.length, tot=sel().length, H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days';
   if(!all){ el.innerHTML=`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people respond, the best days show up here.</span></div>`; return; }
-  let h=tools(whoDropdown());
-  if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person in the Participants list to see when they're free.</p>`; wireWho(); return; }
-  h+=`<p class="help">Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.</p>`;
+  let h=tools(`${whoDropdown()}<span class="ml-auto"></span>${tip(`Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.`,'right')}`,'tbar');
+  if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person to see when they're free.</p>`; wireWho(); return; }
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   h+=legend('heat','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
   if(P.ovDay && S[P.ovDay]){
@@ -2544,24 +2696,24 @@ function renderGroup(el){
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
     h+=`<div class="dpanel">
       <div class="row"><div class="grow"><h3>${esc(dLabel(P.ovDay))}</h3>
-        <div class="muted small">${s.full} whole day · ${s.part} certain hours · ${s.maybe} maybe · ${s.no} can't${s.peak&&slotsOn?` · best ${esc(s.window)}`:''}</div></div>
+        <div class="schips">${[['y','✓',s.full,'whole day'],['i','◔',s.ifn,'if needed'],['p','◐',s.part,'certain hours'],['m','?',s.maybe,'maybe'],['n','✕',s.no,"can't"]].filter(x=>x[2]||x[0]==='y').map(([c,ic,v,t])=>`<span class="sc-${c}" title="${v} ${t}">${ic} ${v}</span>`).join('')}${s.peak&&slotsOn?`<span class="sc-b" title="Best hours">${ICON.clock}${esc(s.window)}</span>`:''}</div></div>
         ${d.isAdmin?`${sr?ib('x','Clear time','data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="Schedule${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> Schedule</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
-        <button class="btn sm ghost" data-ov="${P.ovDay}" aria-label="Close">✕</button></div>
-      ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+        ${ib('x','Close',`data-ov="${P.ovDay}"`,'sm ghost')}</div>
+      ${slotsOn?`${pick?`<div class="bartip">${tip('Drag across the bars to pick the meeting time.','right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
       ${legend('yes','best','ifn','maybe')}`:''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
-  const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
-  h+=`<div class="section"><h3>Best days</h3><ul class="list best">${ranked.map(o=>
+  const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
+  h+=`<div class="section"><h3 class="withic">${ICON.star}Best days</h3><ul class="list best">${ranked.map(o=>
     `<li class="click" data-ov="${o.k}"><span class="sc">${o.s.peak}/${tot}</span><span class="grow minw">${md.has(o.k)?'<span class="acc">★</span> ':''}${esc(dLabel(o.k))}
-      <span class="muted small">· ${o.s.full===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span>
-      <div class="ratio"><i class="ry" style="width:${o.s.peak/tot*100}%"></i><i class="rm" style="width:${o.s.peakMaybe/tot*100}%"></i></div></span>
-      ${d.isAdmin?`<button class="btn sm" data-schedule="${o.k}" title="Schedule a meeting on this day" aria-label="Schedule"><span>★<span class="bl"> Schedule</span></span></button>`:''}</li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
+      <span class="muted small">· ${o.s.full+o.s.ifn===o.s.peak||!slotsOn?'all day':esc(o.s.window)}${o.s.peakIfn?` · ${o.s.peakIfn} if needed`:''}${o.s.peakMaybe?` · +${o.s.peakMaybe} maybe`:''}</span>
+      <div class="ratio"><i class="ry" style="width:${(o.s.peak-o.s.peakIfn)/tot*100}%"></i><i class="ri" style="width:${o.s.peakIfn/tot*100}%"></i><i class="rm" style="width:${o.s.peakMaybe/tot*100}%"></i></div></span>
+      ${d.isAdmin?ib('star','Schedule',`data-schedule="${o.k}"`,'sm'):''}</li>`).join('')||'<li class="muted">Nobody has marked a day as available yet.</li>'}</ul></div>`;
   const withC=sel().filter(r=>r.comment);
-  if(withC.length) h+=`<details class="section comments"${P.cOpen?' open':''} data-keep="cOpen"><summary>Comments (${withC.length})</summary>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
-  if(d.isAdmin) h+=`<details class="section"${P.rOpen?' open':''} data-keep="rOpen"><summary>Manage responses (${all})</summary><ul class="list">${d.responses.map(r=>
-    `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span><button class="btn sm danger" data-delresp="${esc(r.id)}">Delete</button></li>`).join('')}</ul></details>`;
+  if(withC.length) h+=`<details class="section comments"${P.cOpen?' open':''} data-keep="cOpen"><summary class="withic">${ICON.chat}Comments <span class="count">${withC.length}</span></summary>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
+  if(d.isAdmin) h+=`<details class="section"${P.rOpen?' open':''} data-keep="rOpen"><summary class="withic">${ICON.gear}Manage responses <span class="count">${all}</span></summary><ul class="list">${d.responses.map(r=>
+    `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString())}</span>${ib('trash','Delete',`data-delresp="${esc(r.id)}"`,'sm ghost danger')}</li>`).join('')}</ul></details>`;
   el.innerHTML=h;
   wireWho();
   el.querySelectorAll('details[data-keep]').forEach(x=>x.addEventListener('toggle',()=>{ P[x.dataset.keep]=x.open; }));
