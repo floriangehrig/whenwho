@@ -801,6 +801,13 @@
   .tbar>.ml-auto{flex:1}
   .tbar .dd{margin-top:0} .tbar .row.tight{flex-wrap:nowrap;gap:6px} .tbar .btn{white-space:nowrap}
   @media (max-width:1040px){ .tbar .brush .bl{display:none} }
+  /* Suggest: how many meetings (a number, or all free days) */
+  .sugn{display:inline-flex;align-items:center;flex:none;border:1px solid var(--line);border-radius:10px;background:var(--card);overflow:hidden}
+  .sugn button{border:0;background:transparent;color:var(--ink);min-width:28px;min-height:28px;font:inherit;font-size:15px;cursor:pointer}
+  .sugn button:hover{background:var(--sunken)} .sugn button.all{font-size:12.5px;font-weight:600;padding:0 9px;border-left:1px solid var(--line)}
+  .sugn button.all.on{background:var(--accent-weak);color:var(--accent-ink)}
+  .sugn input{width:34px;border:0;padding:0;text-align:center;background:transparent;font:inherit;font-size:13px;font-weight:600;-moz-appearance:textfield;min-height:28px}
+  .sugn input::-webkit-inner-spin-button,.sugn input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
   .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
   .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
@@ -887,6 +894,7 @@
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:13px;height:13px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
     .badgeb{min-width:36px;justify-content:center} .badgeb .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;font-size:10.5px;box-shadow:0 0 0 2px var(--card)}
     .tbar .tip{width:26px}
+    .tbar [data-suggest]{flex:none} .tbar [data-suggest] .bs{display:none} .tbar .sugn button{min-width:26px} .tbar .sugn button.all{padding:0 7px} .tbar .sugn input{width:26px}
     .menu .sm-flex{display:flex}
     .legend{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;margin-right:-2px} .legend::-webkit-scrollbar{display:none}
     .savebar .btn{padding-inline:14px} .savebar #status.sstat{display:inline-flex}
@@ -2839,13 +2847,30 @@ function renderPlan(el){
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people answer, you can plan meetings around when they're free.</span><button class="btn sm mt-2" data-atab="people">Share the poll</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,'Who should come?','Each meeting invites the people selected when you add it.',
-    tools(whoDropdown()+ib('zap','Suggest best times','data-suggest'+(tot?'':' disabled'),'sm','Suggest'),'mt-2 tbar'));
+    tools(whoDropdown()+ib('zap','Suggest best times','data-suggest'+(tot?'':' disabled'),'sm','Suggest')+sugCount(),'mt-2 tbar'));
   h+=step(2,'Pick the times',tot?(slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).':'<b>Drag down a day</b> to add a meeting.')+' Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.'
       :'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.'):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>Nobody selected.</b><span class="muted small">Pick at least one person in step 1.</span></div>`);
   h+=step(3,`Details${nd?` <span class="count">${nd}</span>`:''}`,nd?'':'Meetings you add in step 2 show up here. Set the details, then create them in one go.',
     draftTray(),nd?'<button class="btn sm ghost" data-cleardrafts>Clear all</button>':'');
-  el.innerHTML=h; wireWho(); wirePlanner();
+  el.innerHTML=h; wireWho(); wireSugCount(); wirePlanner();
+}
+// How many meetings "Suggest" adds: a number (1-99), or 0 = one on every day that has free times. Remembered per browser.
+const sugN = () => { const n=store.get('sugn',3); return n===0?0:Math.min(99,Math.max(1,+n||3)); };
+function sugCount(){
+  const n=sugN();
+  return `<span class="sugn" role="group" aria-label="How many meetings to suggest" title="How many meetings to suggest">
+    <button type="button" data-sugstep="-1" aria-label="Fewer">−</button>
+    <input type="number" id="sugn" min="1" max="99" inputmode="numeric" value="${n||''}" placeholder="All" aria-label="Number of meetings">
+    <button type="button" data-sugstep="1" aria-label="More">+</button>
+    <button type="button" class="all${n?'':' on'}" data-sugall aria-pressed="${!n}" title="One meeting on every day with free times">All</button></span>`;
+}
+function wireSugCount(){
+  const inp=$('sugn'); if(!inp) return; const all=document.querySelector('[data-sugall]');
+  const set=n=>{ store.set('sugn',n); inp.value=n||''; all.classList.toggle('on',!n); all.setAttribute('aria-pressed',String(!n)); };
+  inp.onchange=()=>{ const v=parseInt(inp.value,10); set(v>0?Math.min(99,v):0); };
+  document.querySelectorAll('[data-sugstep]').forEach(b=>b.onclick=()=>{ const n=sugN(); set(Math.min(99,Math.max(1,(n||1)+ +b.dataset.sugstep))); });
+  all.onclick=()=>set(sugN()?0:3);
 }
 function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
@@ -2892,7 +2917,7 @@ function wirePlanner(){
 function suggestDrafts(){
   const slotsOn=P.data.poll.answerMode!=='days', tot=sel().length, taken=new Set(P.drafts.map(x=>x.date));
   const ranked=P.data.dates.filter(k=>!taken.has(k)).map(k=>({k,s:stats(k)})).filter(o=>o.s.peak>0)
-    .sort(rankCmp).slice(0,3);
+    .sort(rankCmp).slice(0,sugN()||undefined);
   if(!ranked.length){ toast('No free times found for the selected people'); return; }
   ranked.forEach(o=>{ if(slotsOn&&o.s.full+o.s.ifn<tot){ const [st,en]=bestBlock(o.s); addDraft(o.k,false,st,Math.min(en,24)); } else addDraft(o.k,true,null,null); });
   renderBody(); toast(`Added ${ranked.length} ${ranked.length===1?'draft':'drafts'}`);
