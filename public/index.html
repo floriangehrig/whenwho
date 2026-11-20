@@ -895,7 +895,7 @@
   .wknav.pill .btn:not(:disabled):hover{background:var(--card)}
   .wknav.pill .lbl{font-size:13px;padding:0 8px;white-space:nowrap}
   /* compact legend chips */
-  .legend{gap:6px;font-size:11.5px;margin-top:12px;padding-top:0;border-top:0}
+  .legend{gap:6px;font-size:11.5px;margin:10px 0 12px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
   /* save bar */
@@ -2707,6 +2707,8 @@ function renderMine(el){
   // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
   P.modeHelp=helpTxt; updateHelp();
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}<span class="hide-sm row tight">${qfButton()}${calButton()}</span>${menu}`,'tbar')+quickFill()+calPanel();
+  const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',bzShown?'busy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -2736,8 +2738,6 @@ function renderMine(el){
         h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
-  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',bzShown?'busy':'');
   el.innerHTML=h;
   loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
@@ -3199,8 +3199,8 @@ function renderGroup(el){
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
   let h=tools(`${whoDropdown()}<span class="ml-auto"></span>${tip(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'),'right')}`,'tbar');
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p>`; wireWho(); return; }
-  h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
@@ -3209,9 +3209,8 @@ function renderGroup(el){
         <div class="schips">${[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]].filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('')}${s.peak&&slotsOn?`<span class="sc-b" title="${t('Best hours')}">${ICON.clock}${esc(s.window)}</span>`:''}</div></div>
         ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> ${t('Schedule')}</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
         ${ib('x',t('Close'),`data-ov="${P.ovDay}"`,'sm ghost')}</div>
-      ${slotsOn?`${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
-      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
-      ${legend('yes','best','ifn','maybe')}`:''}
+      ${slotsOn?`${legend('yes','best','ifn','maybe')}${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>`:''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||t('Not available'))}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
@@ -3296,6 +3295,7 @@ function renderPlanner(S){
     if(!pages.length) return `<div class="empty-v"><b>${t('No free hours yet.')}</b><span class="muted small">${t('None of the selected people has marked any hours as available.')}</span></div>`;
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
     // One row: date pager pill + icon toggle (free days / weeks).
+    h+=legend('heat','allfree','monly','mstripe','draft','meeting');
     h+=`<div class="row tight pnav"><div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">${P[pk]+1}/${pages.length}</span>`:''}</span>
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>
       <div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div></div>
@@ -3313,10 +3313,9 @@ function renderPlanner(S){
         if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
         h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>';
-    h+=legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
-    h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
     h+=legend('heat','ifn','maybe','draft','meeting');
+    h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
   }
   return h;
 }
