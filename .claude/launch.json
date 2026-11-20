@@ -56,6 +56,24 @@
       ],
       "port": 8791,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8792",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8792",
+        "--persist-to",
+        ".wrangler/demo-state"
+      ],
+      "port": 8792,
+      "autoPort": false
     }
   ]
 }
