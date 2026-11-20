@@ -882,6 +882,8 @@
   .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
   .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
   .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
+  .brush .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong)} .brush button.on .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong),0 0 0 2px var(--card),0 0 0 3.5px var(--muted)}
+  .legend span.gry::before{box-shadow:inset 0 0 0 1.5px var(--line-strong)}
   .badgeb{position:relative;gap:6px} .badgeb svg{width:16px;height:16px}
   .badge{font-style:normal;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
   .dd.more>summary{list-style:none;min-height:30px;padding:4px 8px;border-color:transparent;background:transparent} .dd.more>summary::-webkit-details-marker{display:none} .dd.more>summary::after{display:none} .dd.more[open]>summary{background:var(--sunken)}
@@ -1287,7 +1289,6 @@ Object.assign(ICON,{
   next:svgI('<path d="M5 12h12M13 7l5 5-5 5"/>'),
   note:svgI('<path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h6"/>'),
   star:svgI('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'),
-  erase:svgI('<path d="m14.5 4.5 5 5-9 9H6l-2.5-2.5 11-11.5zM9 10l5 5M10.5 18.5H20"/>'),
   share:svgI('<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4M8.2 13.2l7.6 4"/>'),
   gear:svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>'),
   repeat:svgI('<path d="M17 2.5 20.5 6 17 9.5"/><path d="M3.5 11.5V10a4 4 0 0 1 4-4h13M7 21.5 3.5 18 7 14.5"/><path d="M20.5 12.5V14a4 4 0 0 1-4 4h-13"/>'),
@@ -2701,7 +2702,7 @@ function renderMine(el){
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
   const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
-      <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Erase')}" aria-label="${t('Erase')}"><span class="segic">${ICON.erase}</span></button></div>`;
+      <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
   const mi=(icon,label,attrs,cls='')=>`<button type="button" class="${cls}" ${attrs}>${ICON[icon]}<span>${esc(label)}</span></button>`;
   const menu=`<details class="dd more" id="moredd"><summary class="btn sm ghost withic ib" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp menu">
       ${mi('zap',t('Quick fill…'),'data-qf','sm-flex')}${mi('cal',t('From calendar…'),'data-cal','sm-flex')}
@@ -3094,7 +3095,7 @@ function wireGrid(){
     start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
     move:el=>{ if(paint!==null) apply(el); },
     end, cancel:end });
-  // Tap a day's header to give every hour of that day the chosen colour (again with the same colour, or the eraser, clears the day).
+  // Tap a day's header to give every hour of that day the chosen colour (again with the same colour, or grey, clears the day).
   const fill=k=>{ if(!editable()) return; const H=hours(k), map=hourMap(P.mine.entries[k],k);
     const clear=P.brush==='x'||H.every(hr=>map.get(hr)===P.brush);
     H.forEach(hr=>{ if(clear) map.delete(hr); else map.set(hr,P.brush); });
@@ -3167,7 +3168,7 @@ function bestBlock(s){ // longest contiguous run of best hours
 }
 
 // ---- shared pieces for every view (same colours, legend wording and markers everywhere) ----
-const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = no'],
+const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = no','gry'],
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
   mstripe:['var(--maybe)','Rest maybe'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others free'],
@@ -4256,7 +4257,6 @@ function germanText(){ return {
 "Enter your email address": "Gib deine E-Mail-Adresse ein",
 "Enter your name first": "Gib zuerst deinen Namen ein",
 "Enter your name, then send": "Gib deinen Namen ein und sende dann",
-"Erase": "Radieren",
 "Evening 18–22": "Abends 18–22",
 "Every": "Jede",
 "Every 4 weeks": "Alle 4 Wochen",
