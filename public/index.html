@@ -808,6 +808,10 @@
   .sugn button.all.on{background:var(--accent-weak);color:var(--accent-ink)}
   .sugn input{width:34px;border:0;padding:0;text-align:center;background:transparent;font:inherit;font-size:13px;font-weight:600;-moz-appearance:textfield;min-height:28px}
   .sugn input::-webkit-inner-spin-button,.sugn input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  /* planner toolbar: who, Suggest and the count all share one height */
+  .ptbar .dd>summary,.ptbar>.btn,.ptbar .sugn{height:36px;min-height:36px;padding-block:0}
+  .ptbar .sugn button,.ptbar .sugn input{height:100%;min-height:0}
+  .ptbar .dd{min-width:0} .ptbar .dd>summary{max-width:100%;white-space:nowrap} .ptbar .dd>summary b{overflow:hidden;text-overflow:ellipsis}
   .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
   .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
   .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
@@ -2847,7 +2851,7 @@ function renderPlan(el){
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>No answers yet.</b><span class="muted small">Once people answer, you can plan meetings around when they're free.</span><button class="btn sm mt-2" data-atab="people">Share the poll</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,'Who should come?','Each meeting invites the people selected when you add it.',
-    tools(whoDropdown()+ib('zap','Suggest best times','data-suggest'+(tot?'':' disabled'),'sm','Suggest')+sugCount(),'mt-2 tbar'));
+    tools(whoDropdown()+ib('zap','Suggest best times','data-suggest'+(tot?'':' disabled'),'sm','Suggest')+sugCount(),'mt-2 tbar ptbar'));
   h+=step(2,'Pick the times',tot?(slotsOn?(TOUCH?'<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).':'<b>Drag down a day</b> to add a meeting.')+' Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.'
       :'<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.'):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>Nobody selected.</b><span class="muted small">Pick at least one person in step 1.</span></div>`);
