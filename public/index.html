@@ -711,7 +711,7 @@
   .dpk-btn[aria-expanded=true]{border-color:var(--accent);box-shadow:var(--ring)}
   .dpk-ph,.dpk-c{color:var(--muted)}
   .dpk-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;width:max-content;max-width:calc(100vw - 24px);background:var(--card);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow-pop);padding:12px 14px}
-  .dpk-ins{display:flex;gap:8px;align-items:flex-end} .dpk-ins .field{margin-top:0;flex:1;min-width:0} .dpk-ins input{width:100%} .dpk-dash{padding-bottom:10px;color:var(--muted)}
+  .dpk-ins{display:flex;gap:8px;align-items:flex-end} .dpk-ins .field{margin-top:0;flex:1 1 140px;min-width:140px} .dpk-ins input{width:100%} .dpk-dash{padding-bottom:10px;color:var(--muted)}
   .dpk-cal{position:relative;margin-top:10px}
   .dpk-months{display:flex;gap:22px}
   .dpk-mt{text-align:center;font-weight:600;font-size:13.5px;line-height:30px;height:30px}
@@ -1292,30 +1292,31 @@ const DPK={};
 function dpk(id,o){
   DPK[id]=Object.assign({view:null,pick:false,hover:null},o);
   const ins = o.mode==='range'
-    ? `<div class="field"><label for="${o.a}">${t('From')}</label><input type="date" id="${o.a}"></div><span class="dpk-dash">–</span>
-       <div class="field"><label for="${o.b}">${t('To')}</label><input type="date" id="${o.b}"></div>`
-    : `<div class="field"><input type="date" id="${o.a}" aria-label="${esc(o.title)}"></div>`;
-  return `<div class="dpk" id="dpk_${id}"><button type="button" class="dpk-btn" id="dpkb_${id}" aria-haspopup="dialog" aria-expanded="false">${o.icon||ICON.cal}<span class="dpk-v"></span></button>
+    ? `<div class="field"><label for="${o.a}">${t('From')}</label><input type="date" id="${o.a}" value="${esc(o.va||'')}"></div><span class="dpk-dash">–</span>
+       <div class="field"><label for="${o.b}">${t('To')}</label><input type="date" id="${o.b}" value="${esc(o.vb||'')}"></div>`
+    : `<div class="field"><input type="date" id="${o.a}" value="${esc(o.va||'')}" aria-label="${esc(o.title)}"></div>`;
+  return `<div class="dpk" id="dpk_${id}"><button type="button" class="dpk-btn" id="dpkb_${id}" aria-haspopup="dialog" aria-expanded="false">${o.icon||ICON.cal}<span class="dpk-v">${dpkLabel(o,o.va||'',o.vb||'')}</span></button>
     <div class="dpk-pop hide" role="dialog" aria-label="${esc(o.title)}"><div class="dpk-ins">${ins}</div><div class="dpk-cal"></div>
       <div class="dpk-foot"><span class="grow small muted dpk-n"></span>${o.mode==='single'?`<button type="button" class="btn sm ghost" data-dpkclear>${t('Clear')}</button>`:''}<button type="button" class="btn sm primary" data-dpkdone>${t('Done')}</button></div></div></div>`;
 }
 const dpkOpenId=()=>{ const p=document.querySelector('.dpk-pop:not(.hide)'); return p?p.closest('.dpk').id.slice(4):null; };
-function dpkSync(id){
-  const o=DPK[id], root=$('dpk_'+id); if(!o||!root) return;
-  const a=$(o.a).value, b=o.b?$(o.b).value:''; let v='', n='';
+function dpkLabel(o,a,b){
+  let v='', n='';
   if(o.mode==='range'){ if(a) v=`${dayLabel(a)} – ${b?dayLabel(b):'…'}`;
     if(a&&b&&b>=a){ const d=Math.round((parseD(b)-parseD(a))/864e5)+1; n=d===1?t('{n} day',{n:d}):t('{n} days',{n:d}); } }
   else if(a) v=dayLabel(a);
-  root.querySelector('.dpk-v').innerHTML=v?esc(v)+(n?` <span class="dpk-c">· ${esc(n)}</span>`:''):`<span class="dpk-ph">${esc(o.empty)}</span>`;
+  return v?esc(v)+(n?` <span class="dpk-c">· ${esc(n)}</span>`:''):`<span class="dpk-ph">${esc(o.empty)}</span>`;
+}
+function dpkSync(id){
+  const o=DPK[id], root=$('dpk_'+id); if(!o||!root) return;
+  root.querySelector('.dpk-v').innerHTML=dpkLabel(o,$(o.a).value,o.b?$(o.b).value:'');
   root.querySelector('.dpk-n').textContent=o.mode==='range'?(o.pick?t('Now click the last day'):t('Click the first day, then the last')):'';
-  if(dpkOpenId()===id) dpkCal(id);
+  if(dpkOpenId()===id) dpkPaint(id);
 }
 function dpkCal(id){
-  const o=DPK[id], root=$('dpk_'+id), a=$(o.a).value, b=o.b?$(o.b).value:'', today=isoL(new Date());
+  const o=DPK[id], root=$('dpk_'+id), today=isoL(new Date());
   const nm=o.mode==='range'&&!matchMedia('(max-width:620px)').matches?2:1;
-  if(!o.view) o.view=(a||today).slice(0,7);
-  const end=o.pick?(o.hover&&o.hover>=a?o.hover:a):b;   // while picking, the range follows the mouse
-  const [ca,cb]=o.mode==='single'&&o.ctx?o.ctx():['',''];
+  if(!o.view) o.view=($(o.a).value||today).slice(0,7);
   const wd=[0,1,2,3,4,5,6].map(i=>new Date(2024,0,1+i).toLocaleDateString(LOC,{weekday:'short'}).replace('.','').slice(0,2));
   const [vy,vm]=o.view.split('-').map(Number); let html='';
   for(let m=0;m<nm;m++){
@@ -1324,10 +1325,6 @@ function dpkCal(id){
     for(let d=1;d<=days;d++){
       const k=isoL(new Date(vy,vm-1+m,d)), cl=['d','c'+((lead+d-1)%7)];
       if(k===today) cl.push('today'); if(k<today) cl.push('past');
-      if(o.mode==='range'){ const ok=a&&end&&end>a;
-        if(k===a) cl.push('s'); if(end&&k===end) cl.push('e');
-        if(ok){ if(k===a) cl.push('bs'); if(k===end) cl.push('be'); if(k>a&&k<end) cl.push('in'); } }
-      else { if(k===a) cl.push('sel'); if(ca&&cb&&k>=ca&&k<=cb) cl.push('ctx'); }
       cells+=`<button type="button" tabindex="-1" class="${cl.join(' ')}" data-k="${k}" aria-label="${esc(longDay(k))}"><span>${d}</span></button>`;
     }
     html+=`<div class="dpk-m"><div class="dpk-mt">${esc(first.toLocaleDateString(LOC,{month:'long',year:'numeric'}))}</div><div class="dpk-g">${cells}</div></div>`;
@@ -1339,12 +1336,23 @@ function dpkOpen(id){
   const cur=dpkOpenId(); if(cur&&cur!==id) dpkClose(cur);
   const o=DPK[id], root=$('dpk_'+id), pop=root.querySelector('.dpk-pop');
   o.pick=false; o.hover=null; o.view=null; pop.classList.remove('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','true');
-  dpkSync(id); pop.style.left='0';
+  dpkCal(id); dpkSync(id); pop.style.left='0';
   const r=pop.getBoundingClientRect(); if(r.right>innerWidth-12) pop.style.left=Math.min(0,innerWidth-12-r.right)+'px';
   pop.scrollIntoView({block:'nearest'});
 }
 function dpkClose(id,focus){
   const o=DPK[id], root=$('dpk_'+id); if(!root) return;
+  dpkPaint(id);
+}
+// Marks the chosen days on the calendar in place (no re-render, so a click under the mouse is never lost).
+function dpkPaint(id){
+  const o=DPK[id], root=$('dpk_'+id), a=$(o.a).value, b=o.b?$(o.b).value:'';
+  const end=o.pick?(o.hover&&o.hover>=a?o.hover:a):b;   // while picking, the range follows the mouse
+  const [ca,cb]=o.mode==='single'&&o.ctx?o.ctx():['',''], ok=a&&end&&end>a;
+  root.querySelectorAll('.dpk-g .d').forEach(el=>{ const k=el.dataset.k, c=el.classList;
+    if(o.mode==='range'){ c.toggle('s',k===a); c.toggle('e',!!end&&k===end); c.toggle('bs',!!ok&&k===a); c.toggle('be',!!ok&&k===end); c.toggle('in',!!ok&&k>a&&k<end); }
+    else { c.toggle('sel',k===a); c.toggle('ctx',!!(ca&&cb&&k>=ca&&k<=cb)); }
+  });
   root.querySelector('.dpk-pop').classList.add('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','false');
   o.pick=false; o.hover=null; dpkSync(id); if(focus) root.querySelector('.dpk-btn').focus();
 }
@@ -1372,11 +1380,11 @@ document.addEventListener('click',e=>{
 document.addEventListener('mouseover',e=>{
   const d=e.target.closest&&e.target.closest('.dpk-g .d'); if(!d) return;
   const id=d.closest('.dpk').id.slice(4), o=DPK[id]; if(!o.pick||o.hover===d.dataset.k) return;
-  o.hover=d.dataset.k; dpkCal(id);
+  o.hover=d.dataset.k; dpkPaint(id);
 });
 document.addEventListener('input',e=>{   // typed into a picker's date input: follow it in the calendar
   const root=e.target.closest&&e.target.closest('.dpk'); if(!root) return; const id=root.id.slice(4), o=DPK[id];
-  if(e.isTrusted){ o.pick=false; const v=e.target.value; if(/^\d{4}-\d{2}-\d{2}$/.test(v)) o.view=v.slice(0,7); }
+  if(e.isTrusted){ o.pick=false; const v=e.target.value; if(/^\d{4}-\d{2}-\d{2}$/.test(v)&&v.slice(0,7)!==o.view){ o.view=v.slice(0,7); if(dpkOpenId()===id) dpkCal(id); } }
   dpkSync(id);
 });
 document.addEventListener('keydown',e=>{
@@ -2397,8 +2405,8 @@ function renderSeries(){
       ${ib('edit',t('Edit'),`data-iedit="${x.id}"`)}
       ${d.instances.length>1?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}</span>
       ${P.iedit===x.id?`<form class="sched full" id="ieditForm">
-        <div class="grid2">${isWeekly()?'':`<div class="field"><label>${t('From')}</label><input type="date" id="ie_s" value="${x.startDate}"></div><div class="field"><label>${t('To')}</label><input type="date" id="ie_e" value="${x.endDate}"></div>`}
-        <div class="field"><label>${t('Reply by')}</label><input type="date" id="ie_d" value="${x.deadline||''}"></div></div>
+        <div class="dates-row">${isWeekly()?'':`<div class="field"><label for="dpkb_ie">${t('Dates')}</label>${dpk('ie',{mode:'range',a:'ie_s',b:'ie_e',va:x.startDate,vb:x.endDate,title:t('Pick dates'),empty:t('Pick a date range')})}</div>`}
+        <div class="field"><label for="dpkb_ied">${t('Reply by')}</label>${dpk('ied',{mode:'single',a:'ie_d',va:x.deadline||'',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>$('ie_s')?[$('ie_s').value,$('ie_e').value]:['','']})}</div></div>
         <div class="field"><label>${t('Note shown at the top of this poll')}</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
         <div class="row mt-3"><button class="btn primary">${t('Save')}</button><button type="button" class="btn" data-iedit="">${t('Cancel')}</button></div></form>`:''}
     </li>`).join('');
@@ -3410,9 +3418,8 @@ function datesSection(){
   return sset('dates','cal',t('Dates'),`
     <div class="row tight field"><span class="grow">${open?`<span class="tag y">${t('open')}</span> ${t('People can answer')}`:`<span class="tag x">${t('closed')}</span> ${t('Answers are final')}`}</span>
       ${i.manualStatus==='open'?`${ib('lock',t('Close poll'),`data-istatus="${i.id}" data-to="closed"`,'sm',t('Close'))}`:`${ib('unlock',t('Reopen poll'),`data-istatus="${i.id}" data-to="open"`,'sm',t('Reopen'))}`}</div>
-    <div class="dgrid">${isWeekly()?'':`<div class="field"><label for="s_from">${t('From')}</label><input type="date" id="s_from" value="${i.startDate}"></div>
-      <div class="field"><label for="s_to">${t('To')}</label><input type="date" id="s_to" value="${i.endDate}"></div>`}
-    <div class="field"><label for="s_dl" class="row tight">${t('Reply by')}${tip(t('Optional. The poll closes after this day.'))}</label><input type="date" id="s_dl" value="${i.deadline||''}"></div></div>
+    <div class="dates-row">${isWeekly()?'':`<div class="field"><label for="dpkb_s">${t('Dates')}</label>${dpk('s',{mode:'range',a:'s_from',b:'s_to',va:i.startDate,vb:i.endDate,title:t('Pick dates'),empty:t('Pick a date range')})}</div>`}
+    <div class="field"><label for="dpkb_sdl" class="row tight">${t('Reply by')}${tip(t('Optional. The poll closes after this day.'))}</label>${dpk('sdl',{mode:'single',a:'s_dl',va:i.deadline||'',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>$('s_from')?[$('s_from').value,$('s_to').value]:['','']})}</div></div>
     ${i.note?`<div class="field"><label for="s_note">${t('Note shown at the top of this poll')}</label><textarea id="s_note" maxlength="1000">${esc(i.note)}</textarea></div>`:''}`,
     `<span class="tag ${open?'y':'x'}">${open?t('open'):t('closed')}</span>`);
 }
