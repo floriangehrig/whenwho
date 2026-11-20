@@ -94,7 +94,7 @@ async function route(request, env, ctx, url) {
   if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env) });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -399,7 +399,7 @@ function publicPoll(poll, admin) {
     id: poll.id, title: poll.title, description: poll.description, kind: poll.kind,
     unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
     answerMode: poll.answer_mode, hourStart: poll.hour_start, hourEnd: poll.hour_end, dayPattern: patternOf(poll),
-    hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, requireEmail: !!poll.require_email, hasPassword: !!poll.password_hash,
+    hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, requireEmail: !!poll.require_email, invitedOnly: !!poll.invited_only, hasPassword: !!poll.password_hash,
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
@@ -1366,6 +1366,7 @@ function readPollSettings(b, existing) {
   if (!existing || has('hideResults')) p.hide_results = b.hideResults ? 1 : 0;
   if (!existing || has('allowComments')) p.allow_comments = b.allowComments === false ? 0 : 1;
   if (!existing || has('requireEmail')) p.require_email = b.requireEmail ? 1 : 0;
+  if (has('invitedOnly')) p.invited_only = b.invitedOnly ? 1 : 0; // only when sent: the column needs migration 0014
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
   if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
@@ -1969,6 +1970,16 @@ async function linkGuestToAccount(env, pollId, partId, mail) {
   await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
     .bind(acct.id, acctKey(acct.id), acct.email, partId).run();
 }
+// Invited-only polls: the answer must come from a signed-in account that the owner invited, either as that account
+// or as a guest row with the account's email (that row then becomes the account's). The owner can always answer.
+async function requireInvited(env, poll, user, admin) {
+  if (!poll.invited_only || admin) return;
+  if (!user) throw new HttpError(403, 'Only invited people can answer this poll. Sign in with the email address you were invited with.', { code: 'invite_only' });
+  if (await accountParticipant(env, poll.id, user.id)) return;
+  const g = await env.DB.prepare('SELECT id FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(poll.id, user.email.toLowerCase()).first();
+  if (!g) throw new HttpError(403, 'Only invited people can answer this poll, and this account isn’t invited.', { code: 'not_invited' });
+  await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(user.id, acctKey(user.id), user.email, g.id).run();
+}
 const nameTaken = (name, participantId, responseId) =>
   new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
 
@@ -1980,6 +1991,7 @@ async function createResponse(request, env, id, iid) {
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
   const user = userOf(request);
+  await requireInvited(env, poll, user, admin);
   // Signed in: the name shown to others is the account's profile name (typed name only while the profile has none).
   const name = user && user.name ? user.name : personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
@@ -2074,6 +2086,7 @@ async function updateResponse(request, env, id, rid) {
     await checkPassword(request, poll);
     if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
   }
+  await requireInvited(env, poll, userOf(request), admin);
   const b = await body(request);
   let name = b.name !== undefined ? personName(b.name) : r.name;
   let mail = b.email !== undefined ? email(b.email) : r.email;
@@ -2163,7 +2176,7 @@ async function listParticipants(request, env, id) {
   return json({ participants: rows.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id,
     rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to })) });
 }
-// People from the page: [{ name, email }] (email optional). Legacy: "Anna\nBen, ben@example.com".
+// People from the page: [{ name, email }] (email required, except friends picked by { uid }). Legacy: "Anna\nBen, ben@example.com".
 function peopleInput(b) {
   let list;
   if (Array.isArray(b.people)) list = b.people;
@@ -2174,7 +2187,9 @@ function peopleInput(b) {
   return list.map((x) => {
     const name = personName(x && x.name), uid = x && x.uid;
     if (uid !== undefined && uid !== null && (typeof uid !== 'string' || !UID_RE.test(uid))) throw new HttpError(400, 'Pick someone from your friends');
-    return { name, email: email((x && x.email) || '', `Email for ${name}`).toLowerCase(), ...(uid ? { uid } : {}) };
+    const mail = email((x && x.email) || '', `Email for ${name}`).toLowerCase();
+    if (!mail && !uid) throw new HttpError(400, `${name} needs an email address`);
+    return { name, email: mail, ...(uid ? { uid } : {}) };
   });
 }
 // Adds people, or finds them if they're already in the poll (same email, or same guest name).
