@@ -373,12 +373,12 @@ function validateEntries(entries, poll, dates) {
     if (!allowed.has(k)) continue;
     const ps = periodsOn(pat, k);
     const hourOk = (h) => Number.isInteger(h) && (ps ? ps.some((p) => h >= p.hs && h < p.he) : h >= poll.hour_start && h < poll.hour_end);
-    if (v === 'y' || v === 'm' || v === 'n') { out[k] = v; continue; }
+    if (v === 'y' || v === 'i' || v === 'm' || v === 'n') { out[k] = v; continue; }
     if (poll.answer_mode === 'days') throw new HttpError(400, 'This poll only takes whole days');
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       const seen = new Set(), pick = (arr) => (Array.isArray(arr) ? arr : []).filter((h) => hourOk(h) && !seen.has(h) && seen.add(h)).sort((x, y) => x - y);
-      const y = pick(v.y), m = pick(v.m), n = pick(v.n);
-      if (y.length || m.length || n.length) out[k] = { y, m, n };
+      const y = pick(v.y), i = pick(v.i), m = pick(v.m), n = pick(v.n);
+      if (y.length || i.length || m.length || n.length) out[k] = i.length ? { y, i, m, n } : { y, m, n };
       continue;
     }
     throw new HttpError(400, 'Invalid answer for ' + k);

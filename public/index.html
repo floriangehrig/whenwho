@@ -19,6 +19,7 @@
     --line:#E2E8F0; --line-strong:#CBD5E1; --empty:#EDF1F7;
     --yes:#12A150; --yes-dark:#0B7A3B; --yes-bg:#E3F6EA;
     --maybe:#E8A317; --maybe-ink:#946500; --maybe-bg:#FDF3DC;
+    --ifn:#3BA9A0; --ifn-ink:#1F716B; --ifn-bg:#E0F3F1;
     --no:#D64545; --no-bg:#FBE6E6;
     --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
     --r-sm:6px; --r:10px; --r-lg:14px; --radius:var(--r-lg);
@@ -35,6 +36,7 @@
       --line:#26324A; --line-strong:#34425E; --empty:#1E2940;
       --yes:#1FB463; --yes-dark:#5FD38F; --yes-bg:#123526;
       --maybe:#E8A317; --maybe-ink:#F2C25B; --maybe-bg:#3A2E12;
+      --ifn:#3BB5AB; --ifn-ink:#6FD3C9; --ifn-bg:#123332;
       --no:#E86A6A; --no-bg:#3D1E22;
       --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 4px 14px rgba(0,0,0,.35); --shadow-pop:0 16px 40px rgba(0,0,0,.5);
     }
@@ -276,7 +278,7 @@
 
   /* ---------- pills / tags ---------- */
   .tag,.pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;line-height:1.5;white-space:nowrap;background:var(--empty);color:var(--muted);vertical-align:1px}
-  .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.m{background:var(--maybe-bg);color:var(--maybe-ink)} .tag.x{background:var(--empty);color:var(--muted)}
+  .tag.y{background:var(--yes-bg);color:var(--yes-dark)} .tag.i{background:var(--ifn-bg);color:var(--ifn-ink)} .tag.m{background:var(--maybe-bg);color:var(--maybe-ink)} .tag.x{background:var(--empty);color:var(--muted)}
   .pill.accent{background:var(--accent);color:#fff}
   .pill.soft{background:var(--accent-weak);color:var(--accent-ink)}
 
@@ -290,13 +292,14 @@
   .day .n{font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}
   .day .t{font-size:11px;margin-top:5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .day.y{background:var(--yes-bg);border-color:color-mix(in srgb,var(--yes) 55%,transparent)} .day.y .t{color:var(--yes-dark)}
+  .day.i{background:var(--ifn-bg);border-color:color-mix(in srgb,var(--ifn) 55%,transparent)} .day.i .t{color:var(--ifn-ink)}
   .day.m{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 60%,transparent)} .day.m .t{color:var(--maybe-ink)}
   .day.sel{outline:2px solid var(--accent);outline-offset:2px}
   .day .star{position:absolute;top:6px;right:8px;color:var(--accent);font-size:13px}
   .day.heat .t{color:var(--ink)}
   .ratio{display:flex;height:6px;border-radius:999px;overflow:hidden;margin-top:9px;background:var(--empty)}
   .ratio i{display:block;height:100%}
-  .ratio .ry{background:var(--yes)} .ratio .rm{background:var(--maybe)}
+  .ratio .ry{background:var(--yes)} .ratio .ri{background:var(--ifn)} .ratio .rm{background:var(--maybe)}
   .blank{min-height:66px}
   .wknav{display:flex;align-items:center;gap:10px;margin-top:16px}
   .wknav .btn{min-width:36px;padding:0 10px;font-size:16px}
@@ -315,12 +318,13 @@
   .day .oth .om{color:var(--maybe-ink);margin-left:3px}
   .day.hasbar{padding-bottom:10px}
   .day .othbar{position:absolute;left:0;right:0;bottom:0;height:4px;display:flex;background:color-mix(in srgb,var(--line) 70%,transparent);pointer-events:none}
-  .day .othbar i{display:block;height:100%} .day .othbar .ry{background:var(--yes)} .day .othbar .rm{background:var(--maybe)}
+  .day .othbar i{display:block;height:100%} .day .othbar .ry{background:var(--yes)} .day .othbar .ri{background:var(--ifn)} .day .othbar .rm{background:var(--maybe)}
   .slot.oh{background:color-mix(in srgb,var(--yes) var(--a),var(--card));position:relative}
   .slot.omb{box-shadow:inset 3px 0 0 var(--maybe)}
   .slot[data-n]::after{content:attr(data-n);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:650;color:var(--ink);opacity:.75;pointer-events:none;font-variant-numeric:tabular-nums}
-  .slot.sy[data-n]::after,.slot.sm[data-n]::after{color:#fff;opacity:.95}
+  .slot.sy[data-n]::after,.slot.si[data-n]::after,.slot.sm[data-n]::after{color:#fff;opacity:.95}
   .slot.sy{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 75%,#000)}
+  .slot.si{background:var(--ifn);border-color:color-mix(in srgb,var(--ifn) 75%,#000)}
   .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 75%,#000)}
   .slot.na{background:var(--sunken);cursor:default;opacity:.5}
   .slot.na,.slot.off:not(.hm):not(.mo){background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 1px,transparent 1px 7px)}
@@ -335,7 +339,7 @@
   .bars{display:flex;align-items:flex-end;gap:3px;height:96px;margin-top:14px;padding:6px;border-radius:var(--r);background:var(--sunken);border:1px solid var(--line)}
   .stack{flex:1;height:100%;display:flex;flex-direction:column-reverse}
   .bar{background:var(--yes)} .stack .bar:first-child{border-radius:0 0 3px 3px}
-  .bar.best{background:var(--yes-dark)} .bar.mbar{background:var(--maybe);opacity:.85;border-radius:3px 3px 0 0}
+  .bar.best{background:var(--yes-dark)} .bar.ibar{background:var(--ifn)} .bar.mbar{background:var(--maybe);opacity:.85;border-radius:3px 3px 0 0}
   .bars.pick .stack{cursor:ew-resize;touch-action:none;border-radius:4px}
   .bars .stack.in{background:color-mix(in srgb,var(--accent) 18%,transparent);box-shadow:inset 0 -3px 0 var(--accent)}
   .barl{display:flex;gap:3px;font-size:10px;color:var(--muted);padding:4px 6px 0;font-variant-numeric:tabular-nums} .barl span{flex:1;text-align:center}
@@ -544,7 +548,7 @@
   .steps p,.feat p{margin:0;color:var(--muted);font-size:14.5px}
   .step-n{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);font-weight:700}
   .k{display:inline-block;font-size:12px;font-weight:600;padding:0 7px;border-radius:999px}
-  .k.y{background:var(--yes-bg);color:var(--yes-dark)} .k.m{background:var(--maybe-bg);color:var(--maybe-ink)} .k.n{background:var(--no-bg);color:var(--no)}
+  .k.y{background:var(--yes-bg);color:var(--yes-dark)} .k.i{background:var(--ifn-bg);color:var(--ifn-ink)} .k.m{background:var(--maybe-bg);color:var(--maybe-ink)} .k.n{background:var(--no-bg);color:var(--no)}
   .feat-grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
   @media (min-width:600px){ .feat-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
   @media (min-width:900px){ .feat-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
@@ -945,10 +949,10 @@ function patRules(id){ const st=PAT[id], rs=st.rules||[], d=patRule(id); return 
 function patResetDraft(st){ st.wd=new Set([0,1,2,3,4,5,6]); st.dom=['','']; st.hs=st.hmin; st.he=st.hmax; }
 function patChips(id){
   const st=PAT[id], rs=st.rules||(st.rules=[]), d=patRule(id), seen=st.seenChips||new Set(), now=new Set();
-  // r.st (quick fill brush): y = available, m = maybe, x = clear
-  // With a brush, the tag's label is a button that switches it: Available → Maybe → Clear.
-  const chip=(r,attr,cls='',bi='')=>{ const t=r.text, k=(r.st||'')+t, b=r.st==='y'?'Available':r.st==='m'?'Maybe':r.st==='x'?'Clear':''; now.add(k);
-    const lab=r.st?`<button type="button" class="pat-brush" data-qfbrush="${bi}" title="${b} · click to switch" aria-label="${esc(b+': '+t)}, switch brush">${r.st!=='x'?`<span class="dot" style="--c:var(--${r.st==='y'?'yes':'maybe'})"></span>`:''}<span>${r.st==='x'?'Clear: ':''}${esc(t)}</span></button>`:`<span>${esc(t)}</span>`;
+  // r.st (quick fill brush): y = available, i = if needed, m = maybe, x = clear
+  // With a brush, the tag's label is a button that switches it: Available → If needed → Maybe → Clear.
+  const chip=(r,attr,cls='',bi='')=>{ const t=r.text, k=(r.st||'')+t, b=r.st==='y'?'Available':r.st==='i'?'If needed':r.st==='m'?'Maybe':r.st==='x'?'Clear':''; now.add(k);
+    const lab=r.st?`<button type="button" class="pat-brush" data-qfbrush="${bi}" title="${b} · click to switch" aria-label="${esc(b+': '+t)}, switch brush">${r.st!=='x'?`<span class="dot" style="--c:var(--${r.st==='y'?'yes':r.st==='i'?'ifn':'maybe'})"></span>`:''}<span>${r.st==='x'?'Clear: ':''}${esc(t)}</span></button>`:`<span>${esc(t)}</span>`;
     return `<span class="em-pill${cls}${seen.has(k)?'':' pop'}">${lab}<button type="button" ${attr} aria-label="Remove ${esc((b?b+': ':'')+t)}">×</button></span>`; };
   let h=rs.map((r,i)=>chip(r,`data-patrule="${id}" data-i="${i}"`,'',i)).join('');
   if(!d) h+='<span class="muted">Pick at least one day.</span>';
@@ -1719,7 +1723,8 @@ function renderPassword(title,msg){
   $('pwf').onsubmit=e=>{ e.preventDefault(); P.password=$('pwi').value; store.set('pw:'+P.id,P.password); loadPoll(true); };
 }
 
-// ---- entry helpers: 'y' | 'm' | {y:[h],m:[h]}. Anything not marked counts as not available.
+// ---- entry helpers: 'y' | 'i' | 'm' | {y:[h],i:[h],m:[h]}. Anything not marked counts as not available.
+// 'i' = "if needed": free, but not preferred. It counts as available, ranked below 'y' and above 'm'.
 // Old answers may still hold 'n' / {n:[h]} (an explicit "can't"); it is treated like blank.
 // hours(k): the hours offered on day k. A poll with several periods (weekdays 17-22, weekends 10-22) offers
 // each day only the hours of its own periods; without k (or without periods) it's the poll's whole range.
@@ -1728,40 +1733,44 @@ function hours(k){ const p=P.data.poll, H=Array.from({length:p.hourEnd-p.hourSta
   return ps&&ps.length?H.filter(h=>ps.some(x=>h>=x.hs&&h<x.he)):H; }
 function hourMap(v,k){
   const H=hours(k), map=new Map(), ok=new Set(H);
-  if(v==='y'||v==='m') H.forEach(h=>map.set(h,v));
+  if(v==='y'||v==='i'||v==='m') H.forEach(h=>map.set(h,v));
   else if(Array.isArray(v)) v.forEach(h=>ok.has(h)&&map.set(h,'y'));
-  else if(v&&typeof v==='object') ['m','y'].forEach(s=>(v[s]||[]).forEach(h=>ok.has(h)&&map.set(h,s)));
+  else if(v&&typeof v==='object') ['m','i','y'].forEach(s=>(v[s]||[]).forEach(h=>ok.has(h)&&map.set(h,s)));
   return map;
 }
 function fromMap(map,k){
-  const H=hours(k), o={y:[],m:[]};
-  H.forEach(h=>{ const s=map.get(h); if(s==='y'||s==='m') o[s].push(h); });
-  for(const s of ['y','m']) if(o[s].length===H.length) return s;
-  if(!o.y.length&&!o.m.length) return null;
+  const H=hours(k), o={y:[],i:[],m:[]};
+  H.forEach(h=>{ const s=map.get(h); if(s==='y'||s==='i'||s==='m') o[s].push(h); });
+  for(const s of ['y','i','m']) if(o[s].length===H.length) return s;
+  if(!o.y.length&&!o.i.length&&!o.m.length) return null;
+  if(!o.i.length) delete o.i;
   return o;
 }
 const isPartial = v => Array.isArray(v)||(v&&typeof v==='object');
 // Drops old explicit "can't" marks from my own answer, so saving rewrites it without them.
 function cleanEntries(en){ const o={}; for(const k in en||{}){ const x=fromMap(hourMap(en[k],k),k); if(x!=null) o[k]=x; } return o; }
-function counts(v,k){ const H=hours(k), c={y:0,m:0,e:0}; const map=hourMap(v,k); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
-function ratioBar(v,k){ const c=counts(v,k), t=hours(k).length; return `<div class="ratio" title="${c.y}h available · ${c.m}h maybe · ${c.e}h not available">${['y','m'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
+function counts(v,k){ const H=hours(k), c={y:0,i:0,m:0,e:0}; const map=hourMap(v,k); H.forEach(h=>{ const s=map.get(h); c[s||'e']++; }); return c; }
+function ratioBar(v,k){ const c=counts(v,k), t=hours(k).length; return `<div class="ratio" title="${c.y}h available · ${c.i?c.i+'h if needed · ':''}${c.m}h maybe · ${c.e}h not available">${['y','i','m'].map(s=>c[s]?`<i class="r${s}" style="width:${c[s]/t*100}%"></i>`:'').join('')}</div>`; }
 function hoursOf(v,s,k){ return [...hourMap(v,k)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
-function partialText(v,k){ const y=hoursOf(v,'y',k), m=hoursOf(v,'m',k); return [y.length?hoursText(y):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
+function partialText(v,k){ const y=hoursOf(v,'y',k), i=hoursOf(v,'i',k), m=hoursOf(v,'m',k); return [y.length?hoursText(y):'', i.length?'if needed '+hoursText(i):'', m.length?'maybe '+hoursText(m):''].filter(Boolean).join(' · ') || "can't"; }
 function statusOf(v,k){
   if(v==='y') return {t:'Available',c:'var(--yes-dark)',cls:'y'};
+  if(v==='i') return {t:'If needed',c:'var(--ifn-ink)',cls:'i'};
   if(v==='m') return {t:'Maybe',c:'var(--maybe-ink)',cls:'m'};
   if(isPartial(v)&&fromMap(hourMap(v,k),k)!=null) return {t:partialText(v,k),c:'var(--ink)',cls:'part'};
   return {t:'',c:'var(--muted)',cls:''};
 }
-// availability of a person for a window [start,end) on a day: 'y' all hours available, 'm' none unavailable but some maybe/blank-maybe, 'x' otherwise
+// availability of a person for a window [start,end) on a day: 'y' all hours available, 'i' all available or if needed,
+// 'm' none unavailable but some maybe, 'x' otherwise
 function windowStatus(v,start,end,allDay,k){
   if(v==null) return 'x';
-  if(v==='y'||v==='m') return v; if(!isPartial(v)) return 'x';
+  if(v==='y'||v==='i'||v==='m') return v; if(!isPartial(v)) return 'x';
   const map=hourMap(v,k), H=hours(k); const span=allDay?H:H.filter(h=>h>=start&&h<end);
   if(!span.length) return 'x';
   const st=span.map(h=>map.get(h));
   if(st.every(s=>s==='y')) return 'y';
-  if(st.every(s=>s==='y'||s==='m')) return 'm';
+  if(st.every(s=>s==='y'||s==='i')) return 'i';
+  if(st.every(s=>s&&s!=='n')) return 'm';
   return 'x';
 }
 
@@ -2156,9 +2165,9 @@ function renderMine(el){
     h+=calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
       let hint='', tip='';
       if(o&&(o.peak||o.peakMaybe||o.part)){
-        const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
-        tip=names([...ys,...ps],ms);
-        hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div>${heatBar(o.peak,o.peakMaybe,n)}`; }
+        const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), is=o.list.filter(x=>fk(x)==='i').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='i'&&f!=='m'; }).map(x=>x.name+' (some hours)'), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
+        tip=names([...ys,...ps],is,ms);
+        hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div>${heatBar(o.peak,o.peakIfn,o.peakMaybe,n)}`; }
       return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; });
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
@@ -2176,12 +2185,13 @@ function renderMine(el){
         if(!k||!hours(k).includes(hr)){ h+=`<div class="slot na${pos}"></div>`; return; }
         const st=hourMap(me[k],k).get(hr);
         let extra='';
-        if(on){ const ys=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k],k).get(hr); if(s==='y') ys.push(r.name||'Someone'); else if(s==='m') ms.push(r.name||'Someone'); });
-          if(ys.length||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${ys.length?Math.round(6+ys.length/n*30):0}%" data-n="${ys.length?ys.length:''}${ms.length?(ys.length?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,ms))}`; }
+        if(on){ const ys=[], is=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k],k).get(hr); if(s==='y') ys.push(r.name||'Someone'); else if(s==='i') is.push(r.name||'Someone'); else if(s==='m') ms.push(r.name||'Someone'); });
+          const fr=ys.length+is.length;
+          if(fr||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${fr?Math.round(6+fr/n*30):0}%" data-n="${fr?fr:''}${ms.length?(fr?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,is,ms))}`; }
         h+=`<div class="slot${pos}${st?' s'+st:''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  h+=legend('yes','maybe','blank',md.size?'meeting':'',on?'others':'');
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'');
   el.innerHTML=h;
   if(P.mode==='slots') wireGrid();
 }
@@ -2197,19 +2207,20 @@ function quickFill(){
   // The brush is part of the rule being built, so it sits with the other criteria (above the rule tags).
   PAT.qf.extraRow=()=>{ const b=P.qfs||'y'; return `<div class="pat-row"><span class="pat-l">Mark as</span><div class="seg">
     <button type="button" data-qfs="y" class="${b==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>Available</button>
+    <button type="button" data-qfs="i" class="${b==='i'?'on':''}"><span class="dot" style="--c:var(--ifn)"></span>If needed</button>
     <button type="button" data-qfs="m" class="${b==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>Maybe</button>
     <button type="button" data-qfs="x" class="${b==='x'?'on':''}">Clear</button></div>
-    <span class="pat-keys muted small">Keys: <kbd>A</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule</span></div>`; };
+    <span class="pat-keys muted small">Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule</span></div>`; };
   PAT.qf.countRules=rs=>{ const n=P.data.dates.filter(k=>rs.some(r=>matchPat(k,r.pat))).length; return `${n} day${n===1?'':'s'} in this poll`; };
   const box=patternPicker('qf',o);
   return `<div class="qf">${box}<div class="row mt-3"><button type="button" class="btn sm primary" data-qfapply>Apply</button></div></div>`;
 }
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
-// Brush for the rule being built (also from the keyboard: A / M / C, + saves the rule).
+// Brush for the rule being built (also from the keyboard: A / I / M / C, + saves the rule).
 function qfBrush(b){ P.qfs=b; document.querySelectorAll('.qf [data-qfs]').forEach(x=>x.classList.toggle('on',x.dataset.qfs===b)); patRefresh('qf'); }
 document.addEventListener('keydown',e=>{
   if(!P.qfOpen||!document.querySelector('.qf')||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,select,textarea,[contenteditable]')) return;
-  const b={a:'y',m:'m',c:'x'}[e.key.toLowerCase()];
+  const b={a:'y',i:'i',m:'m',c:'x'}[e.key.toLowerCase()];
   if(b){ e.preventDefault(); qfBrush(b); }
   else if(e.key==='+'){ e.preventDefault(); document.querySelector('.qf [data-patadd]')?.click(); }
 });
@@ -2227,7 +2238,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-hint]')){ P.hint=!P.hint; store.set('showOthers',P.hint); renderBody(); return; }
   const s=e.target.closest('[data-qfs]'); if(s){ qfBrush(s.dataset.qfs); return; }
   const qb=e.target.closest('[data-qfbrush]');
-  if(qb){ const nx={y:'m',m:'x',x:'y'}, i=qb.dataset.qfbrush;
+  if(qb){ const nx={y:'i',i:'m',m:'x',x:'y'}, i=qb.dataset.qfbrush;
     if(i==='d') qfBrush(nx[P.qfs||'y']); else { const r=PAT.qf.rules[+i]; r.st=nx[r.st||'y']; patRefresh('qf'); } return; }
   if(e.target.closest('[data-qfapply]')){ if(typeof editable==='function'&&!editable()) return; applyQuickFill(); }
 });
@@ -2417,10 +2428,10 @@ function wireGrid(){
   const grid=$('grid'); if(!grid) return;
   let paint=null, touched=new Map();
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
-  const stateOf=el=>['y','m'].find(s=>el.classList.contains('s'+s))||null;
+  const stateOf=el=>['y','i','m'].find(s=>el.classList.contains('s'+s))||null;
   const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k],k));
     const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
-    ['y','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
+    ['y','i','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
   const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map,k))); touched=new Map(); changed(); renderBody(); };
   gridGestures(grid,cellAt,{
     start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
@@ -2470,15 +2481,20 @@ document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open
 // Everyone's saved answers except my own (for the "Show others" hints in My availability).
 function others(){ return (P.data.responses||[]).filter(r=>!P.myResp||r.id!==P.myResp.id); }
 function stats(k, rs=sel()){
-  const H=hours(), cy=H.map(()=>0), cm=H.map(()=>0); let full=0,part=0,maybe=0,no=0;
+  // cy = free per hour (available + if needed), ci = how many of those are only "if needed", cm = maybe.
+  const H=hours(), cy=H.map(()=>0), ci=H.map(()=>0), cm=H.map(()=>0); let full=0,ifn=0,part=0,maybe=0,no=0;
   const list=rs.map(r=>{ const v=(r.entries||{})[k];
-    const x=fromMap(hourMap(v,k),k); if(x==='y') full++; else if(x==='m') maybe++; else if(x) part++; else no++;
-    hourMap(v,k).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y') cy[i]++; else if(s==='m') cm[i]++; });
+    const x=fromMap(hourMap(v,k),k); if(x==='y') full++; else if(x==='i') ifn++; else if(x==='m') maybe++; else if(x) part++; else no++;
+    hourMap(v,k).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y'||s==='i') cy[i]++; if(s==='i') ci[i]++; else if(s==='m') cm[i]++; });
     return {id:r.id,name:r.name||'Someone',v}; });
-  const peak=Math.max(0,...cy), bestHours=peak?H.filter((h,i)=>cy[i]===peak):[];
-  const peakMaybe=peak?Math.max(0,...H.map((h,i)=>cy[i]===peak?cm[i]:0)):Math.max(0,...cm);
-  return {full,part,maybe,no,cy,cm,peak,peakMaybe,bestHours,window:hoursText(bestHours),list};
+  // Best hours: the most people free, and among those the fewest who'd only come "if needed".
+  const peak=Math.max(0,...cy), peakIfn=peak?Math.min(...H.map((h,i)=>cy[i]===peak?ci[i]:Infinity)):0;
+  const bestHours=peak?H.filter((h,i)=>cy[i]===peak&&ci[i]===peakIfn):[];
+  const peakMaybe=peak?Math.max(0,...H.map((h,i)=>cy[i]===peak&&ci[i]===peakIfn?cm[i]:0)):Math.max(0,...cm);
+  return {full,ifn,part,maybe,no,cy,ci,cm,peak,peakIfn,peakMaybe,bestHours,window:hoursText(bestHours),list};
 }
+// Ranks days: most people free, then fewest "if needed", then most free all day, then most maybes, then earliest.
+function rankCmp(a,b){ return b.s.peak-a.s.peak||a.s.peakIfn-b.s.peakIfn||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k); }
 function bestBlock(s){ // longest contiguous run of best hours
   const H=s.bestHours; if(!H.length) return [hours()[0], hours()[0]+2];
   let best=[H[0],H[0]], cur=[H[0],H[0]];
@@ -2487,20 +2503,22 @@ function bestBlock(s){ // longest contiguous run of best hours
 }
 
 // ---- shared pieces for every view (same colours, legend wording and markers everywhere) ----
-const LEG={ yes:['var(--yes)','Available'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = not available'],
-  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','More people free = darker'], best:['var(--yes-dark)','Best hours'],
-  allfree:['var(--yes-dark)','Everyone selected free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only “maybe” (n?)'],
-  mstripe:['var(--maybe)','Rest are “maybe” (stripe)'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others available (+maybe)'],
+const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = no'],
+  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
+  allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
+  mstripe:['var(--maybe)','Rest maybe'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others free'],
   draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'] };
 function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>`<span style="--c:${LEG[k][0]}">${LEG[k][1]}</span>`).join('')}</div>`; }
 // Thin yes/maybe bar along the bottom of a day cell.
-function heatBar(y,m,tot){ return tot&&(y||m)?`<div class="othbar"><i class="ry" style="width:${y/tot*100}%"></i><i class="rm" style="width:${m/tot*100}%"></i></div>`:''; }
+// y = free (incl. "if needed"), i = how many of those are only "if needed", m = maybe.
+function heatBar(y,i,m,tot){ return tot&&(y||m)?`<div class="othbar"><i class="ry" style="width:${(y-i)/tot*100}%"></i>${i?`<i class="ri" style="width:${i/tot*100}%"></i>`:''}<i class="rm" style="width:${m/tot*100}%"></i></div>`:''; }
+function freeTip(y,i,m,tot){ return `${y}/${tot} free${i?` (${i} only if needed)`:''}${m?`, ${m} maybe`:''}`; }
 function countText(y,m,tot){ return tot&&(y||m)?`${y}/${tot}${m?`<span class="om">+${m}?</span>`:''}`:''; }
 // A group day cell: tint by how many are free at the best time.
 function heatCell(k,day,s,tot,attrs,cls=''){
   const r=tot?s.peak/tot:0;
-  return `<div class="day heat${s.peak?' hot':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%" ${attrs}><div class="n">${day}</div>
-    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakMaybe,tot)}${meetingDays().has(k)?'<span class="star">★</span>':''}</div>`;
+  return `<div class="day heat${s.peak?' hot':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}</div>
+    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}${meetingDays().has(k)?'<span class="star">★</span>':''}</div>`;
 }
 const tools=(inner,cls='')=>`<div class="row ws-tools${cls?' '+cls:''}">${inner}</div>`;
 // The organiser's way into scheduling from the Group view: add a draft for that day (picked hours or the best block) and open Schedule.
@@ -2525,7 +2543,7 @@ function renderGroup(el){
   if(!tot){ el.innerHTML=h+`<p class="help">Pick at least one person in the Participants list to see when they're free.</p>`; wireWho(); return; }
   h+=`<p class="help">Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details${d.isAdmin?' and to schedule a meeting':''}.</p>`;
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
-  h+=legend('heat','maybe',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=legend('heat','ifn','maybe',d.isAdmin||meetingDays().size?'meeting':'');
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
@@ -2536,7 +2554,7 @@ function renderGroup(el){
         <button class="btn sm ghost" data-ov="${P.ovDay}" aria-label="Close">✕</button></div>
       ${slotsOn?`${pick?`<p class="help">Drag across the bars to pick the meeting time.</p>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${c} available, ${m} maybe"><div class="bar${s.peak&&c===s.peak?' best':''}" style="height:${tot?c/tot*100:0}%"></div><div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>
-      ${legend('yes','best','maybe')}`:''}
+      ${legend('yes','best','ifn','maybe')}`:''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||'Not available')}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,8);
@@ -2630,18 +2648,18 @@ function renderPlanner(S){
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
-        const c=S[k].cy[ri], m=S[k].cm[ri];
+        const c=S[k].cy[ri], m=S[k].cm[ri], f=S[k].ci[ri];
         let cls='slot'+pos+(c||m||hours(k).includes(hr)?'':' off');
         if(c===tot) cls+=' allfree'; else if(c) cls+=' hm'; else if(m) cls+=' mo';
         if(c<tot&&m&&c+m>=tot) cls+=' mb';
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
         if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
-        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${c}/${tot} available${m?`, ${m} maybe`:''}">${c||(m?m+'?':'')}</div>`; }); });
+        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>';
     h+=legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
     h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
-    h+=legend('heat','maybe','draft','meeting');
+    h+=legend('heat','ifn','maybe','draft','meeting');
   }
   return h;
 }
@@ -2709,9 +2727,9 @@ function wirePlanner(){
 function suggestDrafts(){
   const slotsOn=P.data.poll.answerMode!=='days', tot=sel().length, taken=new Set(P.drafts.map(x=>x.date));
   const ranked=P.data.dates.filter(k=>!taken.has(k)).map(k=>({k,s:stats(k)})).filter(o=>o.s.peak>0)
-    .sort((a,b)=>b.s.peak-a.s.peak||b.s.full-a.s.full||b.s.peakMaybe-a.s.peakMaybe||a.k.localeCompare(b.k)).slice(0,3);
+    .sort(rankCmp).slice(0,3);
   if(!ranked.length){ toast('No free times found for the selected people'); return; }
-  ranked.forEach(o=>{ if(slotsOn&&o.s.full<tot){ const [st,en]=bestBlock(o.s); addDraft(o.k,false,st,Math.min(en,24)); } else addDraft(o.k,true,null,null); });
+  ranked.forEach(o=>{ if(slotsOn&&o.s.full+o.s.ifn<tot){ const [st,en]=bestBlock(o.s); addDraft(o.k,false,st,Math.min(en,24)); } else addDraft(o.k,true,null,null); });
   renderBody(); toast(`Added ${ranked.length} ${ranked.length===1?'draft':'drafts'}`);
 }
 async function saveDrafts(btn){
@@ -3018,7 +3036,7 @@ document.addEventListener('click',async e=>{
   }
   if(ds.delresp){ if(!confirm('Delete this response?')) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
-  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==='y'?'m':v==='m'?null:'y'); changed(); renderBody(); return; }
+  if(ds.day){ const v=P.mine.entries[ds.day]; setEntry(ds.day, v==='y'?'i':v==='i'?'m':v==='m'?null:'y'); changed(); renderBody(); return; }
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
     if(ds.bulk==='all') dates.forEach(k=>en[k]='y');
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
