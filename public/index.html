@@ -744,12 +744,40 @@
   .pgrid .hd.dr{background:var(--accent);color:#fff} .pgrid .hd.dr b{color:#fff}
   .day.dr{outline:3px solid var(--accent);outline-offset:-1px}
   .day.sel{box-shadow:var(--shadow)}
-  .drafts{margin-top:8px}
-  .drafts .dft{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+  /* Details (step 3): one compact row per draft, then the shared fields with icons instead of labels */
+  .drafts{margin-top:10px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+  .drafts .dft{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
   .drafts .dft:first-child{border-top:0}
-  .drafts .dft .when{font-weight:650;min-width:110px}
-  .drafts .dft .who{flex-basis:100%;font-size:12px;color:var(--muted)}
-  .drafts .dft .ddesc{flex-basis:100%;min-height:60px}
+  .drafts .dft:nth-child(even){background:color-mix(in srgb,var(--sunken) 55%,transparent)}
+  .drafts .dft.open{background:var(--accent-weak)}
+  .drafts .dft .mtile{width:44px;padding:4px 0 5px;border-radius:9px}
+  .drafts .dft .mtile .mo{font-size:9.5px} .drafts .dft .mtile .dn{font-size:18px;margin:1px 0 0} .drafts .dft .mtile .wd{font-size:10px}
+  .drafts .dft .mtile.rep .dn{font-size:14px;margin:2px 0 1px}
+  .dmain{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .dtime{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;height:32px;padding:0 4px 0 9px;border:1px solid var(--line-strong);border-radius:9px;background:var(--card);font-weight:650;font-variant-numeric:tabular-nums}
+  .dtime>svg{width:15px;height:15px;color:var(--muted);flex:none;margin-right:2px}
+  .dtime.all{padding-right:11px;color:var(--accent-ink);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 30%,transparent)} .dtime.all>svg{color:inherit}
+  .dtime .dsel{border:0;background:transparent;font:inherit;color:var(--ink);padding:0 2px;height:30px;min-height:0;width:auto;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:none;box-shadow:none}
+  .dtime .dsel:focus-visible{outline:2px solid var(--accent);border-radius:5px}
+  .dsep{color:var(--muted);font-weight:500}
+  .dmeta{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;color:var(--muted)}
+  .dmeta .tag{flex:none;display:inline-flex;align-items:center;gap:3px;padding:1px 7px;font-size:11.5px} .dmeta .tag svg{width:12px;height:12px}
+  .dmeta .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dacts{display:flex;gap:2px}
+  .drafts .dft .ddesc{grid-column:2/-1;min-height:64px;font-size:14px}
+  .dshared{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding:12px;border-radius:12px;background:var(--sunken);border:1px solid var(--line)}
+  .dsh-h{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:650;color:var(--muted)} .dsh-h svg{width:14px;height:14px}
+  .dgrid2{gap:10px}
+  .ifld{position:relative;display:block;margin:0;min-width:0}
+  .ifld>svg{position:absolute;left:11px;top:12px;width:16px;height:16px;color:var(--muted);pointer-events:none;z-index:1}
+  .ifld>input,.ifld>textarea,.ifld>select{width:100%;padding-left:35px;margin:0}
+  .ifld>textarea{min-height:0;resize:vertical}
+  .ifld:focus-within>svg{color:var(--accent)}
+  .drep{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .drep>.ifld{flex:1 1 150px} .drep-d{display:flex;align-items:center;gap:6px;flex:2 1 260px;min-width:0} .drep-d input{flex:1 1 0;min-width:0;width:auto;margin:0;padding-inline:8px}
+  .drep{position:relative} .drep>.tip{position:static} /* tip bubble lines up with the row */
+  .dfoot{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+  .dfoot .btn svg{width:16px;height:16px}
   .mdesc{display:flex;flex-direction:column;gap:6px;margin-top:8px} .mdesc textarea{min-height:70px}
   /* organiser Meetings tab: scheduled meetings card + "Plan new meetings" in numbered steps */
   .mcard .mlist{padding:var(--s3) 0 0}
@@ -937,7 +965,8 @@
     .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px}
     .pcard.new{display:grid;grid-template-columns:44px minmax(0,1fr);text-align:left;justify-items:start}
     .pcard.new>.tile{grid-row:1/3}
-    .drafts .dft{gap:6px 8px} .drafts .dft .when{flex-basis:100%;min-width:0} .drafts .dft [data-deldraft]{margin-left:auto}
+    .drafts .dft{gap:4px 9px;padding:8px} .dacts .qb{width:30px;height:30px} .dfoot .btn{flex:1;justify-content:center}
+    .drep-d{flex-basis:100%;order:3}
     #series .list li{flex-wrap:wrap} #series .list li>.grow{flex:1 1 60%} #series .acts{gap:4px;margin-left:auto}
   }
   @media (max-width:380px){ .crumb{display:none} }
@@ -1034,7 +1063,6 @@
   /* Meetings */
   .pstep-h .tip{margin-top:-2px} .pnav{flex-wrap:nowrap;gap:6px;margin-top:var(--s3)} .pnav .wknav.pill{margin:0;flex:1 1 auto;min-width:0;width:auto;justify-content:space-between} .pnav .lbl{overflow:hidden;text-overflow:ellipsis}
   .ev-ic{display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);margin-bottom:6px} .ev-ic svg{width:18px;height:18px}
-  .drafts .dft .tag{display:inline-flex;align-items:center;gap:4px} .drafts .dft .tag svg,.drafts .dft .who svg{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
   /* People */
   .pst{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1.5px dashed var(--line-strong)}
   .pst svg{width:13px;height:13px;stroke-width:2.6}
@@ -3616,10 +3644,10 @@ function repState(){ return P.rep||(P.rep={from:isoL(new Date()), every:1, until
 function repeatFields(){
   if(!isWeekly()) return '';
   const r=repState();
-  return `<div class="grid3"><div class="field"><label for="rp_from">${t('Starting from')}</label><input type="date" id="rp_from" data-rp="from" value="${esc(r.from)}"></div>
-    <div class="field"><label for="rp_every">${t('Repeats')}</label><select id="rp_every" data-rp="every">${[[1,t('Every week')],[2,t('Every other week')],[4,t('Every 4 weeks')]].map(([v,lb])=>`<option value="${v}" ${r.every===v?'selected':''}>${lb}</option>`).join('')}</select></div>
-    <div class="field"><label for="rp_until">${t('Until')} <span class="opt">${t('optional')}</span></label><input type="date" id="rp_until" data-rp="until" value="${esc(r.until)}"></div></div>
-    <div class="help">${t('Sent as one repeating calendar event, starting on the first matching weekday from this date.')}</div>`;
+  return `<div class="drep"><label class="ifld">${ICON.repeat}<select id="rp_every" data-rp="every" aria-label="${t('Repeats')}" title="${t('Repeats')}">${[[1,t('Every week')],[2,t('Every other week')],[4,t('Every 4 weeks')]].map(([v,lb])=>`<option value="${v}" ${r.every===v?'selected':''}>${lb}</option>`).join('')}</select></label>
+    ${tip(t('Sent as one repeating calendar event, starting on the first matching weekday from this date.'),'right')}
+    <span class="drep-d"><input type="date" id="rp_from" data-rp="from" value="${esc(r.from)}" aria-label="${t('Starting from')}" title="${t('Starting from')}"><span class="dsep">→</span>
+    <input type="date" id="rp_until" data-rp="until" value="${esc(r.until)}" aria-label="${t('Until')} (${t('optional')})" title="${t('Until')} (${t('optional')})"></span></div>`;
 }
 document.addEventListener('input',e=>{ const k=e.target.dataset&&e.target.dataset.rp; if(!k) return; const r=repState(); r[k]=k==='every'?+e.target.value:e.target.value; });
 function repeatValue(err){ // {repeat} for a weekly meeting, {} otherwise; null (and a message) when invalid
@@ -3698,36 +3726,40 @@ function renderPlan(el){
       :t('<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.')):'',
     tot?renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`);
   h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
-    draftTray(),nd?'<button class="btn sm ghost" data-cleardrafts>'+t('Clear all')+'</button>':'');
+    draftTray(),nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):'');
   el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
-  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''});
-  if(!P.drafts.length) return `<div id="drafts"></div>`;
+  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''}), n=P.drafts.length;
+  if(!n) return `<div id="drafts"></div>`;
+  // One compact row per draft: date tile | time (or All day) over availability + who | icon toggles.
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay,x.date)!=='x').length;
-    return `<div class="dft"><span class="when">${esc(dLabel(x.date))}</span>
-      <label class="check m0"><input type="checkbox" data-dall="${x.key}" ${x.allDay?'checked':''}> ${t('All day')}</label>
-      ${x.allDay?'':`<span class="row"><select class="inline" data-dstart="${x.key}">${hourOpts(0,23,x.start)}</select> ${t('to')} <select class="inline" data-dend="${x.key}">${hourOpts(1,24,x.end)}</select></span>`}
-      <span class="tag ${free===inv.length?'y':free?'m':'x'}" title="${t('Invited people who are available, available if needed, or maybe for the whole time')}">${ICON.users}${free}/${inv.length}</span>
-      ${ib('note',x.ownDesc?t('Remove extra description'):t('Extra description'),`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,'sm'+(x.ownDesc?' on':''))}
-      ${ib('x',t('Remove draft'),`data-deldraft="${x.key}"`,'sm ghost danger')}
-      <span class="who">${ICON.users}${esc(x.participants==='all'?t('Everyone'):x.participants.map(p=>p.name).join(', '))}</span>
-      ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" placeholder="${t('Extra description for this meeting only, shown below the shared one')}">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
+    const who=x.participants==='all'?t('Everyone'):x.participants.map(p=>p.name).join(', ');
+    const time=x.allDay?`<span class="dtime all">${ICON.day}${t('All day')}</span>`
+      :`<span class="dtime">${ICON.clock}<select class="dsel" data-dstart="${x.key}" aria-label="${t('From')}">${hourOpts(0,23,x.start)}</select><span class="dsep">–</span><select class="dsel" data-dend="${x.key}" aria-label="${t('To')}">${hourOpts(1,24,x.end)}</select></span>`;
+    return `<div class="dft${x.ownDesc?' open':''}">${dateTile({date:x.date})}
+      <div class="dmain">${time}
+        <div class="dmeta"><span class="tag ${free===inv.length?'y':free?'m':'x'}" title="${t('Invited people who are available, available if needed, or maybe for the whole time')}">${ICON.users}${free}/${inv.length}</span><span class="who" title="${esc(who)}">${esc(who)}</span></div></div>
+      <div class="dacts">${pqb('day',x.allDay?t('Set a time'):t('All day'),`data-dall="${x.key}" aria-pressed="${!!x.allDay}"`,' tog')}${pqb('note',x.ownDesc?t('Remove extra description'):t('Extra description'),`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,' tog')}${pqb('x',t('Remove draft'),`data-deldraft="${x.key}"`,' danger')}</div>
+      ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" rows="2" aria-label="${t('Extra description')}" placeholder="${t('Extra description for this meeting only, shown below the shared one')}">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
+  // Shared details: icon inside each field instead of a label row.
   return `<div id="drafts"><div class="drafts">${rows}</div>
-    <div class="grid2 mt-2">
-      <div class="field"><label>${t('Title (for all)')}</label><input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}"></div>
-      <div class="field"><label for="dm_loc">${t('Location (optional)')}</label><div class="locbox"><input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="${t('Search a place or address')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div></div>
-    ${repeatFields()}
-    <div class="field"><label class="row tight">${P.drafts.length>1?t('Description (optional, for all)'):t('Description (optional)')}${P.drafts.length>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}</label><textarea id="dm_note" maxlength="1000" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></div>
-    <div class="err" id="dm_err"></div>
-    <div class="row mt-4"><button class="btn primary" data-savedrafts>${P.drafts.length===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n:P.drafts.length})}</button></div></div>`;
+    <div class="dshared">
+      <div class="dsh-h">${ICON.users}<span>${n>1?t('For all {n} meetings',{n}):t('Meeting details')}</span></div>
+      <div class="grid2 dgrid2">
+        <label class="ifld">${ICON.edit}<input type="text" id="dm_title" maxlength="120" value="${esc(dm.title)}" placeholder="${t('Title')}" aria-label="${t('Title (for all)')}" title="${t('Title (for all)')}"></label>
+        <div class="ifld locbox">${ICON.pin}<input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Location (optional)')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div>
+      ${repeatFields()}
+      <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
+      <div class="err" id="dm_err"></div>
+      <div class="dfoot">${n>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
 }
 function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
   [['dm_title','title'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
   document.querySelectorAll('[data-ddtext]').forEach(ta=>ta.oninput=()=>{ find(ta.dataset.ddtext).note=ta.value; });
-  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onchange=()=>{ const x=find(cb.dataset.dall); x.allDay=cb.checked; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
+  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall); x.allDay=!x.allDay; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
   document.querySelectorAll('[data-dstart]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dstart); x.start=+se.value; if(x.end<=x.start) x.end=Math.min(24,x.start+1); renderBody(); });
   document.querySelectorAll('[data-dend]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dend); x.end=+se.value; if(x.end<=x.start) x.start=Math.max(0,x.end-1); renderBody(); });
   const grid=$('pgrid'); if(!grid) return;
@@ -4669,6 +4701,9 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Set a time": "Uhrzeit festlegen",
+"For all {n} meetings": "Für alle {n} Termine",
+"Meeting details": "Termindetails",
 "How many": "Wie viele",
 "In total": "Insgesamt",
 "Per week": "Pro Woche",
