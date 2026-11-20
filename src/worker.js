@@ -8,6 +8,8 @@
 //   MAIL_PER_DAY (optional) recipients of invites / test emails per account (or per poll without one) per day, default 50
 //   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
 //   TURNSTILE_SITE_KEY (optional var) + TURNSTILE_SECRET (secret): bot check before a sign-in code is emailed.
+//   CAL_TOKEN_KEY (optional secret) encrypts stored calendar tokens; needed for Google / Outlook calendar sign-in, plus
+//   GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET and / or MS_CLIENT_ID + MS_CLIENT_SECRET (secrets). Each provider shows up only when set.
 //
 // Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
 // Only signed-in users can create polls, and only the account that owns a poll can manage it.
@@ -92,7 +94,12 @@ async function route(request, env, ctx, url) {
   if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env) });
+  if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
+    if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
+    if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
+    throw new HttpError(404, 'Not found');
+  }
   if (parts[1] === 'auth') {
     if (parts[2] === 'code' && m === 'POST') return sendLoginCode(request, env, url);
     if (parts[2] === 'verify' && m === 'POST') return verifyLoginCode(request, env, url);
@@ -104,6 +111,17 @@ async function route(request, env, ctx, url) {
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
+    if (parts[2] === 'calendars') {
+      if (!parts[3] && m === 'GET') return listCalendars(request, env);
+      if (!parts[3] && m === 'POST') return addCalendar(request, env);
+      if (parts[3] && !parts[4] && m === 'PATCH') return updateCalendar(request, env, parts[3]);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteCalendar(request, env, parts[3]);
+      if (parts[3] && parts[4] === 'busy' && !parts[5] && m === 'GET') return calendarBusy(request, env, url, parts[3]);
+    }
+    if (parts[2] === 'calendar-accounts' && parts[3]) {
+      if (!parts[4] && m === 'DELETE') return deleteCalAccount(request, env, parts[3]);
+      if (parts[4] === 'refresh' && m === 'POST') return refreshCalAccount(request, env, parts[3]);
+    }
     throw new HttpError(404, 'Not found');
   }
   if (parts[1] !== 'polls') throw new HttpError(404, 'Not found');
@@ -580,9 +598,10 @@ async function me(request, env) {
   const u = userOf(request);
   if (!u) return json({ user: null });
   const img = u.hasImg ? await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(u.id).first('avatar_img') : '';
-  const ical = await env.DB.prepare('SELECT ical_url FROM users WHERE id = ?').bind(u.id).first('ical_url');
-  // The feed URL is a secret: the page only learns which host it points at.
-  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created, calendar: ical ? new URL(ical).host : '' } });
+  const cal = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(auto) AS auto, (SELECT url FROM user_calendars WHERE user_id = ?1 AND url IS NOT NULL ORDER BY position, created_at LIMIT 1) AS url FROM user_calendars WHERE user_id = ?1').bind(u.id).first();
+  // Feed URLs are secrets: the page only learns which host the first one points at.
+  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created,
+    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0 } });
 }
 // Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
@@ -592,6 +611,8 @@ async function updateProfile(request, env) {
   if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
   if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
   if (b.icalUrl !== undefined) u.ical_url = b.icalUrl === '' || b.icalUrl === null ? null : icalUrl(b.icalUrl);
+  // Older pages save a single link here: it becomes one of the account's calendars too.
+  if (u.ical_url) await insertIcal(env, user.id, u.ical_url, '');
   const cols = Object.keys(u);
   if (!cols.length) return json({ ok: true });
   const stmts = [env.DB.prepare(`UPDATE users SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), user.id)];
@@ -619,18 +640,24 @@ function icalUrl(raw) {
     || host.endsWith('.local') || host.endsWith('.internal') || /^[\d.]+$/.test(host) || host.startsWith('[')) throw bad();
   return u.toString();
 }
-// Body: { url? }. Without a url, a signed-in person's saved feed is used. Returns the feed as text/calendar.
+// Body: { url? }. Without a url, a signed-in person's first saved iCal calendar is used. Returns the feed as text/calendar.
 async function fetchCalendar(request, env) {
   const b = await body(request), user = userOf(request);
   let url;
   if (b.url) url = icalUrl(b.url);
   else {
     if (!user) throw new HttpError(400, 'Enter an iCal link (https:// or webcal://)');
-    url = await env.DB.prepare('SELECT ical_url FROM users WHERE id = ?').bind(user.id).first('ical_url');
+    url = await env.DB.prepare('SELECT url FROM user_calendars WHERE user_id = ? AND url IS NOT NULL ORDER BY position, created_at LIMIT 1').bind(user.id).first('url')
+      || await env.DB.prepare('SELECT ical_url FROM users WHERE id = ?').bind(user.id).first('ical_url');
     if (!url) throw new HttpError(404, 'No calendar is saved on your account');
   }
   await checkThrottle(env, request, 'ical', { max: ICAL_PER_WINDOW, msg: `Too many calendar imports. Try again in ${FAIL_WINDOW_MIN} minutes.` });
   await recordFail(env, request, 'ical');
+  return icsResponse(await fetchIcalText(url));
+}
+const icsResponse = (text) => new Response(text, { headers: { 'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store' } });
+// Downloads an iCal feed (size-capped) and checks that it is one.
+async function fetchIcalText(url) {
   let res;
   try {
     res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { accept: 'text/calendar, */*;q=0.5', 'user-agent': 'when-who calendar import' } });
@@ -651,7 +678,318 @@ async function fetchCalendar(request, env) {
   for (const c of chunks) { buf.set(c, at); at += c.byteLength; }
   const text = new TextDecoder().decode(buf);
   if (!/BEGIN:VCALENDAR/i.test(text.slice(0, 2000))) throw new HttpError(422, "That link didn't return a calendar (.ics)");
-  return new Response(text, { headers: { 'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store' } });
+  return text;
+}
+
+// ---------- calendars on the account (iCal links + Google / Outlook accounts) ----------
+// Each calendar has an `auto` switch: on, the page greys out the owner's busy hours on polls they answer.
+// iCal feeds are returned raw and parsed in the page; Google / Outlook events come back as JSON.
+// Event titles pass straight through to the owner's browser and are never stored.
+const MAX_CALENDARS = 50;       // per account, all kinds
+const MAX_ICAL = 20;            // iCal links per account
+const MAX_CAL_ACCOUNTS = 5;     // Google / Outlook accounts per when-who account
+const CAL_PER_WINDOW = 150;     // calendar fetches per when-who account within FAIL_WINDOW_MIN
+const CAL_ID_RE = /^[A-Za-z0-9]{6,30}$/;
+const BUSY_MAX_DAYS = 130;
+const OAUTH = {
+  google: {
+    name: 'Google', id: 'GOOGLE_CLIENT_ID', secret: 'GOOGLE_CLIENT_SECRET',
+    auth: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token',
+    scope: 'openid email https://www.googleapis.com/auth/calendar.readonly',
+    extra: { access_type: 'offline', prompt: 'consent' },
+  },
+  microsoft: {
+    name: 'Outlook', id: 'MS_CLIENT_ID', secret: 'MS_CLIENT_SECRET',
+    auth: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize', token: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scope: 'openid email offline_access User.Read Calendars.Read',
+    extra: { prompt: 'select_account' },
+  },
+};
+const providerOn = (env, p) => !!(OAUTH[p] && env[OAUTH[p].id] && env[OAUTH[p].secret] && env.CAL_TOKEN_KEY);
+const calProviders = (env) => ({ google: providerOn(env, 'google'), microsoft: providerOn(env, 'microsoft') });
+const calColor = (c) => (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c.toLowerCase() : '');
+const icalHost = (url) => { try { return new URL(url).host; } catch (e) { return ''; } };
+
+// Tokens are stored encrypted (AES-GCM, key derived from the CAL_TOKEN_KEY secret).
+let TOKEN_KEY = null;
+async function tokenKey(env) {
+  if (!env.CAL_TOKEN_KEY) throw new HttpError(503, 'Calendar sign-in isn’t set up on this site');
+  if (!TOKEN_KEY || TOKEN_KEY.raw !== env.CAL_TOKEN_KEY) {
+    const k = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', enc.encode('cal-token:' + env.CAL_TOKEN_KEY)), 'AES-GCM', false, ['encrypt', 'decrypt']);
+    TOKEN_KEY = { raw: env.CAL_TOKEN_KEY, k };
+  }
+  return TOKEN_KEY.k;
+}
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const b64url = (u8) => b64(u8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function seal(env, text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await tokenKey(env), enc.encode(text)));
+  return b64(iv) + '.' + b64(ct);
+}
+async function unseal(env, s) {
+  const [iv, ct] = String(s).split('.');
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv) }, await tokenKey(env), unb64(ct)));
+}
+
+async function listCalendars(request, env) {
+  const user = requireUser(request);
+  const [a, c] = await env.DB.batch([
+    env.DB.prepare('SELECT id, provider, email, status FROM calendar_accounts WHERE user_id = ? ORDER BY created_at').bind(user.id),
+    env.DB.prepare('SELECT id, account_id, url, name, color, auto FROM user_calendars WHERE user_id = ? ORDER BY position, created_at').bind(user.id),
+  ]);
+  // iCal links are secrets: the page only learns which host they point at.
+  return json({
+    providers: calProviders(env),
+    accounts: a.results.map((x) => ({ id: x.id, provider: x.provider, email: x.email, status: x.status })),
+    calendars: c.results.map((x) => ({ id: x.id, accountId: x.account_id || null, name: x.name, color: x.color || '', auto: !!x.auto, host: x.url ? icalHost(x.url) : '' })),
+  });
+}
+async function ownCalendar(env, user, cid) {
+  if (!CAL_ID_RE.test(cid || '')) throw new HttpError(404, 'Calendar not found');
+  const c = await env.DB.prepare('SELECT * FROM user_calendars WHERE id = ? AND user_id = ?').bind(cid, user.id).first();
+  if (!c) throw new HttpError(404, 'Calendar not found');
+  return c;
+}
+async function ownCalAccount(env, user, aid) {
+  if (!CAL_ID_RE.test(aid || '')) throw new HttpError(404, 'Calendar account not found');
+  const a = await env.DB.prepare('SELECT * FROM calendar_accounts WHERE id = ? AND user_id = ?').bind(aid, user.id).first();
+  if (!a) throw new HttpError(404, 'Calendar account not found');
+  return a;
+}
+// Adds an iCal calendar. Returns the existing one if the link is already there.
+async function insertIcal(env, userId, url, name, auto = 1) {
+  const have = await env.DB.prepare('SELECT id FROM user_calendars WHERE user_id = ? AND url = ?').bind(userId, url).first('id');
+  if (have) return { id: have, existed: true };
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(url IS NOT NULL) AS i, MAX(position) AS p FROM user_calendars WHERE user_id = ?').bind(userId).first();
+  if (n.n >= MAX_CALENDARS || (n.i || 0) >= MAX_ICAL) throw new HttpError(400, `At most ${MAX_ICAL} calendar links per account`);
+  const id = randomId(12);
+  await env.DB.prepare('INSERT INTO user_calendars (id, user_id, url, name, auto, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, userId, url, name || icalHost(url) || 'Calendar', auto ? 1 : 0, (n.p || 0) + 1, now()).run();
+  return { id, existed: false };
+}
+// Body: { url, name? }
+async function addCalendar(request, env) {
+  const user = requireUser(request);
+  const b = await body(request);
+  const url = icalUrl(b.url);
+  const name = str(b.name, 60, 'Name');
+  const r = await insertIcal(env, user.id, url, name);
+  if (r.existed) throw new HttpError(409, 'That calendar is already on your account');
+  return json({ id: r.id });
+}
+// Body: { name?, auto? }
+async function updateCalendar(request, env, cid) {
+  const user = requireUser(request);
+  const c = await ownCalendar(env, user, cid);
+  const b = await body(request);
+  const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : c.name;
+  const auto = b.auto !== undefined ? (b.auto ? 1 : 0) : c.auto;
+  await env.DB.prepare('UPDATE user_calendars SET name = ?, auto = ? WHERE id = ?').bind(name, auto, c.id).run();
+  return json({ ok: true });
+}
+async function deleteCalendar(request, env, cid) {
+  const user = requireUser(request);
+  const c = await ownCalendar(env, user, cid);
+  if (!c.url) throw new HttpError(400, 'Turn this calendar off, or disconnect its account');
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM user_calendars WHERE id = ?').bind(c.id),
+    // The old single-link column, so the removed link is really gone.
+    env.DB.prepare('UPDATE users SET ical_url = NULL WHERE id = ? AND ical_url = ?').bind(user.id, c.url),
+  ]);
+  return json({ ok: true });
+}
+async function deleteCalAccount(request, env, aid) {
+  const user = requireUser(request);
+  const a = await ownCalAccount(env, user, aid);
+  // Best effort: tell Google to forget the grant. (Microsoft has no revoke endpoint for this.)
+  if (a.provider === 'google') {
+    try {
+      const tok = await unseal(env, a.refresh_token);
+      await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: tok }), signal: AbortSignal.timeout(5000) });
+    } catch (e) { console.error('revoke', e); }
+  }
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM user_calendars WHERE account_id = ? AND user_id = ?').bind(a.id, user.id),
+    env.DB.prepare('DELETE FROM calendar_accounts WHERE id = ?').bind(a.id),
+  ]);
+  return json({ ok: true });
+}
+async function refreshCalAccount(request, env, aid) {
+  const user = requireUser(request);
+  const a = await ownCalAccount(env, user, aid);
+  await calThrottle(env, request, user);
+  await syncCalendars(env, a, await accessToken(env, a));
+  return json({ ok: true });
+}
+async function calThrottle(env, request, user) {
+  const key = 'u:' + user.id;
+  await checkThrottle(env, request, 'cal', { key, max: CAL_PER_WINDOW, msg: `Too many calendar requests. Try again in ${FAIL_WINDOW_MIN} minutes.` });
+  await recordFail(env, request, 'cal', key);
+}
+
+// ---------- OAuth (Google / Outlook) ----------
+// SITE_URL decides the address (under `wrangler dev` the request URL carries the production host); it must match
+// the redirect URI registered with Google / Microsoft. Local testing: --var SITE_URL:http://localhost:8787.
+const oauthBack = (env, url, result) => new Response(null, { status: 302, headers: { location: `${siteUrl(env, url.origin)}/?account&cal=${result}` } });
+const redirectUri = (env, url, p) => `${siteUrl(env, url.origin)}/api/oauth/${p}/callback`;
+async function oauthStart(request, env, url, p) {
+  if (!providerOn(env, p)) throw new HttpError(404, 'Not found');
+  const user = userOf(request);
+  if (!user) return oauthBack(env, url, 'signin');
+  await checkThrottle(env, request, 'oauth', { key: 'u:' + user.id, max: 20, msg: `Too many tries. Try again in ${FAIL_WINDOW_MIN} minutes.` });
+  await recordFail(env, request, 'oauth', 'u:' + user.id);
+  const state = secret(), verifier = secret() + secret();
+  const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(verifier))));
+  await env.DB.prepare('INSERT INTO oauth_states (state, user_id, provider, verifier, created_at) VALUES (?, ?, ?, ?, ?)').bind(state, user.id, p, verifier, now()).run();
+  const o = OAUTH[p];
+  const q = new URLSearchParams({ client_id: env[o.id], redirect_uri: redirectUri(env, url, p), response_type: 'code', scope: o.scope, state,
+    code_challenge: challenge, code_challenge_method: 'S256', ...o.extra });
+  const hint = url.searchParams.get('hint');
+  if (hint && EMAIL_RE.test(hint) && hint.length <= 200) q.set('login_hint', hint);
+  return new Response(null, { status: 302, headers: { location: `${o.auth}?${q}` } });
+}
+// The id_token comes straight from the provider's token endpoint over TLS, so its claims can be read without checking the signature.
+function idClaims(idToken) {
+  try {
+    const part = String(idToken).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(new TextDecoder().decode(unb64(part + '='.repeat((4 - (part.length % 4)) % 4))));
+  } catch (e) { return {}; }
+}
+async function tokenRequest(env, p, params) {
+  const o = OAUTH[p];
+  const res = await fetch(o.token, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+    body: new URLSearchParams({ client_id: env[o.id], client_secret: env[o.secret], ...params }), signal: AbortSignal.timeout(10000) });
+  const out = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, out };
+}
+async function oauthCallback(request, env, url, p) {
+  if (!OAUTH[p]) throw new HttpError(404, 'Not found');
+  const user = userOf(request), qs = url.searchParams, state = qs.get('state') || '';
+  if (!user) return oauthBack(env, url, 'signin');
+  const st = state && state.length <= 100 ? await env.DB.prepare('SELECT * FROM oauth_states WHERE state = ?').bind(state).first() : null;
+  if (st) await env.DB.prepare('DELETE FROM oauth_states WHERE state = ?').bind(state).run();
+  if (!st || st.user_id !== user.id || st.provider !== p || Date.now() - Date.parse(st.created_at) > 15 * 60000) return oauthBack(env, url, 'error');
+  if (qs.get('error') || !qs.get('code')) return oauthBack(env, url, 'denied');
+  try {
+    const t = await tokenRequest(env, p, { grant_type: 'authorization_code', code: qs.get('code'), redirect_uri: redirectUri(env, url, p), code_verifier: st.verifier });
+    if (!t.ok || !t.out.access_token || !t.out.refresh_token) { console.error('oauth token', p, t.status, t.out.error); return oauthBack(env, url, 'error'); }
+    const cl = idClaims(t.out.id_token);
+    const mail = String(cl.email || cl.preferred_username || '').slice(0, 200).toLowerCase();
+    const sealed = { r: await seal(env, t.out.refresh_token), a: await seal(env, t.out.access_token), exp: Date.now() + (+t.out.expires_in || 3600) * 1000 };
+    let acct = await env.DB.prepare('SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = ? AND email = ?').bind(user.id, p, mail).first();
+    if (acct) {
+      await env.DB.prepare("UPDATE calendar_accounts SET refresh_token = ?, access_token = ?, expires_at = ?, status = 'ok' WHERE id = ?").bind(sealed.r, sealed.a, sealed.exp, acct.id).run();
+    } else {
+      const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM calendar_accounts WHERE user_id = ?').bind(user.id).first('n');
+      if (n >= MAX_CAL_ACCOUNTS) return oauthBack(env, url, 'toomany');
+      acct = { id: randomId(12), user_id: user.id, provider: p, email: mail };
+      await env.DB.prepare('INSERT INTO calendar_accounts (id, user_id, provider, email, refresh_token, access_token, expires_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(acct.id, user.id, p, mail, sealed.r, sealed.a, sealed.exp, 'ok', now()).run();
+    }
+    await syncCalendars(env, acct, t.out.access_token);
+    return oauthBack(env, url, 'ok');
+  } catch (e) {
+    console.error('oauth callback', p, e);
+    return oauthBack(env, url, 'error');
+  }
+}
+// A valid access token for the account, refreshed when it is about to expire.
+// A refused refresh token marks the account as needing to be reconnected.
+async function accessToken(env, acct) {
+  if (acct.status === 'expired') throw new HttpError(409, `Reconnect your ${OAUTH[acct.provider].name} calendar`, { reconnect: true });
+  if (acct.access_token && acct.expires_at > Date.now() + 60000) return unseal(env, acct.access_token);
+  const p = acct.provider;
+  const params = { grant_type: 'refresh_token', refresh_token: await unseal(env, acct.refresh_token) };
+  if (p === 'microsoft') params.scope = OAUTH[p].scope;
+  const t = await tokenRequest(env, p, params);
+  if (!t.ok || !t.out.access_token) {
+    if (t.out.error === 'invalid_grant' || t.status === 401) {
+      await env.DB.prepare("UPDATE calendar_accounts SET status = 'expired', access_token = NULL WHERE id = ?").bind(acct.id).run();
+      throw new HttpError(409, `Reconnect your ${OAUTH[p].name} calendar`, { reconnect: true });
+    }
+    throw new HttpError(502, `Couldn’t reach ${OAUTH[p].name}. Try again later.`);
+  }
+  const a = await seal(env, t.out.access_token), exp = Date.now() + (+t.out.expires_in || 3600) * 1000;
+  // Microsoft hands out a new refresh token each time; keep it.
+  const r = t.out.refresh_token ? await seal(env, t.out.refresh_token) : acct.refresh_token;
+  await env.DB.prepare('UPDATE calendar_accounts SET access_token = ?, expires_at = ?, refresh_token = ? WHERE id = ?').bind(a, exp, r, acct.id).run();
+  return t.out.access_token;
+}
+async function providerGet(acct, token, apiUrl, headers = {}) {
+  let res;
+  try { res = await fetch(apiUrl, { headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...headers }, signal: AbortSignal.timeout(10000) }); }
+  catch (e) { throw new HttpError(502, `Couldn’t reach ${OAUTH[acct.provider].name}. Try again later.`); }
+  if (res.status === 401) throw new HttpError(409, `Reconnect your ${OAUTH[acct.provider].name} calendar`, { reconnect: true });
+  if (!res.ok) throw new HttpError(502, `${OAUTH[acct.provider].name} answered with an error (${res.status})`);
+  return res.json();
+}
+// Brings the account's calendar list up to date. New calendars: the main one greys out busy times, others start off.
+async function syncCalendars(env, acct, token) {
+  let list;
+  if (acct.provider === 'google') {
+    const r = await providerGet(acct, token, 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=100&fields=items(id,summary,summaryOverride,primary,backgroundColor)');
+    list = (r.items || []).map((x) => ({ ext: x.id, name: x.summaryOverride || x.summary || x.id, color: x.backgroundColor, main: !!x.primary }));
+  } else {
+    const r = await providerGet(acct, token, 'https://graph.microsoft.com/v1.0/me/calendars?$top=100&$select=id,name,hexColor,isDefaultCalendar');
+    list = (r.value || []).map((x) => ({ ext: x.id, name: x.name || 'Calendar', color: x.hexColor, main: !!x.isDefaultCalendar }));
+  }
+  list = list.filter((x) => typeof x.ext === 'string' && x.ext.length <= 500);
+  const { results: have } = await env.DB.prepare('SELECT id, ext_id FROM user_calendars WHERE account_id = ?').bind(acct.id).all();
+  const known = new Set(have.map((x) => x.ext_id)), wanted = new Set(list.map((x) => x.ext));
+  const total = await env.DB.prepare('SELECT COUNT(*) AS n, MAX(position) AS p FROM user_calendars WHERE user_id = ?').bind(acct.user_id).first();
+  let room = MAX_CALENDARS - total.n + have.filter((x) => !wanted.has(x.ext_id)).length, pos = (total.p || 0) + 1;
+  const stmts = have.filter((x) => !wanted.has(x.ext_id)).map((x) => env.DB.prepare('DELETE FROM user_calendars WHERE id = ?').bind(x.id));
+  for (const x of list) {
+    if (known.has(x.ext)) { stmts.push(env.DB.prepare('UPDATE user_calendars SET color = ? WHERE account_id = ? AND ext_id = ?').bind(calColor(x.color), acct.id, x.ext)); continue; }
+    if (room-- <= 0) break;
+    stmts.push(env.DB.prepare('INSERT INTO user_calendars (id, user_id, account_id, ext_id, name, color, auto, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(randomId(12), acct.user_id, acct.id, x.ext, String(x.name).slice(0, 60), calColor(x.color), x.main ? 1 : 0, pos++, now()));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+}
+const clip = (s, n) => String(s || '').slice(0, n);
+// GET ?from=<ms>&to=<ms>. iCal: the raw feed. Google / Outlook: { events: [{ s, e, allDay, title }] },
+// with s / e in ms (timed) or 'YYYY-MM-DD' (all-day, end exclusive). Free and cancelled events are left out.
+async function calendarBusy(request, env, url, cid) {
+  const user = requireUser(request);
+  const c = await ownCalendar(env, user, cid);
+  await calThrottle(env, request, user);
+  if (c.url) return icsResponse(await fetchIcalText(c.url));
+  const from = +url.searchParams.get('from'), to = +url.searchParams.get('to');
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > BUSY_MAX_DAYS * 86400000) throw new HttpError(400, 'Invalid time range');
+  const acct = await env.DB.prepare('SELECT * FROM calendar_accounts WHERE id = ?').bind(c.account_id).first();
+  if (!acct) throw new HttpError(404, 'Calendar not found');
+  const token = await accessToken(env, acct);
+  const tMin = new Date(from).toISOString(), tMax = new Date(to).toISOString(), events = [];
+  if (acct.provider === 'google') {
+    let page = '';
+    for (let i = 0; i < 3; i++) {
+      const q = new URLSearchParams({ singleEvents: 'true', maxResults: '2500', timeMin: tMin, timeMax: tMax, fields: 'items(summary,start,end,status,transparency),nextPageToken' });
+      if (page) q.set('pageToken', page);
+      const r = await providerGet(acct, token, `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.ext_id)}/events?${q}`);
+      for (const x of r.items || []) {
+        if (x.status === 'cancelled' || x.transparency === 'transparent' || !x.start || !x.end) continue;
+        if (x.start.date) events.push({ s: x.start.date, e: x.end.date || x.start.date, allDay: true, title: clip(x.summary, 200) });
+        else { const s = Date.parse(x.start.dateTime), e = Date.parse(x.end.dateTime); if (s < e) events.push({ s, e, allDay: false, title: clip(x.summary, 200) }); }
+      }
+      if (!(page = r.nextPageToken)) break;
+    }
+  } else {
+    const q = new URLSearchParams({ startDateTime: tMin, endDateTime: tMax, $top: '500', $select: 'subject,start,end,showAs,isAllDay,isCancelled' });
+    let next = `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(c.ext_id)}/calendarView?${String(q).replace(/%24/g, '$')}`;
+    for (let i = 0; i < 3 && next; i++) {
+      if (!next.startsWith('https://graph.microsoft.com/')) break;
+      const r = await providerGet(acct, token, next, { prefer: 'outlook.timezone="UTC"' });
+      for (const x of r.value || []) {
+        if (x.isCancelled || x.showAs === 'free' || !x.start || !x.end) continue;
+        if (x.isAllDay) events.push({ s: x.start.dateTime.slice(0, 10), e: x.end.dateTime.slice(0, 10), allDay: true, title: clip(x.subject, 200) });
+        else { const s = Date.parse(x.start.dateTime + 'Z'), e = Date.parse(x.end.dateTime + 'Z'); if (s < e) events.push({ s, e, allDay: false, title: clip(x.subject, 200) }); }
+      }
+      next = r['@odata.nextLink'];
+    }
+  }
+  return json({ events });
 }
 
 // Polls the account owns (with their current round) and polls it answered.
@@ -1231,6 +1569,7 @@ async function runScheduled(env) {
       env.DB.prepare('DELETE FROM login_attempts WHERE at < ?').bind(new Date(Date.now() - 86400000).toISOString()),
       env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(now()),
       env.DB.prepare('DELETE FROM mail_log WHERE at < ?').bind(new Date(Date.now() - 2 * 86400000).toISOString()),
+      env.DB.prepare('DELETE FROM oauth_states WHERE created_at < ?').bind(new Date(Date.now() - 3600000).toISOString()),
     ]);
   } catch (e) { console.error('cleanup', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();

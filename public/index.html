@@ -328,6 +328,31 @@
   .slot.si{background:var(--ifn);border-color:color-mix(in srgb,var(--ifn) 75%,#000)}
   .slot.sm{background:var(--maybe);border-color:color-mix(in srgb,var(--maybe) 75%,#000)}
   .slot.na{background:var(--sunken);cursor:default;opacity:.5}
+  /* Busy in the person's own calendar (greyed out while answering; answers are unchanged) */
+  :root{--busy-hatch:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 42%,transparent) 0 2px,transparent 2px 6px)}
+  .slot.busy{position:relative}
+  .slot.busy:not(.sy):not(.si):not(.sm){background:var(--sunken)}
+  .slot.busy::before{content:"";position:absolute;inset:0;background:var(--busy-hatch);pointer-events:none}
+  .slot.busy.sy::before,.slot.busy.si::before,.slot.busy.sm::before{background:repeating-linear-gradient(135deg,rgba(0,0,0,.16) 0 2px,transparent 2px 6px)}
+  .day.bzf::before{content:"";position:absolute;inset:0;background:var(--busy-hatch);pointer-events:none}
+  .day.bzf:not(.y):not(.i):not(.m):not(.part){background:var(--sunken)}
+  .day .bzm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--busy-hatch),var(--sunken);border:1px solid var(--line-strong);pointer-events:none}
+  .day .star~.bzm,.day .bzm.star2{right:24px}
+  /* Account: calendars */
+  .callist .cgrp{font-size:12px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:14px 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .callist .cgrp .grow{min-width:0} .callist .cgrp>svg{width:15px;height:15px;flex:none}
+  .callist .cgrp:first-child{padding-top:4px}
+  .callist li{flex-wrap:nowrap;align-items:center;gap:10px}
+  .callist .pmain{display:flex;flex-direction:column;min-width:0}
+  .callist .pmain>.small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .callist .acts{flex:none;gap:2px;align-items:center}
+  .callist li .cdot{flex:none;width:12px;height:12px;border-radius:4px;background:var(--c,var(--accent))}
+  .callist li.off .cname{color:var(--muted)}
+  .qb.tog[aria-pressed=true]{color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+  .caladd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+  .caladd .padd{flex:1 1 100%}
+  .calpick{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
+  .calpick .check{margin:0} .calpick .cdot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c,var(--accent));margin-right:2px}
   .slot.na,.slot.off:not(.hm):not(.mo){background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 1px,transparent 1px 7px)}
   .slot.off{background-color:var(--sunken)} /* outside the day's periods: can still be scheduled, but nobody was asked */
 
@@ -677,6 +702,35 @@
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
   @media (max-width:640px){ .grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
   .unit-in{display:flex;align-items:center;gap:8px} .unit-in input{flex:none;width:72px} .unit-in select{flex:1;min-width:0} .unit-in span{font-size:13px;color:var(--muted);line-height:1.3}
+  /* date picker: a compact button; the popup has the date inputs (to type) and a month calendar (to click) */
+  .dates-row{display:flex;flex-wrap:wrap;gap:0 12px;align-items:flex-end}
+  .dpk{position:relative;--band:color-mix(in srgb,var(--accent) 20%,var(--card))}
+  .dpk-btn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:14px;min-height:40px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap;max-width:100%;transition:border-color .12s,box-shadow .12s}
+  .dpk-btn svg{width:16px;height:16px;color:var(--muted);flex:none}
+  .dpk-btn:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
+  .dpk-btn[aria-expanded=true]{border-color:var(--accent);box-shadow:var(--ring)}
+  .dpk-ph,.dpk-c{color:var(--muted)}
+  .dpk-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;width:max-content;max-width:calc(100vw - 24px);background:var(--card);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow-pop);padding:12px 14px}
+  .dpk-ins{display:flex;gap:8px;align-items:flex-end} .dpk-ins .field{margin-top:0;flex:1;min-width:0} .dpk-ins input{width:100%} .dpk-dash{padding-bottom:10px;color:var(--muted)}
+  .dpk-cal{position:relative;margin-top:10px}
+  .dpk-months{display:flex;gap:22px}
+  .dpk-mt{text-align:center;font-weight:600;font-size:13.5px;line-height:30px;height:30px}
+  .dpk-prev,.dpk-next{position:absolute;top:0;width:30px;padding:0!important;font-size:17px!important} .dpk-prev{left:0} .dpk-next{right:0}
+  .dpk-g{display:grid;grid-template-columns:repeat(7,36px);row-gap:2px}
+  .dpk-wd{font-size:11px;font-weight:600;color:var(--muted);text-align:center;padding:2px 0 4px}
+  .dpk-g .d{border:0;background:none;padding:0;height:34px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+  .dpk-g .d span{width:32px;height:32px;display:grid;place-items:center;border-radius:50%}
+  .dpk-g .d:hover span{background:var(--empty)}
+  .dpk-g .d.past{color:var(--muted)}
+  .dpk-g .d.today span{box-shadow:inset 0 0 0 1px var(--accent)}
+  .dpk-g .d.in{background:var(--band)}
+  .dpk-g .d.ctx{background:color-mix(in srgb,var(--accent) 10%,var(--card))}
+  .dpk-g .d.in.c0{border-radius:17px 0 0 17px} .dpk-g .d.in.c6{border-radius:0 17px 17px 0}
+  .dpk-g .d.bs:not(.c6){background:linear-gradient(90deg,transparent 50%,var(--band) 50%)}
+  .dpk-g .d.be:not(.c0){background:linear-gradient(90deg,var(--band) 50%,transparent 50%)}
+  .dpk-g .d.s span,.dpk-g .d.e span,.dpk-g .d.sel span{background:var(--accent);color:#fff;font-weight:700}
+  .dpk-foot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  @media (max-width:560px){ .dates-row>.field{flex:1 1 100%} .dpk-btn{width:100%} }
   .series-grid{margin-top:var(--s1)} .series-grid>.field{margin-top:var(--s3)} .series-grid input[type=month],.series-grid input[type=date]{width:100%}
   .choice{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
   .choice.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -941,6 +995,13 @@ const ERR_DE = [
   [/^You can have at most (\d+) polls\. Delete an old one first\.$/, (m,n)=>`Du kannst höchstens ${n} Umfragen haben. Lösch zuerst eine alte.`],
   [/^Daily email limit reached \((\d+) recipients\)\. Try again tomorrow\.$/, (m,n)=>`Tageslimit für E-Mails erreicht (${n} Empfänger). Versuch es morgen wieder.`],
   [/^Request failed \((\d+)\)$/, (m,n)=>`Anfrage fehlgeschlagen (${n})`],
+  [/^At most (\d+) calendar links per account$/, (m,n)=>`Höchstens ${n} Kalender-Links pro Konto`],
+  [/^Too many calendar requests\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Abrufe. Versuch es in ${n} Minuten noch einmal.`],
+  [/^Too many calendar imports\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Importe. Versuch es in ${n} Minuten noch einmal.`],
+  [/^Too many tries\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
+  [/^Reconnect your (.+) calendar$/, (m,p)=>`Verbinde deinen ${p}-Kalender neu`],
+  [/^Couldn’t reach (.+)\. Try again later\.$/, (m,p)=>`${p} ist nicht erreichbar. Versuch es später noch einmal.`],
+  [/^(.+) answered with an error \((\d+)\)$/, (m,p,n)=>`${p==='The calendar link'?'Der Kalender-Link':p} hat mit einem Fehler geantwortet (${n})`],
 ];
 function tErr(msg){ if(LANG!=='de'||!msg) return msg; if(DE[msg]) return DE[msg];
   for(const [re,f] of ERR_DE){ const m=String(msg).match(re); if(m) return f(...m); } return msg; }
@@ -1223,6 +1284,106 @@ Object.assign(ICON,{
   checks:svgI('<path d="m2.5 12.5 4.5 4.5 9-10M11.5 16.5l.5.5 9-10"/>'),
 });
 // An ⓘ icon that shows its text on hover (desktop) or tap/focus (phones). html is trusted markup built by the caller.
+// Date picker: a compact button showing the value. Its popup holds the real <input type=date> (to type a date)
+// and a month calendar (to click one). mode 'range': inputs o.a/o.b, click the first day then the last, the range
+// is highlighted (also while hovering). mode 'single': input o.a; o.ctx() = a range to shade (the poll's days).
+// Changes fire 'input'/'change' on the inputs, so forms see them like typed dates.
+const DPK={};
+function dpk(id,o){
+  DPK[id]=Object.assign({view:null,pick:false,hover:null},o);
+  const ins = o.mode==='range'
+    ? `<div class="field"><label for="${o.a}">${t('From')}</label><input type="date" id="${o.a}"></div><span class="dpk-dash">–</span>
+       <div class="field"><label for="${o.b}">${t('To')}</label><input type="date" id="${o.b}"></div>`
+    : `<div class="field"><input type="date" id="${o.a}" aria-label="${esc(o.title)}"></div>`;
+  return `<div class="dpk" id="dpk_${id}"><button type="button" class="dpk-btn" id="dpkb_${id}" aria-haspopup="dialog" aria-expanded="false">${o.icon||ICON.cal}<span class="dpk-v"></span></button>
+    <div class="dpk-pop hide" role="dialog" aria-label="${esc(o.title)}"><div class="dpk-ins">${ins}</div><div class="dpk-cal"></div>
+      <div class="dpk-foot"><span class="grow small muted dpk-n"></span>${o.mode==='single'?`<button type="button" class="btn sm ghost" data-dpkclear>${t('Clear')}</button>`:''}<button type="button" class="btn sm primary" data-dpkdone>${t('Done')}</button></div></div></div>`;
+}
+const dpkOpenId=()=>{ const p=document.querySelector('.dpk-pop:not(.hide)'); return p?p.closest('.dpk').id.slice(4):null; };
+function dpkSync(id){
+  const o=DPK[id], root=$('dpk_'+id); if(!o||!root) return;
+  const a=$(o.a).value, b=o.b?$(o.b).value:''; let v='', n='';
+  if(o.mode==='range'){ if(a) v=`${dayLabel(a)} – ${b?dayLabel(b):'…'}`;
+    if(a&&b&&b>=a){ const d=Math.round((parseD(b)-parseD(a))/864e5)+1; n=d===1?t('{n} day',{n:d}):t('{n} days',{n:d}); } }
+  else if(a) v=dayLabel(a);
+  root.querySelector('.dpk-v').innerHTML=v?esc(v)+(n?` <span class="dpk-c">· ${esc(n)}</span>`:''):`<span class="dpk-ph">${esc(o.empty)}</span>`;
+  root.querySelector('.dpk-n').textContent=o.mode==='range'?(o.pick?t('Now click the last day'):t('Click the first day, then the last')):'';
+  if(dpkOpenId()===id) dpkCal(id);
+}
+function dpkCal(id){
+  const o=DPK[id], root=$('dpk_'+id), a=$(o.a).value, b=o.b?$(o.b).value:'', today=isoL(new Date());
+  const nm=o.mode==='range'&&!matchMedia('(max-width:620px)').matches?2:1;
+  if(!o.view) o.view=(a||today).slice(0,7);
+  const end=o.pick?(o.hover&&o.hover>=a?o.hover:a):b;   // while picking, the range follows the mouse
+  const [ca,cb]=o.mode==='single'&&o.ctx?o.ctx():['',''];
+  const wd=[0,1,2,3,4,5,6].map(i=>new Date(2024,0,1+i).toLocaleDateString(LOC,{weekday:'short'}).replace('.','').slice(0,2));
+  const [vy,vm]=o.view.split('-').map(Number); let html='';
+  for(let m=0;m<nm;m++){
+    const first=new Date(vy,vm-1+m,1), lead=(first.getDay()+6)%7, days=new Date(vy,vm+m,0).getDate();
+    let cells=wd.map(w=>`<span class="dpk-wd">${esc(w)}</span>`).join('')+'<span></span>'.repeat(lead);
+    for(let d=1;d<=days;d++){
+      const k=isoL(new Date(vy,vm-1+m,d)), cl=['d','c'+((lead+d-1)%7)];
+      if(k===today) cl.push('today'); if(k<today) cl.push('past');
+      if(o.mode==='range'){ const ok=a&&end&&end>a;
+        if(k===a) cl.push('s'); if(end&&k===end) cl.push('e');
+        if(ok){ if(k===a) cl.push('bs'); if(k===end) cl.push('be'); if(k>a&&k<end) cl.push('in'); } }
+      else { if(k===a) cl.push('sel'); if(ca&&cb&&k>=ca&&k<=cb) cl.push('ctx'); }
+      cells+=`<button type="button" tabindex="-1" class="${cl.join(' ')}" data-k="${k}" aria-label="${esc(longDay(k))}"><span>${d}</span></button>`;
+    }
+    html+=`<div class="dpk-m"><div class="dpk-mt">${esc(first.toLocaleDateString(LOC,{month:'long',year:'numeric'}))}</div><div class="dpk-g">${cells}</div></div>`;
+  }
+  root.querySelector('.dpk-cal').innerHTML=`<button type="button" class="btn ghost sm dpk-prev" data-dpknav="-1" aria-label="${t('Previous month')}">‹</button>
+    <button type="button" class="btn ghost sm dpk-next" data-dpknav="1" aria-label="${t('Next month')}">›</button><div class="dpk-months">${html}</div>`;
+}
+function dpkOpen(id){
+  const cur=dpkOpenId(); if(cur&&cur!==id) dpkClose(cur);
+  const o=DPK[id], root=$('dpk_'+id), pop=root.querySelector('.dpk-pop');
+  o.pick=false; o.hover=null; o.view=null; pop.classList.remove('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','true');
+  dpkSync(id); pop.style.left='0';
+  const r=pop.getBoundingClientRect(); if(r.right>innerWidth-12) pop.style.left=Math.min(0,innerWidth-12-r.right)+'px';
+  pop.scrollIntoView({block:'nearest'});
+}
+function dpkClose(id,focus){
+  const o=DPK[id], root=$('dpk_'+id); if(!root) return;
+  root.querySelector('.dpk-pop').classList.add('hide'); root.querySelector('.dpk-btn').setAttribute('aria-expanded','false');
+  o.pick=false; o.hover=null; dpkSync(id); if(focus) root.querySelector('.dpk-btn').focus();
+}
+function dpkSet(inp,v){ if(inp.value===v) return; inp.value=v; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('change',{bubbles:true})); }
+function dpkPick(id,k){
+  const o=DPK[id], A=$(o.a);
+  if(o.mode==='single'){ dpkSet(A,k); dpkClose(id,true); return; }
+  const B=$(o.b);
+  if(!o.pick||k<A.value){ o.pick=true; dpkSet(A,k); dpkSet(B,k); }   // first click (or a day before it): new start
+  else { o.pick=false; o.hover=null; dpkSet(B,k); }
+  dpkSync(id);
+}
+document.addEventListener('click',e=>{
+  const root=e.target.closest&&e.target.closest('.dpk'), id=root&&root.id.slice(4);
+  if(root){
+    if(e.target.closest('.dpk-btn')){ dpkOpenId()===id?dpkClose(id):dpkOpen(id); return; }
+    const nav=e.target.closest('[data-dpknav]');
+    if(nav){ const o=DPK[id], [y,m]=o.view.split('-').map(Number); o.view=isoL(new Date(y,m-1+(+nav.dataset.dpknav),1)).slice(0,7); dpkCal(id); return; }
+    const d=e.target.closest('.dpk-g .d'); if(d){ dpkPick(id,d.dataset.k); return; }
+    if(e.target.closest('[data-dpkdone]')){ dpkClose(id,true); return; }
+    if(e.target.closest('[data-dpkclear]')){ dpkSet($(DPK[id].a),''); dpkClose(id,true); return; }
+  }
+  const cur=dpkOpenId(); if(cur&&cur!==id&&e.target.isConnected) dpkClose(cur);
+});
+document.addEventListener('mouseover',e=>{
+  const d=e.target.closest&&e.target.closest('.dpk-g .d'); if(!d) return;
+  const id=d.closest('.dpk').id.slice(4), o=DPK[id]; if(!o.pick||o.hover===d.dataset.k) return;
+  o.hover=d.dataset.k; dpkCal(id);
+});
+document.addEventListener('input',e=>{   // typed into a picker's date input: follow it in the calendar
+  const root=e.target.closest&&e.target.closest('.dpk'); if(!root) return; const id=root.id.slice(4), o=DPK[id];
+  if(e.isTrusted){ o.pick=false; const v=e.target.value; if(/^\d{4}-\d{2}-\d{2}$/.test(v)) o.view=v.slice(0,7); }
+  dpkSync(id);
+});
+document.addEventListener('keydown',e=>{
+  const cur=dpkOpenId(); if(!cur) return;
+  if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); dpkClose(cur,true); }
+  else if(e.key==='Enter'&&e.target.closest&&e.target.closest('.dpk-pop')&&e.target.tagName==='INPUT'){ e.preventDefault(); dpkClose(cur,true); }
+},true);
 function tip(html,cls=''){ return `<span class="tip ${cls}" tabindex="0" role="note" aria-label="Info">${ICON.info}<span class="tipb">${html}</span></span>`; }
 // A button whose text label hides on phones (icon only there); the full label stays as title + aria-label.
 // short: optional label shown on phones next to the icon. cls: extra classes, attrs: raw attributes (escape values!).
@@ -1652,11 +1813,10 @@ function renderNew(){
       <div class="section step"><h3>${t('When')}</h3>
         <div class="field">${choice('kind',[['single',t('One-off'),t('One date range, like a trip or a single meeting')],['series',t('Recurring'),t('A new poll every week or month, like a monthly club night')],['weekly',t('Weekly schedule'),t('Find a regular weekly slot, like a band rehearsal')]],'single')}</div>
         <div id="weeklyBox" class="hide"><p class="help mt-0">${t('People mark the days and hours that usually work for them in a typical week (Monday to Sunday, no dates). You then pick a slot and send it as a repeating calendar event.')}</p>
-          <div class="grid3"><div class="field"><label for="dlw">${t('Reply by')} <span class="opt">${t('optional')}</span></label><input type="date" id="dlw"></div></div></div>
-        <div id="singleBox" class="grid3">
-          <div class="field"><label for="start">${t('From')}</label><input type="date" id="start"></div>
-          <div class="field"><label for="end">${t('To')}</label><input type="date" id="end"></div>
-          <div class="field"><label for="dl">${t('Reply by')} <span class="opt">${t('optional')}</span></label><input type="date" id="dl"></div>
+          <div class="dates-row"><div class="field"><label for="dpkb_dlw">${t('Reply by')} <span class="opt">${t('optional')}</span></label>${dpk('dlw',{mode:'single',a:'dlw',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline')})}</div></div></div>
+        <div id="singleBox" class="dates-row">
+          <div class="field"><label for="dpkb_rng">${t('Dates')}</label>${dpk('rng',{mode:'range',a:'start',b:'end',title:t('Pick dates'),empty:t('Pick a date range')})}</div>
+          <div class="field"><label for="dpkb_dl">${t('Reply by')} <span class="opt">${t('optional')}</span></label>${dpk('dl',{mode:'single',a:'dl',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>[$('start').value,$('end').value]})}</div>
         </div>
         <div id="seriesBox" class="hide grid2 series-grid">
           <div class="field"><label for="every">${t('Repeats every')}</label><div class="unit-in"><input type="number" id="every" min="1" max="12" value="1">
@@ -1695,6 +1855,7 @@ function renderNew(){
   const today=new Date(), iso=isoL;
   const getR = n => (document.querySelector(`input[name="${n}"]:checked`)||{}).value;
   $('start').value=iso(today); $('end').value=iso(new Date(today.getFullYear(),today.getMonth(),today.getDate()+13));
+  ['rng','dl','dlw'].forEach(dpkSync);
   const nextMonth=new Date(today.getFullYear(),today.getMonth()+1,1); $('first').value=iso(nextMonth).slice(0,7);
   const seriesSettings=()=>({unit:$('unit').value, every:Math.max(1,+$('every').value||1), anchor:$('unit').value==='month'?($('first').value||'').slice(0,7)+'-01':$('first').value,
     openDays:+$('openDays').value||0, deadlineDays:$('dlDays').value===''?null:+$('dlDays').value});
@@ -1758,7 +1919,7 @@ function renderNew(){
   f.onsubmit=async e=>{
     e.preventDefault(); const v=id=>$(id).value, err=$('ferr'); err.textContent='';
     const kind=getR('kind'), ans=getR('ans');
-    const fail=(msg,id)=>{ err.textContent=msg; if(id){ $(id).focus(); } return false; };
+    const fail=(msg,id)=>{ err.textContent=msg; if(id){ const el=$(id), pk=el.closest('.dpk'); if(pk) dpkOpen(pk.id.slice(4)); el.focus(); } return false; };
     const check=()=>{
       if(!v('title').trim()) return fail(t('Give the poll a title.'),'title');
       if(kind==='single'){
@@ -1803,6 +1964,90 @@ function renderCreated(id, body, kind){
 }
 
 // ================= ACCOUNT =================
+// ---------- account: calendars ----------
+const CALUI={edit:null};
+async function renderCalCard(){
+  const box=$('calbox'); if(!box) return;
+  const r=await loadCals(); if(!r||!$('calbox')) return;
+  const prov=Object.assign({google:false,microsoft:false},CONFIG.calProviders||{});
+  const row=c=>CALUI.edit===c.id
+    ?`<li><span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span><span class="padd grow"><input type="text" id="cal_ren" maxlength="60" value="${esc(c.name)}" aria-label="${t('Name')}" data-calrenkey="${esc(c.id)}" autocomplete="off"></span>
+        <span class="acts">${pqb('check',t('Save'),`data-calrensave="${esc(c.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-calrencancel=""')}</span></li>`
+    :`<li class="${c.auto?'':'off'}"><span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span>
+        <span class="grow pmain"><b class="cname ell">${esc(c.name)}</b>${c.host&&c.host!==c.name?`<span class="muted small ell">${esc(c.host)}</span>`:''}</span>
+        <span class="acts"><button type="button" class="qb tog" data-calauto="${esc(c.id)}" aria-pressed="${c.auto}" title="${c.auto?t('Greying out busy times: on'):t('Greying out busy times: off')}" aria-label="${t('Grey out busy times')}">${ICON.eye}</button>
+          ${pqb('edit',t('Rename'),`data-calren="${esc(c.id)}"`)}${c.accountId?'':pqb('trash',t('Remove'),`data-caldel="${esc(c.id)}"`,' danger')}</span></li>`;
+  const groups=r.accounts.map(a=>{ const cs=r.calendars.filter(c=>c.accountId===a.id), pn=a.provider==='google'?'Google':'Outlook';
+    return `<div class="cgrp">${ICON.cal}<span class="grow ell">${esc(pn)}${a.email?` · ${esc(a.email)}`:''}</span>
+      ${a.status==='expired'?`<a class="btn sm primary" href="/api/oauth/${esc(a.provider)}/start?hint=${encodeURIComponent(a.email||'')}">${t('Reconnect')}</a>`:pqb('repeat',t('Reload the calendar list'),`data-calrefresh="${esc(a.id)}"`)}
+      ${pqb('x',t('Disconnect'),`data-caldisc="${esc(a.id)}"`,' danger')}</div>
+      ${a.status==='expired'?`<p class="help mt-0">${t('Access ended or was revoked. Reconnect to keep using these calendars.')}</p>`:''}
+      ${cs.length?`<ul class="list">${cs.map(row).join('')}</ul>`:`<p class="help mt-0">${t('No calendars found.')}</p>`}`; }).join('');
+  const links=r.calendars.filter(c=>!c.accountId);
+  const linkGrp=links.length?`<div class="cgrp">${ICON.link}<span class="grow">${t('Calendar links')}</span></div><ul class="list">${links.map(row).join('')}</ul>`:'';
+  const canWebcal=!TOUCH&&navigator.registerProtocolHandler&&location.protocol==='https:';
+  const typed={n:$('caladd_n')?$('caladd_n').value:'',u:$('caladd_u')?$('caladd_u').value:''};
+  box.innerHTML=`<div class="callist">${groups}${linkGrp}${!groups&&!linkGrp?`<p class="help mt-0">${t('No calendars yet. Connect one below.')}</p>`:''}</div>
+    <div class="caladd">
+      ${prov.google?`<a class="btn sm withic" href="/api/oauth/google/start">${ICON.plus}<span>${t('Connect Google')}</span></a>`:''}
+      ${prov.microsoft?`<a class="btn sm withic" href="/api/oauth/microsoft/start">${ICON.plus}<span>${t('Connect Outlook')}</span></a>`:''}
+      <span class="muted small">${prov.google||prov.microsoft?t('or add a calendar link:'):t('Add a calendar link:')}</span>
+      ${tip(t('<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.'),'right')}
+      ${canWebcal?`<button type="button" class="btn sm ghost withic" data-calwebcal title="${t('Clicking a webcal:// link then opens when-who to add it')}">${ICON.link}<span>${t('Open webcal links here')}</span></button>`:''}
+      <div class="padd"><input type="text" id="caladd_n" maxlength="60" placeholder="${t('Name (optional)')}" aria-label="${t('Name (optional)')}" autocomplete="off" value="${esc(typed.n)}">
+        <input type="url" id="caladd_u" maxlength="2000" placeholder="${t('iCal link (https://… or webcal://…)')}" aria-label="${t('iCal link')}" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(typed.u)}">
+        <button type="button" class="btn primary padd-btn" data-caladd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
+      <div class="err" id="caladd_err"></div></div>`;
+  if(CALUI.edit){ const x=$('cal_ren'); if(x){ x.focus(); x.select(); } }
+}
+async function calChanged(msg){ CALS.list=null; BUSY.key=''; try{ sessionStorage.removeItem('busy'); }catch(e){}
+  try{ Object.assign(ME, await api('GET','/me')); }catch(e){} await renderCalCard(); if(msg) toast(msg); }
+async function calAdd(btn){
+  const u=$('caladd_u'), n=$('caladd_n'), err=$('caladd_err'); if(!u) return; err.textContent='';
+  if(!u.value.trim()){ err.textContent=t('Paste your calendar’s iCal link first'); u.focus(); return; }
+  btn.disabled=true;
+  try{ await api('POST','/me/calendars',{url:u.value.trim(),name:n.value.trim()}); u.value=''; n.value=''; await calChanged(t('Calendar added')); }
+  catch(ex){ err.textContent=ex.message; }
+  finally{ btn.disabled=false; }
+}
+async function calRename(id){
+  const x=$('cal_ren'); if(!x) return; const name=x.value.trim(); if(!name){ x.focus(); return; }
+  try{ await api('PATCH',`/me/calendars/${encodeURIComponent(id)}`,{name}); CALUI.edit=null; await calChanged(t('Saved')); }catch(ex){ toast(ex.message); }
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-calauto],[data-calren],[data-calrensave],[data-calrencancel],[data-caldel],[data-caldisc],[data-calrefresh],[data-caladd],[data-calwebcal]');
+  if(!b||!$('calbox')) return; const d=b.dataset, r=CALS.list;
+  if(d.caladd!==undefined){ calAdd(b); return; }
+  if(d.calwebcal!==undefined){ try{ navigator.registerProtocolHandler('webcal',location.origin+'/?account&addcal=%s'); toast(t('Your browser may ask to confirm')); }catch(ex){ toast(ex.message); } return; }
+  if(d.calrencancel!==undefined){ CALUI.edit=null; renderCalCard(); return; }
+  if(d.calren){ CALUI.edit=d.calren; renderCalCard(); return; }
+  if(d.calrensave){ calRename(d.calrensave); return; }
+  b.disabled=true;
+  try{
+    if(d.calauto){ const c=r&&r.calendars.find(x=>x.id===d.calauto); if(!c) return;
+      await api('PATCH',`/me/calendars/${encodeURIComponent(c.id)}`,{auto:!c.auto}); await calChanged(c.auto?t('Grey-out off for {name}',{name:c.name}):t('Grey-out on for {name}',{name:c.name})); }
+    else if(d.caldel){ const c=r&&r.calendars.find(x=>x.id===d.caldel); if(!c||!confirm(t('Remove the calendar “{name}”?',{name:c.name}))) return;
+      await api('DELETE',`/me/calendars/${encodeURIComponent(c.id)}`); await calChanged(t('Calendar removed')); }
+    else if(d.caldisc){ const a=r&&r.accounts.find(x=>x.id===d.caldisc); if(!a||!confirm(t('Disconnect {what}? Its calendars are removed from when-who.',{what:(a.provider==='google'?'Google':'Outlook')+(a.email?' ('+a.email+')':'')}))) return;
+      await api('DELETE',`/me/calendar-accounts/${encodeURIComponent(a.id)}`); await calChanged(t('Disconnected')); }
+    else if(d.calrefresh){ await api('POST',`/me/calendar-accounts/${encodeURIComponent(d.calrefresh)}/refresh`); await calChanged(t('Calendar list updated')); }
+  }catch(ex){ toast(ex.message); if(ex.data&&ex.data.reconnect) calChanged(); }
+  finally{ b.disabled=false; }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='caladd_u'&&e.key==='Enter'){ e.preventDefault(); const b=document.querySelector('[data-caladd]'); if(b) calAdd(b); }
+  else if(e.target.id==='cal_ren'){ if(e.key==='Enter'){ e.preventDefault(); calRename(e.target.dataset.calrenkey); } else if(e.key==='Escape'){ CALUI.edit=null; renderCalCard(); } }
+});
+// Back from Google / Outlook sign-in (?cal=…), or a webcal:// link opened here (?addcal=…).
+function calReturn(qs){
+  const res=qs.get('cal'), add=qs.get('addcal'); if(!res&&!add) return;
+  const msg={ok:t('Calendar connected'),denied:t('Calendar access wasn’t granted'),signin:t('Sign in first, then connect your calendar'),
+    toomany:t('You can connect at most 5 calendar accounts'),error:t('Connecting the calendar didn’t work. Please try again.')}[res];
+  if(msg) setTimeout(()=>toast(msg),300);
+  if(add) setTimeout(()=>{ const u=$('caladd_u'); if(u){ u.value=add.replace(/^web\+?webcal:/,'').trim(); u.focus(); } },400);
+  qs.delete('cal'); qs.delete('addcal');
+  history.replaceState(null,'',location.pathname+(String(qs)?'?'+String(qs).replace(/=(&|$)/g,'$1'):'')+location.hash);
+}
 function renderAccount(){
   document.title=t('Account')+' · when-who';
   if(!ME.user){
@@ -1835,17 +2080,14 @@ function renderAccount(){
           <div class="stat"><b>${answers}</b><span>${t('answers in current rounds')}</span></div>
           <a class="stat" href="${esc(origin)}"><b>${(ME.answered||[]).length}</b><span>${t('polls answered')}</span></a>
         </div>
-        <div class="section"><h3>${t('Calendar')}</h3>${u.calendar
-            ?`<p class="help">${t('Saved iCal link on <b>{host}</b>. Use it on any poll with <i>From calendar…</i>. Only you can use it; it is never shown to others.',{host:esc(u.calendar)})}</p>
-              <div class="row mt-3"><button type="button" class="btn sm danger" data-calremove>${t('Remove calendar')}</button></div>`
-            :`<p class="help">${t('Save your calendar’s iCal link to fill in polls from it with one click. Add it from <i>From calendar…</i> on any poll you answer.')}</p>`}</div>
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
+      <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}</h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}</div>
+        <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
     </div></main>`;
+  renderCalCard();
   $('pf_name').addEventListener('input',e=>pickerSetText('avatar',e.target.value||u.email));
-  const cr=document.querySelector('[data-calremove]');
-  if(cr) cr.onclick=async()=>{ cr.disabled=true; try{ await api('PATCH','/me',{icalUrl:''}); Object.assign(ME, await api('GET','/me')); renderAccount(); toast(t('Calendar removed')); }catch(ex){ toast(ex.message); cr.disabled=false; } };
   $('pf').onsubmit=async e=>{
     e.preventDefault(); const err=$('pf_err'), btn=$('pf_save'); err.textContent=''; btn.disabled=true;
     const pk=pickerValue('avatar'), b={name:$('pf_name').value.trim(), avatar:pk.emoji};
@@ -2379,6 +2621,7 @@ function renderMine(el){
   const menu=`<details class="dd more" id="moredd"><summary class="btn sm ghost withic ib" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp menu">
       ${P.mode==='days'?mi('checks',t('All available'),'data-bulk="all"'):''}
       ${mi('zap',t('Quick fill…'),'data-qf','sm-flex')}${mi('cal',t('From calendar…'),'data-cal','sm-flex')}
+      ${ME.user&&ME.user.calendarsAuto&&editable()?mi('eye',showBusy()?t('Hide my busy times'):t('Show my busy times'),'data-busytoggle'):''}
       ${mi('x',t('Clear all'),'data-bulk="clear"','danger')}</div></details>`;
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${on?` ${t('👥 = how many of the {n} others are free at the best time (+ maybe).',{n})}`:''}`
@@ -2394,7 +2637,9 @@ function renderMine(el){
         const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), is=o.list.filter(x=>fk(x)==='i').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='i'&&f!=='m'; }).map(x=>t('{name} (some hours)',{name:x.name})), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
         tip=names([...ys,...ps],is,ms);
         hint=`<div class="oth"><span class="oi">👥 </span>${o.peak}${o.peakMaybe?`<span class="om">+${o.peakMaybe}?</span>`:''}</div>${heatBar(o.peak,o.peakIfn,o.peakMaybe,n)}`; }
-      return `<div class="day ${s.cls}${hint?' hasbar':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}</div>`; })+'</div>';
+      const H=hours(k), bz=H.map(hr=>busyFor(k,hr)), nb=bz.filter(x=>x.length).length, bt=nb?busyTip(bz.flat()):'';
+      if(bt) tip=tip?tip+' · '+bt:bt;
+      return `<div class="day ${s.cls}${hint?' hasbar':''}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; })+'</div>';
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
     h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
@@ -2404,16 +2649,19 @@ function renderMine(el){
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k||!hours(k).includes(hr)){ h+=`<div class="slot na${pos}"></div>`; return; }
-        const st=hourMap(me[k],k).get(hr);
+        const st=hourMap(me[k],k).get(hr), bt=busyTip(busyFor(k,hr));
         let extra='';
         if(on){ const ys=[], is=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k],k).get(hr); if(s==='y') ys.push(r.name||t('Someone')); else if(s==='i') is.push(r.name||t('Someone')); else if(s==='m') ms.push(r.name||t('Someone')); });
           const fr=ys.length+is.length;
-          if(fr||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${fr?Math.round(6+fr/n*30):0}%" data-n="${fr?fr:''}${ms.length?(fr?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,is,ms))}`; }
-        h+=`<div class="slot${pos}${st?' s'+st:''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
+          if(fr||ms.length) extra=` oh${ms.length?' omb':''}" style="--a:${fr?Math.round(6+fr/n*30):0}%" data-n="${fr?fr:''}${ms.length?(fr?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,is,ms)+(bt?' · '+bt:''))}`; }
+        if(bt&&!extra) extra=`" title="${esc(hh(hr)+' · '+bt)}`;
+        h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'');
+  const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',bzShown?'busy':'');
   el.innerHTML=h;
+  loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
 }
 // Quick fill: mark every day matching a pattern (optionally only some hours) in one go.
@@ -2536,7 +2784,7 @@ function expandRule(rule,st,toW,fromW){
   }
   return out;
 }
-// Busy intervals [startMs, endMs) between fromMs and toMs.
+// Busy intervals [startMs, endMs, title] between fromMs and toMs.
 function parseIcs(text,fromMs,toMsX){
   const lines=String(text).replace(/\r?\n[ \t]/g,'').split(/\r?\n/), evs=[]; let ev=null, depth=0;
   for(const line of lines){
@@ -2554,6 +2802,7 @@ function parseIcs(text,fromMs,toMsX){
     else if(p.name==='EXDATE') p.value.split(',').forEach(v=>{ const t=icsTime(v,p.params); if(t) ev.exdates.push(t); });
     else if(p.name==='RECURRENCE-ID') ev.rid=icsTime(p.value,p.params);
     else if(p.name==='UID') ev.uid=p.value;
+    else if(p.name==='SUMMARY') ev.title=p.value.replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1').slice(0,200);
     else if(p.name==='STATUS') ev.status=p.value.trim().toUpperCase();
     else if(p.name==='TRANSP') ev.transp=p.value.trim().toUpperCase();
   }
@@ -2574,17 +2823,23 @@ function parseIcs(text,fromMs,toMsX){
       const ex=new Set(e.exdates.map(t=>toMs(t.date?st.w%DAY+t.w:t.w,t.tz||tz))), mv=moved[e.uid];
       starts=expandRule(e.rrule,st,toW,fromW).filter(w=>{ const t=toMs(w,tz); return !ex.has(t)&&!(mv&&mv.has(t)); });
     }
-    for(const w of starts){ const [a,b]=span(w); if(a<toMsX&&b>fromMs) busy.push([a,b]); }
+    for(const w of starts){ const [a,b]=span(w); if(a<toMsX&&b>fromMs) busy.push([a,b,e.title||'']); }
   }
   return busy;
 }
 // Free hours (in blank cells only) become "available"; busy hours stay blank, which means not available.
+// Busy intervals overlapping hour h of poll day k.
+function busyAt(busy,k,h){ const a=parseD(k); a.setHours(h); const s=a.getTime(), e=s+3600000; return busy.filter(([x,y])=>x<e&&y>s); }
+const thisMonday=()=>{ const d=new Date(); return addDaysL(isoL(d),-((d.getDay()+6)%7)); };
+// Weekly schedule polls have no real dates: look at the next 4 weeks, busy if busy in at least 2 of them.
+function busyHit(busy,k,h){
+  if(!isWeekly()) return busyAt(busy,k,h);
+  const mon=thisMonday(), hits=[0,1,2,3].map(w=>busyAt(busy,addDaysL(mon,wdOf(k)+7*w),h));
+  return hits.filter(x=>x.length).length>=2?hits.flat():[];
+}
 function calendarFill(busy){
   const days=ansMode()==='days', en=Object.assign({},P.mine.entries); let changedDays=0;
-  const busyAt=(k,h)=>{ const a=parseD(k); a.setHours(h); const s=a.getTime(), e=s+3600000; return busy.some(([x,y])=>x<e&&y>s); };
-  // Weekly schedule polls have no real dates: look at the next 4 weeks, busy if busy in at least 2 of them.
-  const mon=(()=>{ const t=new Date(); return addDaysL(isoL(t),-((t.getDay()+6)%7)); })();
-  const isBusy=(k,h)=>isWeekly()?[0,1,2,3].filter(w=>busyAt(addDaysL(mon,wdOf(k)+7*w),h)).length>=2:busyAt(k,h);
+  const isBusy=(k,h)=>busyHit(busy,k,h).length>0;
   P.data.dates.forEach(k=>{
     const H=hours(k), m=hourMap(en[k],k); if(days&&m.size) return;
     const free=H.filter(h=>!m.has(h)&&!isBusy(k,h)); if(!free.length) return;
@@ -2594,14 +2849,19 @@ function calendarFill(busy){
   P.mine.entries=en; return changedDays;
 }
 function calWindow(){
-  if(isWeekly()){ const t=new Date(), mon=addDaysL(isoL(t),-((t.getDay()+6)%7)); return [parseD(mon).getTime(), parseD(addDaysL(mon,28)).getTime()]; }
+  if(isWeekly()){ const mon=thisMonday(); return [parseD(mon).getTime(), parseD(addDaysL(mon,28)).getTime()]; }
   const ds=P.data.dates; return [parseD(ds[0]).getTime(), parseD(addDaysL(ds[ds.length-1],1)).getTime()];
 }
 function applyCalendar(text){
   if(!editable()) return;
   if(!/BEGIN:VCALENDAR/i.test(String(text).slice(0,2000))){ toast(t("That isn’t a calendar (.ics) file")); return; }
-  const [a,b]=calWindow(); let n;
-  try{ n=calendarFill(parseIcs(text,a,b)); }catch(e){ console.error(e); toast(t("Couldn’t read that calendar")); return; }
+  const [a,b]=calWindow(); let busy;
+  try{ busy=parseIcs(text,a,b); }catch(e){ console.error(e); toast(t("Couldn’t read that calendar")); return; }
+  applyBusy(busy);
+}
+function applyBusy(busy){
+  if(!editable()) return;
+  const n=calendarFill(busy);
   P.calOpen=false; if(n) changed(); renderBody();
   toast(n?(n===1?t('Filled {n} day from your calendar. Check, then send.',{n}):t('Filled {n} days from your calendar. Check, then send.',{n})):t('Nothing to fill: no free time in blank days'));
 }
@@ -2613,28 +2873,99 @@ async function importCalendar(useSaved){
     const res=await fetch('/api/me/calendar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(useSaved?{}:{url})});
     if(!res.ok){ let d={}; try{ d=await res.json(); }catch(e){} throw new Error(d.error||t('Couldn’t load the calendar ({status})',{status:res.status})); }
     const text=await res.text();
-    if(save){ try{ await api('PATCH','/me',{icalUrl:url}); Object.assign(ME, await api('GET','/me')); }catch(e){ toast(e.message); } }
+    if(save){ try{ await api('POST','/me/calendars',{url}); }catch(e){ if(e.status!==409) toast(e.message); }
+      try{ Object.assign(ME, await api('GET','/me')); CALS.list=null; BUSY.key=''; }catch(e){} }
     applyCalendar(text);
   }catch(e){ toast(e.message); btns.forEach(b=>b.disabled=false); }
 }
+// ---------- the account's calendars: auto grey-out of busy hours while answering ----------
+// Calendars with the "grey out" switch on are fetched for the poll's dates (iCal feeds raw and parsed here,
+// Google / Outlook as events). Busy hours get a hatched look; answers never change by themselves.
+const CALS={list:null,loading:null};
+function loadCals(){
+  if(!ME.user) return Promise.resolve(null);
+  if(CALS.list) return Promise.resolve(CALS.list);
+  return CALS.loading||(CALS.loading=api('GET','/me/calendars').then(r=>CALS.list=r).catch(e=>{ toast(e.message); return null; }).finally(()=>{ CALS.loading=null; }));
+}
+const calAccount=(r,c)=>c.accountId?r.accounts.find(a=>a.id===c.accountId):null;
+const calSource=(r,c)=>{ const a=calAccount(r,c); return a?` · ${a.provider==='google'?'Google':'Outlook'}`:(c.host?` · ${c.host}`:''); };
+// Events of one calendar between from and to (ms): [startMs, endMs, title, calendar name].
+async function calendarEvents(c,from,to){
+  const res=await fetch(`/api/me/calendars/${encodeURIComponent(c.id)}/busy?from=${from}&to=${to}`,{headers:{'x-lang':LANG}});
+  if(!res.ok){ let d={}; try{ d=await res.json(); }catch(e){} const err=new Error(tErr(d.error||t('Couldn’t load the calendar ({status})',{status:res.status}))); err.data=d; throw err; }
+  if((res.headers.get('content-type')||'').includes('text/calendar')) return parseIcs(await res.text(),from,to).map(x=>[x[0],x[1],x[2]||'',c.name]);
+  const d=await res.json();
+  return (d.events||[]).map(e=>e.allDay?[parseD(e.s).getTime(),parseD(e.e).getTime(),e.title||'',c.name]:[+e.s,+e.e,e.title||'',c.name]).filter(x=>x[0]<to&&x[1]>from);
+}
+const BUSY={key:'',list:null,loading:false};
+const showBusy=()=>store0('showBusy')!==false;
+const busyOn=()=>!!(ME.user&&ME.user.calendarsAuto&&P.data&&editable()&&showBusy());
+const busyKey=()=>[P.id,inst().id,...calWindow()].join('|');
+// Fetches the busy times once per poll round (cached for 10 minutes in this tab), then redraws.
+async function loadBusy(force){
+  if(!busyOn()) return;
+  const key=busyKey(); if(!force&&BUSY.key===key&&(BUSY.list||BUSY.loading)) return;
+  BUSY.key=key; BUSY.list=null;
+  if(!force){ try{ const c=JSON.parse(sessionStorage.getItem('busy')||'null'); if(c&&c.key===key&&Date.now()-c.at<600000){ BUSY.list=c.list; if(c.list.length) setTimeout(()=>{ if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody(); }); return; } }catch(e){} }
+  BUSY.loading=true;
+  const [a,b]=calWindow(), errs=[];
+  try{
+    const r=await loadCals(); const cals=r?r.calendars.filter(c=>c.auto):[];
+    const lists=await Promise.all(cals.map(c=>calendarEvents(c,a,b).catch(e=>{ errs.push(`${c.name}: ${e.message}`); return []; })));
+    if(BUSY.key!==key) return;
+    BUSY.list=lists.flat();
+    if(!errs.length) try{ sessionStorage.setItem('busy',JSON.stringify({key,at:Date.now(),list:BUSY.list})); }catch(e){}
+  }finally{ if(BUSY.key===key) BUSY.loading=false; }
+  if(errs.length) toast(t('Couldn’t load {what}',{what:errs.join(' · ')}));
+  if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
+}
+// The busy events for one hour (or a whole day), for the hatch and its tooltip. Empty when the grey-out is off.
+function busyFor(k,h){ return busyOn()&&BUSY.list&&BUSY.key===busyKey()?busyHit(BUSY.list,k,h):[]; }
+function busyTip(evs){
+  const seen=new Set(), out=[];
+  evs.forEach(x=>{ const s=x[2]?`${x[2]} (${x[3]})`:x[3]; if(!seen.has(s)){ seen.add(s); out.push(s); } });
+  return out.length?t('Busy: {what}',{what:out.slice(0,4).join(', ')+(out.length>4?' …':'')}):'';
+}
+// From calendar… with the account's calendars ticked in the panel.
+async function fillFromMine(){
+  const ids=[...document.querySelectorAll('[data-calpick]')].filter(x=>x.checked).map(x=>x.dataset.calpick);
+  if(!ids.length){ toast(t('Tick at least one calendar')); return; }
+  const r=CALS.list; if(!r) return;
+  const btns=document.querySelectorAll('[data-calsaved],[data-calimport]'); btns.forEach(b=>b.disabled=true);
+  const [a,b]=calWindow(), errs=[];
+  const lists=await Promise.all(r.calendars.filter(c=>ids.includes(c.id)).map(c=>calendarEvents(c,a,b).catch(e=>{ errs.push(`${c.name}: ${e.message}`); return null; })));
+  if(errs.length) toast(t('Couldn’t load {what}',{what:errs.join(' · ')}));
+  if(lists.every(x=>!x)){ btns.forEach(b=>b.disabled=false); return; }
+  applyBusy(lists.filter(Boolean).flat());
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('[data-busytoggle]')) return;
+  const on=!showBusy(); try{ localStorage.setItem('showBusy',JSON.stringify(on)); }catch(ex){}
+  const dd=$('moredd'); if(dd) dd.open=false;
+  renderBody(); if(on) loadBusy(); toast(on?t('Showing busy times from your calendars'):t('Busy times hidden'));
+});
 function calButton(){ return ib('cal',t('From calendar…'),`data-cal aria-expanded="${!!P.calOpen}"`,'sm'+(P.calOpen?' on':'')); }
 function qfButton(){ return ib('zap',t('Quick fill…'),`data-qf aria-expanded="${!!P.qfOpen}"`,'sm'+(P.qfOpen?' on':''),t('Fill')); }
 function calPanel(){
   if(!P.calOpen) return '';
-  const u=ME.user, saved=u&&u.calendar;
+  const u=ME.user, mine=u&&u.calendars?CALS.list:null;
+  if(u&&u.calendars&&!CALS.list&&!CALS.loading) loadCals().then(()=>{ if(P.calOpen) renderBody(); });
+  const pick=mine&&mine.calendars.length?`<div class="calpick" role="group" aria-label="${t('My calendars')}">${mine.calendars.map(c=>
+      `<label class="check"><input type="checkbox" data-calpick="${esc(c.id)}"${c.auto?' checked':''}> <span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span> ${esc(c.name)}<span class="muted small">${esc(calSource(mine,c))}</span></label>`).join('')}</div>
+      <div class="row">${ib('check',t('Fill from these calendars'),'data-calsaved','sm primary',t('Fill'))}</div>
+      <p class="help mt-2">${t('Or use another one:')}</p>`:u&&u.calendars?`<p class="help mt-0">${t('Loading…')}</p>`:'';
   return `<div class="qf">
-    ${saved?`<div class="row">${ib('check',t('Use my saved calendar'),'data-calsaved','sm primary',t('Use saved'))}<span class="muted small">${esc(saved)}</span></div>
-      <p class="help mt-2">${t('Or use another one:')}</p>`:''}
+    ${pick}
     <div class="row tight mt-2"><input type="url" id="cal_url" class="cal-in" placeholder="${t('iCal link (https://… or webcal://…)')}" autocomplete="off" spellcheck="false" aria-label="${t('iCal link')}">
-      <button type="button" class="btn sm${saved?'':' primary'}" data-calimport>${t('Import')}</button>
+      <button type="button" class="btn sm${pick?'':' primary'}" data-calimport>${t('Import')}</button>
       <label class="btn sm withic ib" title="${t('Choose .ics file')}">${ICON.upload}<span class="bl">${t('Choose .ics file')}</span><span class="bs">.ics</span><input type="file" id="cal_file" accept=".ics,text/calendar" hidden></label></div>
-    ${u?`<label class="check"><input type="checkbox" id="cal_save"${saved?'':' checked'}> ${saved?t('Save this link on my account instead'):t('Remember this link on my account')}</label>`:''}
+    ${u?`<label class="check"><input type="checkbox" id="cal_save"${u.calendars?'':' checked'}> ${t('Add this link to my calendars')}</label>`:''}
     <p class="help">${t('Free hours on blank days are marked available; busy times stay blank. Nothing is sent until you press Send.')}
       ${t('Find the link in Google Calendar (Settings › your calendar › <i>Secret address in iCal format</i>), Outlook (Settings › Calendar › Shared calendars › Publish) or Apple Calendar (share as a public calendar).')}</p></div>`;
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-cal]')){ P.calOpen=!P.calOpen; renderBody(); return; }
-  if(e.target.closest('[data-calsaved]')) importCalendar(true);
+  if(e.target.closest('[data-calsaved]')) fillFromMine();
   else if(e.target.closest('[data-calimport]')) importCalendar(false);
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='cal_url'){ e.preventDefault(); importCalendar(false); } });
@@ -2747,7 +3078,7 @@ const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], mayb
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
   mstripe:['var(--maybe)','Rest maybe'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others free'],
-  draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'] };
+  draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'], busy:['var(--busy-hatch),var(--sunken)','Busy (your calendar)'] };
 function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>`<span style="--c:${LEG[k][0]}">${t(LEG[k][1])}</span>`).join('')}</div>`; }
 // Thin yes/maybe bar along the bottom of a day cell.
 // y = free (incl. "if needed"), i = how many of those are only "if needed", m = maybe.
@@ -3566,13 +3897,21 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
   if(pid){
     await openPoll(pid);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
-  } else if(qs.has('account')) renderAccount();
+  } else if(qs.has('account')){ renderAccount(); calReturn(qs); }
   else if(qs.has('new')) renderNew();
   else renderHome();
 })();
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"{n} day": "{n} Tag",
+"{n} days": "{n} Tage",
+"No deadline": "Keine Frist",
+"Pick dates": "Daten wählen",
+"Previous month": "Vorheriger Monat",
+"Next month": "Nächster Monat",
+"Now click the last day": "Jetzt den letzten Tag anklicken",
+"Click the first day, then the last": "Ersten Tag anklicken, dann den letzten",
 "Pick a colour, then tap days, or press and hold and drag to paint several.": "Wähl eine Farbe, dann tippe auf Tage oder halte gedrückt und zieh, um mehrere zu färben.",
 "Pick a colour, then click (or drag across) the days you can make.": "Wähl eine Farbe, dann klick die Tage an (oder zieh darüber), an denen du kannst.",
 "Tapping a day with the same colour clears it.": "Ein Tag mit derselben Farbe wird beim Antippen geleert.",
@@ -4415,6 +4754,56 @@ function germanText(){ return {
 "✗ BUSY": "✗ BELEGT",
 "👥 = how many of the {n} others are free at the best time (+ maybe).": "👥 = wie viele der {n} anderen zur besten Zeit frei sind (+ vielleicht).",
 "👥 Others free": "👥 Andere frei",
+"Busy (your calendar)": "Belegt (dein Kalender)",
+"My calendars": "Meine Kalender",
+"Fill from these calendars": "Aus diesen Kalendern ausfüllen",
+"Add this link to my calendars": "Diesen Link zu meinen Kalendern hinzufügen",
+"Couldn’t load {what}": "Konnte nicht geladen werden: {what}",
+"Busy: {what}": "Belegt: {what}",
+"Tick at least one calendar": "Wähle mindestens einen Kalender",
+"Showing busy times from your calendars": "Belegte Zeiten aus deinen Kalendern werden angezeigt",
+"Busy times hidden": "Belegte Zeiten ausgeblendet",
+"Hide my busy times": "Meine belegten Zeiten ausblenden",
+"Show my busy times": "Meine belegten Zeiten zeigen",
+"Calendars": "Kalender",
+"Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.": "Füge die Kalender von deinem Handy, Computer oder Mail-Programm hinzu. Ist <b>Ausgrauen</b> an, erscheinen die Stunden, in denen du in diesem Kalender belegt bist, in jeder Umfrage, die du beantwortest, schraffiert. So siehst du Überschneidungen sofort. Deine Antworten ändern sich nicht von selbst. Nur du siehst deine Kalender und ihre Termine.",
+"Greying out busy times: on": "Belegte Zeiten ausgrauen: an",
+"Greying out busy times: off": "Belegte Zeiten ausgrauen: aus",
+"Grey out busy times": "Belegte Zeiten ausgrauen",
+"Reconnect": "Neu verbinden",
+"Reload the calendar list": "Kalenderliste neu laden",
+"Disconnect": "Trennen",
+"Access ended or was revoked. Reconnect to keep using these calendars.": "Der Zugriff ist abgelaufen oder wurde widerrufen. Verbinde neu, um diese Kalender weiter zu nutzen.",
+"No calendars found.": "Keine Kalender gefunden.",
+"Calendar links": "Kalender-Links",
+"No calendars yet. Connect one below.": "Noch keine Kalender. Füge unten einen hinzu.",
+"Connect Google": "Google verbinden",
+"Connect Outlook": "Outlook verbinden",
+"or add a calendar link:": "oder füge einen Kalender-Link hinzu:",
+"Add a calendar link:": "Kalender-Link hinzufügen:",
+"<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.": "<b>iPhone / iCloud:</b> Kalender-App › Kalender › ⓘ neben einem Kalender › Öffentlicher Kalender › Link teilen. <b>Google:</b> calendar.google.com › Einstellungen › dein Kalender › <i>Privatadresse im iCal-Format</i>. <b>Outlook:</b> Einstellungen › Kalender › Freigegebene Kalender › Veröffentlichen, dann den ICS-Link kopieren. <b>Thunderbird und andere Mail-Programme:</b> In den Eigenschaften des Kalenders steht sein iCal-/Abo-Link. webcal://-Links gehen auch.",
+"Clicking a webcal:// link then opens when-who to add it": "Ein Klick auf einen webcal://-Link öffnet dann when-who, um ihn hinzuzufügen",
+"Open webcal links here": "webcal-Links hier öffnen",
+"Name (optional)": "Name (optional)",
+"Calendar added": "Kalender hinzugefügt",
+"Your browser may ask to confirm": "Dein Browser fragt eventuell nach einer Bestätigung",
+"Grey-out off for {name}": "Ausgrauen aus für {name}",
+"Grey-out on for {name}": "Ausgrauen an für {name}",
+"Remove the calendar “{name}”?": "Den Kalender „{name}“ entfernen?",
+"Disconnect {what}? Its calendars are removed from when-who.": "{what} trennen? Die Kalender davon werden aus when-who entfernt.",
+"Disconnected": "Getrennt",
+"Calendar list updated": "Kalenderliste aktualisiert",
+"Calendar connected": "Kalender verbunden",
+"Calendar access wasn’t granted": "Der Zugriff auf den Kalender wurde nicht erlaubt",
+"Sign in first, then connect your calendar": "Melde dich zuerst an und verbinde dann deinen Kalender",
+"You can connect at most 5 calendar accounts": "Du kannst höchstens 5 Kalenderkonten verbinden",
+"Connecting the calendar didn’t work. Please try again.": "Das Verbinden des Kalenders hat nicht geklappt. Bitte versuch es noch einmal.",
+"Calendar not found": "Kalender nicht gefunden",
+"Calendar account not found": "Kalenderkonto nicht gefunden",
+"That calendar is already on your account": "Dieser Kalender ist schon in deinem Konto",
+"Turn this calendar off, or disconnect its account": "Schalte diesen Kalender aus oder trenne sein Konto",
+"Invalid time range": "Ungültiger Zeitraum",
+"Calendar sign-in isn’t set up on this site": "Die Kalender-Anmeldung ist auf dieser Seite nicht eingerichtet",
 "👥 numbers = how many of the {n} others are free (+ maybe).": "👥 Zahlen = wie viele der {n} anderen frei sind (+ vielleicht)."}; }
 })();
 </script>
