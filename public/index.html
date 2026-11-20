@@ -1293,7 +1293,6 @@ Object.assign(ICON,{
   more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
   day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
   chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
-  checks:svgI('<path d="m2.5 12.5 4.5 4.5 9-10M11.5 16.5l.5.5 9-10"/>'),
 });
 // An ⓘ icon that shows its text on hover (desktop) or tap/focus (phones). html is trusted markup built by the caller.
 // Date picker: a compact button showing the value. Its popup holds the real <input type=date> (to type a date)
@@ -2703,7 +2702,6 @@ function renderMine(el){
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Erase')}" aria-label="${t('Erase')}"><span class="segic">${ICON.erase}</span></button></div>`;
   const mi=(icon,label,attrs,cls='')=>`<button type="button" class="${cls}" ${attrs}>${ICON[icon]}<span>${esc(label)}</span></button>`;
   const menu=`<details class="dd more" id="moredd"><summary class="btn sm ghost withic ib" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp menu">
-      ${P.mode==='days'?mi('checks',t('All available'),'data-bulk="all"'):''}
       ${mi('zap',t('Quick fill…'),'data-qf','sm-flex')}${mi('cal',t('From calendar…'),'data-cal','sm-flex')}
       ${ME.user&&ME.user.calendarsAuto&&editable()?mi('eye',showBusy()?t('Hide my busy times'):t('Show my busy times'),'data-busytoggle'):''}
       ${mi('x',t('Clear all'),'data-bulk="clear"','danger')}</div></details>`;
@@ -3755,7 +3753,6 @@ document.addEventListener('click',async e=>{
   if(ds.delresp){ if(!confirm(t('Delete this response?'))) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
-    if(ds.bulk==='all') dates.forEach(k=>en[k]='y');
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
     if(ds.bulk==='clear') Object.keys(en).forEach(k=>delete en[k]);
     P.mine.entries=en; changed(); renderBody(); }
@@ -4078,7 +4075,6 @@ function germanText(){ return {
 "Agenda, what to bring, a call link …": "Ablauf, was mitbringen, ein Call-Link …",
 "Agenda, what to bring, a call link … (empty clears it; extra descriptions stay)": "Ablauf, was mitbringen, ein Call-Link … (leer entfernt sie; Zusatzbeschreibungen bleiben)",
 "All": "Alle",
-"All available": "Alle verfügbar",
 "All day": "Ganztägig",
 "All free": "Alle frei",
 "All polls": "Alle Umfragen",
