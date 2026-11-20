@@ -1084,12 +1084,19 @@
     .me-row{flex-wrap:wrap} .me-row>#name{flex:1 1 0}
     .me-row .me-emb{display:inline-flex}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:13px;height:13px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
+    /* the answer toolbar must fit a 360px phone in one row (these beat .ws-tools.tbar and the touch-screen sizes) */
+    .ws-tools.tbar{gap:4px} .ws-tools.tbar .iseg{padding:2px} .ws-tools.tbar .iseg button{padding:6px 5px}
+    .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:34px;min-width:34px;padding:0;justify-content:center}
+    .ws-tools.tbar{flex-wrap:wrap;row-gap:6px} /* last resort: wrap rather than spill out of the card */
     .badgeb{min-width:36px;justify-content:center} .badgeb .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;font-size:10.5px;box-shadow:0 0 0 2px var(--card)}
     .tbar .tip{width:26px}
     .tbar [data-suggest]{flex:none} .tbar [data-suggest] .bs{display:none} .tbar .sugn button{min-width:26px} .tbar .sugn button.all{padding:0 7px} .tbar .sugn input{width:26px}
     .menu .sm-flex{display:flex}
     .legend{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;margin-right:-2px} .legend::-webkit-scrollbar{display:none}
     .savebar .btn{padding-inline:14px} .savebar #status.sstat{display:inline-flex}
+  }
+  @media (max-width:400px){
+    .ws-tools.tbar .iseg button{padding:6px 3px} .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:32px;min-width:32px}
   }
   .langb{font-weight:650;letter-spacing:.3px;min-width:36px;justify-content:center;margin-right:4px}
   .legal{max-width:760px} .legal h2{font-size:18px;margin:26px 0 6px} .legal h2:first-child{margin-top:0}
