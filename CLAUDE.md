@@ -24,6 +24,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `users.ical_url` is legacy (copied into `user_calendars`). `oauth_states` holds sign-ins in progress.
   Sign-in is a 6-digit code emailed to the address (`login_codes`, hashed, 10 min, 5 tries). There is no password login.
   Only the owning account can manage a poll.
+- `polls.invited_only` (0014): only invited people may answer. They must be signed in, as an account in the poll's `participants`
+  or with the email of a guest row the owner added (that row then becomes the account's). The owner can always answer.
+  Adding people (`POST .../participants`, invites) requires an email address, except friends picked by `uid`.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
 - `friends` (0010): friend requests between accounts. A request goes to an email (`to_email`; `to_id` once that address has an account),

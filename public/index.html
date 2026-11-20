@@ -101,7 +101,7 @@
   .card-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
   .card-h h2{flex:1}
   .card.accent{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));box-shadow:0 0 0 4px var(--accent-weak),var(--shadow-sm)}
-  .home-grid{display:grid;gap:var(--s4);grid-template-columns:1fr}
+  .home-grid{display:grid;gap:var(--s4);grid-template-columns:minmax(0,1fr)} /* minmax: long content (e.g. a calendar's email) can't widen the page */
   .home-grid>.card{margin-top:0}
   @media (min-width:900px){ .home-grid{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start} .home-grid>.span{grid-column:1/-1} }
   .empty{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 0 4px}
@@ -401,6 +401,19 @@
   .qb.tog[aria-pressed=true]{color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
   .caladd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
   .caladd .padd{flex:1 1 100%}
+  .callist .cgrp .cem{text-transform:none;letter-spacing:0;font-weight:500}
+  .notice.me-lock{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .notice.me-lock .btn{flex:none;margin-left:auto}
+  /* phones: tighter calendar rows and smaller buttons; adding a link is one line (rename it afterwards) */
+  @media (max-width:560px){
+    #calcard .callist .cgrp{padding:10px 0 2px;gap:4px} #calcard .callist .cgrp:first-child{padding-top:0}
+    #calcard .callist .cgrp .qb{width:32px;height:32px}
+    #calcard .callist li{padding:5px 6px;margin:0 -6px;gap:8px}
+    #calcard .callist .pmain{line-height:1.3}
+    #calcard .callist .qb{width:34px;height:34px}
+    #calcard .caladd{gap:6px;margin-top:10px;padding-top:10px}
+    #calcard .caladd .padd{grid-template-columns:minmax(0,1fr) auto} #calcard #caladd_n{display:none}
+    #calcard #caladd_u{grid-row:auto;grid-column:auto} #calcard .caladd .padd-btn{grid-row:auto;grid-column:auto;height:40px;width:40px;align-self:center}
+  }
   .calpick{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
   .calpick .check{margin:0} .calpick .cdot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c,var(--accent));margin-right:2px}
   .slot.na,.slot.off:not(.hm):not(.mo){background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 1px,transparent 1px 7px)}
@@ -1073,6 +1086,7 @@ function setLang(l){ try{ localStorage.setItem('lang',JSON.stringify(l)); }catch
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-setlang]'); if(b){ e.preventDefault(); setLang(b.dataset.setlang); } });
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
+  [/^(.+) needs an email address$/, (m,n)=>`${n} braucht eine E-Mail-Adresse`],
   [/^You can have at most (\d+) favourites$/, (m,n)=>`Du kannst höchstens ${n} Favoriten haben`],
   [/^Allow when-who to read your (Google|Outlook) contacts$/, (m,p)=>`Erlaube when-who, deine ${p}-Kontakte zu lesen`],
   [/^(.+) is required$/, (m,f)=>`${t(f)}: Pflichtfeld`],
@@ -2172,7 +2186,7 @@ async function renderCalCard(){
         <span class="acts"><button type="button" class="qb tog" data-calauto="${esc(c.id)}" aria-pressed="${c.auto}" title="${c.auto?t('Greying out busy times: on'):t('Greying out busy times: off')}" aria-label="${t('Grey out busy times')}">${ICON.eye}</button>
           ${pqb('edit',t('Rename'),`data-calren="${esc(c.id)}"`)}${c.accountId?'':pqb('trash',t('Remove'),`data-caldel="${esc(c.id)}"`,' danger')}</span></li>`;
   const groups=r.accounts.map(a=>{ const cs=r.calendars.filter(c=>c.accountId===a.id), pn=a.provider==='google'?'Google':'Outlook';
-    return `<div class="cgrp">${ICON.cal}<span class="grow ell">${esc(pn)}${a.email?` · ${esc(a.email)}`:''}</span>
+    return `<div class="cgrp">${ICON.cal}<span class="grow ell">${esc(pn)}${a.email?` · <span class="cem">${esc(a.email)}</span>`:''}</span>
       ${a.status==='expired'?`<a class="btn sm primary" href="/api/oauth/${esc(a.provider)}/start?hint=${encodeURIComponent(a.email||'')}">${t('Reconnect')}</a>`:pqb('repeat',t('Reload the calendar list'),`data-calrefresh="${esc(a.id)}"`)}
       ${pqb('x',t('Disconnect'),`data-caldisc="${esc(a.id)}"`,' danger')}</div>
       ${a.status==='expired'?`<p class="help mt-0">${t('Access ended or was revoked. Reconnect to keep using these calendars.')}</p>`:''}
@@ -2395,7 +2409,9 @@ function windowStatus(v,start,end,allDay,k){
 }
 
 // ---- saving ----
-function editable(){ return P.data && inst().status==='open'; }
+// Invited-only polls: '' = may answer, 'signin' = signed out, 'not' = this account isn't invited. The owner always may.
+function inviteLock(){ const d=P.data, p=d&&d.poll; if(!p||!p.invitedOnly||d.isAdmin) return ''; if(!ME.user) return 'signin'; return d.me&&d.me.invited?'':'not'; }
+function editable(){ return P.data && inst().status==='open' && !inviteLock(); }
 function status(t){ saveBar(t); }
 // The send/update bar under the calendar. Answers are only sent when the button is pressed.
 function saveBar(msg){
@@ -2508,6 +2524,7 @@ function render(){
         <span class="wsmeta ml-auto" id="wsmeta"></span></div>
       ${d.isAdmin?'':'<div id="meetings"></div>'}
       ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
+        :inst().status==='open'&&inviteLock()?`<div class="notice withic me-lock">${ICON.lock}<span class="grow minw">${inviteLock()==='signin'?t('Only invited people can answer. Sign in with the email address you were invited with.'):t('Only invited people can answer, and {email} isn’t invited. Ask the organiser to add you.',{email:esc(ME.user.email)})}</span>${inviteLock()==='signin'?`<button type="button" class="btn sm primary" data-opensignin>${t('Sign in')}</button>`:''}</div>`
         :`<div class="notice warn withic">${ICON.lock}<span>${t('Closed · answers for {round} are final.',{round:esc(instLabel(i))})}</span></div>`}
       <div id="body"></div>
       ${editable()?`<div class="savebar wsfoot" id="savebar"><span class="sstat" id="status"></span>${ib('trash',t('Remove my answer'),'id="delMine"','ghost danger hide')}<button type="button" class="btn primary withic sendbtn" id="saveBtn"></button></div>`:''}
@@ -3767,7 +3784,8 @@ function adminPanes(){
         <option value="days" ${p.answerMode==='days'?'selected':''}>${t('Whole days')}</option><option value="slots" ${p.answerMode==='slots'?'selected':''}>${t('Time slots')}</option><option value="both" ${p.answerMode==='both'?'selected':''}>${t('Both')}</option></select></div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.'))}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
       <label class="check"><input type="checkbox" id="s_com" ${p.allowComments?'checked':''}> ${t('Allow comments')}</label>
-      <label class="check"><input type="checkbox" id="s_reqmail" ${p.requireEmail?'checked':''}> ${t('Require name and email to answer')}${tip(t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.'))}</label>`)}
+      <label class="check"><input type="checkbox" id="s_reqmail" ${p.requireEmail?'checked':''}> ${t('Require name and email to answer')}${tip(t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.'))}</label>
+      <label class="check"><input type="checkbox" id="s_invonly" ${p.invitedOnly?'checked':''}> ${t('Only invited people can answer')}${tip(t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'))}</label>`)}
     ${sset('privacy','lock',t('Privacy'),`
       <label class="check"><input type="checkbox" id="s_hide" ${p.hideResults?'checked':''}> ${t('Hide answers from respondents')}</label>
       <div class="field"><label for="s_pw">${t('Password')} ${p.hasPassword?t('(currently set)'):t('(none)')}</label>
@@ -3884,7 +3902,7 @@ function pdOpen(){
   d.innerHTML=`<div class="dlg-h"><h2 id="pd_h">${t('Add people')}</h2>${tip(help,'right')}${pqb('x',t('Close'),'data-pdclose=""')}</div>
     <div class="dlg-b">
       <div class="pd-add"><input type="text" id="pd_n" maxlength="2000" placeholder="${t('Name, or paste a list')}" aria-label="${t('Name, or paste a list')}" autocomplete="off" enterkeyhint="done">
-        <input type="email" id="pd_e" maxlength="200" placeholder="${t('Email (optional)')}" aria-label="${t('Email (optional)')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+        <input type="email" id="pd_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" required autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
         ${ME.user?`<button type="button" class="qb tog fav" id="pd_fav" aria-pressed="false" title="${t('Also save to favourites')}" aria-label="${t('Also save to favourites')}">${ICON.star}</button>`:''}
         <button type="button" class="btn primary padd-btn" data-padd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
       <div class="err" id="pd_err"></div>
@@ -3982,7 +4000,7 @@ document.addEventListener('click',e=>{
   else if(ds.pdclose!==undefined) $('pdlg').close();
   else if(ds.pfav!==undefined) favToggle(b);
   else if(ds.pdi!==undefined){ const f=PD.items[+ds.pdi]; if(f) addPeople([f.friend?{name:f.name.slice(0,60),email:f.email,uid:f.uid}:{name:f.name.slice(0,60),email:f.email}],b); }
-  else if(ds.pdall!==undefined){ const imp=new Set(PD.imported), rows=PD.items.filter(f=>imp.has(f)).map(f=>({name:f.name.slice(0,60),email:f.email}));
+  else if(ds.pdall!==undefined){ const imp=new Set(PD.imported), rows=PD.items.filter(f=>imp.has(f)&&f.email).map(f=>({name:f.name.slice(0,60),email:f.email}));
     if(rows.length) addPeople(rows,b); }
   else if(ds.pdimp!==undefined) pdImport(ds.pdimp,b);
 });
@@ -4011,6 +4029,7 @@ async function peopleAdd(btn){
   if(!rows.length){ err.textContent=t('Type a name or an email address.'); n.focus(); return; }
   if(rows.some(x=>x.email&&!EMAIL_RE.test(x.email))){ err.textContent=t("That email address doesn't look right."); (mail&&!EMAIL_RE.test(mail)?m:n).focus(); return; }
   if(rows.some(x=>!x.name.trim())){ err.textContent=t('Every person needs a name.'); n.focus(); return; }
+  if(rows.some(x=>!x.email)){ err.textContent=t('Every person needs an email address.'); (rows.length===1?m:n).focus(); return; }
   rows=rows.map(x=>({name:x.name.trim().slice(0,60),email:x.email}));
   const fav=$('pd_fav')&&$('pd_fav').getAttribute('aria-pressed')==='true';
   if(await addPeople(rows,btn)){ n.value=''; m.value=''; n.focus();
@@ -4070,7 +4089,7 @@ function wireAdmin(){
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
-    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(PAT.sp.periods.length>1?t('Pick at least one day in every period'):t('Pick at least one day of the week')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(PAT.sp.periods.length>1?t('Pick at least one day in every period'):t('Pick at least one day of the week')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
     if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
@@ -4433,6 +4452,13 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Only invited people can answer": "Nur eingeladene Personen können antworten",
+"Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.": "Nur Personen, die du im Tab <b>Personen</b> hinzugefügt hast, können antworten. Sie melden sich mit der E-Mail-Adresse an, die du eingetragen hast (sie bekommen einen 6-stelligen Code per E-Mail), so kann niemand sonst in ihrem Namen antworten.",
+"Only invited people can answer. Sign in with the email address you were invited with.": "Nur eingeladene Personen können antworten. Melde dich mit der E-Mail-Adresse an, mit der du eingeladen wurdest.",
+"Only invited people can answer, and {email} isn’t invited. Ask the organiser to add you.": "Nur eingeladene Personen können antworten, und {email} ist nicht eingeladen. Bitte die Person, die die Umfrage erstellt hat, dich hinzuzufügen.",
+"Every person needs an email address.": "Jede Person braucht eine E-Mail-Adresse.",
+"Only invited people can answer this poll. Sign in with the email address you were invited with.": "Nur eingeladene Personen können auf diese Umfrage antworten. Melde dich mit der E-Mail-Adresse an, mit der du eingeladen wurdest.",
+"Only invited people can answer this poll, and this account isn’t invited.": "Nur eingeladene Personen können auf diese Umfrage antworten, und dieses Konto ist nicht eingeladen.",
 "Privacy policy": "Datenschutzerklärung",
 "Last updated {date}": "Zuletzt aktualisiert am {date}",
 "Short version": "Kurzfassung",

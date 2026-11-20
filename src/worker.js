@@ -1444,6 +1444,8 @@ async function getPoll(request, env, ctx, url, id) {
     const part = await accountParticipant(env, id, user.id);
     out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null,
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
+    // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
+    if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
     const can = admin || !!part;
     out.chat = { can, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
   }
@@ -1841,7 +1843,7 @@ async function invitePoll(request, env, url, id) {
     const who = user.name || 'Jemand';
     text = [message || (again ? `Eine Erinnerung: ${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.` : `${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.`), '',
       poll.description ? poll.description + '\n' : null,
-      'Trag hier ein, wann du Zeit hast (kein Konto nötig):', link,
+      poll.invited_only ? 'Melde dich mit dieser E-Mail-Adresse an und trag hier ein, wann du Zeit hast:' : 'Trag hier ein, wann du Zeit hast (kein Konto nötig):', link,
       deadline ? `\nBitte antworte bis ${fmtDay(deadline, 'de')}.` : null].filter((x) => x !== null).join('\n')
       + `\n\n—\nDu bekommst diese E-Mail, weil ${user.name || 'jemand'} dich zu einer Umfrage auf when-who eingeladen hat.`;
     subject = `${again ? 'Erinnerung: Wann' : 'Wann'} hast du Zeit? ${poll.title}`;
@@ -1849,7 +1851,7 @@ async function invitePoll(request, env, url, id) {
     const who = user.name || 'The organiser';
     text = [message || (again ? `A reminder: ${who} would like to know when you're free for “${poll.title}”.` : `${who} would like to know when you're free for “${poll.title}”.`), '',
       poll.description ? poll.description + '\n' : null,
-      'Mark your availability here (no account needed):', link,
+      poll.invited_only ? 'Sign in with this email address and mark your availability here:' : 'Mark your availability here (no account needed):', link,
       deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
       + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
     subject = `${again ? 'Reminder: when' : 'When'} are you free? ${poll.title}`;
