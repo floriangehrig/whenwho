@@ -759,7 +759,7 @@
     .ws-h #wsmeta{flex-basis:100%;margin-left:0}
     .list li{padding:10px 8px;margin:0 -8px}
     .wknav{gap:6px}
-    .linkbox .btn{flex:none}
+    .linkbox .btn{flex:none} .linkbox{flex-wrap:wrap} .linkbox input{flex:1 1 100%}
     .btn.keep .bl{display:inline} .btn.keep .bs{display:none}
     .ptools{gap:6px}
     .seg .bl{display:none} .seg .segic{margin-right:0}
@@ -975,12 +975,27 @@ function parsePeople(raw){
 }
 const pollHeaders = id => id===P.id ? headers() : (store.get('pw:'+id,null) ? {'x-poll-password':store.get('pw:'+id,null)} : {});
 const plural = (n,one,many) => `${n} ${n===1?one:many}`;
-function pollInviteMail(id,title,deadline,raw){
+// The ready-to-send invite text (Share, Copy message, WhatsApp, email): what, when, reply-by and the link.
+function pollShareText({id,title,description,range,deadline},greet){
+  const desc=String(description||'').trim().replace(/\s+\n/g,'\n'), d=desc.length>300?desc.slice(0,299).trimEnd()+'…':desc;
+  return [greet?t('Hi,')+'\n':'', t('When are you free? Please mark your availability for “{title}” here:',{title}),
+    d?'\n'+d+'\n':'', range?'📅 '+range:'', deadline?'⏰ '+t('Please answer by {date}.',{date:longDay(deadline)}):'',
+    '', shareLink(id), t('No account needed, just open the link.')].filter((x,i,a)=>x!==''||(i>0&&a[i-1]!=='')).join('\n').trim();
+}
+const inviteSubject = title => t('When are you free?')+' '+title;
+// Share / Copy message buttons for a linkbox. The phone share sheet when there is one, else WhatsApp + email links.
+function shareBtns(info){
+  const msg=pollShareText(info);
+  return ib('note',t('Copy message'),`data-copy="${esc(msg)}"`,'','')
+    +(navigator.share?ib('share',t('Share…'),`data-nshare="${esc(msg)}" data-ntitle="${esc(info.title)}"`,'','')
+      :ibl('chat',t('Share via WhatsApp'),'https://wa.me/?text='+encodeURIComponent(msg),'','')
+       +ibl('mail',t('Send by email'),`mailto:?subject=${encodeURIComponent(inviteSubject(info.title))}&body=${encodeURIComponent(msg)}`,'',''));
+}
+function pollInviteMail(id,title,deadline,raw,info){
   const parts=(raw||'').split(/[\s,;]+/).map(x=>x.replace(/^<|>$/g,'').trim()).filter(Boolean);
   const ok=[...new Set(parts.filter(x=>EMAIL_RE.test(x)).map(x=>x.toLowerCase()))], bad=parts.filter(x=>!EMAIL_RE.test(x));
-  const body=[t('Hi,'),'',t('When are you free? Please mark your availability for “{title}” here:',{title}), shareLink(id),
-    deadline?'\n'+t('Please answer by {date}.',{date:longDay(deadline)}):'', '', t('No account needed, just open the link.')].join('\n');
-  return { ok, bad, href:`mailto:?${ok.length?'bcc='+encodeURIComponent(ok.join(','))+'&':''}subject=${encodeURIComponent(t('When are you free?')+' '+title)}&body=${encodeURIComponent(body)}` };
+  const body=pollShareText(Object.assign({id,title,deadline},info),true);
+  return { ok, bad, href:`mailto:?${ok.length?'bcc='+encodeURIComponent(ok.join(','))+'&':''}subject=${encodeURIComponent(inviteSubject(title))}&body=${encodeURIComponent(body)}` };
 }
 
 async function api(method, path, body, headers={}){
@@ -1772,14 +1787,16 @@ function renderNew(){
   };
 }
 function renderCreated(id, body, kind){
+  const info={id,title:body.title,description:body.description,deadline:body.deadline||null,
+    range:kind==='weekly'?t('A typical week'):body.startDate?`${dayLabel(body.startDate)} – ${dayLabel(body.endDate)}`:''};
   document.title=`${body.title} · when-who`;
   $app.innerHTML=`${appbar(t('All polls'))}
     <section class="band"><div class="wrap"><div class="hero-me">${tile({img:body.image,emoji:body.icon,text:body.title,seed:id},'ptile-icon xl')}
       <div><div class="eyebrow">${t('Poll created')}</div><h1>${esc(body.title)}</h1><p class="lead">${t('Send people the link. They can answer straight away, no account needed.')}</p></div></div></div></section>
     <main class="wrap"><div class="card accent"><div class="card-h"><h2>${t('Share it')}</h2><span class="tag y">${t('Created')}</span></div>
-      <div class="field"><label>${t('Share link')}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}">${ib('copy',t('Copy'),`data-copy="${esc(shareLink(id))}"`)}</div>
+      <div class="field"><label>${t('Share link')}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}">${ib('copy',t('Copy link'),`data-copy="${esc(shareLink(id))}"`,'primary',t('Copy'))}${shareBtns(info)}</div>
       <div class="help">${t("You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.")}</div></div>
-      <div class="section"><h3>${t('People')}</h3>${peoplePanel(id,{title:body.title,series:kind==='series'})}</div>
+      <div class="section"><h3>${t('People')}</h3>${peoplePanel(id,{title:body.title,series:kind==='series',deadline:info.deadline,info})}</div>
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">${t('Open poll')}</a><a class="btn" href="?new">${t('Create another')}</a></div>
     </div></main>`;
   window.scrollTo({top:0}); loadParts();
@@ -2088,9 +2105,10 @@ function meFields(d,p){
 document.addEventListener('pointerdown',e=>{ const m=$('moredd'); if(m&&m.open&&!m.contains(e.target)) m.open=false;
   const t=document.activeElement; if(t&&t.classList&&t.classList.contains('tip')&&!t.contains(e.target)) t.blur(); });
 document.addEventListener('click',e=>{ const m=e.target.closest('#moredd .ddp button'); if(m) m.closest('details').open=false; },true);
-// People tab: the phone's own share sheet for the poll link.
-document.addEventListener('click',e=>{ if(!e.target.closest('[data-nshare]')||!P.data) return;
-  navigator.share({title:P.data.poll.title,url:shareLink(P.id)}).catch(()=>{}); });
+// Share button: the phone's own share sheet with the whole invite message (the link is inside the text,
+// so WhatsApp doesn't show it twice).
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-nshare]'); if(!b) return;
+  navigator.share({title:b.dataset.ntitle,text:b.dataset.nshare}).catch(()=>{}); });
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-metog]'); if(!t) return;
   const k=t.dataset.metog, el=k==='com'?$('comment'):$('email'); if(!el) return;
@@ -3011,7 +3029,8 @@ function setAdminTab(k){
   if((was==='meetings')!==(k==='meetings')) renderBody(); // the planner and the Group view share ids: render only the visible one
 }
 function adminPanes(){
-  const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide';
+  const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
+  const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
   return `<div id="pane-meetings" class="${hid('meetings')}"><div id="meetings"></div><div class="card" id="mplan"></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
@@ -3021,8 +3040,8 @@ function adminPanes(){
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card"><div class="card-h"><h2>${t('People')}</h2></div>
-    <div class="field"><label class="row tight">${t('Share link')}${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+t('Anyone with the link can answer, no account needed.'))}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}">${ib('copy',t('Copy link'),`data-copy="${esc(shareLink(p.id))}"`,'primary',t('Copy'))}${navigator.share?ib('share',t('Share…'),'data-nshare','',''):''}</div></div>
-    <div class="section">${peoplePanel(p.id,{title:p.title,series,deadline:inst()&&inst().status==='open'?inst().deadline:null})}</div></div></div>
+    <div class="field"><label class="row tight">${t('Share link')}${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+t('Anyone with the link can answer, no account needed.'))}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}">${ib('copy',t('Copy link'),`data-copy="${esc(shareLink(p.id))}"`,'primary',t('Copy'))}${shareBtns(info)}</div></div>
+    <div class="section">${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card"><div class="card-h"><h2>${t('Settings')}</h2></div>
     ${sset('details','edit',t('Details'),`
       <div class="field"><label for="s_title">${t('Title')}</label><input type="text" id="s_title" maxlength="120" value="${esc(p.title)}"></div>
@@ -3070,7 +3089,7 @@ function datesSection(){
 let PEOPLE=null;
 function peoplePanel(id,o){
   const keep=PEOPLE&&PEOPLE.id===id?PEOPLE:null;
-  PEOPLE={ id, title:o.title, deadline:o.deadline||null, series:!!o.series, parts:keep?keep.parts:null, sel:keep?keep.sel:new Set(), edit:keep?keep.edit:null, focus:keep?keep.focus:false };
+  PEOPLE={ id, title:o.title, deadline:o.deadline||null, info:o.info||null, series:!!o.series, parts:keep?keep.parts:null, sel:keep?keep.sel:new Set(), edit:keep?keep.edit:null, focus:keep?keep.focus:false };
   return `<div id="parts"><p class="help">${t('Loading…')}</p></div>`;
 }
 async function loadParts(){
@@ -3177,7 +3196,7 @@ async function partsInvite(btn,body,what){
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 // Without email sending: open the organiser's email app with these addresses in BCC.
-const peopleMailApp = ps => { location.href=pollInviteMail(PEOPLE.id,PEOPLE.title,PEOPLE.deadline,ps.filter(p=>p.canMail&&p.email).map(p=>p.email).join('\n')).href; };
+const peopleMailApp = ps => { location.href=pollInviteMail(PEOPLE.id,PEOPLE.title,PEOPLE.deadline,ps.filter(p=>p.canMail&&p.email).map(p=>p.email).join('\n'),PEOPLE.info).href; };
 document.addEventListener('change',e=>{
   const c=e.target.closest('[data-psel],[data-pselall]'); if(!c||!PEOPLE||!PEOPLE.parts) return;
   if(c.dataset.psel!==undefined){ c.checked?PEOPLE.sel.add(c.dataset.psel):PEOPLE.sel.delete(c.dataset.psel); }
@@ -3680,6 +3699,9 @@ function germanText(){ return {
 "Copy link": "Link kopieren",
 "Copy share link": "Link kopieren",
 "Copy this:": "Kopieren:",
+"Copy message": "Nachricht kopieren",
+"Share via WhatsApp": "Per WhatsApp teilen",
+"Send by email": "Per E-Mail senden",
 "Could not reach that calendar": "Dieser Kalender ist nicht erreichbar",
 "Couldn’t load the calendar ({status})": "Kalender konnte nicht geladen werden ({status})",
 "Couldn’t load the “I’m human” check. Reload the page and try again.": "Die „Ich bin ein Mensch“-Prüfung konnte nicht geladen werden. Lade die Seite neu und versuch es noch mal.",
