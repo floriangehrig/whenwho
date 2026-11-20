@@ -404,7 +404,7 @@
   .mmeta a:hover{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
   .mrep{font-size:12.5px;color:var(--muted)}
   .mnote{font-size:13.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);padding:8px 11px;border-radius:8px;background:var(--sunken);border-left:3px solid color-mix(in srgb,var(--accent) 40%,var(--line))}
-  .meet .mdesc{margin-top:2px}
+  .meet .mdesc{margin-top:2px} .mnote+.mnote.mextra{margin-top:6px} .mnote.mextra{border-left-style:dashed}
   .mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px;padding-top:10px;border-top:1px solid var(--line)}
   .mfoot>.btn{margin-right:6px}
   .mstat{flex:1 1 160px;min-width:0;margin-left:6px;font-size:12px;color:var(--muted)}
@@ -2004,10 +2004,12 @@ function repeatText(m){ const r=m.repeat, wd=WDL[wdOf(m.date)], first=firstOn(r.
 function whenText(m){ const t=m.allDay?' · all day':` · ${hh(m.start)}–${hh(m.end)}`;
   if(m.repeat){ const [a,...b]=repeatText(m).split(' · '); return [a+t,...b].join(' · '); }
   return `${longDay(m.date)}${t}`; }
+// A meeting's full description: the shared one, then its own extra text below.
+function descOf(m){ return [m.note,m.extra].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
 function whoText(m){ return m.participants==='all'?'Everyone':m.participants.map(p=>p.name).join(', '); }
 function inviteText(m){
   const p=P.data.poll;
-  return [`${m.title||p.title}`, whenText(m), m.location?`Where: ${m.location}\nMap: ${mapUrl(m.location)}`:'', `Who: ${whoText(m)}`, m.note||'',
+  return [`${m.title||p.title}`, whenText(m), m.location?`Where: ${m.location}\nMap: ${mapUrl(m.location)}`:'', `Who: ${whoText(m)}`, descOf(m),
     '', `Add to your calendar: ${icsUrl(m.id,true)}`, `Poll: ${shareLink(P.id)}`].filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
 }
 function invited(m){ const rs=P.data.responses||[]; return m.participants==='all' ? rs : rs.filter(r=>m.participants.some(p=>p.id===r.id)); }
@@ -2041,14 +2043,14 @@ function renderMeetings(){
         noMail.length?`No email for ${esc(noMail.map(r=>r.name).join(', '))}.`:''].filter(Boolean).join(' ');
       foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?'Send again':'Send invite'}</span><span class="bs">${m.sentAt?'Resend':'Send'}</span></button>${qb('data-mail',m.id,'mail','Write the invite in my own email app')}`
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="Opens your email app with the invitees who left an address in BCC">${ICON.mail}<span>Email<span class="bl"> invite</span></span></button>`}
-        ${qb('data-copyinvite',m.id,'copy','Copy invite text')}${edit?'':qb('data-mdesc',m.id,'edit',m.note?'Edit description':'Add description')}${qb('data-delmeet',m.id,'trash','Delete meeting',' danger')}
+        ${qb('data-copyinvite',m.id,'copy','Copy invite text')}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?'Edit description':'Add description')}${qb('data-delmeet',m.id,'trash','Delete meeting',' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal','Add to calendar',icsUrl(m.id,true),'sm')}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?'All day':`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
-        ${edit?descEditor(m.id,m.note||'',''):m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${foot}</div></div>`; };
+        ${edit?descEditor(m.id,m.note||'','',m.extra||''):`${m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra" title="Only for this meeting">${esc(m.extra)}</div>`:''}`}${foot}</div></div>`; };
   const cal=`<span class="mcal">${ibl('download','Download all',icsUrl(null,true),'sm ghost')}${ibl('rss','Subscribe',sub,'sm ghost','','Subscribe: calendar apps keep this up to date as meetings are added')}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>Done</button>`:ib('select','Select','data-mselect title="Select several meetings to edit, move or delete them together"','sm '+cls);
   if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2><span class="hide-sm">Scheduled meetings</span><span class="sm-only">Meetings</span> <span class="count">${ms.length}</span></h2>
@@ -2068,7 +2070,7 @@ function batchPanel(ms,n){
       <span class="small muted" aria-live="polite">${n} of ${ms.length} selected</span></div>
     <div class="mbatch-g">
       <label for="mb_loc">Location</label><div class="mbatch-r"><div class="locbox"><input type="text" id="mb_loc" maxlength="200" autocomplete="off" placeholder="Search a place, or leave empty to clear" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mb_loc_sug" value="${esc(b.loc??same('location'))}"><div class="locsug" id="mb_loc_sug" role="listbox" hidden></div></div><button class="btn sm" data-mbatch="loc"${dis}>Set</button></div>
-      <label for="mb_desc">Description</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="Agenda, what to bring, a call link … (empty clears it)">${esc(b.desc??same('note'))}</textarea><button class="btn sm" data-mbatch="desc"${dis}>Set</button></div>
+      <label for="mb_desc">Description</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="Agenda, what to bring, a call link … (empty clears it; extra descriptions stay)">${esc(b.desc??same('note'))}</textarea><button class="btn sm" data-mbatch="desc"${dis}>Set</button></div>
       <label for="mb_n">Move by</label><div class="mbatch-r"><input type="number" id="mb_n" step="1" min="-365" max="365" value="${esc(b.n??'1')}" inputmode="numeric"><select id="mb_u" aria-label="Unit"><option value="h"${b.u==='h'?' selected':''}>hours</option><option value="d"${b.u!=='h'?' selected':''}>days</option></select><button class="btn sm" data-mbatch="shift"${dis}>Move</button><span class="help">Negative moves earlier.</span></div>
     </div>
     <div class="row"><button class="btn sm danger withic" data-mbatch="del"${dis}>${ICON.trash}<span>Delete ${n||''}<span class="bl"> selected</span></span></button></div></div>`;
@@ -2091,7 +2093,7 @@ async function runBatch(kind,btn){
   let list, msg;
   if(kind==='del'){ if(!confirm(`Delete ${pl}? This can't be undone.`)) return; list=ms.filter(m=>!S.has(m.id)); msg=`Deleted ${pl}`; }
   else if(kind==='loc'){ const v=$('mb_loc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,location:v}:m); msg=v?`Location set on ${pl}`:`Location cleared on ${pl}`; }
-  else if(kind==='desc'){ const v=$('mb_desc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,note:v}:m); msg=v?`Description set on ${pl}`:`Description cleared on ${pl}`; }
+  else if(kind==='desc'){ const v=$('mb_desc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,note:v}:m); msg=v?`Description set on ${pl} (extra descriptions kept)`:`Description cleared on ${pl} (extra descriptions kept)`; }
   else { const k=+$('mb_n').value, u=$('mb_u').value;
     if(!Number.isInteger(k)||!k||Math.abs(k)>(u==='h'?48:365)){ toast(u==='h'?'Enter whole hours, up to ±48':'Enter whole days, up to ±365'); return; }
     const out=ms.map(m=>S.has(m.id)?shiftMeeting(m,k,u):m), bad=out.filter(x=>!x).length;
@@ -2116,9 +2118,12 @@ document.addEventListener('keydown',e=>{ const c=e.target.closest&&e.target.clos
 document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n:'n',mb_u:'u'}[e.target.id]; if(f) (P.mbatch||(P.mbatch={}))[f]=e.target.value; });
 document.addEventListener('change',e=>{ if(e.target.id==='mb_u') (P.mbatch||(P.mbatch={})).u=e.target.value; });
 // Inline editor for a meeting's description; id '*' = every scheduled meeting of this round.
-function descEditor(id,val,help){
+// For one meeting it also has the extra description, shown below the shared one.
+function descEditor(id,val,help,extra){
   return `<div class="mdesc"><label for="mdesc_t">${id==='*'?'Description for all meetings':'Description'}</label>
     <textarea id="mdesc_t" maxlength="1000" placeholder="Agenda, what to bring, a call link …">${esc(val)}</textarea>
+    ${id==='*'?'':`<label for="mdesc_x">Extra description <span class="opt">this meeting only, shown below</span></label>
+    <textarea id="mdesc_x" maxlength="1000" placeholder="Anything that applies just to this date">${esc(extra||'')}</textarea>`}
     ${help?`<div class="help">${esc(help)}</div>`:''}
     <div class="row"><button class="btn sm primary" data-mdescsave="${id}">Save</button><button class="btn sm" data-mdesccancel>Cancel</button></div></div>`;
 }
@@ -2737,9 +2742,8 @@ async function saveDrafts(btn){
   if(!P.drafts.length) return;
   if(ms.length+P.drafts.length>100){ err.textContent=`A poll can have at most 100 meetings (${ms.length} already scheduled).`; return; }
   const rv=repeatValue(err); if(!rv) return;
-  const noteOf=x=>[dm.note, x.ownDesc?x.note:''].map(t=>(t||'').trim()).filter(Boolean).join('\n\n');
-  const long=P.drafts.find(x=>noteOf(x).length>1000); if(long){ err.textContent=`The description for ${dLabel(long.date)} is too long: the shared and extra description together can be at most 1000 characters.`; return; }
-  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:noteOf(x), participants:x.participants, ...rv};
+  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv};
+    if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
   if(await saveMeetings([...ms, ...list])){ P.drafts=[]; renderBody(); toast(`${n} ${n===1?'meeting':'meetings'} created`); }
@@ -3017,9 +3021,9 @@ document.addEventListener('click',async e=>{
   if(ds.clearrange!==undefined){ P.range=null; renderBody(); return; }
   if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); const ta=$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
   if(ds.mdesccancel!==undefined){ P.mdesc=null; renderMeetings(); return; }
-  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*';
+  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*', xe=$('mdesc_x'), xv=xe?xe.value.trim():null;
     t.disabled=true; P.mdesc=null;
-    if(await saveMeetings(inst().meetings.map(m=>all||m.id===id?{...m,note:v}:m))) toast(all?'Description saved on all meetings':'Description saved');
+    if(await saveMeetings(inst().meetings.map(m=>all?{...m,note:v}:m.id===id?{...m,note:v,extra:xv||undefined}:m))) toast(all?'Description saved on all meetings':'Description saved');
     else { P.mdesc=id; t.disabled=false; } return; }
   if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;

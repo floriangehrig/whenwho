@@ -407,6 +407,7 @@ function validateMeetings(list, poll) {
       id: /^[A-Za-z0-9]{4,20}$/.test(mt.id || '') ? mt.id : randomId(8),
       date: mt.date, allDay: !!mt.allDay,
       title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
+      extra: str(mt.extra, 1000, 'Extra description') || undefined,
       sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
       ...(repeat ? { repeat } : {}),
     };
@@ -906,7 +907,7 @@ function meetingToIcs(mt, poll, link) {
   }
   lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
-  lines.push(`DESCRIPTION:${icsEscape([mt.note, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
+  lines.push(`DESCRIPTION:${icsEscape([mt.note, mt.extra, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
   return lines;
 }
 function buildIcs(poll, meetings, link) {
@@ -1054,7 +1055,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
   if (!withMail.length) throw new HttpError(400, 'None of the invited people left an email address');
   const base = siteUrl(env, url.origin), link = `${base}/?p=${poll.id}`;
   const when = meetingWhen(mt);
-  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}\nMap: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `Who: ${whoText(mt)}`, mt.note ? `\n${mt.note}` : null,
+  const text = [`${mt.title || poll.title}`, '', `When: ${when}`, mt.location ? `Where: ${mt.location}\nMap: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `Who: ${whoText(mt)}`, mt.note || mt.extra ? `\n${[mt.note, mt.extra].filter(Boolean).join('\n\n')}` : null,
     '', 'The calendar file is attached. Open it to add the meeting to your calendar.', `Poll: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
