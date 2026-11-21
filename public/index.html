@@ -3122,10 +3122,10 @@ function votePanel(props){
       :`<div class="mfoot">${tog}${chatCan()?chatRefBtn('m:'+m.id):''}</div>`;
     return `<div class="meet prop${on?' voted':''}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div><span class="vtally">${tally}</span></div>
       <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
-  const help=adm?t('People who answered tick the options that suit them. Confirm one to make it a meeting; the other options are removed.')
-    :t('Tick every option that suits you. The organiser then confirms one.');
+  const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
+    :t('Tick every option that suits you. The organiser then confirms the ones that work.');
   const showV=t('Show the options to vote on'), hideV=t('Hide the options to vote on');
-  return `<div class="vpanel${fold?' folded':''}"><div class="vpanel-h"><button type="button" class="mfold" data-vfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showV:hideV}"><h3>${ICON.check}${t('Vote on a date')}${voted!=null?`<span class="count" title="${t('People who voted')}">${voted}/${total}</span>`:fold?`<span class="count">${props.length}</span>`:''}</h3></button>${fold?'':tip(help)}${foldBtn('data-vfold',fold,showV,hideV)}</div>
+  return `<div class="vpanel${fold?' folded':''}"><div class="vpanel-h"><button type="button" class="mfold" data-vfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showV:hideV}"><h3>${ICON.check}${t('Vote on a date')}${voted!=null?`<span class="count" title="${t('People who voted')}">${voted}/${total}</span>`:fold?`<span class="count">${props.length}</span>`:''}</h3></button>${fold?'':tip(help)}${adm&&!fold?`<button type="button" class="btn sm ghost" data-vend title="${t('Remove the options that are still open; confirmed meetings stay')}">${t('End vote')}</button>`:''}${foldBtn('data-vfold',fold,showV,hideV)}</div>
     ${fold?'':`${canVote?'':`<div class="muted small">${t('Send your answer to vote.')}</div>`}<div class="mlist">${rows}</div>`}</div>`;
 }
 async function toggleVote(id,btn){
@@ -3134,15 +3134,21 @@ async function toggleVote(id,btn){
     P.myVotes=r.votes; const x=(P.data.responses||[]).find(y=>y.id===P.myResp.id); if(x) x.votes=r.votes; renderMeetings(); }
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
+// Confirm makes one option a meeting; the others stay up for a vote (several can be confirmed). End vote removes the rest.
 async function confirmProposal(id,btn){
-  const others=proposals().length-1;
-  if(others&&!confirm(others===1?t('Confirm this option? The other option is removed.'):t('Confirm this option? The other {n} options are removed.',{n:others}))) return;
   btn.disabled=true;
-  if(await saveMeetings(inst().meetings.filter(m=>!m.proposed||m.id===id).map(m=>m.id===id?{...m,proposed:false,at:undefined}:m))) toast(t('Meeting confirmed'));
+  if(await saveMeetings(inst().meetings.map(m=>m.id===id?{...m,proposed:false,at:undefined}:m))) toast(t('Meeting confirmed'));
   else btn.disabled=false;
 }
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[data-mconfirm]'); if(!b||!P.data) return;
+async function endVote(btn){
+  const n=proposals().length; if(!n) return;
+  if(!confirm(n===1?t('End the vote? The open option is removed.'):t('End the vote? The {n} open options are removed.',{n}))) return;
+  btn.disabled=true;
+  if(await saveMeetings(confirmedMeetings())) toast(t('Vote ended')); else btn.disabled=false;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[data-mconfirm],[data-vend]'); if(!b||!P.data) return;
   if(b.dataset.vote){ if(P.myResp) toggleVote(b.dataset.vote,b); return; }
+  if(b.dataset.vend!==undefined){ endVote(b); return; }
   confirmProposal(b.dataset.mconfirm,b); });
 // "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
 function mailAllPanel(){
@@ -4068,7 +4074,7 @@ function draftTray(){
       ${repeatFields()}
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
       <div class="err" id="dm_err"></div>
-      <div class="dfoot">${n>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}${n>1?`<label class="check m0 dvote"><input type="checkbox" data-dvote${P.dvote?' checked':''}> ${t('Let people vote')}</label>${tip(t('Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm one.'))}`:''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n>1&&P.dvote?t('Propose {n} options',{n}):n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
+      <div class="dfoot">${n>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}${n>1?`<label class="check m0 dvote"><input type="checkbox" data-dvote${P.dvote?' checked':''}> ${t('Let people vote')}</label>${tip(t('Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm the ones you want.'))}`:''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n>1&&P.dvote?t('Propose {n} options',{n}):n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
 }
 function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
@@ -5252,17 +5258,20 @@ function germanText(){ return {
 "Confirm": "Bestätigen",
 "Remove option": "Option entfernen",
 "Remove this option?": "Diese Option entfernen?",
-"People who answered tick the options that suit them. Confirm one to make it a meeting; the other options are removed.": "Wer geantwortet hat, hakt die passenden Optionen ab. Bestätige eine, um daraus einen Termin zu machen; die anderen Optionen werden entfernt.",
-"Tick every option that suits you. The organiser then confirms one.": "Hake jede Option ab, die dir passt. Die Organisatorin oder der Organisator bestätigt dann eine.",
+"People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.": "Wer geantwortet hat, hakt die passenden Optionen ab. Bestätige jede, die ein Termin werden soll, und entferne den Rest mit Abstimmung beenden.",
+"Tick every option that suits you. The organiser then confirms the ones that work.": "Hake jede Option ab, die dir passt. Die Organisatorin oder der Organisator bestätigt dann die passenden.",
 "Vote on a date": "Über einen Termin abstimmen",
 "People who voted": "Personen, die abgestimmt haben",
-"Confirm this option? The other option is removed.": "Diese Option bestätigen? Die andere Option wird entfernt.",
-"Confirm this option? The other {n} options are removed.": "Diese Option bestätigen? Die anderen {n} Optionen werden entfernt.",
+"End the vote? The open option is removed.": "Abstimmung beenden? Die offene Option wird entfernt.",
+"End the vote? The {n} open options are removed.": "Abstimmung beenden? Die {n} offenen Optionen werden entfernt.",
+"End vote": "Abstimmung beenden",
+"Vote ended": "Abstimmung beendet",
+"Remove the options that are still open; confirmed meetings stay": "Entfernt die noch offenen Optionen; bestätigte Termine bleiben",
 "Meeting confirmed": "Termin bestätigt",
 "{title} proposed for {when}": "{title} vorgeschlagen für {when}",
 "{n} options up for a vote": "{n} Optionen zur Abstimmung gestellt",
 "Let people vote": "Abstimmen lassen",
-"Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm one.": "Stelle diese Zeiten zur Abstimmung, statt alle anzulegen. Alle, die geantwortet haben, haken die passenden ab, dann bestätigst du eine.",
+"Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm the ones you want.": "Stelle diese Zeiten zur Abstimmung, statt alle anzulegen. Alle, die geantwortet haben, haken die passenden ab, dann bestätigst du die gewünschten.",
 "Propose {n} options": "{n} Optionen vorschlagen",
 "{n} to vote on": "{n} zur Abstimmung",
 "Invalid votes": "Ungültige Stimmen",
