@@ -158,6 +158,7 @@ async function route(request, env, ctx, url) {
     if (!b && m === 'GET') return listChat(request, env, url, id);
     if (!b && m === 'POST') return postChat(request, env, id);
     if (b && !c && m === 'DELETE') return deleteChat(request, env, id, b);
+    if (b && c === 'react' && !d && m === 'POST') return reactChat(request, env, id, b);
   }
   if (a === 'participants') {
     if (!b && m === 'GET') return listParticipants(request, env, id);
@@ -406,7 +407,7 @@ function publicPoll(poll, admin) {
   return p;
 }
 function publicInstance(inst, extra = {}) {
-  return { id: inst.id, seq: inst.seq, startDate: inst.start_date, endDate: inst.end_date, deadline: inst.deadline,
+  return { id: inst.id, seq: inst.seq, createdAt: inst.created_at, startDate: inst.start_date, endDate: inst.end_date, deadline: inst.deadline,
     status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), ...extra };
 }
 
@@ -476,6 +477,7 @@ function validateMeetings(list, poll) {
       title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
       extra: str(mt.extra, 1000, 'Extra description') || undefined,
       sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
+      at: typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : now(), // when it was added (activity feed)
       ...(repeat ? { repeat } : {}),
     };
     if (!out.allDay) {
@@ -833,29 +835,39 @@ const chatUnread = (env, pollId, userId) => env.DB.prepare(
 const markChatRead = (env, pollId, userId) => env.DB.prepare(
   'INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
   .bind(pollId, userId, now()).run();
-const msgOut = (m, user) => ({ id: m.id, uid: m.user_id, body: m.body, at: m.created_at, mine: m.user_id === user.id });
+const CHAT_EMOJI = ['👍', '❤️', '😂', '✅', '🙏', '😮'];
+const REF_RE = /^(d:\d{4}-\d\d-\d\d|m:[A-Za-z0-9_-]{1,24})$/;
+// reactions go out as { emoji: { n, mine } }, so other people's ids stay on the server.
+function rxOut(raw, user) {
+  let r; try { r = JSON.parse(raw || '{}'); } catch { r = {}; }
+  const out = {};
+  for (const [e, ids] of Object.entries(r)) if (Array.isArray(ids) && ids.length) out[e] = { n: ids.length, mine: ids.includes(user.id) };
+  return out;
+}
+const msgOut = (m, user) => ({ id: m.id, uid: m.user_id, body: m.body, at: m.created_at, mine: m.user_id === user.id,
+  ref: m.ref || null, rx: rxOut(m.reactions, user), upd: m.updated_at || null });
 // ?after=<iso>: only messages from then on (>=, the page drops ones it has). Without it: the newest CHAT_PAGE plus who wrote them.
 async function listChat(request, env, url, id) {
   const { poll, user, owner } = await chatAccess(request, env, id);
-  const after = url.searchParams.get('after');
+  const after = url.searchParams.get('after'), t0 = now(); // t0 before the query, so nothing written meanwhile is skipped next time
   let msgs;
   if (after) {
     if (!/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(after)) throw new HttpError(400, 'Invalid time');
-    ({ results: msgs } = await env.DB.prepare('SELECT * FROM messages WHERE poll_id = ? AND created_at >= ? ORDER BY created_at, id LIMIT ?')
+    ({ results: msgs } = await env.DB.prepare('SELECT * FROM messages WHERE poll_id = ? AND COALESCE(updated_at, created_at) >= ? ORDER BY COALESCE(updated_at, created_at), id LIMIT ?')
       .bind(id, after, CHAT_PAGE).all());
   } else {
     ({ results: msgs } = await env.DB.prepare('SELECT * FROM (SELECT * FROM messages WHERE poll_id = ? ORDER BY created_at DESC LIMIT ?) ORDER BY created_at, id')
       .bind(id, CHAT_PAGE).all());
   }
   // now: the server's clock, so the page can ask for "messages after this" even while the chat is empty.
-  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: now() };
+  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: t0 };
   // Who wrote them (pictures only on the first load; a later message from someone new makes the page reload once).
   if (!after) {
     const ids = [...new Set([user.id, ...msgs.map((m) => m.user_id)])];
     const { results: us } = await env.DB.prepare(`SELECT id, email, name, avatar, avatar_img FROM users WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
     out.people = Object.fromEntries(us.map((u) => { const p = personOut(u); delete p.email; delete p.uid; return [u.id, p]; }));
   }
-  if (!after || msgs.some((m) => m.user_id !== user.id)) await markChatRead(env, id, user.id);
+  if (!after || msgs.some((m) => m.user_id !== user.id && m.created_at >= after)) await markChatRead(env, id, user.id);
   return json(out);
 }
 // Body: { body }.
@@ -863,13 +875,15 @@ async function postChat(request, env, id) {
   const { user } = await chatAccess(request, env, id);
   const b = await body(request);
   const text = str(b.body, CHAT_MAX_LEN, 'Message', true);
+  const ref = b.ref == null || b.ref === '' ? null : String(b.ref);
+  if (ref && !REF_RE.test(ref)) throw new HttpError(400, 'Invalid thread');
   const since = new Date(Date.now() - CHAT_BURST_MIN * 60000).toISOString();
   const c = await env.DB.prepare('SELECT COUNT(*) AS total, SUM(user_id = ? AND created_at > ?) AS recent FROM messages WHERE poll_id = ?').bind(user.id, since, id).first();
   if ((c.recent || 0) >= CHAT_BURST) throw new HttpError(429, 'You’re sending a lot of messages. Wait a few minutes.');
   if ((c.total || 0) >= CHAT_MAX_PER_POLL) throw new HttpError(409, 'This chat is full. Delete old messages first.');
-  const m = { id: randomId(12), poll_id: id, user_id: user.id, body: text, created_at: now() };
+  const m = { id: randomId(12), poll_id: id, user_id: user.id, body: text, created_at: now(), ref, reactions: '{}' };
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO messages (id, poll_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)').bind(m.id, id, user.id, text, m.created_at),
+    env.DB.prepare('INSERT INTO messages (id, poll_id, user_id, body, created_at, ref) VALUES (?, ?, ?, ?, ?, ?)').bind(m.id, id, user.id, text, m.created_at, ref),
     env.DB.prepare('INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
       .bind(id, user.id, m.created_at),
   ]);
@@ -884,6 +898,22 @@ async function deleteChat(request, env, id, mid) {
   if (m.user_id !== user.id && !owner) throw new HttpError(403, 'You can only delete your own messages');
   await env.DB.prepare('DELETE FROM messages WHERE id = ?').bind(mid).run();
   return json({ ok: true });
+}
+// Body: { emoji }. Toggles the caller's reaction; counts toward the same burst limit as posting.
+async function reactChat(request, env, id, mid) {
+  const { user } = await chatAccess(request, env, id);
+  if (!ID_RE.test(mid)) throw new HttpError(404, 'Message not found');
+  const b = await body(request);
+  if (!CHAT_EMOJI.includes(b.emoji)) throw new HttpError(400, 'Invalid reaction');
+  const m = await env.DB.prepare('SELECT * FROM messages WHERE id = ? AND poll_id = ?').bind(mid, id).first();
+  if (!m) throw new HttpError(404, 'Message not found');
+  let r; try { r = JSON.parse(m.reactions || '{}'); } catch { r = {}; }
+  const ids = Array.isArray(r[b.emoji]) ? r[b.emoji] : [];
+  if (ids.includes(user.id)) r[b.emoji] = ids.filter((x) => x !== user.id); else r[b.emoji] = [...ids, user.id].slice(-500);
+  if (!r[b.emoji].length) delete r[b.emoji];
+  m.reactions = JSON.stringify(r); m.updated_at = now();
+  await env.DB.prepare('UPDATE messages SET reactions = ?, updated_at = ? WHERE id = ?').bind(m.reactions, m.updated_at, mid).run();
+  return json({ message: msgOut(m, user) });
 }
 // ---------- external calendar (iCal feed) ----------
 // The page parses the calendar itself; the Worker only fetches the feed (browsers can't, because of CORS).
@@ -1469,6 +1499,15 @@ async function getPoll(request, env, ctx, url, id) {
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
     const can = admin || !!part;
     out.chat = { can, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
+    if (can) { // header peek (newest message) and message counts per day / meeting thread
+      const [last, refs] = await env.DB.batch([
+        env.DB.prepare('SELECT m.body, m.created_at, m.user_id, u.name, u.email FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT 1').bind(id),
+        env.DB.prepare('SELECT ref, COUNT(*) AS n FROM messages WHERE poll_id = ? AND ref IS NOT NULL GROUP BY ref').bind(id),
+      ]);
+      const l = last.results[0];
+      if (l) out.chat.last = { name: l.name || (l.email || '').split('@')[0] || '?', body: l.body.slice(0, 120), at: l.created_at, mine: l.user_id === user.id };
+      out.chat.refs = Object.fromEntries(refs.results.map((r) => [r.ref, r.n]));
+    }
   }
   return json(out);
 }
