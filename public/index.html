@@ -3793,7 +3793,7 @@ async function aiGo(){
   P.aiBusy=false; renderBody();
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
+  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } renderBody(); return; }
   if(!e.target.closest('.aif')) return;
   if(e.target.closest('[data-aigo]')) aiGo();
   else if(e.target.closest('[data-aiundo]')&&P.aiUndo&&P.aiUndo.poll===P.id){ P.mine.entries=P.aiUndo.prev; changed(); P.aiUndo=null; P.aiMsg=t('Undone'); P.aiErr=false; renderBody(); }
