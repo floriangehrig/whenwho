@@ -484,8 +484,7 @@
   .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
   .mm-p.off{opacity:.5;cursor:default}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
-  .mfold::before{content:"";width:7px;height:7px;border-right:2px solid var(--accent-ink);border-bottom:2px solid var(--accent-ink);transform:rotate(45deg);transition:transform .15s;margin:0 4px 3px 2px;flex:none}
-  .folded .mfold::before{transform:rotate(-45deg);margin-bottom:0}
+  .mfold-b{color:var(--accent-ink)}
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
   /* one card per meeting: date tile | title, time · place · who, description, owner actions */
   .mlist{display:flex;flex-direction:column;gap:10px;padding:12px}
@@ -1516,6 +1515,9 @@ Object.assign(ICON,{
   download:svgI('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
   rss:svgI('<path d="M5 11a8 8 0 0 1 8 8M5 5a14 14 0 0 1 14 14"/><circle cx="6" cy="18" r="1.3" fill="currentColor"/>'),
   select:svgI('<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5-6"/>'),
+  grip:svgI('<circle cx="9" cy="6" r="1.2" fill="currentColor"/><circle cx="15" cy="6" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="15" cy="12" r="1.2" fill="currentColor"/><circle cx="9" cy="18" r="1.2" fill="currentColor"/><circle cx="15" cy="18" r="1.2" fill="currentColor"/>'),
+  up:svgI('<path d="m6 15 6-6 6 6"/>'),
+  down:svgI('<path d="m6 9 6 6 6-6"/>'),
   zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
@@ -2972,8 +2974,8 @@ function renderMeetings(){
   if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}"><div class="card-h">${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
     ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
   else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
-      <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>
-      ${d.isAdmin&&!fold?selBtn(sel?'ghost on':'ghost'):''}${cal}</div>
+      <button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>
+      ${d.isAdmin&&!fold?selBtn(sel?'ghost on':'ghost'):''}${cal}<button type="button" class="qb mfold-b" data-mfold aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}" aria-label="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}">${ICON[fold?'down':'up']}</button></div>
     ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
