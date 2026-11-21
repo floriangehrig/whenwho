@@ -494,6 +494,33 @@
     .acct-list .list li{padding:6px 4px;gap:8px}
     .acct-tools .pd-q{flex-basis:100%} .acct-tools .seg{display:flex;flex-wrap:nowrap;width:100%} .acct-tools .seg button{flex:1 1 auto;min-width:0;justify-content:center;white-space:nowrap;padding:6px 8px;font-size:12.5px} .acct-tools .seg button>span:last-child{overflow:hidden;text-overflow:ellipsis} .acct-tools .seg .segic{display:none}
   }
+  /* contact groups: a rail of tiles in the Contacts card, the group editor, and group rows in Add people */
+  .acct-list.grp-wrap{max-height:none;overflow:visible} .grp-wrap:empty{display:none} .grp-wrap .cgrp{position:static}
+  .grp-rail{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 8px;overscroll-behavior-x:contain}
+  .grp-rail::-webkit-scrollbar{display:none}
+  .grp-tile{flex:none;scroll-snap-align:start;width:108px;min-height:92px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,transform .15s}
+  .grp-tile:hover{border-color:var(--accent)} .grp-tile:active{transform:scale(.97)}
+  .grp-tile .tile{margin-bottom:5px} .grp-tile b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .grp-tile .muted{font-size:11.5px}
+  .grp-tile.new{border-style:dashed;border-color:var(--line-strong);background:none;color:var(--accent);align-items:center;justify-content:center;text-align:center}
+  .grp-tile.new>svg{width:22px;height:22px} .grp-tile.new b{white-space:normal;line-height:1.2}
+  .grdlg .dlg-h{gap:10px} .grp-ic{flex:none;padding:0;border:0;background:none;border-radius:11px;cursor:pointer;line-height:0}
+  .grp-ic .pf-tile{width:40px;height:40px;border-radius:11px} .grp-ic .pf-tile .tile-e{font-size:22px} .grp-ic .pf-tile .tile-i{font-size:17px}
+  .grp-ic[aria-expanded=true] .pf-tile{box-shadow:0 0 0 3px var(--accent)}
+  .grp-name{flex:1;min-width:0;font-size:16px;font-weight:700;border-color:transparent;background:transparent;padding:6px 8px}
+  .grp-name:hover,.grp-name:focus{border-color:var(--line-strong);background:var(--card)}
+  #pk_grp label.pk-act{display:none}
+  .dlg-f{display:flex;align-items:center;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+  .dlg-f .btn.primary{min-width:110px;justify-content:center}
+  .grp-list .grp-row{padding:8px 4px} .grp-row.done .pmain b{color:var(--muted)}
+  .grp-list .grp-subw{display:block;padding:0 0 4px 22px;border-top:0} .grp-list .grp-subw:hover{background:none}
+  .grp-sub{margin:0;border-left:2px solid var(--line);padding-left:8px} .grp-sub li{padding:5px 6px;margin:0}
+  .grp-sub li.hit{background:var(--accent-weak)}
+  .grp-x svg{transition:transform .15s} .grp-x[aria-expanded=true] svg{transform:rotate(180deg)}
+  .gin{display:inline-flex;align-items:center;gap:4px;color:var(--yes-dark,var(--accent));font-size:12.5px;font-weight:600;padding:0 6px} .gin svg{width:16px;height:16px}
+  .gs-list .list li{padding:0;margin:0} .gs-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 6px;margin:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;border-radius:10px}
+  .gs-row:hover{background:var(--sunken)} .gs-row input{width:20px;height:20px;flex:none;accent-color:var(--accent)}
+  .gs-new{color:var(--accent)} .gs-new svg{width:18px;height:18px;margin:0 7px}
+  @media (max-width:560px){ .grp-tile{width:96px;min-height:86px} .grp-tile.new{width:76px} .dlg-f .btn.primary{flex:1} }
   .calpick{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
   .calpick .check{margin:0} .calpick .cdot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c,var(--accent));margin-right:2px}
   .slot.na,.slot.off:not(.hm):not(.mo){background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 1px,transparent 1px 7px)}
@@ -1551,6 +1578,8 @@ const ERR_DE = [
   [/^At most (\d+) quick fill rules$/, (m,n)=>`Höchstens ${n} Regeln für Schnell ausfüllen`],
   [/^(.+) needs an email address$/, (m,n)=>`${n} braucht eine E-Mail-Adresse`],
   [/^You can have at most (\d+) favourites$/, (m,n)=>`Du kannst höchstens ${n} Favoriten haben`],
+  [/^You can have at most (\d+) groups$/, (m,n)=>`Du kannst höchstens ${n} Gruppen haben`],
+  [/^A group can have at most (\d+) people$/, (m,n)=>`Eine Gruppe kann höchstens ${n} Personen haben`],
   [/^Allow when-who to read your (Google|Outlook) contacts$/, (m,p)=>`Erlaube when-who, deine ${p}-Kontakte zu lesen`],
   [/^(.+) is required$/, (m,f)=>`${t(f)}: Pflichtfeld`],
   [/^(.+) must be text$/, (m,f)=>`${t(f)}: muss Text sein`],
@@ -2710,17 +2739,18 @@ function renderContactsCard(){
     const seg=[['all','',t('All')],['fav','star',t('Favourites')],['polls','users',t('From your polls')]];
     box.innerHTML=`<div class="acct-tools" id="ct_tools" hidden><label class="pd-q">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
         <div class="seg" role="group">${seg.map(([k,ic,l])=>`<button type="button" data-ctf="${k}" aria-pressed="false">${ic?`<span class="segic">${ICON[ic]}</span>`:''}<span>${esc(l)}</span></button>`).join('')}</div></div>
-      <div id="ct_list" class="acct-list"></div>`; }
+      <div id="ct_grps" class="acct-list grp-wrap"></div><div id="ct_list" class="acct-list"></div>`; }
   const list=$('ct_list'); if(!FRIENDS){ list.innerHTML=`<p class="help">${t('Loading…')}</p>`; loadFriends().then(r=>{ if(r) renderContactsCard(); else if($('ct_list')) $('ct_list').innerHTML=`<p class="err">${t('Couldn’t load your contacts.')}</p>`; }); return; }
   const n=contactGroups([],contactKeep('')).slice(0,2).reduce((s,g)=>s+g.list.length,0), q=CT.q.trim();
   const cnt=$('ct_count'); if(cnt){ cnt.textContent=n; cnt.hidden=!n; }
-  $('ct_tools').hidden=!n;
+  $('ct_tools').hidden=!n&&!grpList().length;
+  $('ct_grps').innerHTML=n||grpList().length?grpRailHtml(q):'';
   box.querySelectorAll('[data-ctf]').forEach(b=>{ const on=b.dataset.ctf===CT.filter; b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
   if(!n){ list.innerHTML=`<div class="acct-empty">${ICON.users}<span>${t('No contacts yet. Add people or import them from your phone or mail account.')}</span>
     <button type="button" class="btn sm primary withic" data-ctopen>${ICON.plus}<span>${t('Add contacts')}</span></button></div>`; return; }
   const all=contactGroups([],contactKeep(q)).slice(0,2), groups=CT.filter==='fav'?[all[0]]:CT.filter==='polls'?[all[1]]:all, favs=favEmails();
   CT.items=[];
-  const h=contactListHtml(groups,CT.items,f=>f.email?favBtn(f,favs):'');
+  const h=contactListHtml(groups,CT.items,f=>f.email?favBtn(f,favs)+grpBtn(f):'');
   list.innerHTML=h||`<p class="help">${q?t('Nobody found.'):CT.filter==='fav'?t('No favourites yet. Star people to keep them here.'):t('Nobody from your polls yet.')}</p>`;
 }
 // The Add-contacts popup: a new person (saved as a favourite), import buttons, and the imported list to star from.
@@ -2782,6 +2812,170 @@ document.addEventListener('input',e=>{ if(e.target.id==='ct_q'){ CT.q=e.target.v
 document.addEventListener('keydown',e=>{ if((e.target.id==='ct_n'||e.target.id==='ct_e')&&e.key==='Enter'){ e.preventDefault();
   if(e.target.id==='ct_n'&&!$('ct_e').value.trim()) $('ct_e').focus(); else contactAdd(document.querySelector('[data-ctadd]')); } });
 // Back on the Account page from a Google / Outlook contacts sign-in started in the Add-contacts popup: true if it was one.
+// ---- Contact groups: named sets of people (name + email) on the account, from GET /me/friends `groups`.
+// The Contacts card shows them as a rail of tiles; a tile opens the group editor (grpOpen). The Add-people popup lists them
+// first (pdGroupsHtml) with "Add N" for the members not in the poll yet; search matches the group name and its members.
+const grpList=()=>(FRIENDS&&FRIENDS.groups)||[];
+const grpTile=(g,cls='sm')=>tile({emoji:g.icon,text:g.name||'?',seed:g.id||g.name},cls);
+const grpHit=(m,q)=>!!q&&((m.name||'').toLowerCase().includes(q)||(m.email||'').toLowerCase().includes(q));
+// 'name' when the group name matches, 'member' when only members do, '' when it doesn't (no query = 'name').
+function grpMatch(g,q){ q=String(q||'').trim().toLowerCase(); if(!q||g.name.toLowerCase().includes(q)) return 'name'; return g.members.some(m=>grpHit(m,q))?'member':''; }
+const grpCount=n=>n===1?t('1 person'):t('{n} people',{n});
+function grpRailHtml(q){
+  const gs=grpList().filter(g=>grpMatch(g,q));
+  if(q&&!gs.length) return '';
+  return `<div class="cgrp">${ICON.users}<span class="grow">${t('Groups')}${gs.length?` <span class="muted">(${gs.length})</span>`:''}</span>${tip(t('Save people you often invite together. In a poll’s Add people, a group adds everyone in one tap.'),'right')}</div>
+    <div class="grp-rail" role="list">${q?'':`<button type="button" class="grp-tile new" role="listitem" data-grpopen="">${ICON.plus}<b>${t('New group')}</b></button>`}
+      ${gs.map(g=>`<button type="button" class="grp-tile" role="listitem" data-grpopen="${esc(g.id)}" aria-label="${esc(g.name+', '+grpCount(g.members.length))}">${grpTile(g)}<b>${esc(g.name)}</b><span class="muted">${esc(grpCount(g.members.length))}</span></button>`).join('')}</div>`;
+}
+// The editor. GR.g = the group being edited (a copy), GR.orig = what it was (to spot unsaved changes).
+const GR={g:null,orig:'',q:'',items:[],busy:false};
+const grpState=()=>JSON.stringify({n:GR.g.name.trim(),i:GR.g.icon,m:GR.g.members.map(m=>m.email)});
+const grpDirty=()=>!!GR.g&&grpState()!==GR.orig;
+async function grpOpen(id,members){
+  if(!FRIENDS) await loadFriends();
+  const src=id?grpList().find(g=>g.id===id):null; if(id&&!src) return;
+  GR.g=src?{id:src.id,name:src.name,icon:src.icon,members:src.members.map(m=>({...m}))}:{id:'',name:'',icon:'',members:[]};
+  GR.orig=src?grpState():JSON.stringify({n:'',i:'',m:[]}); GR.q='';
+  if(members) for(const m of members) if(m.email&&!GR.g.members.some(x=>x.email===m.email.toLowerCase())) GR.g.members.push({name:m.name,email:m.email.toLowerCase()});
+  let d=$('grdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='grdlg'; d.className='dlg grdlg'; d.setAttribute('aria-labelledby','gr_n'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) grpClose(); });
+    d.addEventListener('cancel',e=>{ e.preventDefault(); grpClose(); }); }
+  const g=GR.g;
+  d.innerHTML=`<div class="dlg-h"><button type="button" class="grp-ic" data-grpic aria-expanded="false" title="${t('Change icon')}" aria-label="${t('Change icon')}"><span data-pkprev="grp">${grpTile(g,'pf-tile')}</span></button>
+      <input type="text" id="gr_n" class="grp-name" maxlength="40" value="${esc(g.name)}" placeholder="${t('Group name')}" aria-label="${t('Group name')}" autocomplete="off" enterkeyhint="next">
+      ${pqb('x',t('Close'),'data-grclose=""')}</div>
+    <div class="dlg-b"><div id="gr_pk" hidden>${picker('grp',{emoji:g.icon,text:g.name||'?',seed:g.id||g.name})}</div>
+      <label class="pd-q">${ICON.search||''}<input type="search" id="gr_q" placeholder="${t('Add people: search or type an email')}" aria-label="${t('Add people: search or type an email')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></label>
+      <div class="err" id="gr_err"></div></div>
+    <div id="gr_list" class="pd-list"></div>
+    <div class="dlg-f">${g.id?`<button type="button" class="btn sm ghost danger withic" data-grdel>${ICON.trash}<span>${t('Delete group')}</span></button>`:''}<span class="grow"></span>
+      <button type="button" class="btn primary withic" data-grsave>${ICON.check}<span>${t('Save')}</span></button></div>`;
+  if(!d.open) d.showModal();
+  grpRender(); if(!TOUCH) $(g.name?'gr_q':'gr_n').focus(); else if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+}
+function grpClose(force){
+  const d=$('grdlg'); if(!d) return;
+  if(!force&&grpDirty()&&!confirm(t('Discard your changes to this group?'))) return;
+  GR.g=null; d.close();
+}
+function grpRender(){
+  const box=$('gr_list'); if(!box||!GR.g) return;
+  const g=GR.g, q=GR.q.trim().toLowerCase(), inG=new Set(g.members.map(m=>m.email));
+  GR.items=[];
+  let h='';
+  // A typed address that isn't anyone yet: offer it as a new person.
+  if(EMAIL_RE.test(q)&&!inG.has(q)&&!contactGroups([],contactKeep('')).some(x=>x.list.some(f=>(f.email||'').toLowerCase()===q)))
+    h+=contactListHtml([{ic:'plus',title:t('New person'),list:[{name:nameFromEmail(q),email:q}]}],GR.items,(f,i)=>pqb('plus',t('Add {name}',{name:f.name}),`data-gradd="${i}"`,' ok'));
+  if(q){ const found=contactGroups([],contactKeep(q,(f,k)=>!f.email||inG.has(k))).slice(0,2);
+    h+=contactListHtml(found,GR.items,(f,i)=>pqb('plus',t('Add {name}',{name:f.name}),`data-gradd="${i}"`,' ok')); }
+  h+=g.members.length?contactListHtml([{ic:'users',title:t('In this group'),list:g.members}],GR.items,(f,i)=>pqb('x',t('Remove {name}',{name:f.name}),`data-grrm="${i}"`))
+    :`<div class="cgrp">${ICON.users}<span class="grow">${t('In this group')} <span class="muted">(0)</span></span></div><p class="help">${t('Search your contacts above, or type an email address, to add people.')}</p>`;
+  // Without a search: the rest of the contacts under the members, so people can be tapped in without typing.
+  if(!q) h+=contactListHtml(contactGroups([],contactKeep('',(f,k)=>!f.email||inG.has(k))).slice(0,2),GR.items,(f,i)=>pqb('plus',t('Add {name}',{name:f.name}),`data-gradd="${i}"`,' ok'));
+  if(q&&!h.includes('data-gradd')) h=`<p class="help">${EMAIL_RE.test(q)?t('Already in this group.'):t('Nobody found. Type their whole email address to add someone new.')}</p>`+h;
+  box.innerHTML=h;
+  const s=document.querySelector('#grdlg [data-grsave]'); if(s) s.disabled=GR.busy||!g.name.trim()||!g.members.length||(!!g.id&&!grpDirty());
+}
+function grpAdd(f){
+  const g=GR.g, mail=String(f.email||'').toLowerCase(); if(!g||!EMAIL_RE.test(mail)||g.members.some(m=>m.email===mail)) return;
+  if(g.members.length>=100){ $('gr_err').textContent=t('A group can have at most {n} people',{n:100}); return; }
+  g.members.push({name:String(f.name||'').slice(0,60)||nameFromEmail(mail),email:mail}); g.members.sort((a,b)=>a.name.localeCompare(b.name,LOC));
+  const qi=$('gr_q'); if(qi&&EMAIL_RE.test(GR.q.trim())){ qi.value=''; GR.q=''; }
+  grpRender();
+}
+async function grpSave(btn){
+  const g=GR.g, err=$('gr_err'); if(!g) return; err.textContent='';
+  g.name=$('gr_n').value.trim(); g.icon=(PICK.grp&&PICK.grp.emoji)||'';
+  if(!g.name){ err.textContent=t('Give the group a name.'); $('gr_n').focus(); return; }
+  if(!g.members.length){ err.textContent=t('Add at least one person.'); $('gr_q').focus(); return; }
+  GR.busy=true; btn.disabled=true;
+  try{ const b={name:g.name,icon:g.icon,members:g.members};
+    if(g.id) await api('PATCH','/me/groups/'+encodeURIComponent(g.id),b); else await api('POST','/me/groups',b);
+    await loadFriends(true); grpClose(true); grpChanged(); toast(t('Group saved')); }
+  catch(ex){ err.textContent=ex.message; }
+  finally{ GR.busy=false; if(btn.isConnected) grpRender(); }
+}
+async function grpDelete(){
+  const g=GR.g; if(!g||!g.id) return;
+  if(!confirm(t('Delete the group “{name}”? The people in it stay in your contacts.',{name:g.name}))) return;
+  try{ await api('DELETE','/me/groups/'+encodeURIComponent(g.id)); await loadFriends(true); grpClose(true); grpChanged(); toast(t('Group deleted')); }
+  catch(ex){ toast(ex.message); }
+}
+// Redraw what shows groups: the Contacts card, the Add-people popup and the per-contact Groups sheet.
+function grpChanged(){ renderContactsCard(); if($('pd_list')) pdRender(); if($('gsdlg')&&$('gsdlg').open) gsRender(); }
+// The Groups sheet of one contact (👥 on a row): tick the groups they are in; changes save at once.
+const GS={f:null};
+function gsOpen(f){
+  GS.f={name:f.name,email:String(f.email).toLowerCase()};
+  let d=$('gsdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='gsdlg'; d.className='dlg'; d.setAttribute('aria-labelledby','gs_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  d.innerHTML=`<div class="dlg-h"><h2 id="gs_h" class="ell">${t('Groups of {name}',{name:esc(GS.f.name)})}</h2>${pqb('x',t('Close'),'data-gsclose=""')}</div><div id="gs_list" class="pd-list gs-list"></div>`;
+  if(!d.open) d.showModal(); if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+  gsRender();
+}
+function gsRender(){
+  const box=$('gs_list'); if(!box||!GS.f) return; const mail=GS.f.email;
+  box.innerHTML=`<ul class="list">${grpList().map(g=>{ const on=g.members.some(m=>m.email===mail);
+      return `<li><label class="gs-row">${grpTile(g)}<span class="grow pmain"><b class="ell">${esc(g.name)}</b><span class="muted small">${esc(grpCount(g.members.length))}</span></span>
+        <input type="checkbox" data-gstog="${esc(g.id)}" ${on?'checked':''} aria-label="${esc(g.name)}"></label></li>`; }).join('')}
+    <li><button type="button" class="gs-row gs-new" data-gsnew>${ICON.plus}<b>${t('New group with {name}',{name:esc(GS.f.name)})}</b></button></li></ul>`;
+}
+async function gsToggle(cb){
+  const g=grpList().find(x=>x.id===cb.dataset.gstog), f=GS.f; if(!g||!f) return;
+  const members=cb.checked?[...g.members.filter(m=>m.email!==f.email),{name:f.name.slice(0,60),email:f.email}].sort((a,b)=>a.name.localeCompare(b.name,LOC)):g.members.filter(m=>m.email!==f.email);
+  cb.disabled=true;
+  try{ await api('PATCH','/me/groups/'+encodeURIComponent(g.id),{members}); await loadFriends(true); grpChanged();
+    toast(cb.checked?t('Added to {group}',{group:g.name}):t('Removed from {group}',{group:g.name})); }
+  catch(ex){ toast(ex.message); cb.checked=!cb.checked; cb.disabled=false; }
+}
+const grpBtn=f=>pqb('users',t('Groups of {name}',{name:f.name||f.email}),`data-gsopen="${esc(f.email)}" data-gsname="${esc(f.name||'')}"`,' gsb');
+// Add-people popup: one row per matching group; the members not in the poll yet get "Add N", ⌄ shows them one by one.
+function pdGroupsHtml(q,inPoll){
+  const ql=q.toLowerCase(), gs=grpList().map(g=>({g,how:grpMatch(g,q)})).filter(x=>x.how);
+  if(!gs.length) return '';
+  return `<div class="cgrp">${ICON.users}<span class="grow">${t('Groups')} <span class="muted">(${gs.length})</span></span></div><ul class="list grp-list">`+gs.map(({g,how})=>{
+    const miss=g.members.filter(m=>!inPoll.has(m.email)), have=g.members.length-miss.length, open=PD.gopen.has(g.id)||(how==='member'&&!PD.gshut.has(g.id));
+    const names=g.members.slice(0,3).map(m=>m.name.split(' ')[0]).join(', ')+(g.members.length>3?` +${g.members.length-3}`:'');
+    const sub=open?`<ul class="list grp-sub">${g.members.map(m=>{ const i=PD.items.push(m)-1, inn=inPoll.has(m.email);
+        return `<li class="${grpHit(m,ql)?'hit':''}">${avatarOf(m)}<span class="grow pmain"><b class="ell">${esc(m.name)}</b><span class="muted small ell">${esc(m.email)}</span></span>
+          <span class="acts">${inn?`<span class="gin" title="${t('Already in the poll')}">${ICON.check}</span>`:pqb('plus',t('Add {name}',{name:m.name}),`data-pdi="${i}"`,' ok')}</span></li>`; }).join('')}</ul>`:'';
+    return `<li class="grp-row${miss.length?'':' done'}">${grpTile(g)}<span class="grow pmain"><b class="ell">${esc(g.name)}</b><span class="muted small ell">${esc(names)}${have&&miss.length?` · ${t('{n} already in',{n:have})}`:''}</span></span>
+      <span class="acts">${miss.length?`<button type="button" class="btn sm primary" data-pdgrp="${esc(g.id)}">${t('Add {n}',{n:miss.length})}</button>`:`<span class="gin all">${ICON.check}<span>${t('all in')}</span></span>`}
+        <button type="button" class="qb grp-x" data-pdgx="${esc(g.id)}" aria-expanded="${open}" title="${open?t('Hide people'):t('Show people')}" aria-label="${esc((open?t('Hide people'):t('Show people'))+': '+g.name)}">${ICON.chevd}</button></span></li>${sub?`<li class="grp-subw">${sub}</li>`:''}`; }).join('')+'</ul>';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-grpopen],[data-grclose],[data-grsave],[data-grdel],[data-grpic],[data-gradd],[data-grrm],[data-gsopen],[data-gsclose],[data-gsnew],[data-pdgrp],[data-pdgx],[data-psavegrp]'); if(!b) return; const d=b.dataset;
+  if(d.grpopen!==undefined) grpOpen(d.grpopen||null);
+  else if(d.grclose!==undefined) grpClose();
+  else if(d.grsave!==undefined) grpSave(b);
+  else if(d.grdel!==undefined) grpDelete();
+  else if(d.grpic!==undefined){ const p=$('gr_pk'), on=p.hidden; p.hidden=!on; b.setAttribute('aria-expanded',String(on)); }
+  else if(d.gradd!==undefined){ const f=GR.items[+d.gradd]; if(f) grpAdd(f); }
+  else if(d.grrm!==undefined){ const f=GR.items[+d.grrm]; if(f&&GR.g){ GR.g.members=GR.g.members.filter(m=>m.email!==f.email); grpRender(); } }
+  else if(d.gsopen!==undefined) gsOpen({name:d.gsname||nameFromEmail(d.gsopen),email:d.gsopen});
+  else if(d.gsclose!==undefined) $('gsdlg').close();
+  else if(d.gsnew!==undefined){ const f=GS.f; $('gsdlg').close(); grpOpen(null,[f]); }
+  else if(d.pdgx!==undefined){ const id=d.pdgx; if(b.getAttribute('aria-expanded')==='true'){ PD.gopen.delete(id); PD.gshut.add(id); } else { PD.gopen.add(id); PD.gshut.delete(id); } pdRender(); }
+  else if(d.pdgrp!==undefined){ const g=grpList().find(x=>x.id===d.pdgrp); if(!g||!PEOPLE) return;
+    const inPoll=new Set(PEOPLE.parts.map(p=>(p.email||'').toLowerCase()).filter(Boolean));
+    const rows=g.members.filter(m=>!inPoll.has(m.email)).map(m=>({name:m.name.slice(0,60),email:m.email})); if(rows.length) addPeople(rows,b); }
+  else if(d.psavegrp!==undefined){ const ps=PEOPLE.parts.filter(p=>PEOPLE.sel.has(p.id)&&p.email);
+    if(!ps.length){ toast(t('None of them has an email address.')); return; } grpOpen(null,ps.map(p=>({name:p.name,email:p.email}))); }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='gr_q'){ GR.q=e.target.value; grpRender(); }
+  else if(e.target.id==='gr_n'&&GR.g){ GR.g.name=e.target.value; pickerSetText('grp',e.target.value||'?'); grpRender(); }
+});
+document.addEventListener('change',e=>{ if(e.target.dataset&&e.target.dataset.gstog) gsToggle(e.target); });
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='gr_n'&&e.key==='Enter'){ e.preventDefault(); $('gr_q').focus(); }
+  else if(e.target.id==='gr_q'&&e.key==='Enter'){ e.preventDefault(); const first=GR.items.length&&document.querySelector('#gr_list [data-gradd]'); if(first) first.click(); }
+});
+// The picker's emoji clicks change PICK.grp; keep the group's Save button in step.
+document.addEventListener('click',e=>{ if(GR.g&&e.target.closest('#pk_grp [data-pkemoji],#pk_grp [data-pkclear]')){ GR.g.icon=PICK.grp.emoji||''; setTimeout(grpRender); } });
 function contactsImportResume(res){
   let k=''; try{ k=sessionStorage.getItem('ct_import')||''; sessionStorage.removeItem('ct_import'); }catch(e){}
   if(!k) return false;
@@ -5550,7 +5744,7 @@ function renderParts(){
       <span class="grow"></span>
       ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="${t('Email {n}',{n:selMail.length})}">${ICON.send}<span>${t('Email {n}',{n:selMail.length})}</span></button>`
           :`<button type="button" class="btn sm withic" data-pmailapp ${selMail.length?'':'disabled'} title="${t('Opens your email app with their addresses in BCC')}">${ICON.mail}<span>${t('Email {n}',{n:selMail.length})}</span></button>`}
-        ${ib('x',t('Clear selection'),'data-pselnone','sm ghost')}`
+        ${ME.user?ib('users',t('Save as group'),'data-psavegrp','sm ghost'):''}${ib('x',t('Clear selection'),'data-pselnone','sm ghost')}`
       :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>${t(`Email {n}<span class="bl"> who haven't answered</span>`,{n:waiting.length})}</span></button>`:''}${addBtn}</div>`;
   el.innerHTML=`${tools}
     ${ps.length?`<ul class="list pplist">${ps.map(p=>PEOPLE.edit===p.id?edit(p):view(p)).join('')}</ul>`:''}`;
@@ -5563,7 +5757,7 @@ async function peopleChanged(msg){ if(msg) toast(msg); if(PEOPLE.id===P.id&&P.da
 // ---- Add-people popup (+ at the top of the list): name + email (or a pasted list), then favourites, friends,
 // people added by email before and imported contacts (phone, vCard file, Google / Outlook), each with + to add and ☆ to star.
 // Imported contacts stay in this page; only the people picked are sent to the server.
-const PD={q:'',items:[],imported:[],busy:''};
+const PD={q:'',items:[],imported:[],busy:'',gopen:new Set(),gshut:new Set()};
 const favEmails=()=>new Set(((FRIENDS&&FRIENDS.favourites)||[]).map(f=>f.email.toLowerCase()));
 const favBtn=(p,favs)=>{ const on=favs.has(String(p.email).toLowerCase());
   return `<button type="button" class="qb tog fav" data-pfav="${esc(p.email)}" data-pfavname="${esc(p.name||'')}" aria-pressed="${on}" title="${on?t('Remove from favourites'):t('Add to favourites')}" aria-label="${esc(on?t('Remove {name} from favourites',{name:p.name||p.email}):t('Add {name} to favourites',{name:p.name||p.email}))}">${ICON.star}</button>`; };
@@ -5608,7 +5802,7 @@ function pdRender(){
   const q=PD.q.trim(), favs=favEmails();
   const groups=contactGroups(PD.imported,contactKeep(q,(f,k)=>f.email?inPoll.has(k):names.has(f.name.toLowerCase())));
   PD.items=[];
-  let h=contactListHtml(groups,PD.items,(f,i)=>`${ME.user&&f.email?favBtn(f,favs):''}${pqb('plus',t('Add {name}',{name:f.name}),`data-pdi="${i}"`,' ok')}`,
+  let h=(ME.user?pdGroupsHtml(q,inPoll):'')+contactListHtml(groups,PD.items,(f,i)=>`${ME.user&&f.email?favBtn(f,favs):''}${pqb('plus',t('Add {name}',{name:f.name}),`data-pdi="${i}"`,' ok')}`,
     g=>g.imp&&g.list.length>1?`<button type="button" class="btn sm" data-pdall>${t('Add all')}</button>`:'');
   if(PD.busy) h=`<p class="help mt-0">${esc(PD.busy)}</p>`+h;
   box.innerHTML=h||`<p class="help mt-0">${q?t('Nobody found.'):ME.user?t('Your favourites, people from your polls and imported contacts show up here.'):t('Imported contacts show up here.')}</p>`;
@@ -6096,6 +6290,41 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Groups": "Gruppen",
+"New group": "Neue Gruppe",
+"1 person": "1 Person",
+"{n} people": "{n} Personen",
+"Save people you often invite together. In a poll’s Add people, a group adds everyone in one tap.": "Speichere Leute, die du oft zusammen einlädst. Unter „Leute hinzufügen“ einer Umfrage fügt eine Gruppe alle mit einem Tipp hinzu.",
+"Group name": "Gruppenname",
+"Add people: search or type an email": "Leute hinzufügen: suchen oder E-Mail eingeben",
+"Delete group": "Gruppe löschen",
+"Discard your changes to this group?": "Deine Änderungen an dieser Gruppe verwerfen?",
+"New person": "Neue Person",
+"In this group": "In dieser Gruppe",
+"Remove {name}": "{name} entfernen",
+"Search your contacts above, or type an email address, to add people.": "Such oben in deinen Kontakten oder gib eine E-Mail-Adresse ein, um Leute hinzuzufügen.",
+"Already in this group.": "Schon in dieser Gruppe.",
+"Nobody found. Type their whole email address to add someone new.": "Niemand gefunden. Gib die ganze E-Mail-Adresse ein, um jemand Neues hinzuzufügen.",
+"A group can have at most {n} people": "Eine Gruppe kann höchstens {n} Personen haben",
+"Give the group a name.": "Gib der Gruppe einen Namen.",
+"Add at least one person.": "Füge mindestens eine Person hinzu.",
+"Group saved": "Gruppe gespeichert",
+"Delete the group “{name}”? The people in it stay in your contacts.": "Die Gruppe „{name}“ löschen? Die Leute darin bleiben in deinen Kontakten.",
+"Group deleted": "Gruppe gelöscht",
+"Groups of {name}": "Gruppen von {name}",
+"New group with {name}": "Neue Gruppe mit {name}",
+"Added to {group}": "Zu {group} hinzugefügt",
+"Removed from {group}": "Aus {group} entfernt",
+"Already in the poll": "Schon in der Umfrage",
+"{n} already in": "{n} schon dabei",
+"Add {n}": "{n} hinzufügen",
+"all in": "alle dabei",
+"Hide people": "Leute ausblenden",
+"Show people": "Leute zeigen",
+"Save as group": "Als Gruppe speichern",
+"None of them has an email address.": "Niemand davon hat eine E-Mail-Adresse.",
+"Group not found": "Gruppe nicht gefunden",
+"Members must be a list": "Mitglieder müssen eine Liste sein",
 "Only these days of each month (1–31). Leave empty for every day.": "Nur diese Tage jedes Monats (1–31). Leer lassen für alle Tage.",
 "Pick days, hours and rules, then Suggest adds the best times for the selected people as drafts.": "Tage, Uhrzeiten und Regeln wählen, dann fügt Vorschlagen die besten Zeiten für die ausgewählten Personen als Entwürfe hinzu.",
 "Poll sections": "Bereiche der Umfrage",

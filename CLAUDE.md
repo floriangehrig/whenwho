@@ -42,6 +42,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The page no longer shows friend requests (API kept): the Account page's **Contacts** card and the Add-people popup share one
   contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
   people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
+- `contact_groups` (0019): private named sets of people per account (`name`, `icon` emoji, `members` JSON `[{name,email}]`; max 50 groups,
+  100 people each), sent as `groups` in `GET /api/me/friends`, managed via `POST /api/me/groups`, `PATCH|DELETE /api/me/groups/:id`.
+  The Contacts card shows them as a rail of tiles (editor dialog `grpOpen`; 👥 on a contact row = its Groups sheet); the Add-people popup
+  lists them first (`pdGroupsHtml`: "Add N" = members not in the poll, ⌄ = one by one; search matches group and member names).
+  People tab: select people → Save as group. Adding a group uses the normal `POST .../participants`.
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
   Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't.
   `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls

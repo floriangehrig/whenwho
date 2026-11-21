@@ -153,6 +153,11 @@ async function route(request, env, ctx, url) {
       if (!parts[3] && m === 'POST') return addFavourite(request, env);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteFavourite(request, env, parts[3]);
     }
+    if (parts[2] === 'groups') {
+      if (!parts[3] && m === 'POST') return addGroup(request, env);
+      if (parts[3] && !parts[4] && m === 'PATCH') return updateGroup(request, env, parts[3]);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteGroup(request, env, parts[3]);
+    }
     if (parts[2] === 'contacts' && parts[3] && !parts[4] && m === 'GET') return accountContacts(request, env, parts[3]);
     if (parts[2] === 'calendars') {
       if (!parts[3] && m === 'GET') return listCalendars(request, env);
@@ -849,8 +854,10 @@ async function listFriends(request, env) {
      ORDER BY pa.name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
   const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
   const { results: favs } = await env.DB.prepare('SELECT id, name, email FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
+  const { results: grps } = await env.DB.prepare('SELECT id, name, icon, members FROM contact_groups WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
   return json({
     favourites: favs.map((f) => ({ id: f.id, name: f.name, email: f.email })),
+    groups: grps.map((g) => ({ id: g.id, name: g.name, icon: g.icon, members: jsonList(g.members) })),
     contacts: guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email })),
     friends: friends.map((u) => ({ id: u.fid, ...personOut(u) })),
     incoming: incoming.map((u) => ({ id: u.fid, ...personOut(u) })),
@@ -946,6 +953,59 @@ async function deleteFavourite(request, env, fid) {
   await env.DB.prepare('DELETE FROM favourites WHERE id = ? AND user_id = ?').bind(fid, user.id).run();
   return json({ ok: true });
 }
+// ---------- contact groups ----------
+// Private named sets of people (name + email) per account, added to a poll in one go from the Add-people popup.
+const MAX_GROUPS = 50, MAX_GROUP_MEMBERS = 100;
+const jsonList = (v) => { try { const a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
+// Body: { name, icon, members: [{ name, email }] }; partial = PATCH (only the fields sent).
+function groupInput(b, partial) {
+  const out = {}, has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+  if (!partial || has('name')) out.name = str(b.name, 40, 'Group name', true);
+  if (!partial || has('icon')) out.icon = emojiIcon(b.icon, 'Icon');
+  if (!partial || has('members')) {
+    if (!Array.isArray(b.members)) throw new HttpError(400, 'Members must be a list');
+    const seen = new Set(), list = [];
+    for (const x of b.members) {
+      if (!x || typeof x !== 'object') throw new HttpError(400, 'Members must be a list');
+      const addr = email(x.email || '').toLowerCase();
+      if (!addr) throw new HttpError(400, 'Every person needs an email address.');
+      if (seen.has(addr)) continue; seen.add(addr);
+      list.push({ name: x.name ? personName(x.name) : addr.split('@')[0], email: addr });
+    }
+    if (list.length > MAX_GROUP_MEMBERS) throw new HttpError(409, `A group can have at most ${MAX_GROUP_MEMBERS} people`);
+    out.members = list;
+  }
+  return out;
+}
+async function addGroup(request, env) {
+  const user = requireUser(request);
+  const g = groupInput(await body(request), false);
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM contact_groups WHERE user_id = ?').bind(user.id).first('n');
+  if (n >= MAX_GROUPS) throw new HttpError(409, `You can have at most ${MAX_GROUPS} groups`);
+  const id = randomId(12), at = now();
+  await env.DB.prepare('INSERT INTO contact_groups (id, user_id, name, icon, members, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, user.id, g.name, g.icon, JSON.stringify(g.members), at, at).run();
+  return json({ id });
+}
+async function updateGroup(request, env, gid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(gid)) throw new HttpError(404, 'Group not found');
+  const g = groupInput(await body(request), true), sets = [], vals = [];
+  if ('name' in g) { sets.push('name = ?'); vals.push(g.name); }
+  if ('icon' in g) { sets.push('icon = ?'); vals.push(g.icon); }
+  if ('members' in g) { sets.push('members = ?'); vals.push(JSON.stringify(g.members)); }
+  sets.push('updated_at = ?'); vals.push(now());
+  const r = await env.DB.prepare(`UPDATE contact_groups SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).bind(...vals, gid, user.id).run();
+  if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Group not found');
+  return json({ ok: true });
+}
+async function deleteGroup(request, env, gid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(gid)) throw new HttpError(404, 'Group not found');
+  await env.DB.prepare('DELETE FROM contact_groups WHERE id = ? AND user_id = ?').bind(gid, user.id).run();
+  return json({ ok: true });
+}
+
 // ---------- chat ----------
 // One chat per poll (a series shares it). Readable and writable by the owner and by participants answering with an account.
 // The page polls for new messages while the chat is open; there are no emails, only unread counts.
