@@ -1454,7 +1454,7 @@ function patInner(id){
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
       <select class="inline" data-patto="${id}" aria-label="${t('To')}">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">${t('All day')}</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">${t('Evening 18–22')}</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">${t('From 17:00')}</button>`:''}</span></div>
-    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`;
+    ${st.extraRow?st.extraRow():''}${st.noSum?'':`<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`}`;
 }
 const patSumHtml = id => PAT[id].sumHtml?PAT[id].sumHtml():PAT[id].multi?patPeriods(id):esc(patSummary(id)); // sumHtml: e.g. quick fill's rule list
 // ---- several periods (create / settings): copy the edited fields into periods[cur], or load period i into them.
@@ -3925,10 +3925,11 @@ function renderPlan(el){
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t("Once people answer, you can plan meetings around when they're free.")}</span><button class="btn sm mt-2" data-atab="people">${t('Share the poll')}</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,t('Who should come?'),t('Each meeting invites the people selected when you add it.'),
-    tools(whoDropdown()+sugButton(),'mt-2 tbar ptbar')+sugPanel());
+    tools(whoDropdown(),'mt-2 tbar ptbar'));
   h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.')
       :t('<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.')):'',
-    tot?renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`);
+    tot?sugPanel()+renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`,
+    tot?sugButton():'');
   h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
     draftTray(),nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):'');
   el.innerHTML=h; wireWho(); wirePlanner();
@@ -3983,7 +3984,7 @@ function wirePlanner(){
 // days and hours (PAT.sug) are per poll, in memory.
 // n: how many (0 = all) per 'all' | 'week' | 'month'; len: hours per meeting (0 = auto: longest best block);
 // min: at least this many of the selected people free (0 = all of them); gap: days between meetings; ifn / maybe: count those answers as free.
-const SUG0={n:3,per:'all',len:0,min:1,gap:0,ifn:true,maybe:false};
+const SUG0={n:0,per:'all',len:0,min:1,gap:0,ifn:true,maybe:false};
 function sugOpts(){
   const s=store.get('sugopt',null), o=Object.assign({},SUG0,s&&typeof s==='object'?s:{});
   if(!s){ const n=store.get('sugn',null); if(n!=null) o.n=+n||0; } // the old count stepper
@@ -4022,7 +4023,7 @@ function sugPanel(){
       <label class="check m0"><input type="checkbox" data-sugck="maybe" ${o.maybe?'checked':''}> <span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</label>`,
     t('Which answers count as free. Available always does.'));
   PAT.sug.extraRow=()=>h;
-  PAT.sug.sumEnd=null;
+  PAT.sug.sumEnd=null; PAT.sug.noSum=true;
   const end=`<div class="row tight sug-end">${sugCustom()?`<button type="button" class="btn sm ghost" data-sugreset>${t('Reset')}</button>`:''}<button type="button" class="btn sm primary" data-suggest ${tot?'':'disabled'}>${ICON.zap}${t('Suggest')}</button></div>`;
   return `<div class="qf sugp" id="sugp">${patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true})}${end}</div>`;
 }
