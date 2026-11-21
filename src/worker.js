@@ -1008,13 +1008,16 @@ async function deleteGroup(request, env, gid) {
 }
 
 // ---------- chat ----------
-// One chat per poll (a series shares it). Readable and writable by the owner and by participants answering with an account.
+// One chat per poll (a series shares it). Readable and writable by everyone signed in (invited-only polls: the owner and invited people).
 // The page polls for new messages while the chat is open; there are no emails, only unread counts.
 const CHAT_MAX_LEN = 2000, CHAT_PAGE = 200, CHAT_MAX_PER_POLL = 5000, CHAT_BURST = 30, CHAT_BURST_MIN = 10;
 async function chatAllowed(env, poll, user) {
   if (!user || !poll.allow_comments) return false; // allow_comments = the poll's Chat switch (also covers the guest Comment field)
   if (poll.owner_id && poll.owner_id === user.id) return true;
-  return !!(await accountParticipant(env, poll.id, user.id));
+  if (!poll.invited_only) return true;
+  // Invited-only: in the poll as this account, or invited as a guest with this account's email.
+  if (await accountParticipant(env, poll.id, user.id)) return true;
+  return !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(poll.id, user.email.toLowerCase()).first());
 }
 // Throws unless the signed-in person may use this poll's chat. Returns { poll, user, owner }.
 async function chatAccess(request, env, id) {
@@ -1023,7 +1026,7 @@ async function chatAccess(request, env, id) {
   const owner = isAdmin(request, poll);
   if (!owner) await checkPassword(request, poll);
   if (!poll.allow_comments) throw new HttpError(403, 'The chat is turned off for this poll');
-  if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Answer the poll with your account to join the chat');
+  if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Only invited people can join this chat');
   return { poll, user, owner };
 }
 // Unread messages in a poll's chat for a user (written by others after they last read it).
@@ -1068,7 +1071,12 @@ async function listChat(request, env, url, id) {
   // Who wrote them and who is in the chat (members can be tagged). Pictures only on the first load;
   // a later message from someone new makes the page reload once.
   if (!after) {
-    const { results: mem } = await env.DB.prepare('SELECT DISTINCT user_id FROM participants WHERE poll_id = ? AND user_id IS NOT NULL').bind(id).all();
+    // Members: account participants, accounts invited by email that haven't answered yet, and everyone who opened or wrote in the chat.
+    const { results: mem } = await env.DB.prepare(
+      `SELECT user_id FROM participants WHERE poll_id = ?1 AND user_id IS NOT NULL
+       UNION SELECT u.id FROM participants p JOIN users u ON u.email = LOWER(p.email) WHERE p.poll_id = ?1 AND p.user_id IS NULL AND p.email IS NOT NULL
+       UNION SELECT user_id FROM chat_reads WHERE poll_id = ?1
+       UNION SELECT user_id FROM messages WHERE poll_id = ?1`).bind(id).all();
     out.members = [...new Set([...(poll.owner_id ? [poll.owner_id] : []), ...mem.map((r) => r.user_id)])];
     const ids = [...new Set([user.id, ...out.members, ...msgs.map((m) => m.user_id), ...msgs.map((m) => m.q_uid).filter(Boolean)])];
     out.people = {};
@@ -1728,7 +1736,7 @@ async function getPoll(request, env, ctx, url, id) {
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
     // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
-    const can = !!poll.allow_comments && (admin || !!part);
+    const can = !!poll.allow_comments && (admin || !poll.invited_only || out.me.invited); // chat: everyone signed in, or the invited
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
     if (out.chat.unread) out.chat.mentions = (await chatUnread(env, id, user.id, true)) || 0; // unread messages that tag me
     if (can) { // header peek (newest message) and message counts per day / meeting thread

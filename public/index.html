@@ -5160,7 +5160,7 @@ async function saveDrafts(btn){
 // swipe right to reply. Search and filters work on the loaded messages (up to CHAT_KEEP).
 // New messages are fetched while the drawer is open and the tab is in front: every 15 s, slowing to 60 s while quiet.
 const CHAT_MIN=15000, CHAT_MAX=60000, CHAT_KEEP=500, CHAT_EMOJI=['👍','❤️','😂','✅','🙏','😮'];
-const chatTip=()=>t('Only the organiser and people who answer with an account can read and write here.');
+const chatTip=()=>P.data&&P.data.poll&&P.data.poll.invitedOnly?t('Only the organiser and invited people can read and write here.'):t('Everyone signed in can read and write here.');
 const chatCan=()=>!!(P.data&&P.data.chat&&P.data.chat.can);
 function chatState(){
   if(!P.chat||P.chat.id!==P.id){ chatStop(); const sh=store.get('chatShow','all');
@@ -5236,7 +5236,7 @@ function chatDock(){
     <aside class="chatdrawer${c.open?' open':''}" id="chatdrawer" aria-label="${t('Chat')}"${c.open?'':' inert'}>
       <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
         <h2 class="cd-t">${ICON.chat}${t('Chat')}</h2>
-        ${tip(esc(can?chatTip():t('Here you see who answered and which meetings were set. To chat, answer with an account.')),'right')}
+        ${tip(esc(can?chatTip():t('Here you see who answered and which meetings were set.')+' '+(ME.user?t('Only invited people can chat here.'):t('To chat, sign in.'))),'right')}
         <span class="ml-auto"></span>${ib('search',t('Search and filter'),`id="chatfindb" data-chatfind aria-expanded="${c.find}" aria-controls="chatfind"`,'sm ghost'+(c.find||c.show!=='all'?' on':''))}${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
       <div class="chat-find" id="chatfind"${c.find?'':' hidden'}></div>
       <div class="cd-ref" id="chatref"></div>
@@ -5559,7 +5559,7 @@ function chatDraw(fresh){
       <form class="chat-form"><button type="button" class="qb chat-attb" id="chatattb" data-chatatt title="${t('Tag people or attach a meeting')}" aria-label="${t('Tag people or attach a meeting')}" aria-expanded="false" aria-controls="chatac">${ICON.clip}</button>
       <textarea id="chatin" rows="1" maxlength="2000" aria-label="${t('Message')}"></textarea>
       <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`
-      :`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Send your answer to join the chat.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`}`;
+      :`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Only invited people can chat here.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`}`;
     list=box.querySelector('.chat-list');
     const jump=box.querySelector('.chat-jump');
     jump.onclick=()=>{ list.scrollTo({top:list.scrollHeight,behavior:'smooth'}); };
@@ -6469,7 +6469,8 @@ function germanText(){ return {
 "Nobody is in this poll yet.": "Noch niemand ist in dieser Umfrage.",
 "{title} is in another round.": "{title} gehört zu einer anderen Runde.",
 "You were tagged": "Du wurdest erwähnt",
-"Here you see who answered and which meetings were set. To chat, answer with an account.": "Hier siehst du, wer geantwortet hat und welche Termine feststehen. Zum Chatten antworte mit einem Konto.",
+"Here you see who answered and which meetings were set.": "Hier siehst du, wer geantwortet hat und welche Termine feststehen.",
+"To chat, sign in.": "Melde dich zum Chatten an.",
 "Search and filter": "Suchen und filtern",
 "Meeting removed": "Termin entfernt",
 "Show messages from {name}": "Nachrichten von {name} anzeigen",
@@ -7682,7 +7683,7 @@ function germanText(){ return {
 "No messages yet. Say hi!": "Noch keine Nachrichten. Sag hallo!",
 "{n} unread messages": "{n} ungelesene Nachrichten",
 "Sign in to chat with the others in this poll.": "Melde dich an, um mit den anderen in dieser Umfrage zu chatten.",
-"Send your answer to join the chat.": "Schick deine Antwort ab, um dem Chat beizutreten.",
+"Only invited people can chat here.": "Nur eingeladene Leute können hier chatten.",
 "Chat about this": "Darüber chatten",
 "Activity": "Verlauf",
 "Activity shows who answered and which meetings were set. To chat, answer with an account.": "Der Verlauf zeigt, wer geantwortet hat und welche Termine stehen. Zum Chatten antworte mit einem Konto.",
@@ -7706,8 +7707,9 @@ function germanText(){ return {
 "Nothing has happened yet.": "Bisher ist noch nichts passiert.",
 "Invalid thread": "Ungültiger Bezug",
 "Invalid reaction": "Ungültige Reaktion",
-"Only the organiser and people who answer with an account can read and write here.": "Nur die Organisator*in und Leute, die mit einem Konto antworten, können hier lesen und schreiben.",
-"Answer the poll with your account to join the chat": "Beantworte die Umfrage mit deinem Konto, um dem Chat beizutreten",
+"Only the organiser and invited people can read and write here.": "Nur die Organisator*in und eingeladene Leute können hier lesen und schreiben.",
+"Everyone signed in can read and write here.": "Alle, die angemeldet sind, können hier lesen und schreiben.",
+"Only invited people can join this chat": "Nur eingeladene Leute können diesem Chat beitreten",
 "You’re sending a lot of messages. Wait a few minutes.": "Du schickst sehr viele Nachrichten. Warte ein paar Minuten.",
 "This chat is full. Delete old messages first.": "Dieser Chat ist voll. Lösch zuerst alte Nachrichten.",
 "Message not found": "Nachricht nicht gefunden",

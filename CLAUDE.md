@@ -48,7 +48,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   lists them first (`pdGroupsHtml`: "Add N" = members not in the poll, ⌄ = one by one; search matches group and member names).
   People tab: select people → Save as group. Adding a group uses the normal `POST .../participants`.
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
-  Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't.
+  Everyone signed in may read and write (invited-only polls: the owner and invited people); guests can't.
   `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls
   `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails). `chat_reads.read_at` drives unread counts
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
@@ -58,8 +58,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   timeline: messages plus events worked out on the page (answers, grouped when close together; meetings by their `at` stamp; rounds by
   `createdAt`). Guests see only the events. Dates of the poll written in a message become chips that jump to that day.
   People who can chat don't get the Comment field under My answer.
-  Tags and attachments are inline tokens in `messages.body`: `<@user id>` (a chat member: owner + account participants, listed as
-  `members` in the full `GET .../chat`, with `me` = caller's id) and `<#m:meeting id>` (proposed or set). The composer shows readable
+  Tags and attachments are inline tokens in `messages.body`: `<@user id>` (a chat member: owner, account participants, accounts invited by email, anyone who opened
+  or wrote in the chat; listed as `members` in the full `GET .../chat`, with `me` = caller's id) and `<#m:meeting id>` (proposed or set). The composer shows readable
   labels (typed `@` list or the 📎 list) and turns them into tokens on send; max 20 tokens per message. 0018: `messages.reply_to`
   quotes another message (`re` / `rq` in the API; `rq` null once the original is deleted). `chat.mentions` in `GET /api/polls/:id` =
   unread messages that tag me (the dock's `@` badge). Hold (touch), right-click or ⌄ opens the message menu (react, reply, copy, delete);
