@@ -92,6 +92,24 @@
       ],
       "port": 8793,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-share",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8795",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8795",
+        "--persist-to",
+        ".wrangler/ui-state"
+      ],
+      "port": 8795,
+      "autoPort": false
     }
   ]
 }
