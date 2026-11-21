@@ -3491,7 +3491,9 @@ function renderMine(el){
         hint=`<span class="ocnt${o.peak?'':' none'}" style="--a:${Math.round(12+o.peak/n*55)}%">${o.peak}/${n}</span>`; }
       const H=hours(k), bz=H.map(hr=>busyFor(k,hr)), nb=bz.filter(x=>x.length).length, bt=nb?busyTip(bz.flat()):'';
       if(bt) tip=tip?tip+' · '+bt:bt;
-      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):`<div class="t">${esc(s.t)}</div>`}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; })+'</div>';
+      // No status word in the cell (the legend names the colours); it stays in the tooltip.
+      if(s.t) tip=tip?s.t+' · '+tip:s.t;
+      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; })+'</div>';
   } else {
     const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
     h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
@@ -4034,8 +4036,7 @@ function wireDays(){
     if(a<0||b<0) return apply(el); const [lo,hi]=a<b?[a,b]:[b,a]; for(let i=lo;i<=hi;i++){ const c=cellOf(dates[i]); if(c) apply(c); } };
   const apply=el=>{ const k=el.dataset.day; if(touched.has(k)) return; touched.add(k);
     setEntry(k,paint==='x'?null:paint); const st=statusOf(P.mine.entries[k],k);
-    el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls);
-    const t=el.querySelector('.t'); if(t) t.textContent=st.t; };
+    el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls); };
   const end=()=>{ if(paint===null) return; paint=null; touched=new Set(); changed(); renderBody(); };
   gridGestures(grid,cellAt,{
     start:el=>{ const v=P.mine.entries[el.dataset.day]; paint=(P.brush!=='x'&&v===P.brush)?'x':P.brush; touched=new Set(); last=el.dataset.day; apply(el); },
