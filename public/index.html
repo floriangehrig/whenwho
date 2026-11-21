@@ -561,6 +561,23 @@
   .vrow .dd:not(.vtdd)>summary .hide-sm{display:none} /* icon + "Everyone (3)", like the Others button */
   .vrow .dd:not(.vtdd)>summary .ddic{display:inline-flex} .vrow .dd:not(.vtdd)>summary .ddic svg{width:15px;height:15px}
   .vrow .iseg{padding:2px} .vrow .iseg button{min-height:24px;padding:3px 10px;font-size:12.5px}
+  .calsec{margin-top:var(--s4)} .calsec>.sech+.vrow{margin-top:0}
+  /* ‹ month › / ‹ week › pager inside the view row: same height as the buttons next to it; phones show the short label */
+  .vrow{flex-wrap:nowrap} .vrow>.vrow-l,.vrow>.vrow-r{flex:none} .vrow-m{display:flex;min-width:0} /* only the pager label gives way */
+  .vrow .wknav.pill{margin:0;width:auto;min-width:0;padding:1px}
+  .vrow .wknav.pill .btn{min-width:26px;min-height:26px;font-size:15px}
+  .vrow .wknav.pill .lbl{min-width:0;padding:0 6px;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+  .lbl-s{display:none}
+  @media (max-width:560px){
+    .vrow{gap:4px} .vrow-l,.vrow-r{gap:4px}
+    .vrow .lbl-l{display:none} .vrow .lbl-s{display:inline}
+    .vrow .vt>span{display:none} /* Others / Busy: icon (+ count) only; the name stays in the tooltip */
+    .vrow .vrow-r .btn.sm.vt{min-height:30px;padding:4px 7px;gap:4px}
+    .vrow .vrow-r .vtdd>summary{min-height:30px;padding:0 5px}
+    .vrow .iseg button{padding:3px 5px}
+    .vrow .wknav.pill .btn{min-width:22px}
+    .vrow .wknav.pill .lbl{padding:0 1px;font-size:12px}
+  }
   .ws-me .help{margin-top:8px}
   .ws-me .field.mt-0+.field,.ws-me .grid2+.field{margin-top:var(--s3)}
   .ws-who{display:flex;align-items:center;gap:12px}
@@ -3625,16 +3642,27 @@ async function saveMeetings(list){
 
 // ---- calendars ----
 function monthsOf(dates){ const g=[]; dates.forEach(k=>{ const ym=k.slice(0,7); let x=g[g.length-1]; if(!x||x.ym!==ym){ x={ym,days:[]}; g.push(x);} x.days.push(k); }); return g; }
-function calendar(dates, cell){
-  const set=new Set(dates), groups=monthsOf(dates);
-  if(isWeekly()) return `<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}${WD.map((w,i)=>{ const k=addDaysL(WEEK0,i);
-    return set.has(k)?cell(k,''):'<div class="day off"><div class="n"></div></div>'; }).join('')}</div>`;
+// Long label, plus a short one that phones show instead (e.g. in My answer's view row).
+const lblLS=(l,s)=>`<span class="lbl"><span class="lbl-l">${esc(l)}</span><span class="lbl-s">${esc(s)}</span></span>`;
+// The ‹ month › pager of the day calendar ('' for weekly polls or a single month); keeps P.month in range.
+function monthPager(dates){
+  const groups=monthsOf(dates);
+  if(isWeekly()) return {groups,mi:0,html:''};
   // One month at a time; several months get a ‹ month › pager (starts at the current month when it's in the poll).
   if(P.month==null){ const now=isoL(new Date()).slice(0,7); P.month=Math.max(0,groups.findIndex(g=>g.ym>=now)); }
-  const mi=P.month=Math.min(Math.max(0,P.month),groups.length-1), g=groups[mi];
-  const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
-  let h=groups.length>1?`<div class="wknav pill mnav"><button class="btn" data-mon="-1" ${mi===0?'disabled':''} aria-label="${t('Previous month')}">‹</button><span class="lbl">${esc(monthLabel(g.ym))}</span>
+  const mi=P.month=Math.min(Math.max(0,P.month),groups.length-1), ym=groups[mi].ym, [y,m]=ym.split('-').map(Number);
+  const html=groups.length>1?`<div class="wknav pill mnav"><button class="btn" data-mon="-1" ${mi===0?'disabled':''} aria-label="${t('Previous month')}">‹</button>${lblLS(monthLabel(ym),new Date(y,m-1,1).toLocaleDateString(LOC,{month:'short'}))}
     <button class="btn" data-mon="1" ${mi===groups.length-1?'disabled':''} aria-label="${t('Next month')}">›</button></div>`:'';
+  return {groups,mi,html};
+}
+// nav:false = the caller shows monthPager() itself (My answer puts it in the view row).
+function calendar(dates, cell, {nav=true}={}){
+  const set=new Set(dates);
+  if(isWeekly()) return `<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}${WD.map((w,i)=>{ const k=addDaysL(WEEK0,i);
+    return set.has(k)?cell(k,''):'<div class="day off"><div class="n"></div></div>'; }).join('')}</div>`;
+  const pg=monthPager(dates), g=pg.groups[pg.mi];
+  const [y,m]=g.ym.split('-').map(Number), n=new Date(y,m,0).getDate();
+  let h=nav?pg.html:'';
   h+=`<div class="cal">${WD.map(w=>`<div class="wd">${w}</div>`).join('')}`;
   for(let i=0;i<wdOf(`${g.ym}-01`);i++) h+='<div class="blank"></div>';
   for(let d=1; d<=n; d++){ const k=`${g.ym}-${pad(d)}`; h+= set.has(k) ? cell(k,d) : `<div class="day off"><div class="n">${d}</div></div>`; }
@@ -3682,8 +3710,17 @@ function renderMine(el){
   updateHelp();
   // Under "You", two rows: brush · AI, Quick fill, Clear (their boxes open under it), then the view row
   // (Days / Hours + the how-to ⓘ, which changes with the mode · Others, Busy), laid out like Everyone's row. Then the grid and its legend.
+  // The ‹ month › / ‹ week › pager sits in the view row (short labels on phones) instead of above the grid.
+  let wks=null, real=null, pager='';
+  if(P.mode==='days') pager=monthPager(d.dates).html;
+  else { wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); real=wks[P.week].filter(Boolean);
+    const sd=k=>parseD(k).toLocaleDateString(LOC,{day:'numeric',month:'short'});
+    const sr=(a,b)=>{ try{ return new Intl.DateTimeFormat(LOC,{day:'numeric',month:'short'}).formatRange(parseD(a),parseD(b)).replace(/\s*[–-]\s*/,'–'); }catch(e){ return `${sd(a)} – ${sd(b)}`; } };
+    if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,sr(real[0],real[real.length-1]))}
+      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`; }
   let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
-  h+=vrow(`${modeSeg}${tip(helpTxt)}`,`${othBtn}${bzBtn}`);
+  h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
+  h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
   // Legend under the grid: colours, then only the markers this view can show right now.
   const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
@@ -3700,12 +3737,10 @@ function renderMine(el){
       if(bt) tip=tip?tip+' · '+bt:bt;
       // No status word in the cell (the legend names the colours); it stays in the tooltip.
       if(s.t) tip=tip?s.t+' · '+tip:s.t;
-      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; })+'</div>';
+      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; },{nav:false})+'</div>';
   } else {
-    const wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); const wk=wks[P.week], real=wk.filter(Boolean), H=hours();
-    h+=`${isWeekly()?'':`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button><span class="lbl">${esc(dayLabel(real[0]))} – ${esc(dayLabel(real[real.length-1]))}</span>
-      <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`}
-      <div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
+    const wk=wks[P.week], H=hours();
+    h+=`<div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
     const fd=editable();
     wk.forEach((k,i)=>{ h+=`<div class="hd${k&&fd?' fday':''}"${k&&fd?` data-fday="${k}" role="button" tabindex="0" title="${esc(t('Mark the whole day: {day}',{day:dLabel(k)}))}"`:''}>${WD[i]}<b>${k?(dNum(k)+(md.has(k)?' ★':''))||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
@@ -3720,7 +3755,7 @@ function renderMine(el){
         h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  h+=leg+'</div>';
+  h+=leg+'</div></div>';
   el.innerHTML=h;
   loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
@@ -4352,7 +4387,7 @@ const tools=(inner,cls='')=>`<div class="row ws-tools${cls?' '+cls:''}">${inner}
 // The header of a section in the Answers tab: icon · title · count · ⓘ, actions on the right.
 // summary=true for the header of a <details class="asec"> (same look, chevron on the right).
 // A view row: left = how the grid is drawn (+ ⓘ), right = whose answers it shows. Same in My answer and Everyone.
-const vrow=(l,r)=>`<div class="vrow"><span class="vrow-l">${l}</span><span class="ml-auto"></span><span class="vrow-r">${r}</span></div>`;
+const vrow=(l,r,mid='')=>`<div class="vrow"><span class="vrow-l">${l}</span><span class="ml-auto"></span>${mid?`<span class="vrow-m">${mid}</span><span class="ml-auto"></span>`:''}<span class="vrow-r">${r}</span></div>`;
 function secH(icon,title,{tip:tp='',count=null,extra='',summary=false}={}){
   const tg=summary?'summary':'div';
   return `<${tg} class="sech">${ICON[icon]||''}<h3>${title}</h3>${count!=null?`<span class="count">${count}</span>`:''}${tp?tip(tp):''}${extra?`<span class="ml-auto"></span><span class="sech-a">${extra}</span>`:''}</${tg}>`;
