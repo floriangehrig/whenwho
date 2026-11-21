@@ -1216,6 +1216,7 @@
   .sseg{flex-wrap:nowrap} .sseg button{gap:6px} .sseg button svg{width:15px;height:15px} .sseg button svg+svg{margin-left:-3px}
   .stag{text-transform:capitalize}
   .sdates{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px;margin-top:12px}
+  .sdl>.srow-l{min-height:20px;align-items:center} .sdl>.srow-l .tip{height:20px;width:22px} /* the ⓘ doesn't make Reply by's label taller than Dates' */
   .sdl{display:flex;flex-direction:column;gap:5px;min-width:0} .sdl .dpk{min-width:0} .sdl .dpk-btn{width:100%;min-width:0;overflow:hidden} .sdl .dpk-v{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sopts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px} .sset-b>.sopts:first-child{margin-top:0}
   .sopt{position:relative;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;margin:0;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;user-select:none;transition:background .12s,color .12s,border-color .12s;white-space:nowrap}
@@ -1227,7 +1228,11 @@
   .sopt.danger:has(>input:checked){color:#d14343;background:color-mix(in srgb,#d14343 12%,transparent);border-color:color-mix(in srgb,#d14343 45%,transparent)}
   .sopt.danger:has(>input:checked)>svg{color:#d14343}
   .sopt:has(>input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
-  .sopt .num-xs{width:42px;height:26px;padding:0 4px;margin:0 3px;text-align:center;font:inherit;font-weight:650;border-radius:7px}
+  /* the day count sits inside the Remind pill as a soft chip, not a boxed field */
+  .sopt .num-xs{width:28px;height:24px;min-height:0;padding:0;margin:0 2px;border:0;border-radius:6px;box-shadow:none;background:color-mix(in srgb,currentColor 13%,transparent);color:inherit;font:inherit;font-weight:700;text-align:center;-moz-appearance:textfield;appearance:textfield}
+  .sopt .num-xs::-webkit-inner-spin-button,.sopt .num-xs::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .sopt .num-xs:hover{background:color-mix(in srgb,currentColor 20%,transparent)}
+  .sopt .num-xs:focus{outline:2px solid var(--accent);outline-offset:1px;box-shadow:none;border:0}
   .pwf{display:flex;align-items:center;gap:8px;flex:1 1 170px;min-width:0;margin:0;padding:0 12px;height:38px;border:1px solid var(--line);border-radius:999px;background:var(--sunken);color:var(--muted);cursor:text}
   .pwf.set{color:var(--accent)}
   .pwf svg{width:16px;height:16px;flex:none} .pwf input{flex:1;min-width:0;border:0;background:none;padding:0;height:100%;box-shadow:none;outline:0;font:inherit;color:var(--ink)}
@@ -1257,6 +1262,8 @@
     .sopts.tiles .sopt{flex-direction:column;justify-content:center;gap:4px;height:auto;min-height:62px;padding:8px 4px;border-radius:12px;font-size:12px;line-height:1.2;white-space:normal;text-align:center}
     .sopts.tiles .sopt>svg{width:19px;height:19px}
     .pwf{flex-basis:130px}
+    .mailopts .sopt{flex:1 1 auto;justify-content:center} /* pills fill each row instead of wrapping ragged */
+    .mailopts>.btn{flex:none;width:38px;padding:0;justify-content:center} .mailopts>.btn .bs{display:none} /* Test: icon only, so the ⓘ stays on its row */
     .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1} .ws-h #wsmeta{flex-basis:auto;margin-left:6px}
     .ws-views .segic{margin-right:5px}
@@ -2227,7 +2234,7 @@ function renderNew(){
       <div class="sopts">${opt('hide','eyeoff',t('Hide answers'),false,t('Hide answers from respondents'))}
         <label class="pwf" title="${t('Only people with the password can open the poll')}">${ICON.lock}<input type="password" id="pw" maxlength="100" placeholder="${t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>
         ${tip(`<b>${t('Hide answers')}:</b> ${t("Only you see everyone's answers.")}<br><b>${t('Password')}:</b> ${t('Only people with the password can open the poll')}`,'right')}</div>`,'',NOPEN)}
-    ${mail?sset('email','mail',t('Email'),`<div class="sopts">
+    ${mail?sset('email','mail',t('Email'),`<div class="sopts mailopts">
         <span id="notifyRow" class="hide">${opt('notify','repeat',t('New rounds'),true,t('Email everyone in the series when a new round opens'))}</span>
         <label class="sopt" title="${t('Email a reminder before the reply-by date')}"><input type="checkbox" id="remind" checked>${ICON.bell}<span>${t('Remind {input} d before',{input:`<input type="number" id="remindDays" min="0" max="30" value="2" class="num-xs" aria-label="${t('Days before the reply-by date')}">`})}</span></label>
         ${tip(t("People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email{email}.",{email:ME.user?` (${esc(ME.user.email)})`:''}),'right')}</div>`,'',NOPEN):''}
@@ -4557,7 +4564,7 @@ function adminPanes(){
         <label class="pwf${p.hasPassword?' set':''}" title="${p.hasPassword?t('Password (currently set)'):t('Password (none)')}">${ICON.lock}<input type="password" id="s_pw" placeholder="${p.hasPassword?t('New password'):t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>
         ${p.hasPassword?opt('s_pwclear','x',t('Remove'),false,t('Remove password'),' danger'):''}</div>`,
       p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:'')}
-    ${sset('email','mail',t('Email'),d.emailEnabled?`<div class="sopts">
+    ${sset('email','mail',t('Email'),d.emailEnabled?`<div class="sopts mailopts">
         ${series?opt('s_notify','repeat',t('New rounds'),p.notifyOpen,t('Email everyone in the series when a new round opens')):''}
         <label class="sopt" title="${t('Email a reminder before the reply-by date')}"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}>${ICON.bell}<span>${t('Remind {input} d before',{input:`<input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-xs" aria-label="${t('Days before the reply-by date')}">`})}</span></label>
         ${ib('send',t('Send test email'),'id="testMail"','sm',t('Test'))}
