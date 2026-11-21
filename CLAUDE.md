@@ -52,6 +52,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
+- **Fill from text or voice** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
+  Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
+  and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the browser's `SpeechRecognition`
+  (no mic button where missing). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
+  Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
 
 ## Commands
 - `npm install` once.

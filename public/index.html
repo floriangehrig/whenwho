@@ -208,6 +208,14 @@
   .pat-pre button:hover{text-decoration:underline}
   .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
   .qf{margin-top:12px}
+  .aif{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .aif-row{display:flex;gap:6px;align-items:stretch}
+  .aif textarea{flex:1;min-width:0;min-height:44px}
+  .aif-b{display:flex;flex-direction:column;gap:6px}
+  .aif .btn.rec{color:var(--no);border-color:var(--no);animation:recPulse 1.2s ease-in-out infinite}
+  @keyframes recPulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--no) 25%,transparent)}}
+  .aif-msg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;min-height:18px}
+  .aif-msg.err{color:var(--no)}
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
   .em-pill .pat-brush{display:inline-flex;align-items:center;gap:4px;width:auto;height:auto;min-width:0;padding:0;font:inherit;opacity:1;overflow:hidden}
@@ -1360,6 +1368,7 @@ const ERR_DE = [
   [/^At most (\d+) calendar links per account$/, (m,n)=>`Höchstens ${n} Kalender-Links pro Konto`],
   [/^Too many calendar requests\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Abrufe. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many calendar imports\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Importe. Versuch es in ${n} Minuten noch einmal.`],
+  [/^You can fill from text (\d+) times a day\. Try again tomorrow\.$/, (m,n)=>`Du kannst ${n}-mal am Tag per Text ausfüllen. Versuch es morgen wieder.`],
   [/^Too many tries\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
   [/^Reconnect your (.+) calendar$/, (m,p)=>`Verbinde deinen ${p}-Kalender neu`],
   [/^Couldn’t reach (.+)\. Try again later\.$/, (m,p)=>`${p} ist nicht erreichbar. Versuch es später noch einmal.`],
@@ -1640,6 +1649,8 @@ Object.assign(ICON,{
   down:svgI('<path d="m6 9 6 6 6-6"/>'),
   chevd:svgI('<path d="m6 9 6 6 6-6"/>'),
   zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
+  spark:svgI('<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>'),
+  mic:svgI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
   next:svgI('<path d="M5 12h12M13 7l5 5-5 5"/>'),
@@ -3353,12 +3364,13 @@ function renderMine(el){
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
   const qfIc=`<button type="button" class="btn sm withic ib${qfN?' badgeb':''} ${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
   const clrIc=io('x',qfN?t('Clear my own marks'):t('Clear all'),'data-bulk="clear"','danger');
+  const aiIc=aiOk()?`<button type="button" class="btn sm withic ib ${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill from text or voice…'))}" aria-label="${esc(t('Fill from text or voice…'))}">${ICON.spark}</button>`:'';
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${on?` ${t('👥 = how many of the {n} others are free at the best time (+ maybe).',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('👥 numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
   // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
   P.modeHelp=helpTxt; updateHelp();
-  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}${qfIc}${clrIc}${menuOn?menu:''}`,'tbar')+quickFill();
+  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}${aiIc}${qfIc}${clrIc}${menuOn?menu:''}`,'tbar')+aiFill()+quickFill();
   const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
   const dayLines=P.mode==='days', partDays=dayLines&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
   h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',dayLines&&on?'line':'',partDays?'myline':'',bzShown?'busy':'');
@@ -3397,6 +3409,63 @@ function renderMine(el){
   if(P.mode==='slots') wireGrid(); else wireDays();
   qfPreview();
 }
+// Fill from text or voice: the Worker asks Workers AI to turn "weekdays after 6, not Friday" into rules
+// ({dates, hs, he, st}), which are painted onto the answer like a hand edit (so Quick fill keeps them on top), with Undo.
+// Voice uses the browser's own speech recognition (Chrome, Edge, Safari); the mic is hidden where there is none.
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const aiOk=()=>!!(CONFIG.aiFill&&editable());
+function aiFill(){
+  if(!P.aiOpen||!aiOk()) return '';
+  const u=P.aiUndo&&P.aiUndo.poll===P.id?P.aiUndo:null, msg=P.aiMsg||'';
+  return `<div class="aif"><div class="aif-row">
+    <textarea id="aiText" rows="2" maxlength="500" placeholder="${esc(t('e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th'))}">${esc(P.aiText||'')}</textarea>
+    <div class="aif-b">${SR?`<button type="button" class="btn sm withic ib${P.aiRec?' rec':''}" data-aimic title="${esc(P.aiRec?t('Stop listening'):t('Speak'))}" aria-label="${esc(P.aiRec?t('Stop listening'):t('Speak'))}" aria-pressed="${!!P.aiRec}">${ICON.mic}</button>`:''}
+    <button type="button" class="btn sm primary withic ib" data-aigo ${P.aiBusy?'disabled':''} title="${esc(t('Fill my answer'))}" aria-label="${esc(t('Fill my answer'))}">${P.aiBusy?'…':ICON.spark}</button></div></div>
+    <div class="aif-msg${P.aiErr?' err':''}">${msg?`<span>${esc(msg)}</span>`:''}${u?`<button type="button" class="btn sm ghost" data-aiundo>${t('Undo')}</button>`:''}
+    ${msg||u?'':`<span class="muted">${t('Say or type when you’re free.')}</span>${tip(t('The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.'))}`}</div></div>`;
+}
+function aiApplyRules(rules){
+  const en=Object.assign({},P.mine.entries), hrs=ansMode()!=='days', days=new Set(), dset=new Set(P.data.dates);
+  rules.forEach(r=>(r.dates||[]).forEach(k=>{ if(!dset.has(k)) return; const H=hours(k); if(!H.length) return; days.add(k);
+    const whole=!hrs||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
+    if(whole){ if(r.st==='x') delete en[k]; else en[k]=r.st; return; }
+    const m=hourMap(en[k],k); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(r.st==='x') m.delete(h); else m.set(h,r.st); } });
+    const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; }));
+  return {en,n:days.size};
+}
+async function aiGo(){
+  const ta=$('aiText'), text=(ta?ta.value:P.aiText||'').trim(); P.aiText=text;
+  if(!text||P.aiBusy) return;
+  P.aiBusy=true; P.aiErr=false; P.aiMsg=t('Reading…'); renderBody();
+  try{
+    const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/fill-text`,{text},headers());
+    const prev=Object.assign({},P.mine.entries), {en,n}=aiApplyRules(r.rules||[]);
+    if(!qfSame(en,prev)){ P.mine.entries=en; changed(); P.aiUndo={poll:P.id,prev}; } else P.aiUndo=null;
+    P.aiMsg=n?(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n})):t('No days in this poll match');
+  }catch(e){ P.aiErr=true; P.aiMsg=e.message; }
+  P.aiBusy=false; renderBody();
+}
+let aiRecog=null;
+function aiMic(){
+  if(aiRecog){ aiRecog.stop(); return; }
+  const r=new SR(); aiRecog=r; r.lang=LANG==='de'?'de-DE':'en-US'; r.interimResults=true; r.continuous=false;
+  const start=(P.aiText||'').trim(); let said='';
+  r.onresult=e=>{ said=[...e.results].map(x=>x[0].transcript).join(' ').trim(); P.aiText=(start?start+' ':'')+said; const ta=$('aiText'); if(ta) ta.value=P.aiText; };
+  r.onerror=e=>{ if(e.error!=='no-speech'&&e.error!=='aborted'){ P.aiErr=true; P.aiMsg=e.error==='not-allowed'?t('Allow the microphone to speak your answer.'):t('Couldn’t hear that. Try again or type it.'); } };
+  r.onend=()=>{ aiRecog=null; P.aiRec=false; if(said) aiGo(); else renderBody(); };
+  P.aiRec=true; P.aiErr=false; P.aiMsg=t('Listening…'); renderBody();
+  try{ r.start(); }catch(e){ aiRecog=null; P.aiRec=false; P.aiMsg=''; renderBody(); }
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } if(!P.aiOpen&&aiRecog) aiRecog.abort(); renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
+  if(!e.target.closest('.aif')) return;
+  if(e.target.closest('[data-aigo]')) aiGo();
+  else if(e.target.closest('[data-aimic]')) aiMic();
+  else if(e.target.closest('[data-aiundo]')&&P.aiUndo&&P.aiUndo.poll===P.id){ P.mine.entries=P.aiUndo.prev; changed(); P.aiUndo=null; P.aiMsg=t('Undone'); P.aiErr=false; renderBody(); }
+});
+document.addEventListener('input',e=>{ if(e.target.id==='aiText') P.aiText=e.target.value; });
+document.addEventListener('keydown',e=>{ if(e.target.id==='aiText'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); aiGo(); } });
+
 // Quick fill: rules that mark every day matching a pattern (optionally only some hours), stacked like layers.
 // Rules apply from top to bottom, so where two overlap the lower one wins. Everything is live: adding, editing,
 // reordering, switching off or removing a rule rebuilds the answer right away.
@@ -5304,6 +5373,25 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Fill from text or voice…": "Per Text oder Sprache ausfüllen…",
+"e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th": "z. B. werktags ab 18 Uhr, Samstagvormittag vielleicht, nicht am 12.",
+"Stop listening": "Zuhören beenden",
+"Speak": "Sprechen",
+"Fill my answer": "Meine Antwort ausfüllen",
+"Undo": "Rückgängig",
+"Undone": "Rückgängig gemacht",
+"Say or type when you’re free.": "Sag oder schreib, wann du Zeit hast.",
+"The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
+"Reading…": "Wird gelesen…",
+"Allow the microphone to speak your answer.": "Erlaube das Mikrofon, um deine Antwort zu sprechen.",
+"Couldn’t hear that. Try again or type it.": "Das war nicht zu verstehen. Versuch es noch einmal oder tipp es ein.",
+"Listening…": "Ich höre zu…",
+"Filling from text isn’t available here": "Ausfüllen per Text ist hier nicht verfügbar",
+"The text helper is busy or used up for today. Try again later.": "Die Texthilfe ist ausgelastet oder für heute aufgebraucht. Versuch es später noch einmal.",
+"Couldn’t understand that. Try saying it differently.": "Das war nicht zu verstehen. Versuch es anders zu formulieren.",
+"None of the poll’s days or hours match that.": "Keiner der Tage oder Stunden der Umfrage passt dazu.",
+"Text is required": "Text fehlt",
+"Text is too long (max 500 characters)": "Der Text ist zu lang (höchstens 500 Zeichen)",
 "Most votes": "Meiste Stimmen",
 "No votes yet": "Noch keine Stimmen",
 "Remove your vote": "Stimme zurücknehmen",

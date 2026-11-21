@@ -10,6 +10,8 @@
 //   TURNSTILE_SITE_KEY (optional var) + TURNSTILE_SECRET (secret): bot check before a sign-in code is emailed.
 //   CAL_TOKEN_KEY (optional secret) encrypts stored calendar tokens; needed for Google / Outlook calendar sign-in, plus
 //   GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET and / or MS_CLIENT_ID + MS_CLIENT_SECRET (secrets). Each provider shows up only when set.
+//   AI        (optional) Workers AI binding: "fill my answer from text" (typed or spoken). Without it the ✨ button is hidden.
+//   AI_MODEL  (optional) Workers AI text model, default AI_MODEL below. AI_PER_DAY (optional) text fills per person per day, default 20
 //
 // Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
 // Only signed-in users can create polls, and only the account that owns a poll can manage it.
@@ -30,6 +32,8 @@ const CODE_SENDS_IP = 5;       // sign-in emails per IP ...
 const CODE_SENDS_EMAIL = 3;    // ... and per address, within FAIL_WINDOW_MIN
 const MAX_POLLS_PER_USER = 100;
 const MAIL_PER_DAY = 50;       // default for env.MAIL_PER_DAY (Resend's free plan allows 100 emails a day in total)
+const AI_PER_DAY = 20;         // default for env.AI_PER_DAY: text fills per account (or IP) per day (Workers AI free: 10,000 neurons/day)
+const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 export default {
   async fetch(request, env, ctx) {
@@ -94,7 +98,7 @@ async function route(request, env, ctx, url) {
   if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -173,6 +177,7 @@ async function route(request, env, ctx, url) {
     if (b && !c && m === 'PATCH') return updateInstance(request, env, id, b);
     if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
     if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
+    if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
@@ -2135,6 +2140,100 @@ async function requireInvited(env, poll, user, admin) {
 }
 const nameTaken = (name, participantId, responseId) =>
   new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
+
+// ---------- fill an answer from text (Workers AI) ----------
+// The person types or says when they're free; the model turns it into a few rules, which the Worker checks and
+// expands to days and hours of this round. Nothing is saved: the page puts the result into the answer being edited.
+const FILL_WD = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const FILL_SCHEMA = {
+  type: 'object',
+  properties: {
+    rules: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          days: { type: 'array', items: { type: 'string' } },
+          from: { type: 'integer' }, to: { type: 'integer' },
+          status: { type: 'string', enum: ['available', 'if_needed', 'maybe', 'not_available'] },
+        },
+        required: ['days', 'from', 'to', 'status'],
+      },
+    },
+  },
+  required: ['rules'],
+};
+function fillPrompt(poll, dates, lang) {
+  const weekly = poll.kind === 'weekly', slots = poll.answer_mode !== 'days';
+  const t = today(), wdOf = (d) => FILL_WD[(new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7];
+  const list = weekly ? '' : dates.length <= 62 ? dates.map((d) => `${d} ${wdOf(d)}`).join(', ') : `${dates[0]} to ${dates[dates.length - 1]}`;
+  return [
+    'You turn a person\'s description of when they are free into JSON rules for a scheduling poll.',
+    weekly ? 'The poll asks about a typical week, so use weekday names only.' : `Today is ${t} (${wdOf(t)}). The poll's dates: ${list}.`,
+    slots ? `Hours run from ${poll.hour_start} to ${poll.hour_end} (24-hour clock; "to" is exclusive, so 18-21 means 18:00 until 21:00).`
+      : `The poll only asks about whole days: always use from ${poll.hour_start} and to ${poll.hour_end}.`,
+    'Each rule: days = list of "all", weekday names (mon tue wed thu fri sat sun), "weekdays", "weekend" or dates (YYYY-MM-DD);',
+    'from / to = hours; status = available | if_needed | maybe | not_available.',
+    'Rules apply in order and later rules override earlier ones, so put general rules first and exceptions after them.',
+    '"Morning" = 8-12, "afternoon" = 12-17, "evening" = 17-22, "all day" = the full hour range. Days that aren\'t mentioned stay unchanged.',
+    `The text may be in ${lang === 'de' ? 'German or English' : 'English or German'}. Answer only with JSON like {"rules":[{"days":["weekdays"],"from":18,"to":22,"status":"available"}]}.`,
+  ].join('\n');
+}
+async function fillFromText(request, env, id, iid) {
+  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
+  const poll = await loadPoll(env, id);
+  const admin = isAdmin(request, poll);
+  if (!admin) await checkPassword(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
+  const b = await body(request);
+  const text = str(b.text, 500, 'Text', true);
+  const user = userOf(request);
+  await requireInvited(env, poll, user, admin);
+  // Per account (or IP) per day; login_attempts rows are kept for a day.
+  const key = user ? 'u:' + user.id : clientIp(request), max = Number(env.AI_PER_DAY) || AI_PER_DAY;
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, 'ai', since).first('n');
+  if (n >= max) throw new HttpError(429, `You can fill from text ${max} times a day. Try again tomorrow.`);
+  await recordFail(env, request, 'ai', key);
+  const dates = datesOf(inst, poll);
+  let out;
+  try {
+    out = await env.AI.run(env.AI_MODEL || AI_MODEL, {
+      messages: [{ role: 'system', content: fillPrompt(poll, dates, reqLang(request)) }, { role: 'user', content: text }],
+      response_format: { type: 'json_schema', json_schema: FILL_SCHEMA },
+      max_tokens: 600, temperature: 0,
+    });
+  } catch (e) {
+    console.log('AI fill failed', e && e.message);
+    throw new HttpError(503, 'The text helper is busy or used up for today. Try again later.');
+  }
+  let res = out && out.response;
+  if (typeof res === 'string') { const j = res.match(/\{[\s\S]*\}/); try { res = j ? JSON.parse(j[0]) : null; } catch { res = null; } }
+  const raw = res && Array.isArray(res.rules) ? res.rules.slice(0, 40) : null;
+  if (!raw) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
+  const ST = { available: 'y', if_needed: 'i', maybe: 'm', not_available: 'x' };
+  const inDates = new Set(dates), rules = [];
+  for (const r of raw) {
+    if (!r || typeof r !== 'object' || !ST[r.status] || !Array.isArray(r.days)) continue;
+    const want = new Set();
+    for (const x of r.days.slice(0, 100)) {
+      const v = String(x).toLowerCase().trim();
+      if (v === 'all') dates.forEach((d) => want.add(d));
+      else if (inDates.has(v)) want.add(v);
+      else {
+        const wds = v === 'weekdays' ? [0, 1, 2, 3, 4] : v === 'weekend' ? [5, 6] : FILL_WD.indexOf(v.slice(0, 3)) >= 0 ? [FILL_WD.indexOf(v.slice(0, 3))] : [];
+        dates.forEach((d) => { if (wds.includes((new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7)) want.add(d); });
+      }
+    }
+    let hs = Math.max(poll.hour_start, Math.min(23, Math.round(Number(r.from)))), he = Math.min(poll.hour_end, Math.max(1, Math.round(Number(r.to))));
+    if (poll.answer_mode === 'days' || !Number.isFinite(hs) || !Number.isFinite(he)) { hs = poll.hour_start; he = poll.hour_end; }
+    if (he <= hs || !want.size) continue;
+    rules.push({ dates: dates.filter((d) => want.has(d)), hs, he, st: ST[r.status] });
+  }
+  if (!rules.length) throw new HttpError(422, 'None of the poll’s days or hours match that.');
+  return json({ rules });
+}
 
 async function createResponse(request, env, id, iid) {
   const poll = await loadPoll(env, id);

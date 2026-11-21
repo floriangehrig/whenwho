@@ -17,6 +17,11 @@ binding = "DB"
 database_name = "whenwho"
 database_id = "f485894f-738a-4ac7-be68-bec6aeb8d13e"
 
+# Workers AI: "fill my answer from text" (✨ in My answer). Free allowance 10,000 neurons/day; on the Free plan
+# going over just fails (no bill). Remove this block to hide the feature. `npm run dev` uses the real service (needs `wrangler login`).
+[ai]
+binding = "AI"
+
 # Runs every hour: opens new polls in a series on time and sends notification/reminder emails.
 [triggers]
 crons = ["17 * * * *"]
@@ -34,3 +39,4 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAGEFcq5D-SUTLIt7"   # public site key of the Turns
 # OPERATOR_NAME = ""                        # who runs the site (your name or company)
 # CONTACT_EMAIL = ""                        # where people can ask about or delete their data
 MAIL_PER_DAY = "50"                         # invite/test-email recipients per account per day
+AI_PER_DAY = "20"                           # text fills per account (or IP) per day
