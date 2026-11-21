@@ -846,12 +846,7 @@
   .new-grid{display:grid;gap:var(--s4);grid-template-columns:minmax(0,1fr)}
   .new-grid>.card{margin-top:0}
   @media (min-width:900px){ .new-grid{grid-template-columns:minmax(0,1fr) 300px;align-items:start} .new-sum{position:sticky;top:76px} }
-  .new-form{counter-reset:step;padding-top:6px}
-  .new-form .step{margin-top:var(--s5)}
-  .new-form .step:first-child{margin-top:0;border-top:0}
-  .step>h3{display:flex;align-items:center;gap:10px;font-size:16px}
-  .step>h3::before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-weak);color:var(--accent-ink);font-size:12.5px;font-weight:700}
-  .step>h3+.field{margin-top:var(--s3)}
+  .new-form{padding-top:4px;padding-bottom:6px} #notifyRow{display:contents}
   label .opt{font-weight:500;color:var(--muted);margin-left:4px}
   .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px}
   @media (max-width:640px){ .grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .grid3>.field:last-child:nth-child(odd){grid-column:1/-1} }
@@ -884,8 +879,8 @@
   .dpk-g .d.be:not(.c0){background:linear-gradient(90deg,var(--band) 50%,transparent 50%)}
   .dpk-g .d.s span,.dpk-g .d.e span,.dpk-g .d.sel span{background:var(--accent);color:#fff;font-weight:700}
   .dpk-foot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-  @media (max-width:560px){ .dates-row>.field{flex:1 1 100%} .dpk-btn{width:100%} }
-  .series-grid{margin-top:var(--s1)} .series-grid>.field{margin-top:var(--s3)} .series-grid input[type=month],.series-grid input[type=date]{width:100%}
+  @media (max-width:560px){ .dates-row>.field{flex:1 1 100%} .dpk-btn{width:100%} .dpk-ins .field{min-width:0;flex-basis:0} .dpk-pop{padding:10px}
+    .sdates{position:relative} .sdl .dpk{position:static} .sdl .dpk-pop{left:-6px;right:-6px;width:auto} }
   .choice{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
   .choice.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
   @media (max-width:560px){ .choice,.choice.c3{grid-template-columns:1fr} }
@@ -895,9 +890,7 @@
   .choice .ch.on{border-color:var(--accent);background:var(--accent-weak);box-shadow:0 0 0 1px var(--accent)}
   .ch-t{font-size:14.5px;font-weight:650;color:var(--ink)}
   .ch-d{font-size:13px;font-weight:400;color:var(--muted);line-height:1.4}
-  .icon-row{display:flex;gap:14px;align-items:center}
-  .icon-tile{padding:0;border:0;background:none;border-radius:14px;cursor:pointer;flex:none}
-  .icon-tile:hover .tile{box-shadow:0 0 0 3px var(--accent-weak)}
+  .series-grid{margin-top:var(--s1)} .series-grid>.field{margin-top:var(--s3)} .series-grid input[type=month],.series-grid input[type=date]{width:100%}
   .sum-h{display:flex;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .sum-title{font-weight:650;font-size:16px;line-height:1.3;overflow-wrap:anywhere;margin-top:2px}
   .sum-list{margin:4px 0 0}
@@ -1162,8 +1155,8 @@
     .padd-new{grid-template-columns:minmax(0,1fr) auto auto} .padd-new input+input{grid-row:2;grid-column:1/-1} .padd-new .padd-btn{grid-row:auto;grid-column:auto;align-self:center;height:38px}
     .padd-new{gap:4px} .padd-new .tip{width:26px}
     .dgrid{grid-template-columns:1fr 1fr} .dgrid>.field:last-child:nth-child(odd){grid-column:1/-1}
-    .sdates{grid-template-columns:1fr;gap:8px} .sdl{flex-direction:row;align-items:center;gap:10px} .sdl>.srow-l{flex:0 0 74px;white-space:nowrap} .sdl>:last-child{flex:1;min-width:0}
-    .sseg{flex:1} .sseg button{flex:1;justify-content:center;padding:8px 6px} .srow>.srow-l:first-child{display:none}
+    .sdates{grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:8px 10px} .sdl{display:contents} .sdl>.srow-l{white-space:nowrap} /* labels in one column, sized to the longest */
+    .sseg{flex:1} .sseg button{flex:1;justify-content:center;padding:8px 6px} .sseg button{white-space:nowrap} .srow>.srow-l:first-child{display:none}
     .sdesc-s{display:none}
     .sopts.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:6px}
     .sopts.tiles .sopt{flex-direction:column;justify-content:center;gap:4px;height:auto;min-height:62px;padding:8px 4px;border-radius:12px;font-size:12px;line-height:1.2;white-space:normal;text-align:center}
@@ -1542,10 +1535,12 @@ function dpk(id,o){
 const dpkOpenId=()=>{ const p=document.querySelector('.dpk-pop:not(.hide)'); return p?p.closest('.dpk').id.slice(4):null; };
 function dpkLabel(o,a,b){
   let v='', n='';
-  if(o.mode==='range'){ if(a) v=`${dayLabel(a)} – ${b?dayLabel(b):'…'}`;
+  // Phones: short dates without weekday, and "23 – 30 Nov" when both are in the same month.
+  const nar=matchMedia('(max-width:560px)').matches, sd=k=>nar?parseD(k).toLocaleDateString(LOC,{day:'numeric',month:'short'}):dayLabel(k);
+  if(o.mode==='range'){ if(a) v=nar&&b&&a.slice(0,7)===b.slice(0,7)&&b>a?`${parseD(a).toLocaleDateString(LOC,{day:'numeric'})} – ${sd(b)}`:`${sd(a)} – ${b?sd(b):'…'}`;
     if(a&&b&&b>=a){ const d=Math.round((parseD(b)-parseD(a))/864e5)+1; n=d===1?t('{n} day',{n:d}):t('{n} days',{n:d}); } }
-  else if(a) v=dayLabel(a);
-  return v?esc(v)+(n?` <span class="dpk-c">· ${esc(n)}</span>`:''):`<span class="dpk-ph">${esc(o.empty)}</span>`;
+  else if(a) v=sd(a);
+  return v?esc(v)+(n&&!nar?` <span class="dpk-c">· ${esc(n)}</span>`:''):`<span class="dpk-ph">${esc(o.empty)}</span>`;
 }
 function dpkSync(id){
   const o=DPK[id], root=$('dpk_'+id); if(!o||!root) return;
@@ -2085,51 +2080,39 @@ function renderNew(){
       <p class="help mt-0">${t('Sign in with your email to create polls. No password needed, just a code we email you.')}</p>
       <button type="button" class="btn primary" data-opensignin>${t('Sign in to get started')}</button></div></div></main>`; return;
   }
-  const mail=CONFIG.emailEnabled;
+  const mail=CONFIG.emailEnabled, NOPEN={details:1,when:1,answering:1,privacy:1,email:1};
   $app.innerHTML=`${appbar(t('All polls'))}${band}
     <main class="wrap"><form id="f" class="new-grid" novalidate>
-    <div class="card new-form">
-      <div class="section step"><h3>${t('Basics')}</h3>
-        <div class="field"><label for="title">${t('Title')}</label><input type="text" id="title" maxlength="120" placeholder="${t('e.g. Band rehearsals, Summer trip')}" required autocomplete="off"></div>
-        <div class="field"><label for="desc">${t('Description')} <span class="opt">${t('optional')}</span></label><textarea id="desc" maxlength="1000" placeholder="${t('Anything people should know')}"></textarea></div>
-        <div class="field"><label>${t('Icon')}</label>
-          <div class="icon-row"><button type="button" class="icon-tile" id="iconTile" aria-label="${t('Change icon')}"></button>
-            <div><button type="button" class="btn sm" id="iconBtn" aria-expanded="false" aria-controls="iconBox">${t('Change icon')}</button>
-            <div class="help mt-1">${t('An emoji or a picture. Without one, the first letter of the title is used.')}</div></div></div>
-          <div id="iconBox" class="mt-3 hide">${picker('new',{text:'',seed:'new'})}</div></div>
-      </div>
-      <div class="section step"><h3>${t('When')}</h3>
-        <div class="field">${choice('kind',[['single',t('One-off'),t('One date range, like a trip or a single meeting')],['series',t('Recurring'),t('A new poll every week or month, like a monthly club night')],['weekly',t('Weekly schedule'),t('Find a regular weekly slot, like a band rehearsal')]],'single')}</div>
-        <div id="weeklyBox" class="hide"><p class="help mt-0">${t('People mark the days and hours that usually work for them in a typical week (Monday to Sunday, no dates). You then pick a slot and send it as a repeating calendar event.')}</p>
-          <div class="dates-row"><div class="field"><label for="dpkb_dlw">${t('Reply by')} <span class="opt">${t('optional')}</span></label>${dpk('dlw',{mode:'single',a:'dlw',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline')})}</div></div></div>
-        <div id="singleBox" class="dates-row">
-          <div class="field"><label for="dpkb_rng">${t('Dates')}</label>${dpk('rng',{mode:'range',a:'start',b:'end',title:t('Pick dates'),empty:t('Pick a date range')})}</div>
-          <div class="field"><label for="dpkb_dl">${t('Reply by')} <span class="opt">${t('optional')}</span></label>${dpk('dl',{mode:'single',a:'dl',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>[$('start').value,$('end').value]})}</div>
-        </div>
-        <div id="seriesBox" class="hide grid2 series-grid">
-          <div class="field"><label for="every">${t('Repeats every')}</label><div class="unit-in"><input type="number" id="every" min="1" max="12" value="1">
-            <select id="unit" aria-label="${t('Unit')}"><option value="month">${t('month(s)')}</option><option value="week">${t('week(s)')}</option></select></div></div>
-          <div class="field"><label for="first" id="firstLbl">${t('First month')}</label><input type="month" id="first"></div>
-          <div class="field"><label for="openDays">${t('Open each poll')}</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>${t('days before it starts')}</span></div></div>
-          <div class="field"><label for="dlDays">${t('Reply by')} <span class="opt">${t('optional')}</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>${t('days before it starts')}</span></div></div>
-        </div>
-        <div class="field mt-3"><label>${t('Which days and times')}</label>${patternPicker('np',{hs:8,he:24,multi:true})}
-          <div class="help">${t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Use <b>+ Add period</b> for different times on different days (weekdays 17–22, weekends 10–22); click a period to change it.')}</div></div>
-      </div>
-      <div class="section step"><h3>${t('How people answer')}</h3>
-        <div class="field">${choice('ans',[['days',t('Whole days'),t('Available, maybe or not, for each day')],['slots',t('Time slots'),t('They paint the hours they can make on a week grid')],['both',t('Both'),t('Whole days, or hours when they only have some')]],'both')}</div>
-      </div>
-      <div class="section step"><h3>${t('Privacy')}</h3>
-        <div class="field"><label for="pw">${t('Password')} <span class="opt">${t('optional')}</span></label><input type="password" id="pw" maxlength="100" placeholder="${t('Only people with the password can open the poll')}" autocomplete="new-password"></div>
-        <label class="check"><input type="checkbox" id="hide"> ${t("Hide everyone's answers from respondents (only you see results)")}</label>
-        <label class="check"><input type="checkbox" id="comments" checked> ${t('Let people add a comment')}</label>
-        <label class="check"><input type="checkbox" id="reqmail"> ${t('Require name and email to answer')}${tip(t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.'))}</label>
-      </div>
-      ${mail?`<div class="section step"><h3>${t('Email')}</h3>
-        <label class="check hide" id="notifyRow"><input type="checkbox" id="notify" checked> ${t('When a new poll in the series opens, email everyone in the series')}</label>
-        <label class="check"><input type="checkbox" id="remind" checked> ${t("Email a reminder {input} days before the reply-by date to people who haven't answered yet",{input:'<input type="number" id="remindDays" min="0" max="30" value="2" class="num-sm">'})}</label>
-        <div class="help">${t("People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email{email}.",{email:ME.user?` (${esc(ME.user.email)})`:''})}</div>
-      </div>`:''}
+    <div class="card sform new-form">
+    ${sset('details','edit',t('Details'),`
+      <div class="ttl-row"><button type="button" class="ttl-ic" data-pktog aria-expanded="false" aria-controls="pkwrap" title="${t('Icon or picture')}" aria-label="${t('Icon or picture')}"><span id="iconTile"></span><span class="ttl-ed">${ICON.edit}</span></button>
+        <input type="text" id="title" maxlength="120" placeholder="${t('Title, e.g. Band rehearsals')}" aria-label="${t('Title')}" required autocomplete="off"></div>
+      <div id="pkwrap" class="field" hidden>${picker('new',{text:'',seed:'new'})}</div>
+      <textarea id="desc" class="sdesc" maxlength="1000" rows="2" placeholder="${t('Description (optional)')}" aria-label="${t('Description')}"></textarea>`,'',NOPEN)}
+    ${sset('when','cal',t('Dates'),`
+      ${choice('kind',[['single',t('One-off'),t('One date range, like a trip or a single meeting')],['series',t('Recurring'),t('A new poll every week or month, like a monthly club night')],['weekly',t('Weekly schedule'),t('Find a regular weekly slot, like a band rehearsal')]],'single')}
+      <div id="singleBox" class="sdates"><div class="sdl"><label class="srow-l" for="dpkb_rng">${t('Dates')}</label>${dpk('rng',{mode:'range',a:'start',b:'end',title:t('Pick dates'),empty:t('Pick a date range')})}</div>
+        <div class="sdl"><span class="srow-l row tight"><label for="dpkb_dl">${t('Reply by')}</label>${tip(t('Optional. The poll closes after this day.'))}</span>${dpk('dl',{mode:'single',a:'dl',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>[$('start').value,$('end').value]})}</div></div>
+      <div id="weeklyBox" class="sdates hide"><div class="sdl"><span class="srow-l row tight"><label for="dpkb_dlw">${t('Reply by')}</label>${tip(t('Optional. The poll closes after this day.'))}</span>${dpk('dlw',{mode:'single',a:'dlw',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline')})}</div></div>
+      <div id="seriesBox" class="hide grid2 series-grid">
+        <div class="field"><label for="every">${t('Repeats every')}</label><div class="unit-in"><input type="number" id="every" min="1" max="12" value="1">
+          <select id="unit" aria-label="${t('Unit')}"><option value="month">${t('month(s)')}</option><option value="week">${t('week(s)')}</option></select></div></div>
+        <div class="field"><label for="first" id="firstLbl">${t('First month')}</label><input type="month" id="first"></div>
+        <div class="field"><label for="openDays">${t('Opens')}</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>${t('days before it starts')}</span></div></div>
+        <div class="field"><label for="dlDays">${t('Reply by')} <span class="opt">${t('optional')}</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>${t('days before it starts')}</span></div></div>
+      </div>`,'',NOPEN)}
+    ${sset('answering','check',t('Answering'),`
+      <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'both',t('People answer with'),'np')}</div>
+      <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Use <b>+ Add period</b> for different times on different days (weekdays 17–22, weekends 10–22); click a period to change it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true})}</div>
+      ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
+    ${sset('privacy','lock',t('Privacy'),`
+      <div class="sopts">${opt('hide','eyeoff',t('Hide answers'),false,t('Hide answers from respondents'))}
+        <label class="pwf" title="${t('Only people with the password can open the poll')}">${ICON.lock}<input type="password" id="pw" maxlength="100" placeholder="${t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>
+        ${tip(`<b>${t('Hide answers')}:</b> ${t("Only you see everyone's answers.")}<br><b>${t('Password')}:</b> ${t('Only people with the password can open the poll')}`,'right')}</div>`,'',NOPEN)}
+    ${mail?sset('email','mail',t('Email'),`<div class="sopts">
+        <span id="notifyRow" class="hide">${opt('notify','repeat',t('New rounds'),true,t('Email everyone in the series when a new round opens'))}</span>
+        <label class="sopt" title="${t('Email a reminder before the reply-by date')}"><input type="checkbox" id="remind" checked>${ICON.bell}<span>${t('Remind {input} d before',{input:`<input type="number" id="remindDays" min="0" max="30" value="2" class="num-xs" aria-label="${t('Days before the reply-by date')}">`})}</span></label>
+        ${tip(t("People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email{email}.",{email:ME.user?` (${esc(ME.user.email)})`:''}),'right')}</div>`,'',NOPEN):''}
     </div>
     <aside class="card new-sum">
       <div class="sum-h"><span id="sumTile"></span><div class="grow"><div class="eyebrow">${t('Preview')}</div><div class="sum-title" id="sumTitle"></div></div></div>
@@ -2142,7 +2125,7 @@ function renderNew(){
     </form></main>`;
 
   const today=new Date(), iso=isoL;
-  const getR = n => (document.querySelector(`input[name="${n}"]:checked`)||{}).value;
+  const getR = n => n==='kind'?(document.querySelector('input[name="kind"]:checked')||{}).value:$(n).value; // ans: hidden input behind the segmented control
   $('start').value=iso(today); $('end').value=iso(new Date(today.getFullYear(),today.getMonth(),today.getDate()+13));
   ['rng','dl','dlw'].forEach(dpkSync);
   const nextMonth=new Date(today.getFullYear(),today.getMonth()+1,1); $('first').value=iso(nextMonth).slice(0,7);
@@ -2172,19 +2155,19 @@ function renderNew(){
     { const pv=patValue('np'); rows.push([t('Days'), pv.empty?t('Pick at least one day'):patLabel(pv,{hours:ans!=='days'})]); }
     rows.push([t('Answers'), ANS[ans]]);
     const priv=[$('pw').value?t('Password'):t('Anyone with the link')];
-    if($('hide').checked) priv.push(t('results hidden')); if(!$('comments').checked) priv.push(t('no comments'));
+    if($('hide').checked) priv.push(t('results hidden')); if(!$('n_com').checked) priv.push(t('no comments')); if($('n_invonly').checked) priv.push(t('invited only'));
     rows.push([t('Access'), priv.join(', ')]);
     if(mail&&$('remind').checked&&$('remindDays').value!=='') rows.push([t('Reminder'), t('{n} days before reply-by',{n:+$('remindDays').value})]);
     $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
   };
   const f=$('f');
   f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value); sum(); });
-  f.addEventListener('change',e=>{ const n=e.target.name;
+  f.addEventListener('change',e=>{ const n=e.target.name||e.target.id;
     if(e.target.type==='radio') e.target.closest('.choice').querySelectorAll('.ch').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
     if(e.target.id==='unit') setUnit();
     if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('weeklyBox').classList.toggle('hide',v!=='weekly'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series');
       PAT.np.noDom=v==='weekly'; patRefresh('np',true);
-      if(v==='weekly'&&getR('ans')==='days') document.querySelector('input[name="ans"][value="slots"]').click(); }
+      if(v==='weekly'&&getR('ans')==='days') f.querySelector('[data-for="ans"] [data-sans="slots"]').click(); }
     if(n==='ans') patShowHours('np',getR('ans')!=='days');
     if(n==='kind') patRefresh('np');
     sum(); });
@@ -2200,9 +2183,6 @@ function renderNew(){
   f.addEventListener('input',e=>{ if(['start','end','every','first'].includes(e.target.id)) patRefresh('np'); });
   f.addEventListener('change',e=>{ if(e.target.id==='unit') patRefresh('np'); });
   patRefresh('np');
-  const toggleIcon=()=>{ const box=$('iconBox'), open=box.classList.toggle('hide')===false;
-    $('iconBtn').textContent=open?t('Done'):t('Change icon'); $('iconBtn').setAttribute('aria-expanded',open); };
-  $('iconBtn').onclick=toggleIcon; $('iconTile').onclick=toggleIcon;
   sum(); $('title').focus();
 
   f.onsubmit=async e=>{
@@ -2221,7 +2201,8 @@ function renderNew(){
       return true; };
     if(!check()) return;
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
-      hideResults:$('hide').checked, allowComments:$('comments').checked, requireEmail:$('reqmail').checked, password:v('pw')||undefined };
+      hideResults:$('hide').checked, allowComments:$('n_com').checked, requireEmail:$('n_reqmail').checked, password:v('pw')||undefined };
+    if($('n_invonly').checked) body.invitedOnly=true;
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
     else if(kind==='weekly'){ body.deadline=v('dlw')||null; }
@@ -4143,12 +4124,9 @@ function adminPanes(){
       p.icon||p.image?pollTile(p,''):'')}
     ${series?'':datesSection()}
     ${sset('answering','check',t('Answering'),`
-      <input type="hidden" id="s_ans" value="${esc(p.answerMode)}">
-      <div class="srow"><span class="srow-l">${t('Answer with')}</span><div class="seg sseg" role="radiogroup" aria-label="${t('People answer with')}">
-        ${[['days','day',t('Days'),t('Whole days')],['slots','clock',t('Hours'),t('Time slots')],['both','day+clock',t('Both'),t('Days and time slots')]].map(([v,ic,l,full])=>`<button type="button" role="radio" data-sans="${v}" class="${p.answerMode===v?'on':''}" aria-checked="${p.answerMode===v}" title="${esc(full)}">${ic.split('+').map(x=>ICON[x]).join('')}<span>${esc(l)}</span></button>`).join('')}</div></div>
+      <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('s_ans',ansOpts(),p.answerMode,t('People answer with'),'sp')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.'))}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
-      <div class="sopts tiles">${opt('s_com','chat',t('Comments'),p.allowComments,t('Allow comments'))}${opt('s_reqmail','mail',t('Email required'),p.requireEmail,t('Require name and email to answer'))}${opt('s_invonly','users',t('Invited only'),p.invitedOnly,t('Only invited people can answer'))}
-        ${tip(`<b>${t('Comments')}:</b> ${t('Allow comments')}.<br><b>${t('Email required')}:</b> ${t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.')}<br><b>${t('Invited only')}:</b> ${t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')}`)}</div>`,
+      ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`)}
     ${sset('privacy','lock',t('Privacy'),`
       <div class="sopts">${opt('s_hide','eyeoff',t('Hide answers'),p.hideResults,t('Hide answers from respondents'))}
@@ -4160,7 +4138,7 @@ function adminPanes(){
         <label class="sopt" title="${t('Email a reminder before the reply-by date')}"><input type="checkbox" id="s_remind" ${p.remindDays!=null?'checked':''}>${ICON.bell}<span>${t('Remind {input} d before',{input:`<input type="number" id="s_rdays" min="0" max="30" value="${p.remindDays??2}" class="num-xs" aria-label="${t('Days before the reply-by date')}">`})}</span></label>
         ${ib('send',t('Send test email'),'id="testMail"','sm',t('Test'))}
         ${tip(t("Emails come from when-who's address under your name. Replies and your copy go to your account email{email}.",{email:ME.user?`, <b>${esc(ME.user.email)}</b>`:''}))}</div>`
-      :`<div class="row tight muted small">${t('Not set up: invites open in your email app.')}${tip(t('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.'))}</div>`,
+      :`<div class="row tight muted small">${t('Not set up: invites open in your email app.')}${tip(t('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.'),'right')}</div>`,
       d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:'')}
     <div class="err" id="serr"></div>
     <div class="savebar setbar"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>${t('Save<span class="bl"> settings</span>')}</span></button></div></form>
@@ -4171,18 +4149,32 @@ function adminPanes(){
 function opt(id,icon,label,on,full='',cls=''){
   return `<label class="sopt${cls}" title="${esc(full||label)}"><input type="checkbox" id="${id}" ${on?'checked':''} aria-label="${esc(full||label)}">${ICON[icon]}<span>${esc(label)}</span></label>`;
 }
+// Segmented radio (Settings and New poll): writes the value to the hidden input #id and fires change. pat = pattern picker whose hours follow it ('' = none).
+// opts = [[value, icons ('day+clock'), label, full label], …]
+function segRadio(id,opts,cur,label,pat=''){
+  return `<input type="hidden" id="${id}" value="${esc(cur)}"><div class="seg sseg" role="radiogroup" aria-label="${esc(label)}" data-for="${id}" data-pat="${pat}">
+    ${opts.map(([v,ic,l,full])=>`<button type="button" role="radio" data-sans="${v}" class="${cur===v?'on':''}" aria-checked="${cur===v}" title="${esc(full)}">${ic.split('+').map(x=>ICON[x]).join('')}<span>${esc(l)}</span></button>`).join('')}</div>`;
+}
+const ansOpts=()=>[['days','day',t('Days'),t('Whole days')],['slots','clock',t('Hours'),t('Time slots')],['both','day+clock',t('Both'),t('Days and time slots')]];
+// Comments / Email required / Invited only chips with their tip. ids = [comments, require email, invited only].
+function answerChips(ids,o){
+  return `<div class="sopts tiles">${opt(ids[0],'chat',t('Comments'),o.com,t('Allow comments'))}${opt(ids[1],'mail',t('Email required'),o.req,t('Require name and email to answer'))}${opt(ids[2],'users',t('Invited only'),o.inv,t('Only invited people can answer'))}
+    ${tip(`<b>${t('Comments')}:</b> ${t('Allow comments')}.<br><b>${t('Email required')}:</b> ${t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.')}<br><b>${t('Invited only')}:</b> ${t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')}`,'right')}</div>`;
+}
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-sans]');
-  if(s){ const g=s.parentNode; g.querySelectorAll('[data-sans]').forEach(b=>{ const on=b===s; b.classList.toggle('on',on); b.setAttribute('aria-checked',on); });
-    $('s_ans').value=s.dataset.sans; patShowHours('sp',s.dataset.sans!=='days'); return; }
+  if(s){ const g=s.parentNode, inp=$(g.dataset.for||'s_ans'), v=s.dataset.sans; g.querySelectorAll('[data-sans]').forEach(b=>{ const on=b===s; b.classList.toggle('on',on); b.setAttribute('aria-checked',on); });
+    if(g.dataset.pat!=='') patShowHours(g.dataset.pat||'sp',v!=='days');
+    if(inp.value!==v){ inp.value=v; inp.dispatchEvent(new Event('change',{bubbles:true})); } return; }
   const k=e.target.closest('[data-pktog]');
   if(k){ const w=$('pkwrap'), open=w.hidden; w.hidden=!open; k.setAttribute('aria-expanded',open); }
 });
 // A collapsible Settings section (open state kept while the page is open). body is trusted markup; extra = icons shown when closed.
-const SSET_C={details:'#4f7cff',dates:'#8b5cf6',answering:'#16a34a',privacy:'#e0912b',email:'#e0508f'};
-function sset(k,icon,title,body,extra=''){
-  const o=P.setOpen||(P.setOpen={details:true});
-  return `<details class="section sset" data-sset="${k}"${o[k]?' open':''}><summary><span class="sic" style="--c:${SSET_C[k]||'var(--accent)'}">${ICON[icon]}</span><span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
+const SSET_C={details:'#4f7cff',dates:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',privacy:'#e0912b',email:'#e0508f'};
+// open: a fixed open map (New poll), so the open state isn't kept in P.
+function sset(k,icon,title,body,extra='',open=null){
+  const o=open||P.setOpen||(P.setOpen={details:true});
+  return `<details class="section sset" ${open?'data-nset':'data-sset'}="${k}"${o[k]?' open':''}><summary><span class="sic" style="--c:${SSET_C[k]||'var(--accent)'}">${ICON[icon]}</span><span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
 }
 document.addEventListener('toggle',e=>{ const k=e.target.dataset&&e.target.dataset.sset; if(k) (P.setOpen||(P.setOpen={}))[k]=e.target.open; },true);
 // Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
@@ -5325,6 +5317,11 @@ function germanText(){ return {
 "Once people respond, the best days show up here.": "Sobald Leute antworten, erscheinen hier die besten Tage.",
 "One date range, like a trip or a single meeting": "Ein Zeitraum, z. B. ein Ausflug oder ein einzelner Termin",
 "One-off": "Einmalig",
+"Title, e.g. Band rehearsals": "Titel, z. B. Bandprobe",
+"Kind of poll": "Art der Umfrage",
+"Weekly": "Wöchentlich",
+"Only you see everyone's answers.": "Nur du siehst die Antworten aller.",
+"invited only": "nur Eingeladene",
 "Only days when someone is free ({n})": "Nur Tage, an denen jemand frei ist ({n})",
 "Only for this meeting": "Nur für diesen Termin",
 "Only maybe (n?)": "Nur vielleicht (n?)",
