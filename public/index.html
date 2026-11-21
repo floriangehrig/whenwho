@@ -1014,6 +1014,19 @@
   .pgrid .hd{cursor:pointer;border-radius:8px;padding-bottom:2px;margin-bottom:4px} .pgrid .hd:hover{background:var(--accent-weak)}
   .pgrid .hd.dr{background:var(--sel-bg);color:var(--accent-ink)} .pgrid .hd.dr b{color:var(--accent-ink)}
   .pgrid .hd.da,#pcal .day.da{background:var(--sel-bg);box-shadow:inset 0 0 0 1.5px var(--accent);outline:1.5px dashed var(--accent);outline-offset:2px}
+  .pgrid .slot.da{background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 2px var(--accent)}
+  .pgrid .slot.dp:not(.dr,.da){background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
+  .pgrid .hd{position:relative}
+  :is(.pgrid .slot,.pgrid .hd,#pcal .day)[data-dn]::after{content:attr(data-dn);position:absolute;top:1px;right:1px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--accent);color:#fff;font:700 9px/13px system-ui,sans-serif;text-align:center;pointer-events:none}
+  .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
+  .dmenu .dm-h{padding:4px 8px 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
+  .dmenu .dm-r{display:flex;align-items:center;gap:8px;padding:2px 2px 2px 8px;border-radius:10px;font-size:14px;font-variant-numeric:tabular-nums}
+  .dmenu .dm-r>svg{width:16px;height:16px;flex:none;color:var(--muted)} .dmenu .dm-r>span{flex:1;min-width:0}
+  .dmenu .dm-r:hover{background:var(--sunken)}
+  .dmenu .dm-add{margin-top:4px;justify-content:center}
+  .dmenu.sheet{left:0;right:0;bottom:0;top:auto;max-width:none;border-radius:18px 18px 0 0;padding:10px 12px calc(12px + env(safe-area-inset-bottom));animation:dmup .16s ease-out}
+  .dmenu.sheet .dm-r{min-height:44px;font-size:15px} .dmenu.sheet .dm-add{min-height:44px}
+  @keyframes dmup{from{transform:translateY(100%)}}
   #pcal .day.dr{background:var(--sel-bg);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
   #pcal .day.dr :is(.n,.t,.t .om){color:var(--accent-ink)}
   .day.sel{box-shadow:var(--shadow)}
@@ -3178,7 +3191,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, dirty:false, saving:false,
-  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), panchor:null, drafts:[], dmeta:null, atab:'answers' };
+  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -3463,7 +3476,7 @@ function shareRow(p,i){
     <button type="button" class="qb pshare-copy" data-copy="${esc(link)}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info,true)}</div>`;
 }
 function renderBody(){
-  const b=$('body'); if(!b) return;
+  const b=$('body'); if(!b) return; closeDraftMenu();
   // iOS Safari has no scroll anchoring: rebuilding the panel briefly shortens the page and Safari scrolls up
   // (often to the top). Hold the old height until the next frame and put the scroll position back.
   const y0=window.scrollY, h0=b.offsetHeight; if(h0) b.style.minHeight=h0+'px';
@@ -4702,18 +4715,54 @@ function hourOpts(lo,hi,cur){ let o=''; for(let h=lo;h<=hi;h++) o+=`<option valu
 let draftSeq=0;
 function addDraft(date,allDay,start,end,endDate){ P.drafts.push({key:++draftSeq,date,allDay,start,end,participants:selParticipants(),...(allDay&&endDate&&endDate>date?{endDate}:{})}); P.drafts.sort((a,b)=>a.date.localeCompare(b.date)||(a.allDay?-1:b.allDay?1:a.start-b.start)); }
 function inMeeting(m,k,hr){ return onDay(m,k) && (m.allDay || (hr>=m.start && hr<m.end)); }
-// Days (tap or press-and-drag across day names / calendar days): one all-day draft from the first to the last day.
-// A tap on a day that already has an all-day draft removes that draft.
+// Drafts on day k: all-day ones (hr null) or timed ones covering hour hr. Drafts may overlap.
+const draftsAt = (k,hr) => P.drafts.filter(x=>hr==null?x.allDay&&onDay(x,k):!x.allDay&&inMeeting(x,k,hr));
+const pRange = () => P.prange&&!isWeekly();
+// Days (tap or press-and-drag across day names / calendar days): one all-day draft from the first to the last day,
+// even over other drafts. A tap on a day that has an all-day draft opens the draft menu (remove / add another).
 // One range mode (P.prange): the first tap marks the start (P.panchor), the next tap the end.
 function pickDays(a,b){
-  let lo=a<b?a:b, hi=a<b?b:a; const hit=P.drafts.find(x=>x.allDay&&onDay(x,lo)), anc=P.panchor; P.panchor=null;
-  if(lo===hi&&P.prange&&anc){ lo=anc<lo?anc:lo; hi=anc>hi?anc:hi; }
-  else if(lo===hi&&hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return; }
-  else if(lo===hi&&P.prange){ P.panchor=lo; renderBody(); toast(t('Now tap the last day')); return; }
-  P.drafts=P.drafts.filter(x=>!(x.allDay&&x.date<=hi&&mEnd(x)>=lo));
+  let lo=a<b?a:b, hi=a<b?b:a; const anc=P.panchor;
+  if(lo===hi&&pRange()&&anc){ P.panchor=null; lo=anc<lo?anc:lo; hi=anc>hi?anc:hi; }
+  else if(lo===hi&&draftsAt(lo).length){ renderBody(); draftMenu(lo,null); return; }
+  else if(lo===hi&&pRange()){ P.panchor=lo; P.hanchor=null; renderBody(); toast(t('Now tap the last day')); return; }
+  P.panchor=null; P.hanchor=null;
   addDraft(lo,true,null,null,hi); renderBody();
   if(lo!==hi) toast(t('One meeting over {n} days added',{n:spanDays(lo,hi).length}));
 }
+// One range in hour view: a block from cell a to cell b = one meeting per poll day, from the lower to the higher hour.
+function addBlock(a,b){
+  const k1=a.k<b.k?a.k:b.k, k2=a.k<b.k?b.k:a.k, h1=Math.min(a.h,b.h), h2=Math.max(a.h,b.h);
+  const days=P.data.dates.filter(k=>k>=k1&&k<=k2); days.forEach(k=>addDraft(k,false,h1,h2+1)); renderBody();
+  if(days.length>1) toast(t('{n} meetings added',{n:days.length}));
+}
+// The draft menu: a popover by the tapped cell (bottom sheet on phones) listing the drafts there (✕ each)
+// and ＋ to add another one on top (in One range mode: start a range there). Lives on <body>; renderBody closes it.
+function closeDraftMenu(){ const m=$('dmenu'); if(m) m.remove(); }
+function draftMenu(k,hr){
+  closeDraftMenu();
+  const box=hr==null?($('pcal')||$('pgrid')):$('pgrid'), cell=box&&box.querySelector(hr==null?`[data-pday="${k}"]`:`.slot[data-k="${k}"][data-h="${hr}"]`);
+  const ds=draftsAt(k,hr); if(!cell||!ds.length) return;
+  const rng=pRange(), lbl=x=>x.allDay?allDayText(x)+(x.endDate?' · '+shortRange(x.date,x.endDate):''):`${hh(x.start)}–${hh24(x.end)}`;
+  const el=document.createElement('div'); el.id='dmenu'; el.className='dmenu'; el.setAttribute('role','menu');
+  el.innerHTML=`<div class="dm-h">${esc(dLabel(k))}${hr==null?'':' · '+hh(hr)}</div>`
+    +ds.map(x=>`<div class="dm-r">${ICON[x.allDay?'day':'clock']}<span>${esc(lbl(x))}</span><button type="button" class="qb danger" data-dmdel="${x.key}" title="${t('Remove draft')}" aria-label="${t('Remove draft')}">${ICON.x}</button></div>`).join('')
+    +`<button type="button" class="btn sm withic dm-add" data-dmadd>${ICON.plus}<span>${rng?t('Start a range here'):t('Add another here')}</span></button>`;
+  el.dataset.y=scrollY; document.body.appendChild(el);
+  if(matchMedia('(max-width:620px)').matches) el.classList.add('sheet');
+  else { const r=cell.getBoundingClientRect(), w=el.offsetWidth, ht=el.offsetHeight;
+    el.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2))+'px';
+    el.style.top=(r.bottom+6+ht<innerHeight?r.bottom+6:Math.max(8,r.top-6-ht))+'px'; }
+  el.onclick=e=>{ e.stopPropagation(); const d=e.target.closest('[data-dmdel]'), add=e.target.closest('[data-dmadd]');
+    if(d){ P.drafts=P.drafts.filter(x=>x.key!==+d.dataset.dmdel); renderBody(); draftMenu(k,hr); }
+    else if(add){ closeDraftMenu();
+      if(rng){ if(hr==null){ P.panchor=k; P.hanchor=null; } else { P.hanchor={k,h:hr}; P.panchor=null; } renderBody(); toast(hr==null?t('Now tap the last day'):t('Now tap the last hour')); }
+      else { hr==null?addDraft(k,true,null,null):addDraft(k,false,hr,hr+1); renderBody(); } } };
+  if(!TOUCH) el.querySelector('[data-dmadd]').focus({preventScroll:true});
+}
+document.addEventListener('pointerdown',e=>{ const m=$('dmenu'); if(m&&!m.contains(e.target)) m.remove(); },true);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDraftMenu(); });
+window.addEventListener('scroll',()=>{ const m=$('dmenu'); if(m&&!m.classList.contains('sheet')&&Math.abs(scrollY-(+m.dataset.y||0))>30) m.remove(); },{passive:true});
 function wireDayPick(box){
   if(!box) return; let dr=null;
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y), c=el&&el.closest&&el.closest('[data-pday]'); return c&&box.contains(c)?c:null; };
@@ -4744,7 +4793,7 @@ function planShow(k){
 function pickSeg(){
   if(isWeekly()) return '';
   const b=(on,v,ic,l,tt)=>`<button data-prange="${v}" class="${on?'on':''}" title="${tt}" aria-label="${l}" aria-pressed="${on}"><span class="segic">${ICON[ic]}</span><span class="bl">${l}</span></button>`;
-  return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
+  return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),P.data.poll.answerMode!=='days'?t('Each tap or drag is its own meeting'):t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),P.data.poll.answerMode!=='days'?t('Tap the first and the last day (or hour): one meeting over all days in between, or the same hours on each day'):t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
 }
 function renderPlanner(S,who){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
@@ -4759,8 +4808,8 @@ function renderPlanner(S,who){
     const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
     h+=vrow(viewSeg+pickSeg(),who,pager)+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
-    wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.allDay&&onDay(x,k));
-      h+=`<div class="hd${ad?' dr':''}${k&&P.panchor===k?' da':''}" ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
+    wk.forEach((k,i)=>{ const nd=k?draftsAt(k).length:0;
+      h+=`<div class="hd${nd?' dr':''}${k&&P.panchor===k?' da':''}"${nd>1?` data-dn="${nd}"`:''} ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -4769,12 +4818,12 @@ function renderPlanner(S,who){
         if(c===tot) cls+=' allfree'; else if(c) cls+=' hm'; else if(m) cls+=' mo';
         if(c<tot&&m&&c+m>=tot) cls+=' mb';
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
-        if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
-        h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
+        const nd=draftsAt(k,hr).length; if(nd) cls+=' dr'; if(P.hanchor&&P.hanchor.k===k&&P.hanchor.h===hr) cls+=' da';
+        h+=`<div class="${cls}"${nd>1?` data-dn="${nd}"`:''} style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>'+legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
     h+=vrow(pickSeg(),who,monthPager(d.dates).html);
-    h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,(P.drafts.some(x=>onDay(x,k))?' dr':'')+(P.panchor===k?' da':'')),{nav:false})+'</div>';
+    h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"${draftsAt(k).length>1?` data-dn="${draftsAt(k).length}"`:''}`,(P.drafts.some(x=>onDay(x,k))?' dr':'')+(P.panchor===k?' da':'')),{nav:false})+'</div>';
     h+=legend('heat','ifn','maybe','line','draft','meeting');
   }
   return h;
@@ -4785,7 +4834,7 @@ function renderPlan(el){
   let h='';
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t("Once people answer, you can plan meetings around when they're free.")}</span><button class="btn sm mt-2" data-atab="people">${t('Share the poll')}</button></div>`; return; }
   const S={}, who=whoDropdown(); d.dates.forEach(k=>S[k]=stats(k));
-  const how=slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.')
+  const how=slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days). Drafts may overlap: tap one to remove it or add another. Darker = more of them are free.')
     :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'));
   h+=`<div class="asec">${secH('cal',t('Pick the times'),{tip:(tot?how+' ':'')+t('Each meeting invites the people selected when you add it.'),extra:tot?sugAiBtn()+sugButton():''})}`
     +(tot?sugAi()+sugPanel()+renderPlanner(S,who):vrow('',who)+`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person to see when they’re free.')}</span></div>`)+'</div>';
@@ -4832,13 +4881,23 @@ function wirePlanner(){
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
   const paint=()=>{ const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b);
     grid.querySelectorAll(`.slot[data-k="${drag.k}"]`).forEach(c=>{ const hr=+c.dataset.h; c.classList.toggle('dr', drag.orig.has(c)||(hr>=lo&&hr<=hi)); }); };
-  const end=()=>{ if(!drag) return; const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b), k=drag.k; drag=null; addDraft(k,false,lo,hi+1); renderBody(); };
+  // A drag always adds a meeting (even over drafts). A tap: completes / starts a One range block,
+  // opens the draft menu on a draft, or adds one hour.
+  const end=()=>{ if(!drag) return; const lo=Math.min(drag.a,drag.b), hi=Math.max(drag.a,drag.b), k=drag.k, moved=drag.moved; drag=null;
+    if(!moved){ const ha=P.hanchor;
+      if(pRange()&&ha){ P.hanchor=null; addBlock(ha,{k,h:lo}); return; }
+      if(draftsAt(k,lo).length){ renderBody(); draftMenu(k,lo); return; }
+      if(pRange()){ P.hanchor={k,h:lo}; P.panchor=null; renderBody(); toast(t('Now tap the last hour')); return; } }
+    P.hanchor=null; addDraft(k,false,lo,hi+1); renderBody(); };
   gridGestures(grid,cellAt,{
-    start:el=>{ const k=el.dataset.k, hr=+el.dataset.h, hit=P.drafts.find(x=>!x.allDay&&inMeeting(x,k,hr));
-      if(hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return false; }
-      drag={k,a:hr,b:hr,orig:new Set(grid.querySelectorAll(`.slot.dr[data-k="${k}"]`))}; paint(); },
-    move:el=>{ if(drag&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; paint(); } },
+    start:el=>{ const k=el.dataset.k, hr=+el.dataset.h;
+      drag={k,a:hr,b:hr,moved:false,orig:new Set(grid.querySelectorAll(`.slot.dr[data-k="${k}"]`))}; paint(); },
+    move:el=>{ if(drag&&el.dataset.k===drag.k&&+el.dataset.h!==drag.b){ drag.b=+el.dataset.h; drag.moved=true; paint(); } },
     end, cancel:()=>{ drag=null; renderBody(); } });
+  // One range: with a start cell set, hovering shows the block a second click would add (mouse only).
+  if(pRange()&&P.hanchor) grid.addEventListener('pointermove',e=>{ if(drag||e.pointerType!=='mouse'||!P.hanchor) return; const el=cellAt(e.clientX,e.clientY); if(!el) return;
+    const a=P.hanchor, k1=a.k<el.dataset.k?a.k:el.dataset.k, k2=a.k<el.dataset.k?el.dataset.k:a.k, h1=Math.min(a.h,+el.dataset.h), h2=Math.max(a.h,+el.dataset.h);
+    grid.querySelectorAll('.slot[data-k]').forEach(c=>c.classList.toggle('dp',c.dataset.k>=k1&&c.dataset.k<=k2&&+c.dataset.h>=h1&&+c.dataset.h<=h2)); });
 }
 // ---- Suggest (planner): ⚡ opens a settings panel like Quick fill. Settings are remembered per browser (sugopt);
 // days and hours (PAT.sug) are per poll, in memory.
@@ -5995,9 +6054,9 @@ document.addEventListener('click',async e=>{
   if(ds.whoall!==undefined){ setWho(new Set((P.data.responses||[]).map(r=>r.id))); return; }
   if(ds.whonone!==undefined){ setWho(new Set()); return; }
   if(ds.pwk){ P[P.pavail?'ppage':'pweek']+=+ds.pwk; renderBody(); return; }
-  if(ds.pview){ P.pavail=ds.pview==='avail'; P.panchor=null; renderBody(); return; }
-  if(ds.prange){ P.prange=ds.prange==='1'; P.panchor=null; store.set('prange',P.prange?1:0); renderBody(); return; }
-  if(ds.pday){ if(!isWeekly()&&Date.now()-(P.pdayT||0)<600) return; const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
+  if(ds.pview){ P.pavail=ds.pview==='avail'; P.panchor=P.hanchor=null; renderBody(); return; }
+  if(ds.prange){ P.prange=ds.prange==='1'; P.panchor=P.hanchor=null; store.set('prange',P.prange?1:0); renderBody(); return; }
+  if(ds.pday){ if(!isWeekly()&&Date.now()-(P.pdayT||0)<600) return; if(draftsAt(ds.pday).length){ draftMenu(ds.pday,null); return; } addDraft(ds.pday,true,null,null); renderBody(); return; }
   if(ds.ddesc){ const x=P.drafts.find(y=>y.key===+ds.ddesc); if(x){ x.ownDesc=!x.ownDesc; renderBody(); } return; }
   if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
@@ -7345,6 +7404,13 @@ function germanText(){ return {
 "Each tapped day is its own all-day meeting": "Jeder angetippte Tag wird ein eigenes ganztägiges Treffen",
 "Tap the first and the last day: one meeting over all days in between": "Tippe den ersten und den letzten Tag an: ein Treffen über alle Tage dazwischen",
 "Now tap the last day": "Tippe jetzt den letzten Tag an",
+"Now tap the last hour": "Tippe jetzt die letzte Stunde an",
+"{n} meetings added": "{n} Treffen hinzugefügt",
+"Start a range here": "Zeitraum hier beginnen",
+"Add another here": "Noch eins hier hinzufügen",
+"Each tap or drag is its own meeting": "Jedes Antippen oder Ziehen wird ein eigenes Treffen",
+"Tap the first and the last day (or hour): one meeting over all days in between, or the same hours on each day": "Tippe den ersten und den letzten Tag (oder die Stunde) an: ein Treffen über alle Tage dazwischen oder dieselben Stunden an jedem Tag",
+"Tap a day name for an all-day one (hold and drag across day names for several days). Drafts may overlap: tap one to remove it or add another. Darker = more of them are free.": "Tippe auf einen Wochentag für einen ganztägigen Termin (gedrückt halten und über mehrere Tage ziehen für mehrere Tage). Entwürfe dürfen sich überschneiden: tippe einen an, um ihn zu entfernen oder noch einen hinzuzufügen. Dunkler = mehr von ihnen haben Zeit.",
 "Welcome back, {name}! Mark your availability below; it's saved under your name.": "Willkommen zurück, {name}! Markiere unten, wann du kannst; es wird unter deinem Namen gespeichert.",
 "When": "Wann",
 "When a new poll in the series opens, email everyone in the series": "Wenn eine neue Umfrage der Serie öffnet, alle in der Serie per E-Mail benachrichtigen",
