@@ -533,6 +533,9 @@
   .mlist.compact .mhead{align-items:center;gap:8px} .mlist.compact .mtitle{padding-top:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mlist.compact .tm{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
   .mlist.compact .tm svg{width:14px;height:14px;color:var(--accent)}
+  .mlist.compact .mmeta{flex:1;min-width:0;align-items:center;flex-direction:row;flex-wrap:nowrap;gap:4px 14px} .mlist.compact .mmeta>a,.mlist.compact .mmeta>span:not(.tm){min-width:0;overflow:hidden} .mlist.compact .mmeta>a>span,.mlist.compact .mmeta>span>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mlist.compact .mhead{flex-wrap:wrap;row-gap:2px} .mlist.compact .mmeta{flex:1 1 170px}
+  .macts{flex:none;display:inline-flex;align-items:center;gap:2px;margin-left:auto}
   .meet{display:flex;align-items:flex-start;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm)}
   .mtile{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;padding:7px 0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);line-height:1.1;text-align:center;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
   .mtile .mo{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
@@ -764,7 +767,10 @@
   .pf-row{display:flex;gap:6px;align-items:center} .pf-row input{flex:1;min-width:0}
   .pf-save{flex:none} .pf-save:disabled{opacity:.45}
   .pf-mail{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;color:var(--muted)}
-  .pf-mail svg{flex:none;width:14px;height:14px} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pf-mail svg{flex:none;width:14px;height:14px}
+  .pf-mailed{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer}
+  .pf-mailed:hover,.pf-mailed[aria-expanded="true"]{background:var(--sunken);color:var(--ink)}
+  .em-f{margin-top:12px;display:flex;flex-direction:column;gap:6px} .em-f label{margin:0} #em_step2{display:flex;flex-direction:column;gap:6px} #em_step2[hidden]{display:none} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pf-pk{margin-top:14px} .pf-pk .pk-preview{display:none} .pf-pk .picker{padding:10px}
   @media (max-width:560px){ .pf-id{gap:10px;align-items:flex-start} .pf-av .pf-tile{width:56px;height:56px} .pf-save{min-width:40px;padding-inline:10px} }
 
@@ -1345,6 +1351,7 @@ const ERR_DE = [
   [/^(.+) must be text$/, (m,f)=>`${t(f)}: muss Text sein`],
   [/^(.+) is too long \(max (\d+) characters\)$/, (m,f,n)=>`${t(f)} ist zu lang (max. ${n} Zeichen)`],
   [/^(.+): that address doesn’t look right$/, (m,f)=>`${t(f)}: Diese Adresse sieht nicht richtig aus`],
+  [/^Too many emails\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele E-Mails. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many sign-in emails\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Anmelde-E-Mails. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many attempts\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
   [/^You can have at most (\d+) polls\. Delete an old one first\.$/, (m,n)=>`Du kannst höchstens ${n} Umfragen haben. Lösch zuerst eine alte.`],
@@ -2613,11 +2620,21 @@ function renderAccount(){
               <div class="pf-row"><input type="text" id="pf_name" maxlength="60" autocomplete="name" placeholder="${esc(u.email.split('@')[0])}" value="${esc(u.name)}" aria-label="${t('Name')}">
                 ${tip(t('Shown in the app and as your name on polls you answer. Changing it updates your earlier answers too.'),'right')}
                 <button type="submit" class="btn primary withic ib pf-save" id="pf_save" disabled title="${t('Save profile')}" aria-label="${t('Save profile')}">${ICON.check}<span class="bl">${t('Save')}</span></button></div>
-              <div class="pf-mail">${ICON.mail}<span class="ell">${esc(u.email)}</span>${ICON.lock}${tip(t('You sign in with this address. Polls you answer while signed in are linked to it, not to your name.'),'right')}</div>
+              <div class="pf-mail">${ICON.mail}<span class="ell">${esc(u.email)}</span><button type="button" class="pf-mailed" data-mailedit aria-expanded="false" aria-controls="em_f" title="${t('Change email')}" aria-label="${t('Change email')}">${ICON.edit}</button>${tip(t('You sign in with this address. Polls you answer while signed in are linked to it, not to your name. Changing it moves your account and all its polls to the new address.'),'right')}</div>
             </div>
           </div>
           <div class="pf-pk" id="pf_pk" hidden>${picker('avatar',{emoji:u.avatar,img:u.avatarImg,text:displayName(u),seed:u.email,round:true,size:192})}</div>
           <div class="err" id="pf_err"></div>
+        </form>
+        <form id="em_f" class="em-f" hidden novalidate>
+          <label for="em_new">${t('New email address')}</label>
+          <div class="pf-row"><input type="email" id="em_new" maxlength="200" autocomplete="email" inputmode="email" placeholder="name@example.com">
+            <button type="submit" class="btn primary sm" id="em_send">${t('Send code')}</button></div>
+          <div id="em_step2" hidden><label for="em_code">${t('Code from the email')}</label>
+            <div class="pf-row"><input type="text" id="em_code" maxlength="7" autocomplete="one-time-code" inputmode="numeric" placeholder="123456">
+              <button type="button" class="btn primary sm" id="em_ok">${t('Confirm')}</button></div>
+            <p class="help m0" id="em_help"></p></div>
+          <div class="err" id="em_err"></div>
         </form></div>
       <div class="card"><div class="card-h"><h2>${t('Overview')}</h2></div>
         <div class="stats">
@@ -2641,6 +2658,19 @@ function renderAccount(){
   $('pf').addEventListener('click',e=>{ if(e.target.closest('#pk_avatar [data-pkemoji],#pk_avatar [data-pkclear]')) pfDirty();
     const tg=e.target.closest('[data-pftoggle]'); if(tg){ const pk=$('pf_pk'), open=pk.hidden; pk.hidden=!open; tg.setAttribute('aria-expanded',String(open)); if(open&&!TOUCH) pk.querySelector('.pk-search')?.focus(); } });
   $('pf').addEventListener('change',e=>{ if(e.target.closest('[data-pkfile]')) pfDirty(); });
+  // Change email: a code goes to the new address; once confirmed, the account and its polls use it.
+  const emF=$('em_f'), emErr=$('em_err'); let emAddr='';
+  $('pf').querySelector('[data-mailedit]').onclick=e=>{ const open=emF.hidden; emF.hidden=!open; e.currentTarget.setAttribute('aria-expanded',String(open)); if(open) $('em_new').focus(); };
+  emF.onsubmit=async e=>{ e.preventDefault(); const btn=$('em_send'), v=$('em_new').value.trim(); emErr.textContent='';
+    if(!v) return $('em_new').focus(); btn.disabled=true;
+    try{ const r=await api('POST','/me/email',{email:v}); emAddr=v; $('em_step2').hidden=false; btn.textContent=t('Send again');
+      $('em_help').textContent=t('We sent a code to {email}. It is valid for {n} minutes.',{email:v,n:r.minutes||10}); $('em_code').value=''; $('em_code').focus(); }
+    catch(ex){ emErr.textContent=ex.message; } btn.disabled=false; };
+  const emOk=async()=>{ const btn=$('em_ok'); emErr.textContent=''; btn.disabled=true;
+    try{ await api('POST','/me/email/verify',{email:emAddr,code:$('em_code').value}); Object.assign(ME, await api('GET','/me')); renderAccount(); toast(t('Email changed. Your polls use the new address now.')); }
+    catch(ex){ emErr.textContent=ex.message; btn.disabled=false; } };
+  $('em_ok').onclick=emOk;
+  $('em_code').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); emOk(); } });
   $('pf').onsubmit=async e=>{
     e.preventDefault(); const err=$('pf_err'), btn=$('pf_save'); err.textContent=''; btn.disabled=true;
     const pk=pickerValue('avatar'), b={name:$('pf_name').value.trim(), avatar:pk.emoji};
@@ -3079,25 +3109,29 @@ function renderMeetings(){
     const where=m.location?(sel?`<span>${ICON.pin}<span>${esc(m.location)}</span></span>`
       :`<a href="${esc(mapUrl(m.location))}" target="_blank" rel="noopener" title="${t('Open in Google Maps')}">${ICON.pin}<span>${esc(m.location)}</span></a>`):'';
     const range=m.repeat?repeatText(m).split(' · ').slice(1).join(' · '):'';
+    const calB=`<a class="qb" href="${esc(icsUrl(m.id,true))}" title="${t('Add to calendar')}" aria-label="${t('Add to calendar')}">${ICON.cal}</a>`;
     let foot='';
     if(d.isAdmin&&!sel){ const noMail=invited(m).filter(r=>!r.email);
       const stat=[m.sentAt?`<span title="${esc(new Date(m.sentAt).toLocaleString(LOC))}">${t('Invite emailed {date}.',{date:esc(new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'}))})}</span>`:'',
         noMail.length?t('No email for {names}.',{names:esc(noMail.map(r=>r.name).join(', '))}):''].filter(Boolean).join(' ');
       foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?t('Send again'):t('Send invite')}</span><span class="bs">${m.sentAt?t('Resend'):t('Send')}</span></button>${qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))}`
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
-        ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${chatRefBtn('m:'+m.id)}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
+        ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${calB}${chatRefBtn('m:'+m.id)}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
-    else if(!sel&&chatCan()) foot=`<div class="mfoot">${chatRefBtn('m:'+m.id)}</div>`;
+    else if(!sel) foot=`<div class="mfoot">${calB}${chatRefBtn('m:'+m.id)}</div>`;
     const tm=`<span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>`;
-    if(fold) return `<div class="meet">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${tm}${ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div></div></div>`;
+    // Compact: date, time and place plus the icon buttons; no title or description.
+    if(fold) return `<div class="meet">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div><span class="macts">${
+      d.isAdmin?qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))+qb('data-copyinvite',m.id,'copy',t('Copy invite text')):''}${calB}${chatRefBtn('m:'+m.id)}${
+      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}</span></div></div></div>`;
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
-      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div>
+      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div></div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${foot}</div></div>`; };
   const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy','copy',t('Copy all meetings as text'))}</span>`;
-  const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
+  const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mbatch="upd">${t('Update')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   const vote=props.length&&!sel?votePanel(props):'';
   const showT=t('Show meeting details'), hideT=t('Compact view');
@@ -3187,15 +3221,16 @@ async function sendMailAll(btn){
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 // Batch tools for the selected meetings (select mode): location, description, move, delete.
+// The header's Update button applies every field that was changed, then leaves select mode.
 function batchPanel(ms,n){
   const S=ms.filter(m=>P.msel.has(m.id)), same=f=>S.length&&S.every(m=>(m[f]||'')===(S[0][f]||''))?S[0][f]||'':'';
   const dis=n?'':' disabled', b=P.mbatch||{};
   return `<div class="mbatch"><div class="mbatch-h"><button class="btn sm" data-mselall>${n===ms.length?t('Select none'):t('Select all')}</button>
       <span class="small muted" aria-live="polite">${t('{n} of {total} selected',{n,total:ms.length})}</span></div>
     <div class="mbatch-g">
-      <label for="mb_loc">${t('Location')}</label><div class="mbatch-r"><div class="locbox"><input type="text" id="mb_loc" maxlength="200" autocomplete="off" placeholder="${t('Search a place, or leave empty to clear')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mb_loc_sug" value="${esc(b.loc??same('location'))}"><div class="locsug" id="mb_loc_sug" role="listbox" hidden></div></div><button class="btn sm" data-mbatch="loc"${dis}>${t('Set')}</button></div>
-      <label for="mb_desc">${t('Description')}</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="${t('Agenda, what to bring, a call link … (empty clears it; extra descriptions stay)')}">${esc(b.desc??same('note'))}</textarea><button class="btn sm" data-mbatch="desc"${dis}>${t('Set')}</button></div>
-      <label for="mb_n">${t('Move by')}</label><div class="mbatch-r"><input type="number" id="mb_n" step="1" min="-365" max="365" value="${esc(b.n??'1')}" inputmode="numeric"><select id="mb_u" aria-label="${t('Unit')}"><option value="h"${b.u==='h'?' selected':''}>${t('hours')}</option><option value="d"${b.u!=='h'?' selected':''}>${t('days')}</option></select><button class="btn sm" data-mbatch="shift"${dis}>${t('Move')}</button><span class="help">${t('Negative moves earlier.')}</span></div>
+      <label for="mb_loc">${t('Location')}</label><div class="mbatch-r"><div class="locbox"><input type="text" id="mb_loc" maxlength="200" autocomplete="off" placeholder="${t('Search a place, or leave empty to clear')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mb_loc_sug" value="${esc(b.loc??same('location'))}"><div class="locsug" id="mb_loc_sug" role="listbox" hidden></div></div></div>
+      <label for="mb_desc">${t('Description')}</label><div class="mbatch-r"><textarea id="mb_desc" maxlength="1000" placeholder="${t('Agenda, what to bring, a call link … (empty clears it; extra descriptions stay)')}">${esc(b.desc??same('note'))}</textarea></div>
+      <label for="mb_n">${t('Move by')}</label><div class="mbatch-r"><input type="number" id="mb_n" step="1" min="-365" max="365" value="${esc(b.n??'')}" placeholder="0" inputmode="numeric"><select id="mb_u" aria-label="${t('Unit')}"><option value="h"${b.u==='h'?' selected':''}>${t('hours')}</option><option value="d"${b.u!=='h'?' selected':''}>${t('days')}</option></select><span class="help">${t('Negative moves earlier.')}</span></div>
     </div>
     <div class="row"><button class="btn sm danger withic" data-mbatch="del"${dis}>${ICON.trash}<span>${t('Delete {n}<span class="bl"> selected</span>',{n:n||''})}</span></button></div></div>`;
 }
@@ -3212,19 +3247,25 @@ function shiftMeeting(m,n,unit){
   return o;
 }
 async function runBatch(kind,btn){
-  const ms=inst().meetings, S=P.msel, n=S.size; if(!n) return;
+  const ms=inst().meetings, S=P.msel, n=S.size;
+  if(!n){ if(kind==='upd'){ P.msel=null; P.mbatch={}; renderMeetings(); } return; }
   const pl=`${n} ${n===1?t('meeting'):t('meetings')}`;
   let list, msg;
   if(kind==='del'){ if(!confirm(t("Delete {pl}? This can't be undone.",{pl}))) return; list=ms.filter(m=>!S.has(m.id)); msg=t('Deleted {pl}',{pl}); }
-  else if(kind==='loc'){ const v=$('mb_loc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,location:v}:m); msg=v?t('Location set on {pl}',{pl}):t('Location cleared on {pl}',{pl}); }
-  else if(kind==='desc'){ const v=$('mb_desc').value.trim(); list=ms.map(m=>S.has(m.id)?{...m,note:v}:m); msg=v?t('Description set on {pl} (extra descriptions kept)',{pl}):t('Description cleared on {pl} (extra descriptions kept)',{pl}); }
-  else { const k=+$('mb_n').value, u=$('mb_u').value;
-    if(!Number.isInteger(k)||!k||Math.abs(k)>(u==='h'?48:365)){ toast(u==='h'?t('Enter whole hours, up to ±48'):t('Enter whole days, up to ±365')); return; }
-    const out=ms.map(m=>S.has(m.id)?shiftMeeting(m,k,u):m), bad=out.filter(x=>!x).length;
-    if(bad){ toast(bad===1?t('{n} meeting would run past midnight. Nothing was moved.',{n:bad}):t('{n} meetings would run past midnight. Nothing was moved.',{n:bad})); return; }
-    const ad=u==='h'?ms.filter(m=>S.has(m.id)&&m.allDay).length:0;
-    list=out; const by=`${Math.abs(k)} ${u==='h'?(Math.abs(k)===1?t('hour'):t('hours')):(Math.abs(k)===1?t('day'):t('days'))}`;
-    msg=(k>0?t('Moved {pl} later by {by}',{pl,by}):t('Moved {pl} earlier by {by}',{pl,by}))+(ad?' '+t('({n} all-day left as is)',{n:ad}):''); }
+  else { const b=P.mbatch||{}, done=()=>{ P.msel=null; P.mbatch={}; renderMeetings(); };
+    list=ms; let ch=0;
+    if(b.loc!==undefined){ const v=$('mb_loc').value.trim(); if(list.some(m=>S.has(m.id)&&(m.location||'')!==v)){ list=list.map(m=>S.has(m.id)?{...m,location:v}:m); ch++; } }
+    if(b.desc!==undefined){ const v=$('mb_desc').value.trim(); if(list.some(m=>S.has(m.id)&&(m.note||'')!==v)){ list=list.map(m=>S.has(m.id)?{...m,note:v}:m); ch++; } }
+    const raw=$('mb_n').value.trim(), k=raw===''?0:+raw, u=$('mb_u').value; let ad=0;
+    if(k){ if(!Number.isInteger(k)||Math.abs(k)>(u==='h'?48:365)){ toast(u==='h'?t('Enter whole hours, up to ±48'):t('Enter whole days, up to ±365')); return; }
+      const out=list.map(m=>S.has(m.id)?shiftMeeting(m,k,u):m), bad=out.filter(x=>!x).length;
+      if(bad){ toast(bad===1?t('{n} meeting would run past midnight. Nothing was changed.',{n:bad}):t('{n} meetings would run past midnight. Nothing was changed.',{n:bad})); return; }
+      ad=u==='h'?ms.filter(m=>S.has(m.id)&&m.allDay).length:0; list=out; ch++; }
+    else if(!Number.isFinite(k)){ toast(u==='h'?t('Enter whole hours, up to ±48'):t('Enter whole days, up to ±365')); return; }
+    if(!ch){ done(); return; }
+    btn.disabled=true;
+    if(await saveMeetings(list)){ done(); toast(t('Updated {pl}',{pl})+(ad?' '+t('({n} all-day left as is)',{n:ad}):'')); } else btn.disabled=false;
+    return; }
   btn.disabled=true;
   if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
@@ -5571,11 +5612,9 @@ function germanText(){ return {
 "Description": "Beschreibung",
 "Description (optional)": "Beschreibung (optional)",
 "Description (optional, for all)": "Beschreibung (optional, für alle)",
-"Description cleared on {pl} (extra descriptions kept)": "Beschreibung für {pl} entfernt (Zusatzbeschreibungen bleiben)",
 "Description for all meetings": "Beschreibung für alle Termine",
 "Description saved": "Beschreibung gespeichert",
 "Description saved on all meetings": "Beschreibung bei allen Terminen gespeichert",
-"Description set on {pl} (extra descriptions kept)": "Beschreibung für {pl} gesetzt (Zusatzbeschreibungen bleiben)",
 "Details": "Details",
 "Dinner moved to 7:30. No wait, 8": "Essen auf 19:30 verschoben. Nein, 20 Uhr",
 "Done": "Fertig",
@@ -5756,8 +5795,6 @@ function germanText(){ return {
 "You can have at most 500 friends": "Du kannst höchstens 500 Freund*innen haben",
 "Location": "Ort",
 "Location (optional)": "Ort (optional)",
-"Location cleared on {pl}": "Ort für {pl} entfernt",
-"Location set on {pl}": "Ort für {pl} gesetzt",
 "Make a poll in under a minute.": "Erstelle eine Umfrage in unter einer Minute.",
 "Manage responses": "Antworten verwalten",
 "Manage this poll": "Diese Umfrage verwalten",
@@ -5776,10 +5813,10 @@ function germanText(){ return {
 "Method not allowed": "Methode nicht erlaubt",
 "My answer": "Meine Antwort",
 "More": "Mehr",
-"Move": "Verschieben",
 "Move by": "Verschieben um",
-"Moved {pl} earlier by {by}": "{pl} um {by} nach vorne verschoben",
-"Moved {pl} later by {by}": "{pl} um {by} nach hinten verschoben",
+"Updated {pl}": "{pl} aktualisiert",
+"{n} meeting would run past midnight. Nothing was changed.": "{n} Termin würde über Mitternacht hinausgehen. Nichts wurde geändert.",
+"{n} meetings would run past midnight. Nothing was changed.": "{n} Termine würden über Mitternacht hinausgehen. Nichts wurde geändert.",
 "Name": "Name",
 "Name contains characters that aren’t allowed": "Der Name enthält nicht erlaubte Zeichen",
 "Name shown to others": "Name, den andere sehen",
@@ -6040,7 +6077,6 @@ function germanText(){ return {
 "Sending…": "Wird gesendet …",
 "Sent as one repeating calendar event, starting on the first matching weekday from this date.": "Wird als ein wiederkehrender Kalendertermin gesendet, ab dem ersten passenden Wochentag ab diesem Datum.",
 "Sessions": "Sitzungen",
-"Set": "Setzen",
 "Set a password": "Passwort festlegen",
 "Settings": "Einstellungen",
 "Settings saved": "Einstellungen gespeichert",
@@ -6063,6 +6099,17 @@ function germanText(){ return {
 "Sign in with your email to see your profile and polls.": "Melde dich mit deiner E-Mail an, um dein Profil und deine Umfragen zu sehen.",
 "Sign out": "Abmelden",
 "Sign out everywhere": "Überall abmelden",
+"Change email": "E-Mail-Adresse ändern",
+"You sign in with this address. Polls you answer while signed in are linked to it, not to your name. Changing it moves your account and all its polls to the new address.": "Mit dieser Adresse meldest du dich an. Umfragen, die du angemeldet beantwortest, sind mit ihr verknüpft, nicht mit deinem Namen. Wenn du sie änderst, ziehen dein Konto und alle seine Umfragen auf die neue Adresse um.",
+"New email address": "Neue E-Mail-Adresse",
+"Send code": "Code senden",
+"Send again": "Erneut senden",
+"Code from the email": "Code aus der E-Mail",
+"We sent a code to {email}. It is valid for {n} minutes.": "Wir haben einen Code an {email} geschickt. Er ist {n} Minuten gültig.",
+"Email changed. Your polls use the new address now.": "E-Mail-Adresse geändert. Deine Umfragen verwenden jetzt die neue Adresse.",
+"Enter your new email address": "Gib deine neue E-Mail-Adresse ein",
+"That’s already your email address": "Das ist schon deine E-Mail-Adresse",
+"That address already has its own account on when-who. Pick another address.": "Diese Adresse hat schon ein eigenes Konto bei when-who. Wähle eine andere Adresse.",
 "Sign out on every device": "Auf allen Geräten abmelden",
 "Sign up": "Registrieren",
 "Signed in as {email}: your answer follows you to every device.": "Angemeldet als {email}: Deine Antwort ist auf allen Geräten da.",
@@ -6221,7 +6268,6 @@ function germanText(){ return {
 "can’t": "kann nicht",
 "certain hours": "bestimmte Stunden",
 "closed": "geschlossen",
-"day": "Tag",
 "days": "Tage",
 "days before it starts": "Tage vor Beginn",
 "e.g. Band rehearsals, Summer trip": "z. B. Bandprobe, Sommerausflug",
@@ -6232,7 +6278,6 @@ function germanText(){ return {
 "find a time that works for everyone": "finde eine Zeit, die allen passt",
 "from {date}": "ab {date}",
 "from {h}": "ab {h}",
-"hour": "Stunde",
 "hours": "Stunden",
 "iCal link": "iCal-Link",
 "iCal link (https://… or webcal://…)": "iCal-Link (https://… oder webcal://…)",
@@ -6290,9 +6335,7 @@ function germanText(){ return {
 "{n} matches": "{n} Treffer",
 "{n} maybe": "{n} vielleicht",
 "{n} meeting created": "{n} Termin erstellt",
-"{n} meeting would run past midnight. Nothing was moved.": "{n} Termin würde über Mitternacht gehen. Nichts wurde verschoben.",
 "{n} meetings created": "{n} Termine erstellt",
-"{n} meetings would run past midnight. Nothing was moved.": "{n} Termine würden über Mitternacht gehen. Nichts wurde verschoben.",
 "{n} of the {pc} people in this poll answered": "{n} von {pc} Leuten in dieser Umfrage haben geantwortet",
 "{n} of the {pc} people in this poll answered this round": "{n} von {pc} Leuten in dieser Umfrage haben diese Runde geantwortet",
 "{n} of {total} people": "{n} von {total} Personen",

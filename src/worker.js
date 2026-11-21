@@ -109,6 +109,8 @@ async function route(request, env, ctx, url) {
   if (parts[1] === 'me') {
     if (!parts[2] && m === 'GET') return me(request, env);
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
+    if (parts[2] === 'email' && !parts[3] && m === 'POST') return sendEmailChangeCode(request, env, url);
+    if (parts[2] === 'email' && parts[3] === 'verify' && !parts[4] && m === 'POST') return verifyEmailChange(request, env, url);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
     if (parts[2] === 'friends') {
@@ -666,6 +668,98 @@ async function updateProfile(request, env) {
     env.DB.prepare('UPDATE responses SET name = ? WHERE participant_id IN (SELECT id FROM participants WHERE user_id = ?)').bind(u.name, user.id));
   await env.DB.batch(stmts);
   return json({ ok: true });
+}
+// ---------- change the account's email ----------
+// Step 1, body { email }: emails a 6-digit code to the new address. It is kept in login_codes under
+// 'change:<user id>:<address>', so it can't be used to sign in. Step 2, body { email, code }: moves the account
+// to the new address and updates the copies of it in the account's polls (participants, answers, owned polls).
+const changeKey = (userId, addr) => `change:${userId}:${addr}`;
+async function sendEmailChangeCode(request, env, url) {
+  const user = requireUser(request);
+  const b = await body(request);
+  const addr = (email(b.email) || '').toLowerCase();
+  if (!addr) throw new HttpError(400, 'Enter your new email address');
+  if (addr === user.email.toLowerCase()) throw new HttpError(400, 'That’s already your email address');
+  const tooMany = `Too many emails. Try again in ${FAIL_WINDOW_MIN} minutes.`;
+  await checkThrottle(env, request, 'code-send', { max: CODE_SENDS_IP, msg: tooMany });
+  const ekey = 'e:' + (await sha256('mail:' + addr));
+  await checkThrottle(env, request, 'code-send', { key: ekey, max: CODE_SENDS_EMAIL, msg: tooMany });
+  await checkThrottle(env, request, 'code-send', { key: 'u:' + user.id, max: CODE_SENDS_EMAIL, msg: tooMany });
+  await recordFail(env, request, 'code-send');
+  await recordFail(env, request, 'code-send', ekey);
+  await recordFail(env, request, 'code-send', 'u:' + user.id);
+  // One change in progress per account.
+  await env.DB.prepare('DELETE FROM login_codes WHERE substr(email, 1, ?) = ?').bind(`change:${user.id}:`.length, `change:${user.id}:`).run();
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
+  const key = changeKey(user.id, addr);
+  await env.DB.prepare('INSERT OR REPLACE INTO login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)')
+    .bind(key, await codeHash(key, code), new Date(Date.now() + CODE_MINUTES * 60000).toISOString(), now()).run();
+  const site = siteUrl(env, url.origin), de = reqLang(request) === 'de', mins = CODE_MINUTES;
+  const ignore = de ? 'Falls du das nicht warst, ignoriere diese E-Mail: Ohne den Code ändert sich nichts.'
+    : "If this wasn't you, ignore this email: nothing changes without the code.";
+  const intro = de ? `Gib diesen Code auf when-who ein, um diese Adresse für dein Konto zu verwenden. Er ist ${mins} Minuten gültig.`
+    : `Enter this code on when-who to use this address for your account. It is valid for ${mins} minutes.`;
+  const text = `${intro}\n\n    ${code}\n\n${ignore}`;
+  if (emailEnabled(env)) {
+    await sendEmail(env, {
+      fromName: 'when-who', to: [addr],
+      subject: de ? `Neue E-Mail-Adresse bestätigen: ${code}` : `Confirm your new email address: ${code}`, text,
+      html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">${de ? 'Neue E-Mail-Adresse bestätigen' : 'Confirm your new email address'}</h1>
+        <p style="margin:0 0 20px;color:#334155">${escHtml(intro)}</p>
+        <div style="margin:0 0 24px;padding:18px;background:#E8EFFF;border-radius:10px;text-align:center;font-size:32px;font-weight:700;letter-spacing:10px;color:#0B1F3A;font-family:ui-monospace,Menlo,Consolas,monospace">${code}</div>
+        <p style="margin:0;font-size:13px;color:#5B6578">${escHtml(ignore)}</p>`,
+        { preheader: de ? `Dein Code ist ${code}` : `Your code is ${code}`, site, lang: de ? 'de' : 'en' }),
+    });
+  } else {
+    console.log(`[dev] email change code for ${user.email} -> ${addr}: ${code}`);
+  }
+  return json({ ok: true, minutes: CODE_MINUTES });
+}
+async function verifyEmailChange(request, env, url) {
+  const user = requireUser(request);
+  await checkThrottle(env, request, 'code');
+  const b = await body(request);
+  const addr = (email(b.email) || '').toLowerCase();
+  const code = typeof b.code === 'string' ? b.code.replace(/\s+/g, '') : '';
+  if (!addr || !/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code from the email');
+  const wrong = new HttpError(401, 'That code is wrong or has expired. Check the latest email or ask for a new code.');
+  const key = changeKey(user.id, addr);
+  const row = await env.DB.prepare('SELECT * FROM login_codes WHERE email = ?').bind(key).first();
+  if (!row || row.expires_at < now() || row.attempts >= CODE_TRIES) {
+    if (row) await env.DB.prepare('DELETE FROM login_codes WHERE email = ?').bind(key).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  if (!safeEqual(await codeHash(key, code), row.code_hash)) {
+    await env.DB.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').bind(key).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  const del = await env.DB.prepare('DELETE FROM login_codes WHERE email = ? AND code_hash = ?').bind(key, row.code_hash).run();
+  if (!del.meta || !del.meta.changes) throw wrong;
+  // They proved they own the address, so it's fine to say it's taken.
+  if (await env.DB.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').bind(addr, user.id).first())
+    throw new HttpError(409, 'That address already has its own account on when-who. Pick another address.');
+  const old = user.email.toLowerCase();
+  await env.DB.batch([
+    env.DB.prepare('UPDATE users SET email = ? WHERE id = ?').bind(addr, user.id),
+    // Copies of the address in the polls: this account's participants and answers, legacy organiser address of own polls.
+    env.DB.prepare('UPDATE participants SET email = ? WHERE user_id = ?').bind(addr, user.id),
+    env.DB.prepare('UPDATE responses SET email = ? WHERE participant_id IN (SELECT id FROM participants WHERE user_id = ?)').bind(addr, user.id),
+    env.DB.prepare('UPDATE polls SET admin_email = ? WHERE owner_id = ? AND LOWER(admin_email) = ?').bind(addr, user.id, old),
+    // Friend requests that already reached this account follow it (to_id stays the same).
+    env.DB.prepare('UPDATE OR IGNORE friends SET to_email = ? WHERE to_id = ?').bind(addr, user.id),
+  ]);
+  // Let the old address know, in case it wasn't them.
+  if (emailEnabled(env)) {
+    const de = reqLang(request) === 'de', site = siteUrl(env, url.origin), help = env.CONTACT_EMAIL;
+    const text = de ? `Die E-Mail-Adresse deines when-who-Kontos wurde von ${old} auf ${addr} geändert. Anmeldecodes gehen ab jetzt an die neue Adresse.${help ? '\n\nWarst du das nicht? Antworte auf diese E-Mail.' : ''}`
+      : `The email address of your when-who account was changed from ${old} to ${addr}. Sign-in codes now go to the new address.${help ? "\n\nWasn't you? Reply to this email." : ''}`;
+    await sendEmail(env, { fromName: 'when-who', to: [old], replyTo: help || undefined,
+      subject: de ? 'Deine E-Mail-Adresse wurde geändert' : 'Your email address was changed', text,
+      html: emailHtml(`<div style="white-space:pre-wrap">${escHtml(text)}</div>`, { site, lang: de ? 'de' : 'en' }) }).catch(() => {});
+  }
+  return json({ ok: true, email: addr });
 }
 // ---------- friends ----------
 // A request goes to an email address and is accepted by that person (friends.status 'pending' -> 'ok').

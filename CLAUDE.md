@@ -23,6 +23,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `auto` = grey out the owner's busy hours on polls they answer (fetched via `GET /api/me/calendars/:id/busy`; event titles are never stored).
   `users.ical_url` is legacy (copied into `user_calendars`). `oauth_states` holds sign-ins in progress.
   Sign-in is a 6-digit code emailed to the address (`login_codes`, hashed, 10 min, 5 tries). There is no password login.
+  Changing the account email (`POST /api/me/email`, then `.../email/verify`) sends a code to the new address, stored in
+  `login_codes` as `change:<user id>:<address>` (so it can't sign anyone in); on success it updates `users.email` and the copies
+  in `participants` / `responses` (the account's), owned polls' legacy `admin_email` and `friends.to_email`, and notifies the old address.
   Only the owning account can manage a poll.
 - `polls.invited_only` (0014): only invited people may answer. They must be signed in, as an account in the poll's `participants`
   or with the email of a guest row the owner added (that row then becomes the account's). The owner can always answer.
