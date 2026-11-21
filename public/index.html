@@ -1264,7 +1264,9 @@
   /* in the poll header (brand band) */
   #hdr .pshare{max-width:560px;margin:12px 0 0}
   #hdr .pshare-l{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);color:var(--on-brand-muted)}
-  #hdr .pshare-l input{color:var(--on-brand)}
+  #hdr .pshare-l input{color:var(--on-brand-muted);font-size:12px}
+  #hdr .pshare-l,#hdr .pshare .btn.ib,#hdr .pshare-copy{height:34px} #hdr .pshare .btn.ib,#hdr .pshare-copy{width:34px;min-width:34px;border-radius:9px}
+  #hdr .pshare-l{border-radius:9px} #hdr .pshare-l svg,#hdr .pshare .btn.ib svg,#hdr .pshare-copy svg{width:14px;height:14px}
   #hdr .pshare .btn.ib{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);color:var(--on-brand)} #hdr .pshare .btn.ib:hover{background:rgba(255,255,255,.14)}
   .pshare-l input{flex:1;min-width:0;min-height:0;height:100%;padding:0;border:0;background:none;box-shadow:none;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
   .pshare-copy{flex:none;width:40px;height:40px;border-radius:10px;background:var(--accent);color:#fff} .pshare-copy:hover{background:var(--accent);filter:brightness(1.1);color:#fff}
@@ -3049,7 +3051,7 @@ document.addEventListener('click',e=>{
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
-  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):t('Poll')}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
+  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
     <h1>${esc(p.title)}</h1></div></div>
     <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
