@@ -1226,6 +1226,9 @@
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
   .legend span.ln::before{width:16px;height:5px;border-radius:999px;box-shadow:0 0 0 1.5px var(--card);background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
+  .legend span.sym::before{display:none} /* drawn as the real symbol instead */
+  .legend .lg-s{font-weight:inherit;margin-right:5px;line-height:1;color:var(--c,inherit)} .legend .lg-s:empty{display:none}
+  .legend .lg-oc{display:inline-block;font-style:normal;font-size:10px;font-weight:650;line-height:1.5;padding:0 5px;border-radius:999px;color:var(--ink);background:color-mix(in srgb,var(--yes) 40%,var(--card));box-shadow:0 0 0 1px color-mix(in srgb,var(--yes) 35%,var(--line))}
   /* save bar */
   .savebar{gap:8px;padding:10px 12px;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .sstat{display:inline-flex;align-items:center;gap:7px;margin-right:auto;min-width:0;font-size:13px;font-weight:600;color:var(--muted)}
@@ -3484,7 +3487,10 @@ function renderMine(el){
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')+aiFill()+quickFill();
   // The brush buttons already name the colours and the switches name their overlays, so the legend only keeps ★.
   if(othBtn||bzBtn) h+=`<div class="vtog">${othBtn}${bzBtn}</div>`;
-  if(md.size) h+=legend('meeting');
+  // Legend under the switches: colours, then only the markers this view can show right now.
+  const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
+  const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -4128,10 +4134,12 @@ function bestBlock(s){ // longest contiguous run of best hours
 const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = no','gry'],
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
-  mstripe:['var(--maybe)','Rest maybe'], others:['color-mix(in srgb,var(--yes) 45%,var(--card))','👥 Others free'],
-  draft:['var(--accent)','Draft'], meeting:['var(--accent)','★ Scheduled'], busy:['var(--busy-hatch),var(--sunken)','Busy (your calendar)'],
-  line:['','Line = how many are free','ln'], myline:['','Line = your day, 0–24 h','ln'] };
-function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>`<span${LEG[k][2]?` class="${LEG[k][2]}"`:''} style="--c:${LEG[k][0]}">${t(LEG[k][1])}</span>`).join('')}</div>`; }
+  mstripe:['var(--maybe)','Rest maybe'],
+  draft:['var(--accent)','Draft'], meeting:['var(--accent)','Scheduled','sym','★'], busy:['var(--busy-hatch),var(--sunken)','Busy'],
+  othn:['','Others free','sym','<i class="lg-oc">2/5</i>'],
+  line:['','Line = how many are free','ln'], myline:['','Your day, 0–24 h','ln'] };
+// [colour, label, class, symbol]: a "sym" item shows its symbol (blue ★, the n/total badge) instead of a colour dot.
+function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>{ const [c,lb,cls,sym]=LEG[k]; return `<span${cls?` class="${cls}"`:''} style="--c:${c}">${sym?`<b class="lg-s" aria-hidden="true">${sym}</b>`:''}${t(lb)}</span>`; }).join('')}</div>`; }
 // Thin yes/maybe bar along the bottom of a day cell.
 // y = free (incl. "if needed"), i = how many of those are only "if needed", m = maybe.
 function heatBar(y,i,m,tot){ return tot&&(y||m)?`<div class="othbar"><i class="ry" style="width:${(y-i)/tot*100}%"></i>${i?`<i class="ri" style="width:${i/tot*100}%"></i>`:''}<i class="rm" style="width:${m/tot*100}%"></i></div>`:''; }
@@ -6265,7 +6273,8 @@ function germanText(){ return {
 "Last hour": "Letzte Stunde",
 "Let people add a comment": "Kommentare erlauben",
 "Line = how many are free": "Linie = wie viele frei sind",
-"Line = your day, 0–24 h": "Linie = dein Tag, 0–24 Uhr",
+"Your day, 0–24 h": "Dein Tag, 0–24 Uhr",
+"Others free": "Andere frei",
 "On days with only some hours, the line shows your day from 0 to 24 h.": "An Tagen mit nur einigen Stunden zeigt die Linie deinen Tag von 0 bis 24 Uhr.",
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
@@ -6846,12 +6855,9 @@ function germanText(){ return {
 "{x}, switch brush": "{x}, Pinsel wechseln",
 "{y}/{tot} free": "{y}/{tot} frei",
 "“{name}” is already in this poll. If that's you, load your answer.": "„{name}“ ist schon in dieser Umfrage. Wenn du das bist, lade deine Antwort.",
-"★ Scheduled": "★ Geplant",
 "✗ BUSY": "✗ BELEGT",
 "3/5 = how many of the {n} others are free at the best time.": "3/5 = wie viele der {n} anderen zur besten Zeit frei sind.",
 "Busy": "Belegt",
-"👥 Others free": "👥 Andere frei",
-"Busy (your calendar)": "Belegt (dein Kalender)",
 "My calendars": "Meine Kalender",
 "Fill from these calendars": "Aus diesen Kalendern ausfüllen",
 "Add this link to my calendars": "Diesen Link zu meinen Kalendern hinzufügen",
