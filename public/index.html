@@ -2894,10 +2894,21 @@ function whenText(m){ const tm=m.allDay?' · '+t('all day'):` · ${hh(m.start)}�
 // A meeting's full description: the shared one, then its own extra text below.
 function descOf(m){ return [m.note,m.extra].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
 function whoText(m){ return m.participants==='all'?t('Everyone'):m.participants.map(p=>p.name).join(', '); }
+const meetingLines=m=>[`${m.title||P.data.poll.title}`, whenText(m), m.location?`${t('Where:')} ${m.location}\n${t('Map:')} ${mapUrl(m.location)}`:'', `${t('Who:')} ${whoText(m)}`, descOf(m)].filter(Boolean);
+const joinLines=a=>a.filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
 function inviteText(m){
-  const p=P.data.poll;
-  return [`${m.title||p.title}`, whenText(m), m.location?`${t('Where:')} ${m.location}\n${t('Map:')} ${mapUrl(m.location)}`:'', `${t('Who:')} ${whoText(m)}`, descOf(m),
-    '', `${t('Add to your calendar:')} ${icsUrl(m.id,true)}`, `${t('Poll:')} ${shareLink(P.id)}`].filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
+  return joinLines([...meetingLines(m), '', `${t('Add to your calendar:')} ${icsUrl(m.id,true)}`, `${t('Poll:')} ${shareLink(P.id)}`]);
+}
+// Every scheduled meeting in one text, for the Scheduled header's email / copy buttons.
+function allInviteText(ms){
+  return joinLines([t('Meetings: {title}',{title:P.data.poll.title}), '', ...ms.flatMap(m=>[...meetingLines(m), '']),
+    `${t('Add all to your calendar:')} ${icsUrl(null,true)}`, `${t('Subscribe (stays up to date):')} ${icsUrl(null,false).replace(/^https?:/,'webcal:')}`, `${t('Poll:')} ${shareLink(P.id)}`]);
+}
+function shareAllMeetings(how){
+  const ms=inst().meetings; if(!ms.length) return;
+  if(how==='copy'){ copy(allInviteText(ms)); return; }
+  const to=P.data.isAdmin?[...new Set(ms.flatMap(m=>invited(m).filter(r=>r.email).map(r=>r.email)))]:[];
+  location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent(t('Meetings: {title}',{title:P.data.poll.title}))}&body=${encodeURIComponent(allInviteText(ms))}`;
 }
 function invited(m){ const rs=P.data.responses||[]; return m.participants==='all' ? rs : rs.filter(r=>m.participants.some(p=>p.id===r.id)); }
 // Calendar-style date tile for a meeting card; weekly meetings show their weekday.
@@ -2931,14 +2942,13 @@ function renderMeetings(){
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
         ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
-    else if(!sel) foot=`<div class="mfoot">${qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))}${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}</div>`;
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):`${m.note?`<div class="mnote">${esc(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra" title="${t('Only for this meeting')}">${esc(m.extra)}</div>`:''}`}${foot}</div></div>`; };
-  const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}</span>`;
+  const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy','copy',t('Copy all meetings as text'))}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}"><div class="card-h">${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
@@ -3023,8 +3033,9 @@ async function runBatch(kind,btn){
   if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend]'); if(!t||!P.data) return;
+  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend],[data-mshare]'); if(!t||!P.data) return;
   const ds=t.dataset, ms=inst().meetings;
+  if(ds.mshare){ shareAllMeetings(ds.mshare); return; }
   if(ds.mailall!==undefined){ if(P.mmail){ P.mmail=null; renderMeetings(); } else openMailAll(); return; }
   if(ds.mmpick&&P.mmail){ t.checked?P.mmail.pick.add(ds.mmpick):P.mmail.pick.delete(ds.mmpick); renderMeetings(); return; }
   if(ds.mmall!==undefined&&P.mmail){ const ok=P.mmail.parts.filter(p=>p.canMail), all=ok.every(p=>P.mmail.pick.has(p.id)); P.mmail.pick=new Set(all?[]:ok.map(p=>p.id)); renderMeetings(); return; }
@@ -4493,8 +4504,8 @@ document.addEventListener('click',async e=>{
       try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/meetings/${m.id}/send`,{},headers());
         toast(t('Invite sent to {n}',{n:plural(r.sent,t('person'),t('people'))})); await loadPoll(false); }
       catch(ex){ toast(ex.message); tg.disabled=false; } return; }
-    const to=P.data.isAdmin?invited(m).filter(r=>r.email).map(r=>r.email):[];
-    if(!to.length&&P.data.isAdmin) toast(t('Nobody invited left an email. Opening a blank email.'));
+    const to=invited(m).filter(r=>r.email).map(r=>r.email);
+    if(!to.length) toast(t('Nobody invited left an email. Opening a blank email.'));
     location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent((m.title||P.data.poll.title)+' · '+(m.repeat?repeatText(m).split(' · ')[0]:dayLabel(m.date)))}&body=${encodeURIComponent(inviteText(m))}`;
     return;
   }
@@ -4772,6 +4783,11 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Meetings: {title}": "Termine: {title}",
+"Add all to your calendar:": "Alle in deinen Kalender:",
+"Subscribe (stays up to date):": "Abonnieren (bleibt aktuell):",
+"Write all meetings in my own email app": "Alle Termine in meiner eigenen E-Mail-App schreiben",
+"Copy all meetings as text": "Alle Termine als Text kopieren",
 "Set a time": "Uhrzeit festlegen",
 "For all {n} meetings": "Für alle {n} Termine",
 "Meeting details": "Termindetails",
