@@ -601,6 +601,7 @@
   .mtile{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;padding:7px 0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);line-height:1.1;text-align:center;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
   .mtile .mo{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
   .mtile .dn{font-size:23px;font-weight:750;font-variant-numeric:tabular-nums;margin:2px 0 1px}
+  .mtile.span .dn{font-size:16px;letter-spacing:-.02em;margin:5px 0 3px} .mtile.span .mo{font-size:9.5px;letter-spacing:.03em} .mlist.compact .mtile.span .dn{font-size:12.5px}
   .mtile .wd{font-size:11px;font-weight:600;opacity:.75}
   .mtile.rep .dn{font-size:17px;margin:4px 0 3px}
   .mbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
@@ -3223,7 +3224,13 @@ function renderSeries(){
 }
 
 // ---- meetings ----
-const meetingDays = () => new Set(inst().meetings.filter(m=>!m.proposed).map(m=>m.date));
+// Multi-day meetings (trips, offsites): all day from m.date to m.endDate (inclusive).
+const mEnd = m => m.endDate||m.date;
+const onDay = (m,k) => k>=m.date && k<=mEnd(m);
+function spanDays(a,b){ const r=[]; for(let k=a;k<=b&&r.length<400;k=addDaysL(k,1)) r.push(k); return r; }
+const nDays = m => m.endDate ? spanDays(m.date,m.endDate).length : 1;
+const allDayText = m => m.endDate ? t('{n} days',{n:nDays(m)}) : t('All day');
+const meetingDays = () => new Set(inst().meetings.filter(m=>!m.proposed).flatMap(m=>spanDays(m.date,mEnd(m))));
 // ---- voting on proposed meetings (m.proposed): each answer's `votes` = ids of the proposals it ticked.
 const proposals = () => inst().meetings.filter(m=>m.proposed);
 const confirmedMeetings = () => inst().meetings.filter(m=>!m.proposed);
@@ -3280,6 +3287,7 @@ function repeatText(m){ const r=m.repeat, wd=WDL[wdOf(m.date)], first=firstOn(r.
   return `${r.every===1?t('Every {wd}',{wd}):r.every===2?t('Every other {wd}',{wd}):t('Every {n} weeks on {wd}',{n:r.every,wd})}`+` · ${t('from {date}',{date:dayLabel(first)})}${r.until?` ${t('until {date}',{date:dayLabel(r.until)})}`:''}`; }
 function whenText(m){ const tm=m.allDay?' · '+t('all day'):` · ${hh(m.start)}–${hh(m.end)}`;
   if(m.repeat){ const [a,...b]=repeatText(m).split(' · '); return [a+tm,...b].join(' · '); }
+  if(m.endDate) return `${longDay(m.date)} – ${longDay(m.endDate)}${tm}`;
   return `${longDay(m.date)}${tm}`; }
 // A meeting's full description: the shared one, then its own extra text below.
 function descOf(m){ return [m.note,m.extra].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
@@ -3308,6 +3316,8 @@ function dateTile(m){
   if(m.repeat||isWeekly()){ const ev=m.repeat?m.repeat.every:1;
     return `<div class="mtile rep" role="img" aria-label="${esc(m.repeat?repeatText(m).split(' · ')[0]:WDL[wdOf(m.date)])}"><span class="mo">${t('Every')}</span><span class="dn">${WD[wdOf(m.date)]}</span><span class="wd">${ev===1?t('week'):ev===2?t('other wk'):t('{n} wks',{n:ev})}</span></div>`; }
   const dt=parseD(m.date);
+  if(m.endDate){ const de=parseD(m.endDate), mo=x=>x.toLocaleDateString(LOC,{month:'short'});
+    return `<div class="mtile span" role="img" aria-label="${esc(longDay(m.date)+' – '+longDay(m.endDate))}"><span class="mo">${esc(mo(dt)===mo(de)?mo(dt):mo(dt)+'–'+mo(de))}</span><span class="dn">${dt.getDate()}–${de.getDate()}</span><span class="wd">${esc(t('{n} days',{n:nDays(m)}))}</span></div>`; }
   return `<div class="mtile" role="img" aria-label="${esc(longDay(m.date))}"><span class="mo">${esc(dt.toLocaleDateString(LOC,{month:'short'}))}</span><span class="dn">${dt.getDate()}</span><span class="wd">${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span></div>`;
 }
 function renderMeetings(){
@@ -3340,13 +3350,13 @@ function renderMeetings(){
     // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
     const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description')):''}${
       d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${d.isAdmin&&(!full||d.emailEnabled)?qb('data-mail',m.id,'mail',t('Write the invite in my own email app')):''}${shareB}${calB}</span>`;
-    const tm=`<span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>`;
+    const tm=`<span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
     if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
     return `<div class="meet${on?' sel':''}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
-        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
+        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${foot}</div></div>`; };
   const cal=`<span class="mcal">${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}</span>`;
@@ -3376,7 +3386,7 @@ function votePanel(props){
     const acts=`<span class="macts">${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span>`;
     const foot=`<div class="mfoot">${adm?`<button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>`:''}${tog}<span class="vtally">${tally}</span></div>`;
     return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts}</div>
-      <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
+      <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
   const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
     :t('Tick every option that suits you. The organiser then confirms the ones that work.');
   const showV=t('Show the options to vote on'), hideV=t('Hide the options to vote on');
@@ -3459,7 +3469,7 @@ function shiftMeeting(m,n,unit){
   if(!days) return o;
   if(m.repeat){ o.date=addDaysL(WEEK0,((wdOf(m.date)+days)%7+7)%7);
     o.repeat={...m.repeat, from:addDaysL(m.repeat.from,days), until:m.repeat.until?addDaysL(m.repeat.until,days):m.repeat.until}; }
-  else o.date=addDaysL(m.date,days);
+  else { o.date=addDaysL(m.date,days); if(m.endDate) o.endDate=addDaysL(m.endDate,days); }
   return o;
 }
 async function runBatch(kind,btn){
@@ -4349,13 +4359,32 @@ function hourOpts(lo,hi,cur){ let o=''; for(let h=lo;h<=hi;h++) o+=`<option valu
 
 // ---- planner (admin): pick people, drag slots, create several meetings at once ----
 let draftSeq=0;
-function addDraft(date,allDay,start,end){ P.drafts.push({key:++draftSeq,date,allDay,start,end,participants:selParticipants()}); P.drafts.sort((a,b)=>a.date.localeCompare(b.date)||(a.allDay?-1:b.allDay?1:a.start-b.start)); }
-function inMeeting(m,k,hr){ return m.date===k && (m.allDay || (hr>=m.start && hr<m.end)); }
+function addDraft(date,allDay,start,end,endDate){ P.drafts.push({key:++draftSeq,date,allDay,start,end,participants:selParticipants(),...(allDay&&endDate&&endDate>date?{endDate}:{})}); P.drafts.sort((a,b)=>a.date.localeCompare(b.date)||(a.allDay?-1:b.allDay?1:a.start-b.start)); }
+function inMeeting(m,k,hr){ return onDay(m,k) && (m.allDay || (hr>=m.start && hr<m.end)); }
+// Days (tap or press-and-drag across day names / calendar days): one all-day draft from the first to the last day.
+// A tap on a day that already has an all-day draft removes that draft.
+function pickDays(a,b){
+  const lo=a<b?a:b, hi=a<b?b:a, hit=P.drafts.find(x=>x.allDay&&onDay(x,lo));
+  if(lo===hi&&hit){ P.drafts=P.drafts.filter(x=>x!==hit); renderBody(); return; }
+  P.drafts=P.drafts.filter(x=>!(x.allDay&&x.date<=hi&&mEnd(x)>=lo));
+  addDraft(lo,true,null,null,hi); renderBody();
+  if(lo!==hi) toast(t('One meeting over {n} days added',{n:spanDays(lo,hi).length}));
+}
+function wireDayPick(box){
+  if(!box) return; let dr=null;
+  const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y), c=el&&el.closest&&el.closest('[data-pday]'); return c&&box.contains(c)?c:null; };
+  const paint=()=>{ const lo=dr.a<dr.b?dr.a:dr.b, hi=dr.a<dr.b?dr.b:dr.a; box.querySelectorAll('[data-pday]').forEach(c=>c.classList.toggle('dr',dr.orig.has(c)||(c.dataset.pday>=lo&&c.dataset.pday<=hi))); };
+  gridGestures(box,cellAt,{
+    start:el=>{ dr={a:el.dataset.pday,b:el.dataset.pday,orig:new Set(box.querySelectorAll('[data-pday].dr'))}; paint(); },
+    move:el=>{ if(dr&&el.dataset.pday!==dr.b){ dr.b=el.dataset.pday; paint(); } },
+    end:()=>{ if(!dr) return; const {a,b}=dr; dr=null; P.pdayT=Date.now(); pickDays(a,b); },
+    cancel:()=>{ dr=null; renderBody(); } });
+}
 function draftInvited(dr){ const rs=P.data.responses||[]; return dr.participants==='all'?rs:rs.filter(r=>dr.participants.some(p=>p.id===r.id)); }
 // Planner pages: only days where someone selected is free (5 at a time), or whole weeks.
 function planPages(S){
   const d=P.data, ms=inst().meetings, PER=5;
-  const avail=d.dates.filter(k=>S[k].peak>0||S[k].cm.some(x=>x>0)||P.drafts.some(x=>x.date===k)||ms.some(x=>x.date===k));
+  const avail=d.dates.filter(k=>S[k].peak>0||S[k].cm.some(x=>x>0)||P.drafts.some(x=>onDay(x,k))||ms.some(x=>onDay(x,k)));
   const pages=P.pavail?Array.from({length:Math.ceil(avail.length/PER)},(_,i)=>{ const pg=avail.slice(i*PER,i*PER+PER); while(pg.length<PER) pg.push(null); return pg; }):weeks(d.dates);
   return {avail,pages};
 }
@@ -4380,8 +4409,8 @@ function renderPlanner(S){
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>
       <div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div></div>
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
-    wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.date===k&&x.allDay);
-      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="${t('Add an all-day meeting on {day}',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
+    wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.allDay&&onDay(x,k));
+      h+=`<div class="hd${ad?' dr':''}" ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -4394,7 +4423,7 @@ function renderPlanner(S){
         h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>'+legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
-    h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
+    h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>onDay(x,k))?' dr':''))+'</div>';
     h+=legend('heat','ifn','maybe','line','draft','meeting');
   }
   return h;
@@ -4410,8 +4439,8 @@ function renderPlan(el){
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,t('Who should come?'),t('Each meeting invites the people selected when you add it.'),
     tools(whoDropdown(),'mt-2 tbar ptbar'));
-  h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.')
-      :t('<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.')):'',
+  h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.')
+      :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'))):'',
     tot?sugPanel()+renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`,
     tot?sugButton():'');
   h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
@@ -4422,11 +4451,11 @@ function draftTray(){
   const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:'',note:''}), n=P.drafts.length;
   if(!n) return `<div id="drafts"></div>`;
   // One compact row per draft: date tile | time (or All day) over availability + who | icon toggles.
-  const rows=P.drafts.map(x=>{ const inv=draftInvited(x), free=inv.filter(r=>windowStatus((r.entries||{})[x.date],x.start,x.end,x.allDay,x.date)!=='x').length;
+  const rows=P.drafts.map(x=>{ const inv=draftInvited(x), days=spanDays(x.date,mEnd(x)).filter(k=>P.data.dates.includes(k)), free=inv.filter(r=>days.every(k=>windowStatus((r.entries||{})[k],x.start,x.end,x.allDay,k)!=='x')).length;
     const who=x.participants==='all'?t('Everyone'):x.participants.map(p=>p.name).join(', ');
-    const time=x.allDay?`<span class="dtime all">${ICON.day}${t('All day')}</span>`
+    const time=x.allDay?`<span class="dtime all">${ICON.day}${allDayText(x)}</span>`
       :`<span class="dtime">${ICON.clock}<select class="dsel" data-dstart="${x.key}" aria-label="${t('From')}">${hourOpts(0,23,x.start)}</select><span class="dsep">–</span><select class="dsel" data-dend="${x.key}" aria-label="${t('To')}">${hourOpts(1,24,x.end)}</select></span>`;
-    return `<div class="dft${x.ownDesc?' open':''}">${dateTile({date:x.date})}
+    return `<div class="dft${x.ownDesc?' open':''}">${dateTile({date:x.date,endDate:x.endDate})}
       <div class="dmain">${time}
         <div class="dmeta"><span class="tag ${free===inv.length?'y':free?'m':'x'}" title="${t('Invited people who are available, available if needed, or maybe for the whole time')}">${ICON.users}${free}/${inv.length}</span><span class="who" title="${esc(who)}">${esc(who)}</span></div></div>
       <div class="dacts">${pqb('day',x.allDay?t('Set a time'):t('All day'),`data-dall="${x.key}" aria-pressed="${!!x.allDay}"`,' tog')}${pqb('note',x.ownDesc?t('Remove extra description'):t('Extra description'),`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,' tog')}${pqb('x',t('Remove draft'),`data-deldraft="${x.key}"`,' danger')}</div>
@@ -4449,9 +4478,10 @@ function wirePlanner(){
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
   document.querySelectorAll('[data-dvote]').forEach(cb=>cb.onchange=()=>{ P.dvote=cb.checked; renderBody(); });
   document.querySelectorAll('[data-ddtext]').forEach(ta=>ta.oninput=()=>{ find(ta.dataset.ddtext).note=ta.value; });
-  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall); x.allDay=!x.allDay; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
+  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall); x.allDay=!x.allDay; if(!x.allDay) delete x.endDate; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
   document.querySelectorAll('[data-dstart]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dstart); x.start=+se.value; if(x.end<=x.start) x.end=Math.min(24,x.start+1); renderBody(); });
   document.querySelectorAll('[data-dend]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dend); x.end=+se.value; if(x.end<=x.start) x.start=Math.max(0,x.end-1); renderBody(); });
+  if(!isWeekly()) wireDayPick($('pcal')||$('pgrid'));
   const grid=$('pgrid'); if(!grid) return;
   let drag=null;
   const cellAt=(x,y)=>{ const el=document.elementFromPoint(x,y); return el&&el.classList&&el.classList.contains('slot')&&el.dataset.k?el:null; };
@@ -4567,7 +4597,7 @@ function suggestDrafts(){
   if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ toast(t('Pick at least one day')); return; }
   const pat=pr?pr.pat:null, hs=pr?pr.hs:d.poll.hourStart, he=pr?pr.he:d.poll.hourEnd;
   const need=o.min?Math.min(o.min,tot):tot;
-  const used=[...P.drafts.map(x=>x.date),...confirmedMeetings().map(m=>m.date)], usedSet=new Set(used);
+  const used=[...P.drafts.flatMap(x=>spanDays(x.date,mEnd(x))),...confirmedMeetings().flatMap(m=>spanDays(m.date,mEnd(m)))], usedSet=new Set(used);
   const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
   used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
   const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
@@ -4588,7 +4618,7 @@ async function saveDrafts(btn){
   if(ms.length+P.drafts.length>100){ err.textContent=t('A poll can have at most 100 meetings ({n} already scheduled).',{n:ms.length}); return; }
   const rv=repeatValue(err); if(!rv) return;
   const vote=P.dvote&&P.drafts.length>1;
-  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true}:{})};
+  const list=P.drafts.map(x=>{ const m={date:x.date, ...(x.allDay&&x.endDate?{endDate:x.endDate}:{}), allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true}:{})};
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
@@ -4636,7 +4666,7 @@ const myId=()=>(P.chat&&P.chat.me)||null; // from GET .../chat
 // Every meeting of the poll (all rounds the page knows), proposed and set.
 function allMeetings(){ const seen=new Map(); [inst(),...(P.data.instances||[])].forEach(x=>((x&&x.meetings)||[]).forEach(m=>{ if(!seen.has(m.id)) seen.set(m.id,m); })); return [...seen.values()]; }
 const meetById=id=>allMeetings().find(m=>m.id===id)||null;
-const meetWhen=m=>dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start));
+const meetWhen=m=>dLabel(m.date)+(m.endDate?' – '+dLabel(m.endDate):'')+(m.allDay||m.start==null?'':' '+hh(m.start));
 const meetTitle=m=>m.title||P.data.poll.title;
 const chatName=uid=>{ const p=P.chat&&P.chat.people[uid]; return p?p.name:null; };
 // The text with tags and meetings as words (quotes, Copy, search, the header peek).
@@ -5564,7 +5594,7 @@ document.addEventListener('click',async e=>{
   if(ds.whonone!==undefined){ setWho(new Set()); return; }
   if(ds.pwk){ P[P.pavail?'ppage':'pweek']+=+ds.pwk; renderBody(); return; }
   if(ds.pview){ P.pavail=ds.pview==='avail'; renderBody(); return; }
-  if(ds.pday){ const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
+  if(ds.pday){ if(!isWeekly()&&Date.now()-(P.pdayT||0)<600) return; const ex=P.drafts.find(x=>x.date===ds.pday&&x.allDay); if(ex) P.drafts=P.drafts.filter(x=>x!==ex); else addDraft(ds.pday,true,null,null); renderBody(); return; }
   if(ds.ddesc){ const x=P.drafts.find(y=>y.key===+ds.ddesc); if(x){ x.ownDesc=!x.ownDesc; renderBody(); } return; }
   if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
@@ -6371,6 +6401,12 @@ function germanText(){ return {
 "Invalid days of the month": "Ungültige Tage des Monats",
 "Invalid meeting": "Ungültiger Termin",
 "Invalid meetings": "Ungültige Termine",
+"Invalid end date": "Ungültiges Enddatum",
+"One meeting over {n} days added": "Ein Termin über {n} Tage hinzugefügt",
+"Add an all-day meeting on {day}. Drag across days for a trip or offsite.": "Ganztägigen Termin am {day} hinzufügen. Über mehrere Tage ziehen für eine Reise oder ein Offsite.",
+"Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.": "Tippe auf einen Wochentag für einen ganztägigen Termin (gedrückt halten und über mehrere Tage ziehen für mehrere Tage), tippe auf einen Entwurf, um ihn zu entfernen. Dunkler = mehr von ihnen haben Zeit.",
+"<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.": "<b>Tippe auf einen Tag</b>, um einen ganztägigen Termin hinzuzufügen oder zu entfernen, oder <b>halte gedrückt und ziehe</b> über mehrere Tage für einen Termin über mehrere Tage (Reise, Offsite). Dunkler = mehr von ihnen haben Zeit.",
+"<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.": "<b>Tippe auf einen Tag</b>, um einen ganztägigen Termin hinzuzufügen oder zu entfernen, oder <b>ziehe über mehrere Tage</b> für einen Termin über mehrere Tage (Reise, Offsite). Dunkler = mehr von ihnen haben Zeit.",
 "Invalid participants": "Ungültige Teilnehmende",
 "Invalid reply-by date": "Ungültiges Antwortdatum",
 "Invalid status": "Ungültiger Status",

@@ -21,6 +21,7 @@
 const MAX_RANGE_DAYS = 92;
 const MAX_RESPONSES = 300;
 const MAX_MEETINGS = 100;
+const MAX_MEETING_DAYS = 62; // longest multi-day meeting
 const ID_RE = /^[A-Za-z0-9]{6,20}$/;
 const MAX_PARTICIPANTS = 500;
 const SESSION_DAYS = 30;
@@ -491,6 +492,12 @@ function validateMeetings(list, poll, old = []) {
       proposed: mt.proposed ? true : undefined, // put up for a vote (responses.votes); not in .ics or emails until confirmed
       ...(repeat ? { repeat } : {}),
     };
+    // endDate: last day of a multi-day all-day meeting (trip, offsite, holiday); one-off meetings only.
+    if (mt.endDate != null && mt.endDate !== '' && mt.endDate !== mt.date) {
+      if (weekly || !out.allDay || !isDate(mt.endDate) || mt.endDate < mt.date || mt.endDate > addDays(mt.date, MAX_MEETING_DAYS - 1))
+        throw new HttpError(400, 'Invalid end date');
+      out.endDate = mt.endDate;
+    }
     if (!out.allDay) {
       out.start = int(mt.start, 0, 23, 'Start hour');
       out.end = int(mt.end, 1, 24, 'End hour');
@@ -1752,7 +1759,7 @@ function meetingToIcs(mt, poll, link) {
   const day = meetingStart(mt), d = day.replace(/-/g, '');
   const stamp = now().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}@whenwho`, `DTSTAMP:${stamp}`];
-  if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(day, 1).replace(/-/g, '')}`);
+  if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(mt.endDate || day, 1).replace(/-/g, '')}`);
   else {
     const endDate = mt.end === 24 ? addDays(day, 1).replace(/-/g, '') : d;
     lines.push(`DTSTART:${d}T${pad(mt.start)}0000`, `DTEND:${endDate}T${pad(mt.end % 24)}0000`);
@@ -1817,6 +1824,7 @@ const shortDay = (d, lang) => new Date(d + 'T00:00:00Z').toLocaleDateString(LOCA
 function meetingWhen(mt, lang) {
   const de = langOf(lang) === 'de';
   const time = mt.allDay ? (de ? ' (ganztägig)' : ' (all day)') : `, ${hh(mt.start)}–${hh(mt.end)}`;
+  if (!mt.repeat && mt.endDate) return `${fmtDay(mt.date, lang)} – ${fmtDay(mt.endDate, lang)}${time}`;
   if (!mt.repeat) return fmtDay(mt.date, lang) + time;
   const r = mt.repeat, i = wdOf(mt.date);
   if (de) {
@@ -1981,7 +1989,7 @@ async function sendAllMeetings(request, env, url, id) {
       google: 'Google Calendar: Other calendars › From URL', footer: `\n\n—\nYou're getting this because the organiser of “${poll.title}” sent you its meetings.`,
       subject: `Meetings: ${poll.title}` };
   const today = now().slice(0, 10);
-  const lastDay = (mt) => (mt.repeat ? mt.repeat.until || '9999-12-31' : mt.date);
+  const lastDay = (mt) => (mt.repeat ? mt.repeat.until || '9999-12-31' : mt.endDate || mt.date);
   const sorted = [...meetings].sort((x, y) => meetingStart(x).localeCompare(meetingStart(y)) || (x.start || 0) - (y.start || 0));
   const upcoming = sorted.filter((mt) => lastDay(mt) >= today), past = sorted.length - upcoming.length;
   const block = (mt) => [`• ${mt.title || poll.title}`, `  ${meetingWhen(mt, poll.lang)}`, mt.location ? `  ${L.where}: ${mt.location}` : null,
