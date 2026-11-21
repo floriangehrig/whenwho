@@ -529,11 +529,6 @@
   .slot.off{background-color:var(--sunken)} /* outside the day's periods: can still be scheduled, but nobody was asked */
 
   /* ---------- overview ---------- */
-  .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:14px}
-  .p{font-size:13px;padding:9px 12px;border-radius:var(--r);background:var(--sunken);border:1px solid var(--line)}
-  .p .pr{display:flex;justify-content:space-between;gap:8px}
-  .p .st{font-weight:600;text-align:right}
-  .p .ratio{margin-top:7px;height:5px}
   .bars{display:flex;align-items:flex-end;gap:3px;height:96px;margin-top:14px;padding:6px;border-radius:var(--r);background:var(--sunken);border:1px solid var(--line)}
   .stack{flex:1;height:100%;display:flex;flex-direction:column-reverse}
   .bar{background:var(--yes)} .stack .bar:first-child{border-radius:0 0 3px 3px}
@@ -794,8 +789,31 @@
   .day.heat.allfree .othbar .ry{background:color-mix(in srgb,var(--yes) 65%,#000)}
   .list.best li.everyone .sc{background:var(--yes);color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--yes)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
-  .dpanel{margin-top:var(--s4);padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken);animation:chipIn .14s ease-out}
-  .dpanel .bars{background:var(--card)} .dpanel .p{background:var(--card)}
+  .dpanel{margin-top:var(--s4);padding:10px 14px 12px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken)} .dpanel.anim{animation:chipIn .14s ease-out}
+  /* icon row: ‹ date › · actions, always one line */
+  .dp-h{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;min-width:0}
+  .dp-h h3{margin:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .dp-h>*{flex:none} .dp-h h3{flex:0 1 auto}
+  .dp-h .dp-nav{font-size:18px;line-height:1;color:var(--ink)} .dp-h .dp-nav:disabled{opacity:.25;cursor:default}
+  .dp-h .btn.sm{gap:4px;white-space:nowrap}
+  .dp-sum .schips{margin-top:6px} .schips.ovl{margin-top:5px}
+  .schips .sc-o{gap:5px;color:var(--ink)} .schips .sc-o b{font-weight:700;color:var(--muted)}
+  .schips .sc-o.top{border-color:color-mix(in srgb,var(--yes) 55%,var(--line));background:color-mix(in srgb,var(--yes) 14%,var(--card))} .schips .sc-o.top b{color:var(--yes-dark)}
+  .schips .sc-oi{font-style:normal;color:var(--ifn);font-weight:600}
+  /* everyone's bars + one line per person, in one grid so the hour columns line up */
+  .dp-rows{display:grid;grid-template-columns:minmax(0,max-content) minmax(80px,1fr) minmax(0,max-content);column-gap:10px;row-gap:5px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .dp-rows.days{grid-template-columns:minmax(0,1fr) max-content}
+  .dp-r{display:contents} .dp-r.no>*{opacity:.55}
+  .dp-n{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9em}
+  .dp-all .dp-n{font-size:12px;color:var(--muted);font-weight:600}
+  .dp-t{font-size:12px;font-weight:600;line-height:1.25;max-width:13em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:right;font-variant-numeric:tabular-nums}
+  .dp-all .dp-t{text-align:left}
+  .hstrip{display:flex;gap:2px;height:10px;padding:0 3px;border:0 solid transparent;border-width:0 1px}
+  .hstrip i{flex:1;border-radius:2px;background:var(--empty)} .hstrip i.ry{background:var(--yes)} .hstrip i.ri{background:var(--ifn)} .hstrip i.rm{background:var(--maybe)} .hstrip i.off{background:none;box-shadow:inset 0 0 0 1px var(--line)}
+  .dpanel .bars{background:var(--card);height:56px;margin:0;padding:3px;gap:2px}
+  .dpanel .barl{gap:2px;padding:0 4px;font-size:9.5px} .dp-hl>*{margin-top:-3px}
+  .dp-leg .legend{margin-top:8px}
+  @keyframes dsheetIn{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
   .list.best .ratio{height:4px;margin-top:6px;max-width:220px}
   .acc{color:var(--accent)}
   details.section>summary{padding:0;font-size:15px}
@@ -1285,7 +1303,18 @@
     .dd .ddp.signin{width:calc(100vw - 24px);padding:18px 16px}
     .tabs button{padding:12px 10px;font-size:14px}
     .ws-views{display:flex;width:100%} .ws-views button{flex:1;justify-content:center;padding:7px 6px}
-    .meet-b{padding-left:16px} .dpanel{padding:14px 12px}
+    .meet-b{padding-left:16px}
+    /* the day panel as a sheet pinned to the bottom: icon row (sticky) · summary · people */
+    .dpanel{position:fixed;left:0;right:0;bottom:0;z-index:62;margin:0;max-height:min(62dvh,520px);overflow:auto;overscroll-behavior:contain;padding:0 12px calc(10px + env(safe-area-inset-bottom));
+      border-radius:16px 16px 0 0;border-bottom:0;background:var(--card);box-shadow:var(--shadow-pop);animation:none} .dpanel.anim{animation:dsheetIn .18s ease-out}
+    .dp-h .lbl-l{display:none} .dp-h .lbl-s{display:inline}
+    .dp-h{position:sticky;top:0;z-index:1;background:var(--card);padding:12px 0 4px;margin:0 -2px}
+    .dp-h::before{content:'';position:absolute;top:5px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
+    .dp-h .qb{width:30px;height:30px} .dp-h .btn.sm{padding:0 10px;height:30px}
+    .dp-rows{column-gap:8px;margin-top:8px;padding-top:8px} .dp-n{max-width:6.5em;font-size:12.5px} .dp-t{max-width:8.5em;font-size:11.5px}
+    .dpanel .bars{height:44px;background:var(--sunken)} .dp-leg{display:none} .dpanel .barl span:nth-child(even):not(.in){visibility:hidden}
+    body.dsheet #body{padding-bottom:calc(var(--dsheet-h) + 8px)}
+    body.dsheet .chatdock{bottom:calc(var(--dsheet-h) + 12px)}
     .savebar{flex-wrap:nowrap;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));margin-left:-4px;margin-right:-4px}
     .savebar #status{min-width:0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .savebar .btn{flex:none}
@@ -3281,6 +3310,14 @@ function statusOf(v,k){
 // availability of a person for a window [start,end) on a day: 'y' all hours available, 'i' all available or if needed,
 // 'm' none unavailable but some maybe, 'x' otherwise
 function windowStatus(v,start,end,allDay,k){
+// One person's day as a row of hour cells over the poll's hours H (lines up with the day panel's bars).
+function hourStrip(v,k,H){ const map=hourMap(v,k), ok=new Set(hours(k));
+  return `<div class="hstrip" aria-hidden="true">${H.map(h=>{ const x=map.get(h); return `<i class="${!ok.has(h)?'off':x==='y'?'ry':x==='i'?'ri':x==='m'?'rm':''}"></i>`; }).join('')}</div>`; }
+// Overlaps on a day: the hours where exactly c people are free, from most people down (≤3 levels, 2+ people unless only one answered).
+function overlapLevels(s,H,tot){
+  return [...new Set(s.cy)].filter(c=>c>0&&(c>=2||tot<2)).sort((a,b)=>b-a).slice(0,3)
+    .map(c=>({c, hs:H.filter((h,i)=>s.cy[i]===c), ifn:Math.max(0,...H.map((h,i)=>s.cy[i]===c?s.ci[i]:0))}));
+}
   if(v==null) return 'x';
   if(v==='y'||v==='i'||v==='m') return v; if(!isPartial(v)) return 'x';
   const map=hourMap(v,k), H=hours(k); const span=allDay?H:H.filter(h=>h>=start&&h<end);
@@ -3494,10 +3531,22 @@ function renderBodyInner(b){
   if(mp&&P.atab==='meetings'){ b.innerHTML=''; if(msub()==='plan') renderPlan(mp); else mp.innerHTML=''; }
   else { if(mp) mp.innerHTML=''; if(P.tab==='mine') renderMine(b); else renderGroup(b); }
   const dn=$('msubd'); if(dn){ dn.textContent=P.drafts.length; dn.hidden=!P.drafts.length; }
+    syncDSheet();
   saveBar();
 }
 
 // ---- series (Rounds tab; read-only for everyone but the organiser) ----
+// Phones: the day panel is a sheet pinned to the bottom; pad the page by its height so everything above stays reachable.
+function syncDSheet(){
+  const p=document.querySelector('#body .dpanel'), on=!!p&&p.getClientRects().length>0&&matchMedia('(max-width:560px)').matches;
+  document.body.classList.toggle('dsheet',on); document.body.style.setProperty('--dsheet-h',on?p.offsetHeight+'px':'0px');
+}
+window.addEventListener('resize',()=>{ if(document.querySelector('#body .dpanel')) syncDSheet(); });
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||e.defaultPrevented||!P.ovDay||!document.querySelector('#body .dpanel')) return;
+  if(document.querySelector('dialog[open],.pigeon-ov,.dmenu')||(P.data&&chatState().open)) return;
+  P.ovDay=null; renderBody();
+});
 function renderSeries(){
   const el=$('series'); if(!el) return;
   const d=P.data, p=d.poll, cur=inst(), adm=d.isAdmin;
@@ -4646,17 +4695,27 @@ function renderGroup(el){
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
   if(P.ovDay && S[P.ovDay]){
-    const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
-    const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
-    h+=`<div class="dpanel">
-      <div class="row"><div class="grow"><h3>${esc(dLabel(P.ovDay))}</h3>
-        <div class="schips">${[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]].filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('')}${s.peak&&slotsOn?`<span class="sc-b" title="${t('Best hours')}">${ICON.clock}${esc(s.window)}</span>`:''}</div></div>
-        ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> ${t('Schedule')}</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
-        ${chatRefBtn('d:'+P.ovDay)}${ib('x',t('Close'),`data-ov="${P.ovDay}"`,'sm ghost')}</div>
-      ${slotsOn?`${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
-      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>${legend('yes','best','ifn','maybe')}`:''}
-      <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||t('Not available'))}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
+    // The day panel: icon row · summary (counts, overlaps, everyone's bars) · one line per person. A bottom sheet on phones.
+    const k=P.ovDay, s=S[k], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
+    const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1], ix=d.dates.indexOf(k);
+    const nav=(dk,lb,ch)=>`<button type="button" class="qb dp-nav" ${dk?`data-ov="${dk}"`:'disabled'} title="${lb}" aria-label="${lb}">${ch}</button>`;
+    const chips=[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]]
+      .filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('');
+    const ovl=slotsOn?overlapLevels(s,H,tot).map((o,j)=>`<span class="sc-o${j?'':' top'}" title="${esc(freeTip(o.c,o.ifn,0,tot))}"><b>${o.c}/${tot}</b>${esc(hoursText(o.hs))}${o.ifn?`<i class="sc-oi">◔${o.ifn}</i>`:''}</span>`).join(''):'';
+    const rows=s.list.map(x=>({x,c:counts(x.v,k)})).sort((a,b)=>(b.c.y+b.c.i)-(a.c.y+a.c.i)||b.c.m-a.c.m).map(({x})=>{ const st=statusOf(x.v,k), txt=st.t||'–';
+      return `<div class="dp-r${st.cls?'':' no'}"><span class="dp-n" title="${esc(x.name)}">${esc(x.name)}</span>${slotsOn?hourStrip(x.v,k,H):''}<span class="dp-t" style="color:${st.c}" title="${esc(st.t||t('Not available'))}">${esc(txt)}</span></div>`; }).join('');
+    const bars=slotsOn?`<div class="dp-r dp-all"><span class="dp-n">${t('Everyone')}</span><div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+        <span class="dp-t">${pick?tip(t('Drag across the bars to pick the meeting time.'),'right'):''}</span></div>
+      <div class="dp-r dp-hl"><span></span><div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div><span></span></div>`:'';
+    const anim=P.ovShown!==k; P.ovShown=k; // slide in only when a day opens, not on every redraw
+    h+=`<div class="dpanel${anim?' anim':''}" id="dpanel" role="region" aria-label="${esc(dLabel(k))}">
+      <div class="dp-h">${nav(d.dates[ix-1],t('Previous day'),'‹')}<h3>${lblLS(dLabel(k),new Date(k+'T12:00').toLocaleDateString(LOC,{weekday:'short',day:'numeric'}))}</h3>${nav(d.dates[ix+1],t('Next day'),'›')}<span class="ml-auto"></span>
+        ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary withic" data-schedule="${k}" title="${t('Schedule')}${sr?` ${esc(rg)}`:''}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}">★<span class="bl">${t('Schedule')}</span>${sr?`<span>${esc(rg)}</span>`:''}</button>`:''}
+        ${chatRefBtn('d:'+k)}<button type="button" class="qb" data-ov="${k}" title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
+      <div class="dp-sum"><div class="schips">${chips}</div>${ovl?`<div class="schips ovl" title="${t('Hours when most people are free')}">${ovl}</div>`:''}</div>
+      <div class="dp-rows${slotsOn?'':' days'}">${bars}${rows}</div>${slotsOn?`<div class="dp-leg">${legend('yes','best','ifn','maybe')}</div>`:''}</div>`;
   }
+  if(!P.ovDay) P.ovShown=null;
   h+='</div>';
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
   h+=`<div class="asec">${secH('star',t('Best days'))}<ul class="list best">${ranked.map(o=>bestLi(o.s,tot,
@@ -5704,7 +5763,7 @@ function setPollTab(k){
   ['answers',...pollTabList().map(x=>x[0])].forEach(tb=>{ const el=$('pane-'+tb); if(el) el.classList.toggle('hide',tb!==k); });
   if(k==='people') loadParts();
   if((was==='meetings')!==(k==='meetings')) renderBody(); // the planner and the Group view share ids: render only the visible one
-  chatSync();
+  syncDSheet(); chatSync();
 }
 function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
@@ -6679,6 +6738,9 @@ function germanText(){ return {
 "(viewing)": "(angezeigt)",
 "({n} all-day left as is)": "({n} ganztägige unverändert)",
 "+1 crumb": "+1 Krümel",
+"Previous day": "Vorheriger Tag",
+"Next day": "Nächster Tag",
+"Hours when most people are free": "Stunden, in denen die meisten Zeit haben",
 "+5 everyone came!": "+5 alle sind gekommen!",
 "+{n} maybe": "+{n} vielleicht",
 "1 match": "1 Treffer",
