@@ -203,8 +203,8 @@
   .pat-pre button{font:inherit;font-size:13px;font-weight:500;border:0;background:none;padding:2px 0;color:var(--accent);cursor:pointer}
   .pat-pre button:hover{text-decoration:underline}
   .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
-  .qf{margin-top:12px}
-  .aif{margin-top:12px}
+  .qf{margin-top:var(--s2)}
+  .aif{margin-top:var(--s2)}
   .aif .patp{gap:8px;padding:10px 12px}
   .aif textarea{width:100%;box-sizing:border-box;min-height:96px}
   .aif-go{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -337,7 +337,7 @@
   .err{margin-top:10px;color:var(--no);font-size:13.5px;font-weight:500}
   .err:empty{display:none}
   .help{color:var(--muted);font-size:13px;margin:10px 0 0;line-height:1.5}
-  .legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+  .legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
   .legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
   .mlabel{font-weight:650;margin:22px 0 0;font-size:14px;color:var(--ink-2)}
   .toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,12px);background:var(--brand);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:500;box-shadow:var(--shadow-pop);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;max-width:calc(100vw - 32px)}
@@ -520,7 +520,25 @@
   .mws .mcard>.card-h{border-bottom:0;padding:var(--s3) 0 0;margin:0;justify-content:flex-end}
   .mws .mcard>.empty-v{margin-top:var(--s4)} .mws #mplan>.pstep:first-child{margin-top:var(--s2);padding-top:var(--s2);border-top:0}
   .ws-views button.on{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(31,94,255,.25)}
-  .ws-me{margin-top:var(--s4);padding:14px 16px;border-radius:var(--r-lg);background:var(--sunken);border:1px solid var(--line)}
+  /* Answers tab sections: one header style (icon · title · ⓘ · actions on the right) for every block */
+  .asec{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line)}
+  .ws-h+.asec,.ws-h+.asec.hide+#body>.asec:first-child,.ws-h+#body>.asec:first-child{margin-top:var(--s3);border-top:0;padding-top:0}
+  .sech{position:relative;display:flex;align-items:center;gap:6px;min-height:32px;margin-bottom:var(--s2);color:var(--ink)}
+  .sech>svg{width:17px;height:17px;flex:none;color:var(--accent)}
+  .sech>h3{font-size:15px;margin:0 2px 0 2px;white-space:nowrap}
+  .sech>.tip{position:static} /* the bubble lines up with the header row, so it stays on screen */
+  .sech>.ml-auto{flex:1}
+  .sech .dd{margin-top:0} .sech .dd .ddp{left:auto;right:0}
+  .sech .btn svg{width:15px;height:15px}
+  .sech-a{display:flex;align-items:center;gap:6px;flex:none}
+  details.asec>summary.sech{padding:0;font-size:inherit}
+  details.asec>summary.sech::before{display:none}
+  details.asec>summary.sech::after{content:"";width:7px;height:7px;margin:0 6px 3px auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+  details.asec[open]>summary.sech::after{transform:rotate(-135deg);margin-bottom:-3px}
+  details.asec:not([open])>summary.sech{margin-bottom:0}
+  .sech .count{margin-left:0}
+  .ws-tools.tbar.sec1{margin-top:0}
+  .vtog-l{font-size:12.5px;font-weight:600;color:var(--muted);margin-right:2px}
   .ws-me .help{margin-top:8px}
   .ws-me .field.mt-0+.field,.ws-me .grid2+.field{margin-top:var(--s3)}
   .ws-who{display:flex;align-items:center;gap:12px}
@@ -1133,8 +1151,7 @@
     .dd .ddp.signin{width:calc(100vw - 24px);padding:18px 16px}
     .tabs button{padding:12px 10px;font-size:14px}
     .ws-views{display:flex;width:100%} .ws-views button{flex:1;justify-content:center;padding:7px 6px}
-    #wsmeta{margin-left:0}
-    .ws-me{padding:12px} .meet-b{padding-left:16px} .dpanel{padding:14px 12px}
+    .meet-b{padding-left:16px} .dpanel{padding:14px 12px}
     .savebar{flex-wrap:nowrap;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));margin-left:-4px;margin-right:-4px}
     .savebar #status{min-width:0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .savebar .btn{flex:none}
@@ -1153,7 +1170,6 @@
     .card-h>.muted.small{display:none}
     .chip{font-size:12px;padding:3px 9px;gap:5px} .meta{gap:6px}
     .chip .bl{display:none}
-    .ws-h #wsmeta{flex-basis:100%;margin-left:0}
     .list li{padding:10px 8px;margin:0 -8px}
     .wknav{gap:6px}
     .linkbox .btn{flex:none} .linkbox{flex-wrap:wrap} .linkbox input{flex:1 1 100%}
@@ -1178,9 +1194,7 @@
 
   /* ---------- Answers tab: compact, icon-first ---------- */
   .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .wsmeta{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:var(--sunken);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
-  .wsmeta:empty{display:none} .wsmeta svg{width:14px;height:14px} .wsmeta b{color:var(--ink);font-variant-numeric:tabular-nums}
-  .ws-me{padding:10px 12px;position:relative;z-index:5}
+  .ws-me{position:relative;z-index:5}
   .me-row{display:flex;align-items:center;gap:8px;min-width:0}
   .me-row>input{min-width:0;margin:0} .me-row>.grow{flex:1 1 0;min-width:0}
   .me-row .tile.avatar{width:34px;height:34px;flex:none}
@@ -1398,7 +1412,7 @@
     .pwf{flex-basis:130px}
     .mrow{grid-template-columns:30px minmax(0,1fr) auto;gap:4px 10px} .mrow-ic{width:30px;height:30px} .mrow .mrow-n{grid-column:2;grid-row:2;justify-self:start} .mrow .sw{grid-column:3;grid-row:1/3}
     .pnav .iseg button{padding:7px 8px}
-    .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1} .ws-h #wsmeta{flex-basis:auto;margin-left:6px}
+    .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1}
     .ws-views .segic{margin-right:5px}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:14px;height:14px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
     /* the answer toolbar must fit a 360px phone in one row (these beat .ws-tools.tbar and the touch-screen sizes) */
@@ -2971,7 +2985,7 @@ async function save(retried){
 }
 // The help line under "Your answer" depends on whether an answer exists.
 function updateHelp(){ const h=$('ansHelp'); if(h) h.innerHTML=ansHelp(); wireDel(); }
-function ansHelp(){ return ansHelp1()+(P.modeHelp?`<span class="tipsep"></span>${P.modeHelp}`:''); }
+function ansHelp(){ return ansHelp1(); } // the how-to for painting is the ⓘ of the "Your availability" section
 function ansHelp1(){
   if(ME.user) return `${t('Signed in as {email}: your answer follows you to every device.',{email:esc(ME.user.email)})} ${P.myResp?t('Change it any time, then press <b>Update</b>.'):t('Mark your availability, then press <b>Send</b>.')}`;
   return P.myResp?t('Saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update</b>.')
@@ -3025,9 +3039,8 @@ function render(){
     <div class="card ws">
       <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
         <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('My answer')}</button>
-        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div>
-        <span class="wsmeta ml-auto" id="wsmeta"></span></div>
-      ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
+        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div></div>
+      ${editable()?`<div class="ws-me asec" id="wsme">${meFields(d,p)}</div>`
         :inst().status==='open'&&inviteLock()?`<div class="notice withic me-lock">${ICON.lock}<span class="grow minw">${inviteLock()==='signin'?t('Only invited people can answer. Sign in with the email address you were invited with.'):t('Only invited people can answer, and {email} isn’t invited. Ask the organiser to add you.',{email:esc(ME.user.email)})}</span>${inviteLock()==='signin'?`<button type="button" class="btn sm primary" data-opensignin>${t('Sign in')}</button>`:''}</div>`
         :`<div class="notice warn withic">${ICON.lock}<span>${t('Closed · answers for {round} are final.',{round:esc(instLabel(i))})}</span></div>`}
       <div id="body"></div>
@@ -3048,16 +3061,15 @@ function render(){
 // Guests get a small card: name, email and an optional "Create account" (opens sign-up with both filled in).
 function meFields(d,p){
   const req=!!p.requireEmail;
-  const help=`<span id="ansHelp">${ansHelp()}</span>`;
-  if(ME.user) return `<div class="me-row">${avatarOf(ME.user)}${ME.user.name
+  const hd=secH('user',t('You'),{tip:`<span id="ansHelp">${ansHelp()}</span>`});
+  if(ME.user) return `${hd}<div class="me-row">${avatarOf(ME.user)}${ME.user.name
       ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="${t('Change name')}" aria-label="${t('Change name')}">${ICON.edit}</a>`
-      :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}
-      ${tip(help,'right')}</div>`;
-  return `<div class="me-guest">
+      :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}</div>`;
+  return `${hd}<div class="me-guest">
       <label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="name" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off"></label>
       <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
       <label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="email" maxlength="200" autocomplete="email"${req?' required':''} aria-label="${req?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" placeholder="${req?t('Email (required)'):t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}"></label>
-      <div class="me-acc"><button type="button" class="btn sm ghost withic" data-opensignin="signup" data-prefill>${ICON.spark}<span>${t('Create account')}</span><span class="muted">${t('(optional)')}</span></button>${tip(help,'right')}</div>
+      <div class="me-acc"><button type="button" class="btn sm ghost withic" data-opensignin="signup" data-prefill>${ICON.spark}<span>${t('Create account')}</span><span class="muted">${t('(optional)')}</span></button></div>
     </div>
     <div id="nameHint"></div>`;
 }
@@ -3103,11 +3115,6 @@ function renderBody(){
 function renderBodyInner(b){
   document.querySelectorAll('[data-tab]').forEach(x=>{ const on=x.dataset.tab===P.tab; x.classList.toggle('on',on); x.setAttribute('aria-selected',on); });
   const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
-  const rs=P.data.responses, mt=$('wsmeta');
-  if(mt){ const full=rs?`${rs.length} ${rs.length===1?t('response'):t('responses')}${P.who&&P.tab!=='mine'?` · ${t('{n} selected',{n:sel().length})}`:''}`:'';
-    mt.title=full; mt.setAttribute('aria-label',full);
-    // The header already shows the total; the pill only appears while the Group view is filtered.
-    mt.innerHTML=rs&&P.who&&P.tab!=='mine'?`${ICON.users}<b>${sel().length}/${rs.length}</b>`:''; }
   // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
   const mp=$('mplan');
   if(mp&&P.atab==='meetings'){ b.innerHTML=''; if(msub()==='plan') renderPlan(mp); else mp.innerHTML=''; }
@@ -3499,15 +3506,17 @@ function renderMine(el){
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${am!=='days'?' '+t('On days with only some hours, the line shows your day from 0 to 24 h.'):''}${on?` ${t('3/5 = how many of the {n} others are free at the best time.',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
-  // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
-  P.modeHelp=helpTxt; updateHelp();
-  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')+aiFill()+quickFill();
-  // The brush buttons already name the colours and the switches name their overlays, so the legend only keeps ★.
-  if(othBtn||bzBtn) h+=`<div class="vtog">${othBtn}${bzBtn}</div>`;
-  // Legend under the switches: colours, then only the markers this view can show right now.
+  updateHelp();
+  // Two sections under "You": Fill faster (AI, Quick fill, Clear; their boxes open inside it) and
+  // Your availability (how you mark: mode + brush · what to show on top: Others, Busy · the grid · its legend).
+  // The how-to text is the ⓘ of Your availability (it changes with the mode).
+  let h=`<div class="asec">${secH('zap',t('Fill faster'),{extra:`${aiIc}${qfIc}${clrIc}`})}${aiFill()}${quickFill()}</div>`;
+  h+=`<div class="asec">${secH('cal',t('Your availability'),{tip:helpTxt})}`+tools(`${modeSeg}${brushSeg}`,'tbar sec1');
+  if(othBtn||bzBtn) h+=`<div class="vtog"><span class="vtog-l">${t('Show')}</span>${othBtn}${bzBtn}</div>`;
+  // Legend under the grid: colours, then only the markers this view can show right now.
   const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
-  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
+  const leg=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -3540,6 +3549,7 @@ function renderMine(el){
         h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
+  h+=leg+'</div>';
   el.innerHTML=h;
   loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
@@ -4168,6 +4178,12 @@ function bestLi(s,tot,label,detail,attrs='',acts=''){
       <div class="ratio"><i class="ry" style="width:${(s.peak-s.peakIfn)/tot*100}%"></i><i class="ri" style="width:${s.peakIfn/tot*100}%"></i><i class="rm" style="width:${s.peakMaybe/tot*100}%"></i></div></span>${acts}</li>`;
 }
 const tools=(inner,cls='')=>`<div class="row ws-tools${cls?' '+cls:''}">${inner}</div>`;
+// The header of a section in the Answers tab: icon · title · count · ⓘ, actions on the right.
+// summary=true for the header of a <details class="asec"> (same look, chevron on the right).
+function secH(icon,title,{tip:tp='',count=null,extra='',summary=false}={}){
+  const tg=summary?'summary':'div';
+  return `<${tg} class="sech">${ICON[icon]||''}<h3>${title}</h3>${count!=null?`<span class="count">${count}</span>`:''}${tp?tip(tp):''}${extra?`<span class="ml-auto"></span><span class="sech-a">${extra}</span>`:''}</${tg}>`;
+}
 // The organiser's way into scheduling from the Group view: add a draft for that day (picked hours or the best block) and open Schedule.
 function scheduleDay(k){
   const slotsOn=P.data.poll.answerMode!=='days', r=P.range&&P.range.date===k?[P.range.start,P.range.end]:null;
@@ -4186,10 +4202,11 @@ function renderGroup(el){
   const all=d.responses.length, tot=sel().length, H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days';
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
-  let h=tools(`${whoDropdown()}<span class="ml-auto"></span>${tip(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'),'right')}`,'tbar');
-  if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p>`; wireWho(); return; }
-  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
+  // Sections: Overview (who's counted · calendar · legend · day panel), Best days, Comments, Manage responses.
+  let h=`<div class="asec">${secH('cal',t('Overview'),{tip:d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'),extra:whoDropdown()})}`;
+  if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
+  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
@@ -4198,18 +4215,19 @@ function renderGroup(el){
         <div class="schips">${[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]].filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('')}${s.peak&&slotsOn?`<span class="sc-b" title="${t('Best hours')}">${ICON.clock}${esc(s.window)}</span>`:''}</div></div>
         ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> ${t('Schedule')}</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
         ${chatRefBtn('d:'+P.ovDay)}${ib('x',t('Close'),`data-ov="${P.ovDay}"`,'sm ghost')}</div>
-      ${slotsOn?`${legend('yes','best','ifn','maybe')}${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
-      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>`:''}
+      ${slotsOn?`${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
+      <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>${legend('yes','best','ifn','maybe')}`:''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||t('Not available'))}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
   }
+  h+='</div>';
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
-  h+=`<div class="section"><h3 class="withic">${ICON.star}${t('Best days')}</h3><ul class="list best">${ranked.map(o=>bestLi(o.s,tot,
+  h+=`<div class="asec">${secH('star',t('Best days'))}<ul class="list best">${ranked.map(o=>bestLi(o.s,tot,
       `${md.has(o.k)?'<span class="acc">★</span> ':''}${esc(dLabel(o.k))}`,
       `${o.s.full+o.s.ifn===o.s.peak||!slotsOn?t('all day'):esc(o.s.window)}${o.s.peakIfn?` · ${t('{n} if needed',{n:o.s.peakIfn})}`:''}${o.s.peakMaybe?` · ${t('+{n} maybe',{n:o.s.peakMaybe})}`:''}`,
       `data-ov="${o.k}"`, d.isAdmin?ib('star',t('Schedule'),`data-schedule="${o.k}"`,'sm'):'')).join('')||`<li class="muted">${t('Nobody has marked a day as available yet.')}</li>`}</ul></div>`;
   const withC=sel().filter(r=>r.comment);
-  if(withC.length) h+=`<details class="section comments"${P.cOpen?' open':''} data-keep="cOpen"><summary class="withic">${ICON.chat}${t('Comments')} <span class="count">${withC.length}</span></summary>${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
-  if(d.isAdmin) h+=`<details class="section"${P.rOpen?' open':''} data-keep="rOpen"><summary class="withic">${ICON.gear}${t('Manage responses')} <span class="count">${all}</span></summary><ul class="list">${d.responses.map(r=>
+  if(withC.length) h+=`<details class="asec comments"${P.cOpen?' open':''} data-keep="cOpen">${secH('chat',t('Comments'),{count:withC.length,summary:true})}${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
+  if(d.isAdmin) h+=`<details class="asec"${P.rOpen?' open':''} data-keep="rOpen">${secH('gear',t('Manage responses'),{count:all,summary:true})}<ul class="list">${d.responses.map(r=>
     `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString(LOC))}</span>${ib('trash',t('Delete'),`data-delresp="${esc(r.id)}"`,'sm ghost danger')}</li>`).join('')}</ul></details>`;
   el.innerHTML=h;
   wireWho();
@@ -4285,7 +4303,6 @@ function renderPlanner(S){
     if(!pages.length) return `<div class="empty-v"><b>${t('No free hours yet.')}</b><span class="muted small">${t('None of the selected people has marked any hours as available.')}</span></div>`;
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
     // One row: date pager pill + icon toggle (free days / weeks).
-    h+=legend('heat','allfree','monly','mstripe','draft','meeting');
     h+=`<div class="row tight pnav"><div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">${P[pk]+1}/${pages.length}</span>`:''}</span>
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>
       <div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div></div>
@@ -4302,10 +4319,10 @@ function renderPlanner(S){
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
         if(P.drafts.some(x=>!x.allDay&&inMeeting(x,k,hr))) cls+=' dr';
         h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
-    h+='</div>';
+    h+='</div>'+legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
-    h+=legend('heat','ifn','maybe','line','draft','meeting');
     h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,P.drafts.some(x=>x.date===k)?' dr':''));
+    h+=legend('heat','ifn','maybe','line','draft','meeting');
   }
   return h;
 }
@@ -6046,6 +6063,8 @@ function germanText(){ return {
 "Basics": "Grundlagen",
 "Best": "Rekord",
 "Best days": "Beste Tage",
+"Fill faster": "Schneller ausfüllen",
+"Your availability": "Deine Verfügbarkeit",
 "Best hours": "Beste Zeiten",
 "Best: {n}": "Rekord: {n}",
 "Blank = no": "Leer = nein",
