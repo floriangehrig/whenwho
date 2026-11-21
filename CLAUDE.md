@@ -77,6 +77,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (photon.komoot.io, OpenStreetMap) and caches the trimmed answer for a day. It runs before the session lookup (one call per keystroke).
   Server-side first (direct browser requests get blocked on phones: content blockers, shared mobile IPs); when `/api/places`
   fails (Photon refuses the Worker from some Cloudflare locations, e.g. a phone on a VPN served in Helsinki) the page asks Photon directly.
+- **Suggest** (⚡ in the Meetings planner): settings `sugopt` in localStorage. Off by default, **Options** (`step`, hours apart) turns it
+  from "best time per day" into every start time in the picked hours (e.g. 2 h meetings every hour, overlapping) as separate drafts,
+  capped by How many and the 100-meeting limit, with Let people vote switched on so they're proposed for a vote.
 - **Suggest with AI** (✨ in the Meetings planner, organiser only): `POST /api/polls/:id/instances/:iid/suggest-text` `{ text, people }`
   turns "2 evening meetings a week, not Fridays" into the planner's Suggest settings (`{ s, wd, hs, he, dates }`); the page runs the
   normal Suggest with them (Undo restores settings and drafts). Only the text and the number of selected people are sent, no answers.

@@ -4919,11 +4919,12 @@ function wirePlanner(){
 // days and hours (PAT.sug) are per poll, in memory.
 // n: how many (0 = all) per 'all' | 'week' | 'month'; len: hours per meeting (0 = auto: longest best block);
 // min: at least this many of the selected people free (0 = all of them); gap: days between meetings; ifn / maybe: count those answers as free.
-const SUG0={n:0,per:'all',len:0,min:0,gap:0,ifn:true,maybe:false};
+// step: hours between start times (0 = off: the best time per day; else every start, overlapping, as separate options).
+const SUG0={n:0,per:'all',len:0,min:0,gap:0,step:0,ifn:true,maybe:false};
 function sugOpts(){
   const s=store.get('sugopt',null), o=Object.assign({},SUG0,s&&typeof s==='object'?s:{});
   if(!s){ const n=store.get('sugn',null); if(n!=null) o.n=+n||0; } // the old count stepper
-  o.n=Math.min(99,Math.max(0,+o.n||0)); o.len=Math.min(24,Math.max(0,+o.len||0)); o.min=Math.min(99,Math.max(0,+o.min||0)); o.gap=Math.min(60,Math.max(0,+o.gap||0));
+  o.n=Math.min(99,Math.max(0,+o.n||0)); o.len=Math.min(24,Math.max(0,+o.len||0)); o.min=Math.min(99,Math.max(0,+o.min||0)); o.gap=Math.min(60,Math.max(0,+o.gap||0)); o.step=Math.min(12,Math.max(0,+o.step||0));
   if(!['all','week','month'].includes(o.per)) o.per='all'; o.ifn=!!o.ifn; o.maybe=!!o.maybe;
   return o;
 }
@@ -4949,12 +4950,16 @@ function sugPanel(){
   let h=row(t('How many'),sugStep('n',o.n,{min:1,max:99,tog:t('All'),togOn:!o.n,label:t('How many meetings to suggest')})
       +tip(t('How many meetings to add: in total, or in each week or month. All = one on every day that fits. Meetings already planned count too.'),'right')
       +(wk?'':seg('per',[['all',t('In total')],['week',t('Per week')],['month',t('Per month')]])));
-  if(slotsOn) h+=row(t('Length'),sugStep('len',o.len,{min:1,max:maxLen,tog:t('Auto'),togOn:!o.len,label:t('Hours per meeting')})+`<span class="muted small">${t('hours')}</span>`,
+  const ladder=slotsOn&&o.step;
+  if(slotsOn) h+=row(t('Length'),(ladder?sugStep('len',Math.min(maxLen,o.len||2),{min:1,max:maxLen,label:t('Hours per meeting')})
+      :sugStep('len',o.len,{min:1,max:maxLen,tog:t('Auto'),togOn:!o.len,label:t('Hours per meeting')}))+`<span class="muted small">${t('hours')}</span>`,
     t('How long each meeting is. Auto = the longest stretch of the best hours.'));
+  if(slotsOn) h+=row(t('Options'),`<span class="pat-in sug-al">${t('Every')}</span>`+sugStep('step',o.step,{min:1,max:12,tog:t('Off'),togOn:!o.step,label:t('Hours between start times')})+`<span class="muted small">${t('hours apart')}</span>`,
+    t('Add every start time in the picked hours, this many hours apart, as separate options (they may overlap), e.g. 2-hour meetings every hour. Off = only the best time per day.'));
   const need=o.min?Math.min(o.min,tot||1):tot;
   h+=row(t('People'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('min',need,{min:1,max:Math.max(1,tot),ph:String(tot),tog:t('All'),togOn:!o.min,label:t('Minimum number of people free')})+`<span class="muted small">${t('of {n} free',{n:tot})}</span>`,
     t('Only suggest times when at least this many of the selected people are free for the whole meeting.'));
-  h+=row(t('Gap'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('gap',o.gap,{min:0,max:60,label:t('Days between meetings')})+`<span class="muted small">${t('days apart')}</span>`,
+  if(!ladder) h+=row(t('Gap'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('gap',o.gap,{min:0,max:60,label:t('Days between meetings')})+`<span class="muted small">${t('days apart')}</span>`,
     t('Keep meetings at least this many days apart, so they don’t bunch up. 0 = any day.'));
   const only=sugDates();
   if(only){ const ks=[...only].sort(), lab=ks.length<=4?ks.map(k=>dLabel(k)).join(', '):`${dLabel(ks[0])} – ${dLabel(ks[ks.length-1])} (${t('{n} days',{n:ks.length})})`;
@@ -4979,12 +4984,12 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#sugp')) return;
   const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset],[data-sugdates]'); if(!b) return;
   const ds=b.dataset, o=sugOpts(), tot=sel().length, maxLen=Math.max(1,P.data.poll.hourEnd-P.data.poll.hourStart);
-  const lim={n:[1,99],len:[1,maxLen],min:[1,Math.max(1,tot)],gap:[0,60]};
+  const lim={n:[1,99],len:[1,maxLen],min:[1,Math.max(1,tot)],gap:[0,60],step:[1,12]};
   if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); P.sugDates=null; if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
   if(ds.sugdates!==undefined){ P.sugDates=null; sugRedraw(); return; }
   if(ds.sugseg){ sugSet({[ds.sugseg]:ds.v}); sugRedraw(); return; }
-  if(ds.sugtog){ const k=ds.sugtog; sugSet({[k]:o[k]?0:(k==='n'?3:k==='len'?2:Math.max(1,tot-1))}); sugRedraw(); return; }
-  if(ds.sugstep){ const k=ds.sugstep, [lo,hi]=lim[k], cur=k==='min'&&!o.min?tot:(o[k]||(k==='gap'?0:lo-(+ds.d>0?1:0)));
+  if(ds.sugtog){ const k=ds.sugtog; sugSet({[k]:o[k]?0:(k==='n'?3:k==='len'?2:k==='step'?1:Math.max(1,tot-1))}); sugRedraw(); return; }
+  if(ds.sugstep){ const k=ds.sugstep, [lo,hi]=lim[k], cur=k==='min'&&!o.min?tot:k==='len'&&o.step&&!o.len?Math.min(hi,2):(o[k]||(k==='gap'?0:lo-(+ds.d>0?1:0)));
     sugSet({[k]:Math.min(hi,Math.max(lo,cur+ +ds.d))}); sugRedraw(); return; }
 });
 document.addEventListener('change',e=>{
@@ -5001,8 +5006,18 @@ function sugFree(v,k,s,e,allDay,o){
 }
 // The best window on day k within the picked hours: most people free for all of it, then fewest "if needed", then fewest maybe,
 // then (auto length) the longest, then the earliest. null when nobody is free.
+function sugScore(k,rs,s,e,allDay,o){ let free=0,ifn=0,may=0; rs.forEach(r=>{ const w=sugFree((r.entries||{})[k],k,s,e,allDay,o); if(w){ free++; if(w==='i') ifn++; if(w==='m') may++; } }); return {k,start:s,end:e,allDay,free,ifn,may}; }
+// Options (step): every window of len hours on day k within the picked hours, starting step hours apart in each
+// run of consecutive hours (so they may overlap), with at least need people free.
+function sugSlots(k,rs,o,hs,he,len,step,need){
+  const H=hours(k).filter(h=>h>=hs&&h<he), out=[];
+  for(let i=0;i<H.length;){ let j=i; while(j+1<H.length&&H[j+1]===H[j]+1) j++;
+    for(let s=H[i];s+len<=H[j]+1;s+=step){ const x=sugScore(k,rs,s,s+len,false,o); if(x.free>=need) out.push(x); }
+    i=j+1; }
+  return out;
+}
 function sugBest(k,rs,o,slotsOn,hs,he){
-  const score=(s,e,allDay)=>{ let free=0,ifn=0,may=0; rs.forEach(r=>{ const w=sugFree((r.entries||{})[k],k,s,e,allDay,o); if(w){ free++; if(w==='i') ifn++; if(w==='m') may++; } }); return {k,start:s,end:e,allDay,free,ifn,may}; };
+  const score=(s,e,allDay)=>sugScore(k,rs,s,e,allDay,o);
   if(!slotsOn) { const x=score(0,0,true); return x.free?x:null; }
   const H=hours(k).filter(h=>h>=hs&&h<he); if(!H.length) return null;
   const better=(a,b)=>!b||a.free-b.free||b.ifn-a.ifn||b.may-a.may||(o.len?0:(a.end-a.start)-(b.end-b.start))||b.start-a.start;
@@ -5028,7 +5043,9 @@ function suggestDrafts(){
   const used=[...P.drafts.flatMap(x=>spanDays(x.date,mEnd(x))),...confirmedMeetings().flatMap(m=>spanDays(m.date,mEnd(m)))], usedSet=new Set(used);
   const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
   used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
-  const only=sugDates(), cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)&&(!only||only.has(k))).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
+  const only=sugDates();
+  if(slotsOn&&o.step) return suggestSlots(rs,o,pat,hs,he,need,only,per,bucket);
+  const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)&&(!only||only.has(k))).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
     .sort((a,b)=>b.free-a.free||a.ifn-b.ifn||a.may-b.may||a.k.localeCompare(b.k));
   const picked=[];
   for(const x of cands){
@@ -5039,6 +5056,27 @@ function suggestDrafts(){
   if(!picked.length){ const m=cands.length?t('No more times fit these settings'):t('No times match these settings'); toast(m); return m; }
   picked.forEach(x=>addDraft(x.k,x.allDay,x.allDay?null:x.start,x.allDay?null:x.end));
   renderBody(); const m=picked.length===1?t('Added {n} draft',{n:1}):t('Added {n} drafts',{n:picked.length}); toast(m); return m;
+}
+// Suggest with Options on: every fitting start time as its own draft (overlapping), to put up for a vote.
+// Days with a confirmed meeting are skipped; drafts don't block a day, only an identical one is skipped.
+// How many (+ per week / month) keeps the best ones; the total stays within the 100 meetings a poll can have.
+function suggestSlots(rs,o,pat,hs,he,need,only,per,bucket){
+  const d=P.data, len=Math.min(Math.max(1,d.poll.hourEnd-d.poll.hourStart),o.len||2);
+  const busy=new Set(confirmedMeetings().flatMap(m=>spanDays(m.date,mEnd(m))));
+  const have=new Set(P.drafts.filter(x=>!x.allDay).map(x=>`${x.date}|${x.start}|${x.end}`));
+  const cands=d.dates.filter(k=>!busy.has(k)&&matchPat(k,pat)&&(!only||only.has(k)))
+    .flatMap(k=>sugSlots(k,rs,o,hs,he,len,o.step,need)).filter(x=>!have.has(`${x.k}|${x.start}|${x.end}`))
+    .sort((a,b)=>b.free-a.free||a.ifn-b.ifn||a.may-b.may||a.k.localeCompare(b.k)||a.start-b.start);
+  const cnt={}, room=Math.max(0,100-inst().meetings.length-P.drafts.length), picked=[]; let cut=false;
+  if(o.n) P.drafts.forEach(x=>{ const b=bucket(x.date); cnt[b]=(cnt[b]||0)+1; });
+  for(const x of cands){ const b=per==='all'?'all':bucket(x.k);
+    if(o.n&&(cnt[b]||0)>=o.n) continue;
+    if(picked.length>=room){ cut=true; break; }
+    picked.push(x); cnt[b]=(cnt[b]||0)+1; }
+  if(!picked.length){ const m=cut?t('A poll can have at most 100 meetings ({n} already scheduled).',{n:inst().meetings.length}):cands.length?t('No more times fit these settings'):t('No times match these settings'); toast(m); return m; }
+  picked.forEach(x=>addDraft(x.k,false,x.start,x.end));
+  if(P.drafts.length>1) P.dvote=true;
+  renderBody(); const n=picked.length, m=cut?t('Added {n} options (limit of 100 reached)',{n}):n===1?t('Added {n} draft',{n:1}):t('Added {n} options',{n}); toast(m); return m;
 }
 // ---- Suggest with AI (planner ✨): the Worker turns "2 evening meetings a week, not Fridays" into the Suggest settings
 // (only the text and the number of selected people are sent, no answers or names). The page then runs the normal Suggest,
@@ -7320,6 +7358,13 @@ function germanText(){ return {
 "Subscribe": "Abonnieren",
 "Subscribe: calendar apps keep this up to date as meetings are added": "Abonnieren: Kalender-Apps halten das aktuell, wenn Termine hinzukommen",
 "Suggest": "Vorschlagen",
+"Off": "Aus",
+"Options": "Optionen",
+"hours apart": "Std. Abstand",
+"Hours between start times": "Stunden zwischen den Startzeiten",
+"Add every start time in the picked hours, this many hours apart, as separate options (they may overlap), e.g. 2-hour meetings every hour. Off = only the best time per day.": "Jede Startzeit in den gewählten Stunden, so viele Stunden auseinander, als eigene Option hinzufügen (sie dürfen sich überschneiden), z. B. 2-stündige Termine zu jeder vollen Stunde. Aus = nur die beste Zeit pro Tag.",
+"Added {n} options": "{n} Optionen hinzugefügt",
+"Added {n} options (limit of 100 reached)": "{n} Optionen hinzugefügt (Grenze von 100 erreicht)",
 "Switch to 🕒 to mark only certain hours.": "Wechsle zu 🕒, um nur bestimmte Stunden zu markieren.",
 "Tap a day name for an all-day one, tap a draft to remove it. Darker = more of them are free.": "Tipp auf einen Tagesnamen für einen ganztägigen Termin, tipp auf einen Entwurf, um ihn zu entfernen. Dunkler = mehr von ihnen frei.",
 "Tap a day to cycle <b>available</b> → <b>if needed</b> → <b>maybe</b> → blank.": "Tippe auf einen Tag zum Wechseln: <b>verfügbar</b> → <b>wenn nötig</b> → <b>vielleicht</b> → leer.",
