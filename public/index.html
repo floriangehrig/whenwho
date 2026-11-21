@@ -9,12 +9,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#0B1F3A">
 <script>
-// Light/dark: saved choice ("theme" in localStorage) or the system setting. Set before the CSS so there is no flash.
+// Light/dark: saved choice ("theme" in localStorage: light / dark / system); light when nothing is saved. Set before the CSS so there is no flash.
 (function(){ var d=document.documentElement, mq=matchMedia('(prefers-color-scheme: dark)'), saved=null;
   try{ saved=JSON.parse(localStorage.getItem('theme')); }catch(e){}
-  d.dataset.theme = saved==='dark'||saved==='light' ? saved : (mq.matches?'dark':'light');
+  d.dataset.theme = saved==='dark'||saved==='light' ? saved : saved==='system'&&mq.matches ? 'dark' : 'light';
   mq.addEventListener&&mq.addEventListener('change',function(e){ var s=null; try{ s=JSON.parse(localStorage.getItem('theme')); }catch(x){}
-    if(s!=='dark'&&s!=='light'){ d.dataset.theme=e.matches?'dark':'light'; document.dispatchEvent(new Event('themechange')); } });
+    if(s==='system'){ d.dataset.theme=e.matches?'dark':'light'; document.dispatchEvent(new Event('themechange')); } });
 })();
 </script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -2009,7 +2009,7 @@ function langButton(){ const cur=store0('lang'), c=cur==='de'||cur==='en'?cur:'s
 }
 // Appearance picker (opens on click): System default / Light (default) / Dark; shows the current mode's icon; saved in this browser.
 const isDark = () => document.documentElement.dataset.theme==='dark';
-function themeButton(){ const cur=store0('theme'), c=cur==='dark'||cur==='light'?cur:'system';
+function themeButton(){ const cur=store0('theme'), c=cur==='dark'||cur==='system'?cur:'light';
   return `<details class="dd pickdd themedd"><summary class="themeb" title="${t('Appearance')}" aria-label="${t('Appearance')}">${isDark()?ICON.moon:ICON.sun}</summary>
     <div class="ddp right menu pickm" role="menu">${pickItem('data-settheme','system',t('System default'),c==='system',ICON.monitor)}<div class="menu-sep"></div>
     ${pickItem('data-settheme','light',t('Light'),c==='light',ICON.sun)}${pickItem('data-settheme','dark',t('Dark'),c==='dark',ICON.moon)}</div></details>`;
@@ -2018,7 +2018,7 @@ function syncTheme(){ const m=document.querySelector('meta[name="theme-color"]')
   document.querySelectorAll('.themedd').forEach(b=>b.outerHTML=themeButton()); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-settheme]'); if(!b) return; e.preventDefault();
   const v=b.dataset.settheme, n=v==='light'||v==='dark'?v:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
-  try{ if(v==='system') localStorage.removeItem('theme'); else localStorage.setItem('theme',JSON.stringify(v)); }catch(x){}
+  try{ if(v==='light') localStorage.removeItem('theme'); else localStorage.setItem('theme',JSON.stringify(v)); }catch(x){}
   document.documentElement.dataset.theme=n; syncTheme(); document.dispatchEvent(new Event('themechange')); });
 document.addEventListener('themechange',syncTheme); syncTheme();
 // ---------- profile, avatars, poll icons ----------
