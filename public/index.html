@@ -204,14 +204,13 @@
   .pat-pre button:hover{text-decoration:underline}
   .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
   .qf{margin-top:12px}
-  .aif{margin-top:12px;display:flex;flex-direction:column;gap:6px}
-  .aif-row{display:flex;gap:6px;align-items:stretch}
-  .aif textarea{flex:1;min-width:0;min-height:44px}
-  .aif-b{display:flex;flex-direction:column;gap:6px}
-  .aif .btn.rec{color:var(--no);border-color:var(--no);animation:recPulse 1.2s ease-in-out infinite}
-  @keyframes recPulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--no) 25%,transparent)}}
-  .aif-msg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;min-height:18px}
-  .aif-msg.err{color:var(--no)}
+  .aif{margin-top:12px}
+  .aif .patp{gap:8px;padding:10px 12px}
+  .aif textarea{width:100%;box-sizing:border-box;min-height:96px}
+  .aif-go{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .aif-go .btn svg{width:15px;height:15px}
+  .aif-msg{font-size:13px} .aif-msg.err{color:var(--no)}
+  .boxh{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13.5px;color:var(--ink)} .boxh>svg{width:16px;height:16px;flex:none;color:var(--accent)}
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
   .em-pill .pat-brush{display:inline-flex;align-items:center;gap:4px;width:auto;height:auto;min-width:0;padding:0;font:inherit;opacity:1;overflow:hidden}
@@ -1601,7 +1600,7 @@ function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=fa
 function patInner(id){
   const st=PAT[id], opt=(lo,hi,cur)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh24(h)}</option>`; return o; };
   const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
-  return `<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
+  return `${st.title?`<div class="boxh">${st.title}</div>`:''}<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="all">${t('Every day')}</button><button type="button" data-patpre="${id}" data-v="wk">${t('Weekdays')}</button><button type="button" data-patpre="${id}" data-v="we">${t('Weekends')}</button></span></div>
     <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in">${t('Only the')} <input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">
       ${t('to')} <input type="number" class="num-sm" min="1" max="31" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"> ${t('of each month')} <span class="muted small">(${t('optional')})</span></span></div>
@@ -1754,7 +1753,6 @@ Object.assign(ICON,{
   spark:svgI('<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>'),
   brush:svgI('<path d="M19.5 3.5a2.1 2.1 0 0 1 3 3L13 16l-3-3z"/><path d="M10 13c-2.2 0-3.8 1.6-3.8 3.8 0 1.5-1 2.5-2.7 2.9 1.1 1.4 2.8 2.3 4.7 2.3 3 0 5-2.1 5-5z"/>'),
   user:svgI('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
-  mic:svgI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
   next:svgI('<path d="M5 12h12M13 7l5 5-5 5"/>'),
@@ -3492,7 +3490,7 @@ function renderMine(el){
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
   const qfIc=`<button type="button" class="btn sm withic ib${qfN?' badgeb':''} ${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
   const clrIc=io('x',qfN?t('Clear my own marks'):t('Clear all'),'data-bulk="clear"','danger');
-  const aiIc=aiOk()?`<button type="button" class="btn sm withic ib ${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill from text or voice…'))}" aria-label="${esc(t('Fill from text or voice…'))}">${ICON.spark}</button>`:'';
+  const aiIc=aiOk()?`<button type="button" class="btn sm withic ib ${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill with AI'))}" aria-label="${esc(t('Fill with AI'))}">${ICON.spark}</button>`:'';
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${am!=='days'?' '+t('On days with only some hours, the line shows your day from 0 to 24 h.'):''}${on?` ${t('3/5 = how many of the {n} others are free at the best time.',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
@@ -3542,20 +3540,19 @@ function renderMine(el){
   if(P.mode==='slots') wireGrid(); else wireDays();
   qfPreview();
 }
-// Fill from text or voice: the Worker asks Workers AI to turn "weekdays after 6, not Friday" into rules
+// Fill with AI: the Worker asks Workers AI to turn "weekdays after 6, not Friday" into rules
 // ({dates, hs, he, st}), which are painted onto the answer like a hand edit (so Quick fill keeps them on top), with Undo.
-// Voice uses the browser's own speech recognition (Chrome, Edge, Safari); the mic is hidden where there is none.
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+// Speaking works through the keyboard's own dictation (iOS / Android), so there is no mic button of our own.
 const aiOk=()=>!!(CONFIG.aiFill&&editable());
 function aiFill(){
   if(!P.aiOpen||!aiOk()) return '';
   const u=P.aiUndo&&P.aiUndo.poll===P.id?P.aiUndo:null, msg=P.aiMsg||'';
-  return `<div class="aif"><div class="aif-row">
-    <textarea id="aiText" rows="2" maxlength="500" placeholder="${esc(t('e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th'))}">${esc(P.aiText||'')}</textarea>
-    <div class="aif-b">${SR?`<button type="button" class="btn sm withic ib${P.aiRec?' rec':''}" data-aimic title="${esc(P.aiRec?t('Stop listening'):t('Speak'))}" aria-label="${esc(P.aiRec?t('Stop listening'):t('Speak'))}" aria-pressed="${!!P.aiRec}">${ICON.mic}</button>`:''}
-    <button type="button" class="btn sm primary withic ib" data-aigo ${P.aiBusy?'disabled':''} title="${esc(t('Fill my answer'))}" aria-label="${esc(t('Fill my answer'))}">${P.aiBusy?'…':ICON.spark}</button></div></div>
-    <div class="aif-msg${P.aiErr?' err':''}">${msg?`<span>${esc(msg)}</span>`:''}${u?`<button type="button" class="btn sm ghost" data-aiundo>${t('Undo')}</button>`:''}
-    ${msg||u?'':`<span class="muted">${t('Say or type when you’re free.')}</span>${tip(t('The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.'))}`}</div></div>`;
+  return `<div class="aif"><div class="patp">
+    <div class="boxh">${ICON.spark}<span>${t('Fill with AI')}</span>${tip(t('Type (or dictate with your keyboard) when you’re free. The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.'))}</div>
+    <textarea id="aiText" rows="4" maxlength="500" placeholder="${esc(t('e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th'))}">${esc(P.aiText||'')}</textarea>
+    <div class="aif-go"><button type="button" class="btn sm primary withic" data-aigo ${P.aiBusy?'disabled':''}>${ICON.spark}<span>${P.aiBusy?t('Reading…'):t('Fill with AI')}</span></button>
+      ${u?`<button type="button" class="btn sm ghost" data-aiundo>${t('Undo')}</button>`:''}
+      ${msg&&!P.aiBusy?`<span class="aif-msg${P.aiErr?' err':''}">${esc(msg)}</span>`:''}</div></div></div>`;
 }
 function aiApplyRules(rules){
   const en=Object.assign({},P.mine.entries), hrs=ansMode()!=='days', days=new Set(), dset=new Set(P.data.dates);
@@ -3568,8 +3565,9 @@ function aiApplyRules(rules){
 }
 async function aiGo(){
   const ta=$('aiText'), text=(ta?ta.value:P.aiText||'').trim(); P.aiText=text;
-  if(!text||P.aiBusy) return;
-  P.aiBusy=true; P.aiErr=false; P.aiMsg=t('Reading…'); renderBody();
+  if(!text){ P.aiErr=true; P.aiMsg=t('Type when you’re free first.'); renderBody(); $('aiText')?.focus(); return; }
+  if(P.aiBusy) return;
+  P.aiBusy=true; P.aiErr=false; P.aiMsg=''; renderBody();
   try{
     const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/fill-text`,{text},headers());
     const prev=Object.assign({},P.mine.entries), {en,n}=aiApplyRules(r.rules||[]);
@@ -3578,49 +3576,10 @@ async function aiGo(){
   }catch(e){ P.aiErr=true; P.aiMsg=e.message; }
   P.aiBusy=false; renderBody();
 }
-// The mic is an on / off switch: tap to start, tap again to stop (then the text is read). iOS Safari often never
-// sends 'end' after stop(), so stopping finishes on its own after a moment, and every way out goes through done().
-let aiRecog=null;
-const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-function aiMic(){
-  if(aiRecog){ aiRecog.finish(); return; }
-  let r; try{ r=new SR(); }catch(e){ P.aiErr=true; P.aiMsg=t('Speech input isn’t available here. Type it, or use the keyboard’s 🎤.'); renderBody(); return; }
-  const start=(P.aiText||'').trim(); let said='', err='', over=false, stopT=0, startT=0;
-  const show=()=>{ P.aiText=(start&&said?start+' ':start)+said; const ta=$('aiText'); if(ta) ta.value=P.aiText; };
-  const done=()=>{ if(over) return; over=true; clearTimeout(stopT); clearTimeout(startT); aiRecog=null; P.aiRec=false;
-    if(said){ show(); aiGo(); return; }
-    P.aiErr=true; P.aiMsg=err||t('Didn’t catch anything. Try again, or type it.'); renderBody(); };
-  r.finish=()=>{ try{ r.stop(); }catch(e){} clearTimeout(stopT); stopT=setTimeout(()=>{ try{ r.abort(); }catch(e){} done(); },1200); };
-  r.lang=LANG==='de'?'de-DE':'en-US'; r.interimResults=true; r.continuous=true; r.maxAlternatives=1;
-  r.onstart=()=>{ clearTimeout(startT); P.aiErr=false; P.aiMsg=t('Listening… tap 🎤 again when you’re done.'); aiStatus(); };
-  r.onresult=e=>{ said=[...e.results].map(x=>x[0].transcript).join(' ').replace(/\s+/g,' ').trim(); show(); };
-  r.onerror=e=>{ const c=e.error;
-    if(c==='aborted'||c==='no-speech') return;
-    err=c==='not-allowed'?t('Allow the microphone to speak your answer.')
-      :c==='service-not-allowed'?(IOS?t('Speech input is off. Turn on Siri & Dictation in Settings, or use the keyboard’s 🎤.'):t('Speech input isn’t allowed in this browser. Type it instead.'))
-      :c==='network'?t('Speech input needs an internet connection.')
-      :t('Speech input failed ({c}). Type it, or use the keyboard’s 🎤.',{c});
-    done(); };
-  r.onend=done;
-  aiRecog=r;
-  try{ r.start(); }catch(e){ aiRecog=null; P.aiErr=true; P.aiMsg=t('Speech input failed ({c}). Type it, or use the keyboard’s 🎤.',{c:e.name||'start'}); renderBody(); return; }
-  // start() comes first, straight from the tap (iOS needs that); then the panel shows the recording state.
-  P.aiRec=true; P.aiErr=false; P.aiMsg=t('Starting the microphone…'); aiStatus();
-  startT=setTimeout(()=>{ if(!over&&!said&&P.aiMsg===t('Starting the microphone…')){ err=t('The microphone didn’t start. Type it, or use the keyboard’s 🎤.'); try{ r.abort(); }catch(e){} done(); } },6000);
-}
-// Updates only the mic button and the message line, so the text box keeps its content and focus while recording.
-function aiStatus(){
-  const b=document.querySelector('.aif [data-aimic]'), m=document.querySelector('.aif .aif-msg');
-  if(!b||!m){ renderBody(); return; }
-  const lb=P.aiRec?t('Stop listening'):t('Speak');
-  b.classList.toggle('rec',!!P.aiRec); b.title=lb; b.setAttribute('aria-label',lb); b.setAttribute('aria-pressed',String(!!P.aiRec));
-  m.classList.toggle('err',!!P.aiErr); m.innerHTML=P.aiMsg?`<span>${esc(P.aiMsg)}</span>`:'';
-}
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } if(!P.aiOpen&&aiRecog){ const r=aiRecog; r.onend=r.onerror=null; aiRecog=null; P.aiRec=false; try{ r.abort(); }catch(e){} } renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
+  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
   if(!e.target.closest('.aif')) return;
   if(e.target.closest('[data-aigo]')) aiGo();
-  else if(e.target.closest('[data-aimic]')) aiMic();
   else if(e.target.closest('[data-aiundo]')&&P.aiUndo&&P.aiUndo.poll===P.id){ P.mine.entries=P.aiUndo.prev; changed(); P.aiUndo=null; P.aiMsg=t('Undone'); P.aiErr=false; renderBody(); }
 });
 document.addEventListener('input',e=>{ if(e.target.id==='aiText') P.aiText=e.target.value; });
@@ -3647,6 +3606,7 @@ function quickFill(){
     ${['y','i','m','x'].map(x=>`<button type="button" data-qfs="${x}" class="${b===x?'on':''}" title="${esc(qfBrushName(x))}" aria-label="${esc(qfBrushName(x))}">${qfDot(x)}<span class="bl">${qfBrushName(x)}</span></button>`).join('')}</div>
     <span class="pat-keys muted small">${t('Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule')}</span></div>`; };
   PAT.qf.sumHtml=qfLayers;
+  PAT.qf.title=`${ICON.zap}<span>${t('Quick fill')}</span>`;
   return `<div class="qf">${patternPicker('qf',o)}</div>`;
 }
 // How many poll days a rule matches, and how many of those it takes over from rules above it (same day, overlapping hours).
@@ -5845,26 +5805,14 @@ function germanText(){ return {
 "Nothing found.": "Nichts gefunden.",
 "Invalid reply": "Ungültige Antwort",
 "Too many tags in one message": "Zu viele Erwähnungen in einer Nachricht",
-"Fill from text or voice…": "Per Text oder Sprache ausfüllen…",
+"Fill with AI": "Mit KI ausfüllen",
+"Quick fill": "Schnell ausfüllen",
+"Type when you’re free first.": "Schreib zuerst, wann du Zeit hast.",
+"Type (or dictate with your keyboard) when you’re free. The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Schreib (oder diktier mit der Tastatur), wann du Zeit hast. Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
 "e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th": "z. B. werktags ab 18 Uhr, Samstagvormittag vielleicht, nicht am 12.",
-"Stop listening": "Zuhören beenden",
-"Speak": "Sprechen",
-"Fill my answer": "Meine Antwort ausfüllen",
 "Undo": "Rückgängig",
 "Undone": "Rückgängig gemacht",
-"Say or type when you’re free.": "Sag oder schreib, wann du Zeit hast.",
-"The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
 "Reading…": "Wird gelesen…",
-"Allow the microphone to speak your answer.": "Erlaube das Mikrofon, um deine Antwort zu sprechen.",
-"Speech input isn’t available here. Type it, or use the keyboard’s 🎤.": "Spracheingabe ist hier nicht verfügbar. Tipp es ein oder nutz das 🎤 der Tastatur.",
-"Didn’t catch anything. Try again, or type it.": "Nichts verstanden. Versuch es noch einmal oder tipp es ein.",
-"Listening… tap 🎤 again when you’re done.": "Ich höre zu… tipp nochmal auf 🎤, wenn du fertig bist.",
-"Speech input is off. Turn on Siri & Dictation in Settings, or use the keyboard’s 🎤.": "Spracheingabe ist aus. Schalte in den Einstellungen Siri & Diktat ein oder nutz das 🎤 der Tastatur.",
-"Speech input isn’t allowed in this browser. Type it instead.": "Spracheingabe ist in diesem Browser nicht erlaubt. Tipp es stattdessen ein.",
-"Speech input needs an internet connection.": "Spracheingabe braucht eine Internetverbindung.",
-"Speech input failed ({c}). Type it, or use the keyboard’s 🎤.": "Spracheingabe fehlgeschlagen ({c}). Tipp es ein oder nutz das 🎤 der Tastatur.",
-"Starting the microphone…": "Mikrofon wird gestartet…",
-"The microphone didn’t start. Type it, or use the keyboard’s 🎤.": "Das Mikrofon ist nicht angesprungen. Tipp es ein oder nutz das 🎤 der Tastatur.",
 "Filling from text isn’t available here": "Ausfüllen per Text ist hier nicht verfügbar",
 "The text helper is busy or used up for today. Try again later.": "Die Texthilfe ist ausgelastet oder für heute aufgebraucht. Versuch es später noch einmal.",
 "Couldn’t understand that. Try saying it differently.": "Das war nicht zu verstehen. Versuch es anders zu formulieren.",
