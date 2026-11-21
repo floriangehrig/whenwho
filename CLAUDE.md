@@ -68,6 +68,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
   (no mic button of our own). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
+- **Suggest with AI** (✨ in the Meetings planner, organiser only): `POST /api/polls/:id/instances/:iid/suggest-text` `{ text, people }`
+  turns "2 evening meetings a week, not Fridays" into the planner's Suggest settings (`{ s, wd, hs, he, dates }`); the page runs the
+  normal Suggest with them (Undo restores settings and drafts). Only the text and the number of selected people are sent, no answers.
+  Shares the `AI_PER_DAY` cap with Fill with AI.
 
 ## Commands
 - `npm install` once.

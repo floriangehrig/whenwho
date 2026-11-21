@@ -179,6 +179,7 @@ async function route(request, env, ctx, url) {
     if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
     if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
+    if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
@@ -2180,6 +2181,36 @@ async function requireInvited(env, poll, user, admin) {
 const nameTaken = (name, participantId, responseId) =>
   new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
 
+// ---------- Workers AI helpers (Fill with AI, Suggest with AI) ----------
+// Per account (or IP) per day, shared by both; login_attempts rows are kept for a day.
+async function aiQuota(request, env, user) {
+  const key = user ? 'u:' + user.id : clientIp(request), max = Number(env.AI_PER_DAY) || AI_PER_DAY;
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, 'ai', since).first('n');
+  if (n >= max) throw new HttpError(429, `You can fill from text ${max} times a day. Try again tomorrow.`);
+  await recordFail(env, request, 'ai', key);
+}
+// Runs the model with a JSON schema and returns the parsed object (or null).
+async function aiJson(env, system, text, schema) {
+  let out;
+  try {
+    out = await env.AI.run(env.AI_MODEL || AI_MODEL, {
+      messages: [{ role: 'system', content: system }, { role: 'user', content: text }],
+      response_format: { type: 'json_schema', json_schema: schema },
+      max_tokens: 600, temperature: 0,
+    });
+  } catch (e) {
+    console.log('AI failed', e && e.message);
+    throw new HttpError(503, 'The text helper is busy or used up for today. Try again later.');
+  }
+  let res = out && out.response;
+  if (typeof res === 'string') { const j = res.match(/\{[\s\S]*\}/); try { res = j ? JSON.parse(j[0]) : null; } catch { res = null; } }
+  return res && typeof res === 'object' ? res : null;
+}
+const isoWd = (d) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7; // 0 = Monday
+// "weekdays" / "weekend" / "mon".."sun" (or longer names) → weekday indexes.
+const fillWds = (v) => v === 'weekdays' ? [0, 1, 2, 3, 4] : v === 'weekend' ? [5, 6] : FILL_WD.indexOf(v.slice(0, 3)) >= 0 ? [FILL_WD.indexOf(v.slice(0, 3))] : [];
+
 // ---------- fill an answer from text (Workers AI) ----------
 // The person types or says when they're free; the model turns it into a few rules, which the Worker checks and
 // expands to days and hours of this round. Nothing is saved: the page puts the result into the answer being edited.
@@ -2229,26 +2260,9 @@ async function fillFromText(request, env, id, iid) {
   const text = str(b.text, 500, 'Text', true);
   const user = userOf(request);
   await requireInvited(env, poll, user, admin);
-  // Per account (or IP) per day; login_attempts rows are kept for a day.
-  const key = user ? 'u:' + user.id : clientIp(request), max = Number(env.AI_PER_DAY) || AI_PER_DAY;
-  const since = new Date(Date.now() - 86400000).toISOString();
-  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, 'ai', since).first('n');
-  if (n >= max) throw new HttpError(429, `You can fill from text ${max} times a day. Try again tomorrow.`);
-  await recordFail(env, request, 'ai', key);
+  await aiQuota(request, env, user);
   const dates = datesOf(inst, poll);
-  let out;
-  try {
-    out = await env.AI.run(env.AI_MODEL || AI_MODEL, {
-      messages: [{ role: 'system', content: fillPrompt(poll, dates, reqLang(request)) }, { role: 'user', content: text }],
-      response_format: { type: 'json_schema', json_schema: FILL_SCHEMA },
-      max_tokens: 600, temperature: 0,
-    });
-  } catch (e) {
-    console.log('AI fill failed', e && e.message);
-    throw new HttpError(503, 'The text helper is busy or used up for today. Try again later.');
-  }
-  let res = out && out.response;
-  if (typeof res === 'string') { const j = res.match(/\{[\s\S]*\}/); try { res = j ? JSON.parse(j[0]) : null; } catch { res = null; } }
+  const res = await aiJson(env, fillPrompt(poll, dates, reqLang(request)), text, FILL_SCHEMA);
   const raw = res && Array.isArray(res.rules) ? res.rules.slice(0, 40) : null;
   if (!raw) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
   const ST = { available: 'y', if_needed: 'i', maybe: 'm', not_available: 'x' };
@@ -2260,10 +2274,7 @@ async function fillFromText(request, env, id, iid) {
       const v = String(x).toLowerCase().trim();
       if (v === 'all') dates.forEach((d) => want.add(d));
       else if (inDates.has(v)) want.add(v);
-      else {
-        const wds = v === 'weekdays' ? [0, 1, 2, 3, 4] : v === 'weekend' ? [5, 6] : FILL_WD.indexOf(v.slice(0, 3)) >= 0 ? [FILL_WD.indexOf(v.slice(0, 3))] : [];
-        dates.forEach((d) => { if (wds.includes((new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7)) want.add(d); });
-      }
+      else { const wds = fillWds(v); dates.forEach((d) => { if (wds.includes(isoWd(d))) want.add(d); }); }
     }
     let hs = Math.max(poll.hour_start, Math.min(23, Math.round(Number(r.from)))), he = Math.min(poll.hour_end, Math.max(1, Math.round(Number(r.to))));
     if (poll.answer_mode === 'days' || !Number.isFinite(hs) || !Number.isFinite(he)) { hs = poll.hour_start; he = poll.hour_end; }
@@ -2272,6 +2283,78 @@ async function fillFromText(request, env, id, iid) {
   }
   if (!rules.length) throw new HttpError(422, 'None of the poll’s days or hours match that.');
   return json({ rules });
+}
+
+// ---------- Suggest with AI (organiser's meeting planner) ----------
+// The organiser describes the meetings they want; the model turns that into the planner's Suggest settings, and the page
+// runs its normal Suggest with them. Only the text (and how many people are selected) is sent, no answers or names.
+const SUGGEST_SCHEMA = {
+  type: 'object',
+  properties: {
+    count: { type: 'integer' }, per: { type: 'string', enum: ['total', 'week', 'month'] },
+    hours: { type: 'integer' }, min_people: { type: 'integer' }, gap_days: { type: 'integer' },
+    count_if_needed: { type: 'boolean' }, count_maybe: { type: 'boolean' },
+    days: { type: 'array', items: { type: 'string' } }, dates: { type: 'array', items: { type: 'string' } },
+    from: { type: 'integer' }, to: { type: 'integer' },
+  },
+  required: ['count', 'per', 'hours', 'min_people', 'gap_days', 'count_if_needed', 'count_maybe', 'days', 'dates', 'from', 'to'],
+};
+function suggestPrompt(poll, dates, tot, lang) {
+  const weekly = poll.kind === 'weekly', slots = poll.answer_mode !== 'days';
+  const t = today(), wd = (d) => FILL_WD[isoWd(d)];
+  const wk = (n) => { const a = addDays(t, 7 * n - isoWd(t)); return `${a} to ${addDays(a, 6)}`; };
+  const list = weekly ? '' : dates.length <= 62 ? dates.map((d) => `${d} ${wd(d)}`).join(', ') : `${dates[0]} to ${dates[dates.length - 1]}`;
+  return [
+    'You turn an organiser\'s description of the meetings they want into JSON settings for a meeting planner.',
+    'The planner then picks the times when most people are free; you only fill in the settings.',
+    weekly ? 'The poll is about a typical week: use weekday names in "days" and leave "dates" empty.'
+      : `Today is ${t} (${wd(t)}). This week = ${wk(0)}, next week = ${wk(1)} (Monday to Sunday). The poll's dates: ${list}.`,
+    `${tot} people are selected to come.`,
+    'Fields: count = how many meetings (0 = as many as fit, only when no number is given); "a meeting" / "one" / "ein Treffen" = 1;',
+    'per = total | week | month (count is per week / month, e.g. "twice a week" = 2 + week);',
+    slots ? `hours = length of each meeting in hours (0 = not said); from / to = the hours to look in, between ${poll.hour_start} and ${poll.hour_end} (24-hour clock, "to" exclusive).`
+      : `The poll asks about whole days: hours = 0, from = ${poll.hour_start}, to = ${poll.hour_end}.`,
+    'min_people = at least this many people free (0 = everyone, or not said); gap_days = keep meetings at least this many days apart (0 = not said);',
+    'count_if_needed = count "if needed" answers as free (default true); count_maybe = count "maybe" answers as free (default false);',
+    'days = which weekdays are allowed: "all", "weekdays", "weekend" or weekday names (mon tue wed thu fri sat sun). "Not on Friday" = the other six days;',
+    'dates = only these dates (YYYY-MM-DD from the poll\'s dates), e.g. for "next week" or "before the 15th"; empty = any date.',
+    '"Morning" = 8-12, "afternoon" = 12-17, "evening" = 17-22, "lunch" = 12-14. Leave everything the text doesn\'t mention at its default',
+    `(count 0, per total, hours 0, min_people 0, gap_days 0, days ["all"], dates [], from ${poll.hour_start}, to ${poll.hour_end}).`,
+    `The text may be in ${lang === 'de' ? 'German or English' : 'English or German'}. Answer only with the JSON object.`,
+  ].join('\n');
+}
+async function suggestFromText(request, env, id, iid) {
+  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
+  const poll = await loadPoll(env, id);
+  requireAdmin(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  const b = await body(request);
+  const text = str(b.text, 500, 'Text', true);
+  const tot = int(b.people ?? 1, 1, 999, 'People');
+  await aiQuota(request, env, userOf(request));
+  const dates = datesOf(inst, poll), slots = poll.answer_mode !== 'days';
+  const r = await aiJson(env, suggestPrompt(poll, dates, tot, reqLang(request)), text, SUGGEST_SCHEMA);
+  if (!r) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
+  const num = (v, lo, hi, d = 0) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+  const span = Math.max(1, poll.hour_end - poll.hour_start);
+  const s = {
+    n: num(r.count, 0, 99), per: r.per === 'week' || r.per === 'month' ? r.per : 'all',
+    len: slots ? num(r.hours, 0, span) : 0, min: num(r.min_people, 0, tot), gap: num(r.gap_days, 0, 60),
+    ifn: r.count_if_needed !== false, maybe: r.count_maybe === true,
+  };
+  if (s.min >= tot) s.min = 0; // everyone = the default
+  const wd = new Set();
+  for (const x of Array.isArray(r.days) ? r.days.slice(0, 20) : []) {
+    const v = String(x).toLowerCase().trim();
+    if (v === 'all') [0, 1, 2, 3, 4, 5, 6].forEach((i) => wd.add(i)); else fillWds(v).forEach((i) => wd.add(i));
+  }
+  if (!wd.size) [0, 1, 2, 3, 4, 5, 6].forEach((i) => wd.add(i));
+  let hs = num(r.from, poll.hour_start, poll.hour_end - 1, poll.hour_start), he = num(r.to, poll.hour_start + 1, poll.hour_end, poll.hour_end);
+  if (!slots || he <= hs) { hs = poll.hour_start; he = poll.hour_end; }
+  if (s.len && s.len > he - hs) s.len = he - hs;
+  const inDates = new Set(dates);
+  const only = poll.kind === 'weekly' || !Array.isArray(r.dates) ? [] : [...new Set(r.dates.slice(0, 400).map((x) => String(x).trim()).filter((x) => inDates.has(x)))].sort();
+  return json({ s, wd: [...wd].sort(), hs, he, dates: only.length && only.length < dates.length ? only : null });
 }
 
 async function createResponse(request, env, id, iid) {

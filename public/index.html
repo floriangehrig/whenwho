@@ -4460,8 +4460,8 @@ function renderPlan(el){
     tools(whoDropdown(),'mt-2 tbar ptbar'));
   h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.')
       :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'))):'',
-    tot?sugPanel()+renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`,
-    tot?sugButton():'');
+    tot?sugAi()+sugPanel()+renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`,
+    tot?sugAiBtn()+sugButton():'');
   h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
     draftTray(),nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):'');
   el.innerHTML=h; wireWho(); wirePlanner();
@@ -4527,7 +4527,9 @@ function sugOpts(){
   return o;
 }
 const sugSet = ch => store.set('sugopt',Object.assign(sugOpts(),ch));
-const sugCustom = () => { const o=sugOpts(); return Object.keys(SUG0).filter(k=>o[k]!==SUG0[k]).length+(PAT.sug&&PAT.sug.poll===P.id&&patRule('sug')&&!patRule('sug').dflt?1:0); };
+const sugCustom = () => { const o=sugOpts(); return Object.keys(SUG0).filter(k=>o[k]!==SUG0[k]).length+(PAT.sug&&PAT.sug.poll===P.id&&patRule('sug')&&!patRule('sug').dflt?1:0)+(sugDates()?1:0); };
+// Only these dates (set by Suggest with AI, e.g. "next week"): {poll, set} for the open poll, else null.
+const sugDates = () => P.sugDates&&P.sugDates.poll===P.id&&P.sugDates.set.size?P.sugDates.set:null;
 // − value + (and an optional toggle button, e.g. "All") for one setting.
 function sugStep(key,val,{min=0,max=99,ph='',tog='',togOn=false,label}){
   return `<span class="sugn" role="group" aria-label="${esc(label)}" title="${esc(label)}">
@@ -4553,6 +4555,10 @@ function sugPanel(){
     t('Only suggest times when at least this many of the selected people are free for the whole meeting.'));
   h+=row(t('Gap'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('gap',o.gap,{min:0,max:60,label:t('Days between meetings')})+`<span class="muted small">${t('days apart')}</span>`,
     t('Keep meetings at least this many days apart, so they don’t bunch up. 0 = any day.'));
+  const only=sugDates();
+  if(only){ const ks=[...only].sort(), lab=ks.length<=4?ks.map(k=>dLabel(k)).join(', '):`${dLabel(ks[0])} – ${dLabel(ks[ks.length-1])} (${t('{n} days',{n:ks.length})})`;
+    h+=row(t('Dates'),`<span class="pat-in">${t('Only')} ${esc(lab)} ${ib('x',t('Any date'),'data-sugdates','sm ghost')}</span>`,
+      t('Set by Suggest with AI. Remove it to look at every date again.')); }
   h+=row(t('Counts'),`<label class="check m0"><input type="checkbox" data-sugck="ifn" ${o.ifn?'checked':''}> <span class="dot" style="--c:var(--ifn)"></span>${t('If needed')}</label>
       <label class="check m0"><input type="checkbox" data-sugck="maybe" ${o.maybe?'checked':''}> <span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</label>`,
     t('Which answers count as free. Available always does.'));
@@ -4569,10 +4575,11 @@ function sugButton(){
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-sugopen]')){ P.sugOpen=!P.sugOpen; renderBody(); return; }
   if(!e.target.closest('#sugp')) return;
-  const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset]'); if(!b) return;
+  const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset],[data-sugdates]'); if(!b) return;
   const ds=b.dataset, o=sugOpts(), tot=sel().length, maxLen=Math.max(1,P.data.poll.hourEnd-P.data.poll.hourStart);
   const lim={n:[1,99],len:[1,maxLen],min:[1,Math.max(1,tot)],gap:[0,60]};
-  if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
+  if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); P.sugDates=null; if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
+  if(ds.sugdates!==undefined){ P.sugDates=null; sugRedraw(); return; }
   if(ds.sugseg){ sugSet({[ds.sugseg]:ds.v}); sugRedraw(); return; }
   if(ds.sugtog){ const k=ds.sugtog; sugSet({[k]:o[k]?0:(k==='n'?3:k==='len'?2:Math.max(1,tot-1))}); sugRedraw(); return; }
   if(ds.sugstep){ const k=ds.sugstep, [lo,hi]=lim[k], cur=k==='min'&&!o.min?tot:(o[k]||(k==='gap'?0:lo-(+ds.d>0?1:0)));
@@ -4613,13 +4620,13 @@ function suggestDrafts(){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', rs=sel(), tot=rs.length, o=sugOpts(), wk=isWeekly(), per=wk?'all':o.per;
   if(!tot) return;
   const pr=PAT.sug&&PAT.sug.poll===P.id?patRule('sug'):null;
-  if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ toast(t('Pick at least one day')); return; }
+  if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ const m=t('Pick at least one day'); toast(m); return m; }
   const pat=pr?pr.pat:null, hs=pr?pr.hs:d.poll.hourStart, he=pr?pr.he:d.poll.hourEnd;
   const need=o.min?Math.min(o.min,tot):tot;
   const used=[...P.drafts.flatMap(x=>spanDays(x.date,mEnd(x))),...confirmedMeetings().flatMap(m=>spanDays(m.date,mEnd(m)))], usedSet=new Set(used);
   const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
   used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
-  const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
+  const only=sugDates(), cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)&&(!only||only.has(k))).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
     .sort((a,b)=>b.free-a.free||a.ifn-b.ifn||a.may-b.may||a.k.localeCompare(b.k));
   const picked=[];
   for(const x of cands){
@@ -4627,10 +4634,59 @@ function suggestDrafts(){
     if(o.gap&&[...used,...picked.map(y=>y.k)].some(k=>dayDiff(k,x.k)<o.gap)) continue;
     picked.push(x); cnt[b]=(cnt[b]||0)+1;
   }
-  if(!picked.length){ toast(cands.length?t('No more times fit these settings'):t('No times match these settings')); return; }
+  if(!picked.length){ const m=cands.length?t('No more times fit these settings'):t('No times match these settings'); toast(m); return m; }
   picked.forEach(x=>addDraft(x.k,x.allDay,x.allDay?null:x.start,x.allDay?null:x.end));
-  renderBody(); toast(picked.length===1?t('Added {n} draft',{n:1}):t('Added {n} drafts',{n:picked.length}));
+  renderBody(); const m=picked.length===1?t('Added {n} draft',{n:1}):t('Added {n} drafts',{n:picked.length}); toast(m); return m;
 }
+// ---- Suggest with AI (planner ✨): the Worker turns "2 evening meetings a week, not Fridays" into the Suggest settings
+// (only the text and the number of selected people are sent, no answers or names). The page then runs the normal Suggest,
+// with the Suggest panel open so the settings it chose can be checked and changed. Undo puts settings and drafts back.
+const sugAiOk=()=>!!CONFIG.aiFill;
+function sugAiBtn(){
+  if(!sugAiOk()) return '';
+  return `<button type="button" class="btn sm withic ib ${P.sugAiOpen?'on':''}" data-sugai aria-expanded="${!!P.sugAiOpen}" title="${esc(t('Suggest with AI'))}" aria-label="${esc(t('Suggest with AI'))}">${ICON.spark}</button>`;
+}
+function sugAi(){
+  if(!P.sugAiOpen||!sugAiOk()) return '';
+  const u=P.sugAiUndo&&P.sugAiUndo.poll===P.id, msg=P.sugAiMsg||'';
+  return `<div class="aif sugai"><div class="patp">
+    <div class="boxh">${ICON.spark}<span>${t('Suggest with AI')}</span>${tip(t('Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Suggest, where you can change them.'))}</div>
+    <textarea id="sugAiText" rows="4" maxlength="500" placeholder="${esc(t('e.g. 2 evening meetings a week, 2 hours each, at least 4 people, not on Fridays'))}">${esc(P.sugAiText||'')}</textarea>
+    <div class="aif-go"><button type="button" class="btn sm primary withic" data-sugaigo ${P.sugAiBusy?'disabled':''}>${ICON.spark}<span>${P.sugAiBusy?t('Reading…'):t('Suggest with AI')}</span></button>
+      ${u?`<button type="button" class="btn sm ghost" data-sugaiundo>${t('Undo')}</button>`:''}
+      ${msg&&!P.sugAiBusy?`<span class="aif-msg${P.sugAiErr?' err':''}">${esc(msg)}</span>`:''}</div></div></div>`;
+}
+const sugPatSnap=()=>PAT.sug?{wd:new Set(PAT.sug.wd),hs:PAT.sug.hs,he:PAT.sug.he}:null;
+async function sugAiGo(){
+  const ta=$('sugAiText'), text=(ta?ta.value:P.sugAiText||'').trim(); P.sugAiText=text;
+  if(!text){ P.sugAiErr=true; P.sugAiMsg=t('Describe the meetings first.'); renderBody(); $('sugAiText')?.focus(); return; }
+  if(P.sugAiBusy||!sel().length) return;
+  P.sugAiBusy=true; P.sugAiErr=false; P.sugAiMsg=''; renderBody();
+  try{
+    const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/suggest-text`,{text,people:sel().length},headers());
+    P.sugAiUndo={poll:P.id,opts:store.get('sugopt',null),pat:sugPatSnap(),dates:P.sugDates,drafts:P.drafts.slice()};
+    store.set('sugopt',Object.assign({},SUG0,r.s||{}));
+    P.sugOpen=true; sugPanel(); // makes PAT.sug for this poll
+    if(PAT.sug){ PAT.sug.wd=new Set(r.wd&&r.wd.length?r.wd:[0,1,2,3,4,5,6]); PAT.sug.hs=r.hs; PAT.sug.he=r.he; }
+    P.sugDates=r.dates&&r.dates.length?{poll:P.id,set:new Set(r.dates)}:null;
+    P.sugAiMsg=suggestDrafts()||'';
+  }catch(e){ P.sugAiErr=true; P.sugAiMsg=e.message; }
+  P.sugAiBusy=false; renderBody();
+}
+function sugAiUndo(){
+  const u=P.sugAiUndo; if(!u||u.poll!==P.id) return;
+  if(u.opts) store.set('sugopt',u.opts); else store.del('sugopt');
+  if(PAT.sug&&u.pat) Object.assign(PAT.sug,u.pat); else if(PAT.sug) patResetDraft(PAT.sug);
+  P.sugDates=u.dates; P.drafts=u.drafts; P.sugAiUndo=null; P.sugAiMsg=t('Undone'); P.sugAiErr=false; renderBody();
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-sugai]')){ P.sugAiOpen=!P.sugAiOpen; if(!P.sugAiUndo||P.sugAiUndo.poll!==P.id){ P.sugAiMsg=''; P.sugAiErr=false; } renderBody(); if(P.sugAiOpen) $('sugAiText')?.focus(); return; }
+  if(!e.target.closest('.sugai')) return;
+  if(e.target.closest('[data-sugaigo]')) sugAiGo();
+  else if(e.target.closest('[data-sugaiundo]')) sugAiUndo();
+});
+document.addEventListener('input',e=>{ if(e.target.id==='sugAiText') P.sugAiText=e.target.value; });
+document.addEventListener('keydown',e=>{ if(e.target.id==='sugAiText'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); sugAiGo(); } });
 async function saveDrafts(btn){
   const dm=P.dmeta||{title:'',location:'',note:''}, ms=inst().meetings, err=$('dm_err');
   if(!P.drafts.length) return;
@@ -5959,6 +6015,13 @@ function germanText(){ return {
 "Invalid reply": "Ungültige Antwort",
 "Too many tags in one message": "Zu viele Erwähnungen in einer Nachricht",
 "Fill with AI": "Mit KI ausfüllen",
+"Suggest with AI": "Mit KI vorschlagen",
+"Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Suggest, where you can change them.": "Beschreib die Termine, die du willst. Nur dieser Text geht an Cloudflare Workers AI (keine Antworten oder Namen) und wird nicht gespeichert. Die gewählten Einstellungen erscheinen unter Vorschlagen, wo du sie ändern kannst.",
+"e.g. 2 evening meetings a week, 2 hours each, at least 4 people, not on Fridays": "z. B. 2 Abendtermine pro Woche, je 2 Stunden, mindestens 4 Leute, nicht freitags",
+"Describe the meetings first.": "Beschreib zuerst die Termine.",
+"Set by Suggest with AI. Remove it to look at every date again.": "Von „Mit KI vorschlagen“ gesetzt. Entfernen, um wieder alle Tage zu berücksichtigen.",
+"Any date": "Jedes Datum",
+"Only": "Nur",
 "Quick fill": "Schnell ausfüllen",
 "Type when you’re free first.": "Schreib zuerst, wann du Zeit hast.",
 "Type (or dictate with your keyboard) when you’re free. The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Schreib (oder diktier mit der Tastatur), wann du Zeit hast. Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
