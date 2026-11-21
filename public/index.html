@@ -449,7 +449,10 @@
   .ws-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .ws-views button{padding:7px 16px;font-size:13.5px}
   .ws-views button:disabled{opacity:.4;cursor:default}
-  .msubbar{margin-bottom:var(--s3,12px)} .msub .count{margin-left:6px}
+  .msub .count{margin-left:6px}
+  /* Meetings tab: one card with the sub-view switch in its header, like the Answers tab */
+  .mws .mcard>.card-h{border-bottom:0;padding:var(--s3) 0 0;margin:0;justify-content:flex-end}
+  .mws .mcard>.empty-v{margin-top:var(--s4)} .mws #mplan>.pstep:first-child{margin-top:var(--s2);padding-top:var(--s2);border-top:0}
   .ws-views button.on{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(31,94,255,.25)}
   .ws-me{margin-top:var(--s4);padding:14px 16px;border-radius:var(--r-lg);background:var(--sunken);border:1px solid var(--line)}
   .ws-me .help{margin-top:8px}
@@ -2897,8 +2900,7 @@ function renderMeetings(){
   const d=P.data, ms=inst().meetings, adm=d.isAdmin;
   if(adm) ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } });
   if(!ms.length){ P.msel=null;
-    el.innerHTML=adm?`<div class="card mcard"><div class="card-h"><h2>${t('Scheduled meetings')}</h2></div>
-      <div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Schedule them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Scheduling')}</span></button></div></div>`:'';
+    el.innerHTML=adm?`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button></div></div>`:'';
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.msel){ const ids=new Set(ms.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
@@ -2926,8 +2928,7 @@ function renderMeetings(){
   const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
-  if(adm) el.innerHTML=`<div class="card mcard${sel?' selecting':''}"><div class="card-h"><h2><span class="hide-sm">${t('Scheduled meetings')}</span><span class="sm-only">${t('Meetings')}</span> <span class="count">${ms.length}</span></h2>
-      ${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
+  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}"><div class="card-h">${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
     ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
   else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>
@@ -3761,7 +3762,7 @@ function step(n,title,help,body,extra=''){
 }
 function renderPlan(el){
   const d=P.data, rs=d.responses||[], slotsOn=d.poll.answerMode!=='days', tot=sel().length, nd=P.drafts.length;
-  let h=`<div class="card-h"><h2>${t('Plan new meetings')}</h2></div>`;
+  let h='';
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t("Once people answer, you can plan meetings around when they're free.")}</span><button class="btn sm mt-2" data-atab="people">${t('Share the poll')}</button></div>`; return; }
   const S={}; d.dates.forEach(k=>S[k]=stats(k));
   h+=step(1,t('Who should come?'),t('Each meeting invites the people selected when you add it.'),
@@ -4101,10 +4102,10 @@ function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
   const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
   const ms=msub();
-  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="msubbar"><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
-      <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Meetings')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
-      <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Scheduling')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
-    <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="card${ms==='plan'?'':' hide'}" id="mplan"></div></div>
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
+      <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Scheduled')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
+      <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
+    <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
       <div class="grid2">
@@ -5159,8 +5160,8 @@ function germanText(){ return {
 "Hide scheduled meetings": "Geplante Termine ausblenden",
 "Hide where the others are available": "Ausblenden, wann die anderen verfügbar sind",
 "Hours": "Stunden",
-"Scheduling": "Planung",
-"Schedule them, or ★ a day under Everyone.": "Plane sie, oder markiere einen Tag unter Alle mit ★.",
+"Plan new": "Neu planen",
+"Plan them, or ★ a day under Everyone.": "Plane sie, oder markiere einen Tag unter Alle mit ★.",
 "Answer with": "Antwort mit",
 "Days and time slots": "Tage und Zeitfenster",
 "Email required": "E-Mail Pflicht",
