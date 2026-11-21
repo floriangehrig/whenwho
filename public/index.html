@@ -523,6 +523,7 @@
   /* ---------- availability workspace (My answer / Everyone views in one card) ---------- */
   .ws{padding-top:14px}
   .ws-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .ws-h>h2{flex:1;min-width:0}
   .ws-views button{padding:7px 16px;font-size:13.5px}
   .ws-views button:disabled{opacity:.4;cursor:default}
   .msub .count{margin-left:6px}
@@ -1270,6 +1271,8 @@
   /* ---------- Answers tab: compact, icon-first ---------- */
   .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ws-me{position:relative;z-index:5}
+  .me-box{padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken)}
+  .me-box #nameHint:empty{display:none}
   .me-row{display:flex;align-items:center;gap:8px;min-width:0}
   .me-row>input{min-width:0;margin:0} .me-row>.grow{flex:1 1 0;min-width:0}
   .me-row .tile.avatar{width:34px;height:34px;flex:none}
@@ -1480,6 +1483,7 @@
     .mrow .mrow-n input[type=month],.mrow .mrow-n input[type=date]{min-width:0;width:170px}
     .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1}
+    .ws-h:has(>h2+.ws-views){flex-wrap:wrap} .ws-h>h2+.ws-views{flex:1 1 100%}
     .ws-views .segic{margin-right:5px}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:14px;height:14px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
     /* the answer toolbar must fit a 360px phone in one row (these beat .ws-tools.tbar and the touch-screen sizes) */
@@ -3172,7 +3176,7 @@ function render(){
     ${pollTabs()}
     <div id="pane-answers" class="${P.atab!=='answers'?'hide':''}">
     <div class="card ws">
-      <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
+      <div class="ws-h"><h2>${t('Answers')}</h2><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
         <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('My answer')}</button>
         <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div></div>
       ${editable()?`<div class="ws-me asec" id="wsme">${meFields(d,p)}</div>`
@@ -3197,16 +3201,16 @@ function render(){
 function meFields(d,p){
   const req=!!p.requireEmail;
   const hd=secH('user',t('You'),{tip:`<span id="ansHelp">${ansHelp()}</span>`});
-  if(ME.user) return `${hd}<div class="me-row">${avatarOf(ME.user)}${ME.user.name
+  if(ME.user) return `${hd}<div class="me-box"><div class="me-row">${avatarOf(ME.user)}${ME.user.name
       ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="${t('Change name')}" aria-label="${t('Change name')}">${ICON.edit}</a>`
-      :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}</div>`;
-  return `${hd}<div class="me-guest">
+      :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}</div></div>`;
+  return `${hd}<div class="me-box"><div class="me-guest">
       <label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="name" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off"></label>
       <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
       <label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="email" maxlength="200" autocomplete="email"${req?' required':''} aria-label="${req?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" placeholder="${req?t('Email (required)'):t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}"></label>
       <div class="me-acc"><button type="button" class="btn sm ghost withic" data-opensignin="signup" data-prefill>${ICON.spark}<span>${t('Create account')}</span><span class="muted">${t('(optional)')}</span></button></div>
     </div>
-    <div id="nameHint"></div>`;
+    <div id="nameHint"></div></div>`;
 }
 // An ⓘ tip's bubble is nudged sideways (and flipped above if needed) so it stays inside the screen.
 function fitTip(t){ const b=t&&t.querySelector('.tipb'); if(!b) return;
@@ -5361,7 +5365,7 @@ function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
   const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
   const ms=msub();
-  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
       <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Scheduled')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
@@ -5399,7 +5403,7 @@ function adminPanes(){
 // Everyone else's panes behind the same tab row: meetings (list + voting), rounds to pick from, who is in the poll.
 function viewerPanes(){
   const d=P.data, tabs=pollTabList().map(x=>x[0]), hid=k=>P.atab===k?'':'hide';
-  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div id="meetings"></div></div></div>
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2></div><div id="meetings"></div></div></div>
   ${tabs.includes('rounds')?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
   ${tabs.includes('people')?`<div id="pane-people" class="${hid('people')}"><div class="card ppl">${viewerPeople()}</div></div>`:''}`;
 }
