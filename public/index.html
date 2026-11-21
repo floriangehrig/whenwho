@@ -3096,7 +3096,7 @@ function renderMine(el){
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('👥 numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
   // The how-to text lives in the single ⓘ tip on the name row (it changes with the mode).
   P.modeHelp=helpTxt; updateHelp();
-  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}${qfIc}<span class="hide-sm">${calButton()}</span>${clrIc}${menuOn?menu:''}`,'tbar')+quickFill()+calPanel();
+  let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${othBtn}${qfIc}${clrIc}${menuOn?menu:''}`,'tbar')+quickFill();
   const bzShown=busyOn()&&BUSY.list&&BUSY.list.length&&BUSY.key===busyKey();
   const dayLines=P.mode==='days', partDays=dayLines&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
   h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on?'others':'',dayLines&&on?'line':'',partDays?'myline':'',bzShown?'busy':'');
@@ -3451,26 +3451,7 @@ document.addEventListener('click',e=>{
   const dd=$('moredd'); if(dd) dd.open=false;
   renderBody(); if(on) loadBusy(); toast(on?t('Showing busy times from your calendars'):t('Busy times hidden'));
 });
-function calButton(){ return ib('cal',t('From calendar…'),`data-cal aria-expanded="${!!P.calOpen}"`,'sm'+(P.calOpen?' on':'')); }
-function calPanel(){
-  if(!P.calOpen) return '';
-  const u=ME.user, mine=u&&u.calendars?CALS.list:null;
-  if(u&&u.calendars&&!CALS.list&&!CALS.loading) loadCals().then(()=>{ if(P.calOpen) renderBody(); });
-  const pick=mine&&mine.calendars.length?`<div class="calpick" role="group" aria-label="${t('My calendars')}">${mine.calendars.map(c=>
-      `<label class="check"><input type="checkbox" data-calpick="${esc(c.id)}"${c.auto?' checked':''}> <span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span> ${esc(c.name)}<span class="muted small">${esc(calSource(mine,c))}</span></label>`).join('')}</div>
-      <div class="row">${ib('check',t('Fill from these calendars'),'data-calsaved','sm primary',t('Fill'))}</div>
-      <p class="help mt-2">${t('Or use another one:')}</p>`:u&&u.calendars?`<p class="help mt-0">${t('Loading…')}</p>`:'';
-  return `<div class="qf">
-    ${pick}
-    <div class="row tight mt-2"><input type="url" id="cal_url" class="cal-in" placeholder="${t('iCal link (https://… or webcal://…)')}" autocomplete="off" spellcheck="false" aria-label="${t('iCal link')}">
-      <button type="button" class="btn sm${pick?'':' primary'}" data-calimport>${t('Import')}</button>
-      <label class="btn sm withic ib" title="${t('Choose .ics file')}">${ICON.upload}<span class="bl">${t('Choose .ics file')}</span><span class="bs">.ics</span><input type="file" id="cal_file" accept=".ics,text/calendar" hidden></label></div>
-    ${u?`<label class="check"><input type="checkbox" id="cal_save"${u.calendars?'':' checked'}> ${t('Add this link to my calendars')}</label>`:''}
-    <p class="help">${t('Free hours on blank days are marked available; busy times stay blank. Nothing is sent until you press Send.')}
-      ${t('Find the link in Google Calendar (Settings › your calendar › <i>Secret address in iCal format</i>), Outlook (Settings › Calendar › Shared calendars › Publish) or Apple Calendar (share as a public calendar).')}</p></div>`;
-}
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-cal]')){ P.calOpen=!P.calOpen; renderBody(); return; }
   if(e.target.closest('[data-calsaved]')) fillFromMine();
   else if(e.target.closest('[data-calimport]')) importCalendar(false);
 });
