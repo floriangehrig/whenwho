@@ -3552,19 +3552,46 @@ async function aiGo(){
   }catch(e){ P.aiErr=true; P.aiMsg=e.message; }
   P.aiBusy=false; renderBody();
 }
+// The mic is an on / off switch: tap to start, tap again to stop (then the text is read). iOS Safari often never
+// sends 'end' after stop(), so stopping finishes on its own after a moment, and every way out goes through done().
 let aiRecog=null;
+const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function aiMic(){
-  if(aiRecog){ aiRecog.stop(); return; }
-  const r=new SR(); aiRecog=r; r.lang=LANG==='de'?'de-DE':'en-US'; r.interimResults=true; r.continuous=false;
-  const start=(P.aiText||'').trim(); let said='';
-  r.onresult=e=>{ said=[...e.results].map(x=>x[0].transcript).join(' ').trim(); P.aiText=(start?start+' ':'')+said; const ta=$('aiText'); if(ta) ta.value=P.aiText; };
-  r.onerror=e=>{ if(e.error!=='no-speech'&&e.error!=='aborted'){ P.aiErr=true; P.aiMsg=e.error==='not-allowed'?t('Allow the microphone to speak your answer.'):t('Couldn’t hear that. Try again or type it.'); } };
-  r.onend=()=>{ aiRecog=null; P.aiRec=false; if(said) aiGo(); else renderBody(); };
-  P.aiRec=true; P.aiErr=false; P.aiMsg=t('Listening…'); renderBody();
-  try{ r.start(); }catch(e){ aiRecog=null; P.aiRec=false; P.aiMsg=''; renderBody(); }
+  if(aiRecog){ aiRecog.finish(); return; }
+  let r; try{ r=new SR(); }catch(e){ P.aiErr=true; P.aiMsg=t('Speech input isn’t available here. Type it, or use the keyboard’s 🎤.'); renderBody(); return; }
+  const start=(P.aiText||'').trim(); let said='', err='', over=false, stopT=0, startT=0;
+  const show=()=>{ P.aiText=(start&&said?start+' ':start)+said; const ta=$('aiText'); if(ta) ta.value=P.aiText; };
+  const done=()=>{ if(over) return; over=true; clearTimeout(stopT); clearTimeout(startT); aiRecog=null; P.aiRec=false;
+    if(said){ show(); aiGo(); return; }
+    P.aiErr=true; P.aiMsg=err||t('Didn’t catch anything. Try again, or type it.'); renderBody(); };
+  r.finish=()=>{ try{ r.stop(); }catch(e){} clearTimeout(stopT); stopT=setTimeout(()=>{ try{ r.abort(); }catch(e){} done(); },1200); };
+  r.lang=LANG==='de'?'de-DE':'en-US'; r.interimResults=true; r.continuous=true; r.maxAlternatives=1;
+  r.onstart=()=>{ clearTimeout(startT); P.aiErr=false; P.aiMsg=t('Listening… tap 🎤 again when you’re done.'); aiStatus(); };
+  r.onresult=e=>{ said=[...e.results].map(x=>x[0].transcript).join(' ').replace(/\s+/g,' ').trim(); show(); };
+  r.onerror=e=>{ const c=e.error;
+    if(c==='aborted'||c==='no-speech') return;
+    err=c==='not-allowed'?t('Allow the microphone to speak your answer.')
+      :c==='service-not-allowed'?(IOS?t('Speech input is off. Turn on Siri & Dictation in Settings, or use the keyboard’s 🎤.'):t('Speech input isn’t allowed in this browser. Type it instead.'))
+      :c==='network'?t('Speech input needs an internet connection.')
+      :t('Speech input failed ({c}). Type it, or use the keyboard’s 🎤.',{c});
+    done(); };
+  r.onend=done;
+  aiRecog=r;
+  try{ r.start(); }catch(e){ aiRecog=null; P.aiErr=true; P.aiMsg=t('Speech input failed ({c}). Type it, or use the keyboard’s 🎤.',{c:e.name||'start'}); renderBody(); return; }
+  // start() comes first, straight from the tap (iOS needs that); then the panel shows the recording state.
+  P.aiRec=true; P.aiErr=false; P.aiMsg=t('Starting the microphone…'); aiStatus();
+  startT=setTimeout(()=>{ if(!over&&!said&&P.aiMsg===t('Starting the microphone…')){ err=t('The microphone didn’t start. Type it, or use the keyboard’s 🎤.'); try{ r.abort(); }catch(e){} done(); } },6000);
+}
+// Updates only the mic button and the message line, so the text box keeps its content and focus while recording.
+function aiStatus(){
+  const b=document.querySelector('.aif [data-aimic]'), m=document.querySelector('.aif .aif-msg');
+  if(!b||!m){ renderBody(); return; }
+  const lb=P.aiRec?t('Stop listening'):t('Speak');
+  b.classList.toggle('rec',!!P.aiRec); b.title=lb; b.setAttribute('aria-label',lb); b.setAttribute('aria-pressed',String(!!P.aiRec));
+  m.classList.toggle('err',!!P.aiErr); m.innerHTML=P.aiMsg?`<span>${esc(P.aiMsg)}</span>`:'';
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } if(!P.aiOpen&&aiRecog) aiRecog.abort(); renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
+  if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } if(!P.aiOpen&&aiRecog){ const r=aiRecog; r.onend=r.onerror=null; aiRecog=null; P.aiRec=false; try{ r.abort(); }catch(e){} } renderBody(); if(P.aiOpen) $('aiText')?.focus(); return; }
   if(!e.target.closest('.aif')) return;
   if(e.target.closest('[data-aigo]')) aiGo();
   else if(e.target.closest('[data-aimic]')) aiMic();
@@ -5804,8 +5831,15 @@ function germanText(){ return {
 "The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
 "Reading…": "Wird gelesen…",
 "Allow the microphone to speak your answer.": "Erlaube das Mikrofon, um deine Antwort zu sprechen.",
-"Couldn’t hear that. Try again or type it.": "Das war nicht zu verstehen. Versuch es noch einmal oder tipp es ein.",
-"Listening…": "Ich höre zu…",
+"Speech input isn’t available here. Type it, or use the keyboard’s 🎤.": "Spracheingabe ist hier nicht verfügbar. Tipp es ein oder nutz das 🎤 der Tastatur.",
+"Didn’t catch anything. Try again, or type it.": "Nichts verstanden. Versuch es noch einmal oder tipp es ein.",
+"Listening… tap 🎤 again when you’re done.": "Ich höre zu… tipp nochmal auf 🎤, wenn du fertig bist.",
+"Speech input is off. Turn on Siri & Dictation in Settings, or use the keyboard’s 🎤.": "Spracheingabe ist aus. Schalte in den Einstellungen Siri & Diktat ein oder nutz das 🎤 der Tastatur.",
+"Speech input isn’t allowed in this browser. Type it instead.": "Spracheingabe ist in diesem Browser nicht erlaubt. Tipp es stattdessen ein.",
+"Speech input needs an internet connection.": "Spracheingabe braucht eine Internetverbindung.",
+"Speech input failed ({c}). Type it, or use the keyboard’s 🎤.": "Spracheingabe fehlgeschlagen ({c}). Tipp es ein oder nutz das 🎤 der Tastatur.",
+"Starting the microphone…": "Mikrofon wird gestartet…",
+"The microphone didn’t start. Type it, or use the keyboard’s 🎤.": "Das Mikrofon ist nicht angesprungen. Tipp es ein oder nutz das 🎤 der Tastatur.",
 "Filling from text isn’t available here": "Ausfüllen per Text ist hier nicht verfügbar",
 "The text helper is busy or used up for today. Try again later.": "Die Texthilfe ist ausgelastet oder für heute aufgebraucht. Versuch es später noch einmal.",
 "Couldn’t understand that. Try saying it differently.": "Das war nicht zu verstehen. Versuch es anders zu formulieren.",
