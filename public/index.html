@@ -419,7 +419,14 @@
   .vtog .vt{gap:6px} .vtog .vt svg{width:15px;height:15px}
   .vtog .vtn{font-style:normal;font-size:11px;font-weight:650;min-width:18px;padding:0 5px;border-radius:999px;background:var(--sunken);color:var(--muted);text-align:center}
   .vtog .vt.on .vtn{background:var(--card);color:var(--accent-ink)}
-  .vtog .legend{margin:0 0 0 auto}
+  .vtsplit{display:inline-flex;align-items:stretch}
+  .vtsplit>.vt{border-top-right-radius:0;border-bottom-right-radius:0}
+  .vtsplit .vtdd{margin:0;display:flex;position:static}
+  .vtog{position:relative} .vtsplit .vtdd .ddp{left:0;right:auto} /* the list opens under the row's left edge, never off-screen */
+  .vtsplit .vtdd>summary{min-height:0;height:100%;padding:0 9px;gap:0;border-radius:0 8px 8px 0;border-left:0;font-size:0}
+  .vtsplit .vtdd>summary::after{margin:0}
+  .vtsplit .vtdd[open]>summary{background:var(--sunken)}
+  .vtsplit .vtdd .ddp label .minw{display:flex;flex-direction:column;line-height:1.3}
   .day .othbar{position:absolute;left:6px;right:6px;bottom:4px;height:5px;border-radius:999px;overflow:hidden;display:flex;background:var(--empty);box-shadow:0 0 0 1.5px var(--card);pointer-events:none}
   .day .othbar i{display:block;height:100%} .day .othbar .ry{background:var(--yes)} .day .othbar .ri{background:var(--ifn)} .day .othbar .rm{background:var(--maybe)}
   .slot.oh{background:color-mix(in srgb,var(--yes) var(--a),var(--card));position:relative}
@@ -2780,7 +2787,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, dirty:false, saving:false,
-  hint:store.get('showOthers',false), who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null, atab:'answers' };
+  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -2803,7 +2810,7 @@ async function loadPoll(first){
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.myVotes=[]; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.myVotes=[]; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.hintOff=new Set(); P.hddOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
@@ -3071,6 +3078,15 @@ function shareRow(p,i){
 }
 function renderBody(){
   const b=$('body'); if(!b) return;
+  // iOS Safari has no scroll anchoring: rebuilding the panel briefly shortens the page and Safari scrolls up
+  // (often to the top). Hold the old height until the next frame and put the scroll position back.
+  const y0=window.scrollY, h0=b.offsetHeight; if(h0) b.style.minHeight=h0+'px';
+  try{ renderBodyInner(b); } finally {
+    if(Math.abs(window.scrollY-y0)>1) window.scrollTo(0,y0);
+    requestAnimationFrame(()=>{ b.style.minHeight=''; });
+  }
+}
+function renderBodyInner(b){
   document.querySelectorAll('[data-tab]').forEach(x=>{ const on=x.dataset.tab===P.tab; x.classList.toggle('on',on); x.setAttribute('aria-selected',on); });
   const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
   const rs=P.data.responses, mt=$('wsmeta');
@@ -3441,18 +3457,25 @@ function weeks(dates){
 function renderMine(el){
   const d=P.data, me=P.mine.entries, md=meetingDays(), am=ansMode();
   // "Show others": overlay how many other people said yes / maybe (only when results are visible).
-  const oth=d.responses?others():[], on=P.hint&&oth.length>0, n=oth.length;
+  // othAll = everyone else who answered; oth = the ones picked in the ▾ list next to Others (P.hintOff = left out).
+  const othAll=d.responses?others():[], oth=othAll.filter(r=>!P.hintOff.has(r.id)), on=P.hint&&oth.length>0, n=oth.length, nAll=othAll.length;
   const names=(a,i,b)=>[a.length?t('Available')+': '+a.join(', '):'',i.length?t('If needed')+': '+i.join(', '):'',b.length?t('Maybe')+': '+b.join(', '):''].filter(Boolean).join(' · ');
   // One toolbar row: mode (icons) · brush swatches · others toggle · tools (inline on desktop, ⋯ menu on phones) · ⓘ.
   // Show / hide switches (others' answers, my busy times) live in their own row under the toolbar, with short labels.
-  const othBtn=n?`<button type="button" class="btn sm withic vt${on?' on':''}" data-hint aria-pressed="${on}" title="${on?t('Hide where the others are available'):t('Show where the others are available')}" aria-label="${on?t('Hide others ({n})',{n}):t('Show others ({n})',{n})}">${ICON.users}<span>${t('Others')}</span><i class="vtn">${n}</i></button>`:'';
+  const othTog=`<button type="button" class="btn sm withic vt${on?' on':''}" data-hint aria-pressed="${on}" title="${on?t('Hide where the others are available'):t('Show where the others are available')}" aria-label="${on?t('Hide others ({n})',{n}):t('Show others ({n})',{n})}">${ICON.users}<span>${t('Others')}</span><i class="vtn">${n<nAll?`${n}/${nAll}`:nAll}</i></button>`;
+  const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
   const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
   const bzOn=showBusy();
-  const bzBtn=ME.user&&ME.user.calendarsAuto&&editable()?`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide my busy times'):t('Show my busy times')}">${ICON.cal}<span>${t('Busy')}</span></button>`:'';
+  const bzTog=`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide my busy times'):t('Show my busy times')}">${ICON.cal}<span>${t('Busy')}</span></button>`;
+  // ▾ next to Busy: which of the account's auto calendars grey out hours (only once the list is loaded and has 2+).
+  if(ME.user&&ME.user.calendarsAuto&&!CALS.list&&!CALS.tried){ CALS.tried=true; loadCals().then(r=>{ if(r&&P.data&&P.tab==='mine') renderBody(); }); }
+  const bzCals=CALS.list?CALS.list.calendars.filter(c=>c.auto):[], bzOff=busyOff();
+  const bzBtn=!(ME.user&&ME.user.calendarsAuto&&editable())?'':bzCals.length<2?bzTog
+    :vtSplit(bzTog,'bdd',P.bddOpen,t('Choose calendars'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})));
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
@@ -3466,7 +3489,8 @@ function renderMine(el){
   P.modeHelp=helpTxt; updateHelp();
   let h=tools(`${modeSeg}${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')+aiFill()+quickFill();
   // The brush buttons already name the colours and the switches name their overlays, so the legend only keeps ★.
-  if(othBtn||bzBtn||md.size) h+=`<div class="vtog">${othBtn}${bzBtn}${md.size?legend('meeting'):''}</div>`;
+  if(othBtn||bzBtn) h+=`<div class="vtog">${othBtn}${bzBtn}</div>`;
+  if(md.size) h+=legend('meeting');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -3913,9 +3937,9 @@ const calSource=(r,c)=>{ const a=calAccount(r,c); return a?` · ${a.provider==='
 async function calendarEvents(c,from,to){
   const res=await fetch(`/api/me/calendars/${encodeURIComponent(c.id)}/busy?from=${from}&to=${to}`,{headers:{'x-lang':LANG}});
   if(!res.ok){ let d={}; try{ d=await res.json(); }catch(e){} const err=new Error(tErr(d.error||t('Couldn’t load the calendar ({status})',{status:res.status}))); err.data=d; throw err; }
-  if((res.headers.get('content-type')||'').includes('text/calendar')) return parseIcs(await res.text(),from,to).map(x=>[x[0],x[1],x[2]||'',c.name]);
+  if((res.headers.get('content-type')||'').includes('text/calendar')) return parseIcs(await res.text(),from,to).map(x=>[x[0],x[1],x[2]||'',c.name,c.id]);
   const d=await res.json();
-  return (d.events||[]).map(e=>e.allDay?[parseD(e.s).getTime(),parseD(e.e).getTime(),e.title||'',c.name]:[+e.s,+e.e,e.title||'',c.name]).filter(x=>x[0]<to&&x[1]>from);
+  return (d.events||[]).map(e=>e.allDay?[parseD(e.s).getTime(),parseD(e.e).getTime(),e.title||'',c.name,c.id]:[+e.s,+e.e,e.title||'',c.name,c.id]).filter(x=>x[0]<to&&x[1]>from);
 }
 const BUSY={key:'',list:null,loading:false};
 const showBusy=()=>store0('showBusy')!==false;
@@ -3940,7 +3964,13 @@ async function loadBusy(force){
   if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
 }
 // The busy events for one hour (or a whole day), for the hatch and its tooltip. Empty when the grey-out is off.
-function busyFor(k,h){ return busyOn()&&BUSY.list&&BUSY.key===busyKey()?busyHit(BUSY.list,k,h):[]; }
+function busyFor(k,h){ return busyOn()&&BUSY.list&&BUSY.key===busyKey()?busyHit(busyPicked(),k,h):[]; }
+// Calendars left out in the ▾ list next to Busy (ids, saved in this browser). Events cached before ids were added (no x[4]) always count.
+const busyOff=()=>new Set(store0('busyOff')||[]);
+let BUSYF={src:null,off:'',list:[]};
+function busyPicked(){ const off=JSON.stringify(store0('busyOff')||[]);
+  if(BUSYF.src!==BUSY.list||BUSYF.off!==off){ const s=new Set(JSON.parse(off)); BUSYF={src:BUSY.list,off,list:s.size?BUSY.list.filter(x=>!s.has(x[4])):BUSY.list}; }
+  return BUSYF.list; }
 function busyTip(evs){
   const seen=new Set(), out=[];
   evs.forEach(x=>{ const s=x[2]?`${x[2]} (${x[3]})`:x[3]; if(!seen.has(s)){ seen.add(s); out.push(s); } });
@@ -4054,7 +4084,27 @@ function wireWho(){
   dd.addEventListener('toggle',()=>{ P.whoOpen=dd.open; });
   dd.querySelectorAll('[data-who]').forEach(cb=>cb.onchange=()=>{ const s=new Set(P.who||(P.data.responses||[]).map(r=>r.id)); if(cb.checked) s.add(cb.dataset.who); else s.delete(cb.dataset.who); setWho(s); });
 }
-document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open&&!dd.contains(e.target)){ dd.open=false; P.whoOpen=false; } });
+document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open&&!dd.contains(e.target)){ dd.open=false; P.whoOpen=false; }
+  [['hdd','hddOpen'],['bdd','bddOpen']].forEach(([id,k])=>{ const x=$(id); if(x&&x.open&&!x.contains(e.target)){ x.open=false; P[k]=false; } }); });
+
+// A show/hide switch (Others, Busy) with a ▾ list on its right to pick which people / calendars it uses.
+// items: [{id, label (already escaped html), on}]; key = data attribute of the checkboxes and All / None buttons.
+function vtSplit(btn,id,open,label,key,items){
+  return `<span class="vtsplit">${btn}<details class="dd vtdd" id="${id}"${open?' open':''}><summary title="${esc(label)}" aria-label="${esc(label)}"></summary><div class="ddp">
+    <div class="ddb"><button type="button" class="btn" data-${key}all="1">${t('All')}</button><button type="button" class="btn" data-${key}all="0">${t('None')}</button></div>
+    ${items.map(x=>`<label><input type="checkbox" data-${key}="${esc(x.id)}" ${x.on?'checked':''}> <span class="minw">${x.label}</span></label>`).join('')}</div></details></span>`;
+}
+function setHintOff(off){ P.hintOff=off; P.hddOpen=true; if(!P.hint&&off.size<others().length){ P.hint=true; store.set('showOthers',true); } renderBody(); }
+function setBusyOff(off){ try{ localStorage.setItem('busyOff',JSON.stringify([...off])); }catch(e){} P.bddOpen=true;
+  const was=showBusy(); if(!was&&CALS.list&&off.size<CALS.list.calendars.filter(c=>c.auto).length) try{ localStorage.setItem('showBusy','true'); }catch(e){}
+  renderBody(); if(showBusy()) loadBusy(); }
+document.addEventListener('toggle',e=>{ const x=e.target; if(x.id==='hdd') P.hddOpen=x.open; else if(x.id==='bdd'){ P.bddOpen=x.open; if(x.open) loadCals(); } },true);
+document.addEventListener('change',e=>{ const cb=e.target, ds=cb.dataset||{};
+  if(ds.hwho){ const off=new Set(P.hintOff); if(cb.checked) off.delete(ds.hwho); else off.add(ds.hwho); setHintOff(off); }
+  else if(ds.bcal){ const off=busyOff(); if(cb.checked) off.delete(ds.bcal); else off.add(ds.bcal); setBusyOff(off); } });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall]'); if(!b) return; e.preventDefault();
+  if(b.dataset.hwhoall!==undefined) setHintOff(b.dataset.hwhoall==='1'?new Set():new Set(others().map(r=>r.id)));
+  else setBusyOff(b.dataset.bcalall==='1'?new Set():new Set((CALS.list?CALS.list.calendars:[]).filter(c=>c.auto).map(c=>c.id))); });
 
 // Everyone's saved answers except my own (for the "Show others" hints in My availability).
 function others(){ return (P.data.responses||[]).filter(r=>!P.myResp||r.id!==P.myResp.id); }
@@ -6534,6 +6584,8 @@ function germanText(){ return {
 "Share the poll": "Umfrage teilen",
 "Share…": "Teilen…",
 "Show others ({n})": "Andere zeigen ({n})",
+"Choose people": "Personen auswählen",
+"Choose calendars": "Kalender auswählen",
 "Show the options to vote on": "Abstimmungsoptionen anzeigen",
 "Hide the options to vote on": "Abstimmungsoptionen ausblenden",
 "Show where the others are available": "Zeigen, wann die anderen verfügbar sind",
