@@ -1015,7 +1015,7 @@
   .pgrid .hd.dr{background:var(--sel-bg);color:var(--accent-ink)} .pgrid .hd.dr b{color:var(--accent-ink)}
   .pgrid .hd.da,#pcal .day.da{background:var(--sel-bg);box-shadow:inset 0 0 0 1.5px var(--accent);outline:1.5px dashed var(--accent);outline-offset:2px}
   .pgrid .slot.da{background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 2px var(--accent)}
-  .pgrid .slot.dp:not(.dr,.da){background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
+  .pgrid :is(.slot,.hd).dp:not(.dr,.da){background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
   .pgrid .hd{position:relative}
   :is(.pgrid .slot,.pgrid .hd,#pcal .day)[data-dn]::after{content:attr(data-dn);position:absolute;top:1px;right:1px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--accent);color:#fff;font:700 9px/13px system-ui,sans-serif;text-align:center;pointer-events:none}
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
@@ -4730,11 +4730,27 @@ function pickDays(a,b){
   addDraft(lo,true,null,null,hi); renderBody();
   if(lo!==hi) toast(t('One meeting over {n} days added',{n:spanDays(lo,hi).length}));
 }
-// One range in hour view: a block from cell a to cell b = one meeting per poll day, from the lower to the higher hour.
+// One range in hour view: one continuous span from cell a to cell b (both included), cut to the poll's hours
+// (hours(k), day patterns included). Over several days, days covered completely become all-day meetings
+// (consecutive ones joined into a date range); the rest become one timed meeting per block of allowed hours.
+// Returns the drafts and the covered cells ('k|h', for the preview) and full days.
+function blockPlan(a,b){
+  if(a.k>b.k||(a.k===b.k&&a.h>b.h)) [a,b]=[b,a];
+  const days=P.data.dates.filter(k=>k>=a.k&&k<=b.k), multi=a.k!==b.k, drafts=[], cells=new Set(), full=new Set();
+  let run=null; const flush=()=>{ if(run){ drafts.push({date:run.a,allDay:true,endDate:run.b}); run=null; } };
+  days.forEach(k=>{
+    const H=hours(k), sel=H.filter(h=>(k!==a.k||h>=a.h)&&(k!==b.k||h<=b.h));
+    sel.forEach(h=>cells.add(k+'|'+h));
+    if(multi&&sel.length&&sel.length===H.length){ full.add(k); if(run&&addDaysL(run.b,1)===k) run.b=k; else { flush(); run={a:k,b:k}; } return; }
+    flush();
+    for(let i=0;i<sel.length;){ let j=i; while(j+1<sel.length&&sel[j+1]===sel[j]+1) j++; drafts.push({date:k,allDay:false,start:sel[i],end:sel[j]+1}); i=j+1; }
+  });
+  flush();
+  return {drafts,cells,full};
+}
 function addBlock(a,b){
-  const k1=a.k<b.k?a.k:b.k, k2=a.k<b.k?b.k:a.k, h1=Math.min(a.h,b.h), h2=Math.max(a.h,b.h);
-  const days=P.data.dates.filter(k=>k>=k1&&k<=k2); days.forEach(k=>addDraft(k,false,h1,h2+1)); renderBody();
-  if(days.length>1) toast(t('{n} meetings added',{n:days.length}));
+  const {drafts}=blockPlan(a,b); drafts.forEach(x=>addDraft(x.date,x.allDay,x.allDay?null:x.start,x.allDay?null:x.end,x.endDate)); renderBody();
+  if(drafts.length>1) toast(t('{n} meetings added',{n:drafts.length}));
 }
 // The draft menu: a popover by the tapped cell (bottom sheet on phones) listing the drafts there (✕ each)
 // and ＋ to add another one on top (in One range mode: start a range there). Lives on <body>; renderBody closes it.
@@ -4793,7 +4809,7 @@ function planShow(k){
 function pickSeg(){
   if(isWeekly()) return '';
   const b=(on,v,ic,l,tt)=>`<button data-prange="${v}" class="${on?'on':''}" title="${tt}" aria-label="${l}" aria-pressed="${on}"><span class="segic">${ICON[ic]}</span><span class="bl">${l}</span></button>`;
-  return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),P.data.poll.answerMode!=='days'?t('Each tap or drag is its own meeting'):t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),P.data.poll.answerMode!=='days'?t('Tap the first and the last day (or hour): one meeting over all days in between, or the same hours on each day'):t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
+  return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),P.data.poll.answerMode!=='days'?t('Each tap or drag is its own meeting'):t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),P.data.poll.answerMode!=='days'?t('Tap the first and the last hour: one meeting from there to there, within the poll’s hours. Whole days in between become all-day meetings.'):t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
 }
 function renderPlanner(S,who){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
@@ -4895,8 +4911,9 @@ function wirePlanner(){
     end, cancel:()=>{ drag=null; renderBody(); } });
   // One range: with a start cell set, hovering shows the block a second click would add (mouse only).
   if(pRange()&&P.hanchor) grid.addEventListener('pointermove',e=>{ if(drag||e.pointerType!=='mouse'||!P.hanchor) return; const el=cellAt(e.clientX,e.clientY); if(!el) return;
-    const a=P.hanchor, k1=a.k<el.dataset.k?a.k:el.dataset.k, k2=a.k<el.dataset.k?el.dataset.k:a.k, h1=Math.min(a.h,+el.dataset.h), h2=Math.max(a.h,+el.dataset.h);
-    grid.querySelectorAll('.slot[data-k]').forEach(c=>c.classList.toggle('dp',c.dataset.k>=k1&&c.dataset.k<=k2&&+c.dataset.h>=h1&&+c.dataset.h<=h2)); });
+    const {cells,full}=blockPlan(P.hanchor,{k:el.dataset.k,h:+el.dataset.h});
+    grid.querySelectorAll('.slot[data-k]').forEach(c=>c.classList.toggle('dp',cells.has(c.dataset.k+'|'+c.dataset.h)));
+    grid.querySelectorAll('.hd[data-pday]').forEach(c=>c.classList.toggle('dp',full.has(c.dataset.pday))); });
 }
 // ---- Suggest (planner): ⚡ opens a settings panel like Quick fill. Settings are remembered per browser (sugopt);
 // days and hours (PAT.sug) are per poll, in memory.
@@ -7408,7 +7425,7 @@ function germanText(){ return {
 "Start a range here": "Zeitraum hier beginnen",
 "Add another here": "Noch eins hier hinzufügen",
 "Each tap or drag is its own meeting": "Jedes Antippen oder Ziehen wird ein eigenes Treffen",
-"Tap the first and the last day (or hour): one meeting over all days in between, or the same hours on each day": "Tippe den ersten und den letzten Tag (oder die Stunde) an: ein Treffen über alle Tage dazwischen oder dieselben Stunden an jedem Tag",
+"Tap the first and the last hour: one meeting from there to there, within the poll’s hours. Whole days in between become all-day meetings.": "Tippe die erste und die letzte Stunde an: ein Treffen von dort bis dort, innerhalb der Umfragezeiten. Ganze Tage dazwischen werden ganztägige Treffen.",
 "Tap a day name for an all-day one (hold and drag across day names for several days). Drafts may overlap: tap one to remove it or add another. Darker = more of them are free.": "Tippe auf einen Wochentag für einen ganztägigen Termin (gedrückt halten und über mehrere Tage ziehen für mehrere Tage). Entwürfe dürfen sich überschneiden: tippe einen an, um ihn zu entfernen oder noch einen hinzuzufügen. Dunkler = mehr von ihnen haben Zeit.",
 "Welcome back, {name}! Mark your availability below; it's saved under your name.": "Willkommen zurück, {name}! Markiere unten, wann du kannst; es wird unter deinem Namen gespeichert.",
 "When": "Wann",
