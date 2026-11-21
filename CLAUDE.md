@@ -27,6 +27,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `login_codes` as `change:<user id>:<address>` (so it can't sign anyone in); on success it updates `users.email` and the copies
   in `participants` / `responses` (the account's), owned polls' legacy `admin_email` and `friends.to_email`, and notifies the old address.
   Only the owning account can manage a poll.
+  Everyone gets the organiser's tab row minus Settings: Answers · Meetings · Rounds (series with 2+ visible rounds) · People.
+  For non-organisers People is read-only from `people` in `GET /api/polls/:id` (names + answered this round, no emails;
+  not sent when answers are hidden, so the tab disappears).
 - `polls.invited_only` (0014): only invited people may answer. They must be signed in, as an account in the poll's `participants`
   or with the email of a guest row the owner added (that row then becomes the account's). The owner can always answer.
   Adding people (`POST .../participants`, invites) requires an email address, except friends picked by `uid`.

@@ -533,9 +533,6 @@
   .count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);font-size:11.5px;font-weight:700;vertical-align:1px;font-variant-numeric:tabular-nums}
   .empty-v{display:flex;flex-direction:column;gap:2px;margin-top:var(--s4);padding:22px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);text-align:center;align-items:center}
   /* scheduled meetings strip */
-  .mstrip{margin-top:var(--s4);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card))}
-  .mstrip-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
-  .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
   /* voting on proposed meetings */
   .vpanel{margin-top:var(--s4);border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 3%,var(--card))}
   .mcard>.vpanel{margin:0 0 var(--s4)}
@@ -1020,7 +1017,6 @@
   @media (max-width:560px){ .pstep>:not(.pstep-h){margin-left:0} .pstep-h{gap:10px} .mcard .card-h .mcal{margin-left:0}
     #mplan>.card-h>.muted{display:none}
     .pstep .wknav{flex-wrap:wrap} .pstep .wknav .lbl{flex:1;text-align:center} .pstep .wknav .seg{order:-1;flex-basis:100%;margin-left:0;display:flex} .pstep .wknav .seg button{flex:1;justify-content:center} }
-  .mstrip>.mdesc{margin:0;padding:12px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
 
   /* ---------- new poll page ---------- */
   .btn.withic svg{width:16px;height:16px;flex:none}
@@ -1118,7 +1114,6 @@
     .ws-views{display:flex;width:100%} .ws-views button{flex:1;justify-content:center;padding:7px 6px}
     #wsmeta{margin-left:0}
     .ws-me{padding:12px} .meet-b{padding-left:16px} .dpanel{padding:14px 12px}
-    .mstrip-h .btn{padding:4px 8px}
     .savebar{flex-wrap:nowrap;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));margin-left:-4px;margin-right:-4px}
     .savebar #status{min-width:0;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .savebar .btn{flex:none}
@@ -2989,24 +2984,22 @@ function render(){
   $app.innerHTML=`
     ${appbar()}
     <section class="band"><div class="wrap"><div id="hdr"></div>
-    ${!d.isAdmin&&d.instances.length>1?`<div class="field"><div class="seg">${d.instances.map(x=>`<button data-inst="${x.id}" class="${x.id===i.id?'on':''}">${esc(instLabel(x))}</button>`).join('')}</div></div>`:''}
     </div></section>
     <main class="wrap">
-    ${d.isAdmin?adminTabs():''}
-    <div id="pane-answers" class="${d.isAdmin&&P.atab!=='answers'?'hide':''}">
+    ${pollTabs()}
+    <div id="pane-answers" class="${P.atab!=='answers'?'hide':''}">
     <div class="card ws">
       <div class="ws-h"><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
         <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('My answer')}</button>
         <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div>
         <span class="wsmeta ml-auto" id="wsmeta"></span></div>
-      ${d.isAdmin?'':'<div id="meetings"></div>'}
       ${editable()?`<div class="ws-me" id="wsme">${meFields(d,p)}</div>`
         :inst().status==='open'&&inviteLock()?`<div class="notice withic me-lock">${ICON.lock}<span class="grow minw">${inviteLock()==='signin'?t('Only invited people can answer. Sign in with the email address you were invited with.'):t('Only invited people can answer, and {email} isn’t invited. Ask the organiser to add you.',{email:esc(ME.user.email)})}</span>${inviteLock()==='signin'?`<button type="button" class="btn sm primary" data-opensignin>${t('Sign in')}</button>`:''}</div>`
         :`<div class="notice warn withic">${ICON.lock}<span>${t('Closed · answers for {round} are final.',{round:esc(instLabel(i))})}</span></div>`}
       <div id="body"></div>
       ${editable()?`<div class="savebar wsfoot" id="savebar"><span class="sstat" id="status"></span>${ib('trash',t('Remove my answer'),'id="delMine"','ghost danger hide')}<button type="button" class="btn primary withic sendbtn" id="saveBtn"></button></div>`:''}
     </div></div>
-    ${d.isAdmin?adminPanes():''}</main>${chatDock()}`;
+    ${d.isAdmin?adminPanes():viewerPanes()}</main>${chatDock()}`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
@@ -3058,8 +3051,8 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):t('Poll')}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
-      return `<a href="#" class="chip" data-atab="meetings" data-msubgo="list" id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+      return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${p.invitedOnly&&!d.isAdmin?'':shareRow(p,i)}
@@ -3099,25 +3092,25 @@ function renderBodyInner(b){
   saveBar();
 }
 
-// ---- series (admin) ----
+// ---- series (Rounds tab; read-only for everyone but the organiser) ----
 function renderSeries(){
   const el=$('series'); if(!el) return;
-  const d=P.data, p=d.poll, cur=inst();
+  const d=P.data, p=d.poll, cur=inst(), adm=d.isAdmin;
   const rows=[...d.instances].reverse().map(x=>`<li>
       <span class="grow minw">${x.id===cur.id?'<b>':''}${esc(instLabel(x))}${x.id===cur.id?'</b> <span class="muted small">'+t('(viewing)')+'</span>':''}
-        <div class="muted small">${x.status==='open'?'<span class="tag y">'+t('open')+'</span>':'<span class="tag x">'+t('closed')+'</span>'} ${x.responses} ${x.responses===1?t('answer'):t('answers')}${x.meetings.length?` · ★ ${x.meetings.length}`:''}${x.deadline?` · ${t('reply by {date}',{date:esc(dayLabel(x.deadline))})}`:''}</div></span>
+        <div class="muted small">${x.status==='open'?'<span class="tag y">'+t('open')+'</span>':'<span class="tag x">'+t('closed')+'</span>'} ${[adm?`${x.responses} ${x.responses===1?t('answer'):t('answers')}`:'',x.meetings.length?`★ ${x.meetings.length}`:'',x.deadline?t('reply by {date}',{date:esc(dayLabel(x.deadline))}):''].filter(Boolean).join(' · ')}</div></span>
       <span class="acts">${x.id!==cur.id?ib('eye',t('View'),`data-inst="${x.id}"`):''}
-      ${x.manualStatus==='open'?ib('lock',t('Close'),`data-istatus="${x.id}" data-to="closed"`):ib('unlock',t('Reopen'),`data-istatus="${x.id}" data-to="open"`)}
+      ${adm?`${x.manualStatus==='open'?ib('lock',t('Close'),`data-istatus="${x.id}" data-to="closed"`):ib('unlock',t('Reopen'),`data-istatus="${x.id}" data-to="open"`)}
       ${ib('edit',t('Edit'),`data-iedit="${x.id}"`)}
-      ${d.instances.length>1?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}</span>
-      ${P.iedit===x.id?`<form class="sched full" id="ieditForm">
+      ${d.instances.length>1?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}`:''}</span>
+      ${adm&&P.iedit===x.id?`<form class="sched full" id="ieditForm">
         <div class="dates-row">${isWeekly()?'':`<div class="field"><label for="dpkb_ie">${t('Dates')}</label>${dpk('ie',{mode:'range',a:'ie_s',b:'ie_e',va:x.startDate,vb:x.endDate,title:t('Pick dates'),empty:t('Pick a date range')})}</div>`}
         <div class="field"><label for="dpkb_ied">${t('Reply by')}</label>${dpk('ied',{mode:'single',a:'ie_d',va:x.deadline||'',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>$('ie_s')?[$('ie_s').value,$('ie_e').value]:['','']})}</div></div>
         <div class="field"><label>${t('Note shown at the top of this poll')}</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
         <div class="row mt-3"><button class="btn primary">${t('Save')}</button><button type="button" class="btn" data-iedit="">${t('Cancel')}</button></div></form>`:''}
     </li>`).join('');
   el.innerHTML = `<div class="card"><div class="card-h"><h2>${t('Rounds')}</h2><span class="muted small">${p.every>1?t(p.unit==='month'?'every {n} months':'every {n} weeks',{n:p.every}):t(p.unit==='month'?'every month':'every week')}</span>
-      ${ib('next',t('Open next round now'),'data-nextinst','',t('Next round'))}</div>
+      ${adm?ib('next',t('Open next round now'),'data-nextinst','',t('Next round')):''}</div>
       ${d.next?`<p class="help">${t('Next: <b>{range}</b> opens automatically on {date}. The share link always shows the newest open round.',{range:esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate)),date:esc(dayLabel(d.next.opens))})}</p>`:''}
       <ul class="list">${rows}</ul></div>`;
   const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
@@ -3214,9 +3207,9 @@ function dateTile(m){
 function renderMeetings(){
   const el=$('meetings'); if(!el) return;
   const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
-  if(adm) ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
+  ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
   if(!ms.length&&!props.length){ P.msel=null;
-    el.innerHTML=adm?`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button></div></div>`:'';
+    el.innerHTML=`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   if(P.vfold==null) P.vfold=store.get('vfold:'+P.id,false);
@@ -3257,12 +3250,9 @@ function renderMeetings(){
   const foldH=`<button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showT:hideT}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>`;
   const foldB=foldBtn('data-mfold',fold,showT,hideT);
   const list=`<div class="mlist${fold?' compact':''}">${ms.map(card).join('')}</div>`;
-  if(!ms.length){ el.innerHTML=adm?`<div class="mcard">${vote}</div>`:vote; return; }
-  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}">${vote}<div class="card-h">${foldH}${cal}${mailAll}${selBtn(sel?'primary':'')}${sel?'':foldB}</div>
-    ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}${list}</div>`;
-  else el.innerHTML=vote+`<div class="mstrip${sel?' selecting':''}"><div class="mstrip-h">
-      ${foldH}${cal}${foldB}</div>
-    ${sel?batchPanel(ms,nSel):''}${list}</div>`;
+  if(!ms.length){ el.innerHTML=`<div class="mcard">${vote}</div>`; return; }
+  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${vote}<div class="card-h">${foldH}${cal}${adm?mailAll+selBtn(sel?'primary':''):''}${sel?'':foldB}</div>
+    ${sel?batchPanel(ms,nSel):adm&&P.mmail?mailAllPanel():''}${list}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
 // Chevron button that folds a meetings section (open: ▲, folded: ▼).
@@ -4168,7 +4158,7 @@ function scheduleDay(k){
     if(!slotsOn) addDraft(k,true,null,null);
     else { const [st,en]=r||bestBlock(stats(k)); addDraft(k,false,st,Math.min(en,24)); } }
   P.range=null; planShow(k); setMsub('plan',false);
-  if(P.atab==='meetings') renderBody(); else setAdminTab('meetings');
+  if(P.atab==='meetings') renderBody(); else setPollTab('meetings');
   toast(t('Draft added. Set the details, then create the meeting.'));
   const tr=$('drafts'); if(tr) tr.closest('.pstep').scrollIntoView({block:'start'});
 }
@@ -4569,8 +4559,8 @@ function goMeeting(id){
   const m=meetById(id); if(!m) return;
   if(!inst().meetings.some(x=>x.id===id)){ toast(t('{title} is in another round.',{title:meetTitle(m)})); return; }
   if(isPhone()) chatSetOpen(false);
-  if(P.data.isAdmin){ if(msub()!=='list') setMsub('list',false); if(P.atab!=='meetings') setAdminTab('meetings'); else renderBody(); }
-  else { if(m.proposed&&P.vfold){ P.vfold=false; store.set('vfold:'+P.id,false); } if(!m.proposed&&P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); } renderMeetings(); }
+  if(P.data.isAdmin){ if(msub()!=='list') setMsub('list',false); if(P.atab!=='meetings') setPollTab('meetings'); else renderBody(); }
+  else { if(m.proposed&&P.vfold){ P.vfold=false; store.set('vfold:'+P.id,false); } if(!m.proposed&&P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); } renderMeetings(); if(P.atab!=='meetings') setPollTab('meetings'); }
   requestAnimationFrame(()=>{ const el=document.querySelector(`#meetings [data-mtg="${CSS.escape(id)}"]`);
     if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); } });
 }
@@ -4700,7 +4690,7 @@ const linkText=s=>{ const e=esc(s); let out='', at=0; for(const mm of e.matchAll
 // Everyone view on that day (closes the sheet on phones).
 function goDay(k){
   if(isPhone()) chatSetOpen(false);
-  if(P.data.isAdmin&&P.atab!=='answers') setAdminTab('answers');
+  if(P.atab!=='answers') setPollTab('answers');
   P.tab='group'; store.set('view:'+P.id,'group'); P.ovDay=k; renderBody();
   const el=document.querySelector(`#body [data-ov="${k}"]`); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); }
 }
@@ -5023,12 +5013,16 @@ document.addEventListener('click',e=>{
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
 // Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
-const adminTabList = () => [['answers',t('Answers')],['meetings',t('Meetings')],...(P.data.poll.kind==='series'?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
+// Everyone else gets the same row without Settings: Rounds only when there is more than one to pick from,
+// People only when the poll shows answers (the Worker then sends `people`).
+const pollTabList = () => { const d=P.data, series=d.poll.kind==='series';
+  if(d.isAdmin) return [['answers',t('Answers')],['meetings',t('Meetings')],...(series?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
+  return [['answers',t('Answers')],['meetings',t('Meetings')],...(series&&d.instances.length>1?[['rounds',t('Rounds')]]:[]),...(d.people?[['people',t('People')]]:[])]; };
 const TAB_ICON = {answers:'check',meetings:'star',rounds:'repeat',chat:'chat',people:'users',settings:'gear'};
-function adminTabs(){
+function pollTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
-  if(!adminTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
-  return `<nav class="card tabs atabs" aria-label="${t('Manage this poll')}">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
+  if(!pollTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
+  return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
 // Meetings tab sub-view: 'list' (scheduled meetings) or 'plan' (the scheduler). Remembered per poll;
@@ -5040,12 +5034,12 @@ function setMsub(v,render=true){
   const l=$('meetings'), p=$('mplan'); if(l&&P.data.isAdmin) l.classList.toggle('hide',v!=='list'); if(p) p.classList.toggle('hide',v!=='plan');
   if(render&&P.atab==='meetings') renderBody();
 }
-function setAdminTab(k){
+function setPollTab(k){
   if(k==='participants'||k==='share') k='people';
-  if(!adminTabList().some(x=>x[0]===k)) k='answers';
+  if(!pollTabList().some(x=>x[0]===k)) k='answers';
   const was=P.atab; P.atab=k; store.set('atab:'+P.id,k);
   document.querySelectorAll('.atabs [data-atab]').forEach(x=>x.classList.toggle('on',x.dataset.atab===k));
-  ['answers',...adminTabList().map(x=>x[0])].forEach(tb=>{ const el=$('pane-'+tb); if(el) el.classList.toggle('hide',tb!==k); });
+  ['answers',...pollTabList().map(x=>x[0])].forEach(tb=>{ const el=$('pane-'+tb); if(el) el.classList.toggle('hide',tb!==k); });
   if(k==='people') loadParts();
   if((was==='meetings')!==(k==='meetings')) renderBody(); // the planner and the Group view share ids: render only the visible one
   chatSync();
@@ -5093,6 +5087,21 @@ function adminPanes(){
     <div class="savebar setbar"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>${t('Save<span class="bl"> settings</span>')}</span></button></div></form>
     <div class="card danger-zone dz-row"><span class="sic" style="--c:#e05252">${ICON.trash}</span><span class="row tight grow"><b>${t('Danger zone')}</b>${tip(series?t('Deletes the whole series, all its rounds and every answer. This can’t be undone.'):t('Deletes this poll and every answer. This can’t be undone.'))}</span>
       ${ib('trash',series?t('Delete whole series'):t('Delete poll'),'id="delPoll"','danger keep sm',t('Delete'))}</div></div>`;
+}
+// Everyone else's panes behind the same tab row: meetings (list + voting), rounds to pick from, who is in the poll.
+function viewerPanes(){
+  const d=P.data, tabs=pollTabList().map(x=>x[0]), hid=k=>P.atab===k?'':'hide';
+  return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div id="meetings"></div></div></div>
+  ${tabs.includes('rounds')?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
+  ${tabs.includes('people')?`<div id="pane-people" class="${hid('people')}"><div class="card ppl">${viewerPeople()}</div></div>`:''}`;
+}
+// Read-only People: names from `people` (GET /api/polls/:id) and whether they answered this round.
+function viewerPeople(){
+  const ps=P.data.people||[], n=ps.filter(x=>x.answered).length, series=P.data.poll.kind==='series';
+  const ans=series?t('Answered the current round'):t('Answered');
+  return `<div class="card-h"><h2 class="grow">${t('People')}</h2><span class="muted small">${t('{n} of {total} answered',{n,total:ps.length})}</span></div>
+    ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b></span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
+      :`<div class="empty-v"><span class="ev-ic">${ICON.users}</span><b>${t('Nobody is in this poll yet.')}</b></div>`}`;
 }
 // A toggle chip: a checkbox shown as an icon pill (tinted when on). full = the long wording (tooltip and screen readers).
 function opt(id,icon,label,on,full='',cls=''){
@@ -5307,7 +5316,7 @@ async function contactsReturn(qs){
   const res=qs.get('contacts'); if(!res) return; qs.delete('contacts');
   history.replaceState(null,'',location.pathname+(String(qs)?'?'+String(qs):'')+location.hash);
   if(!P.data||!document.querySelector('[data-atab="people"]')) return;
-  setAdminTab('people'); await loadParts(); pdOpen();
+  setPollTab('people'); await loadParts(); pdOpen();
   if(res==='google'||res==='microsoft') pdImport(res,null);
   else toast(res==='err-denied'?t('Access to your contacts wasn’t granted'):t('Connecting didn’t work. Please try again.'));
 }
@@ -5406,7 +5415,7 @@ function wireAdmin(){
 document.addEventListener('click',async e=>{
   const tg=e.target.closest('[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
-  if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setAdminTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
+  if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setPollTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
   if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
@@ -5427,7 +5436,7 @@ document.addEventListener('click',async e=>{
     const answers = p.rounds ? confirm(t("Also delete {name}'s {n}?\n\nOK = delete them\nCancel = keep them (no longer linked to the name)",{name:p.name,n:plural(p.rounds,t('answer'),t('answers'))})) : false;
     try{ await api('DELETE',`/polls/${PEOPLE.id}/participants/${p.id}${answers?'?answers=1':''}`,null,pollHeaders(PEOPLE.id)); await peopleChanged(t('Removed')); }catch(ex){ toast(ex.message); } return; }
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
-  if(ds.inst){ if(P.data.isAdmin){ P.atab='answers'; store.set('atab:'+P.id,'answers'); } switchInstance(ds.inst); return; }
+  if(ds.inst){ P.atab='answers'; store.set('atab:'+P.id,'answers'); switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
   if(ds.istatus){ try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?t('Poll closed'):t('Poll reopened')); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
   if(ds.idel){ const x=P.data.instances.find(y=>y.id===ds.idel);
@@ -5745,6 +5754,11 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Poll sections": "Bereiche der Umfrage",
+"The organiser hasn’t scheduled any meetings yet.": "Die Organisator:in hat noch keine Termine festgelegt.",
+"{n} of {total} answered": "{n} von {total} haben geantwortet",
+"Not answered yet": "Noch nicht geantwortet",
+"Nobody is in this poll yet.": "Noch niemand ist in dieser Umfrage.",
 "{title} is in another round.": "{title} gehört zu einer anderen Runde.",
 "You were tagged": "Du wurdest erwähnt",
 "Here you see who answered and which meetings were set. To chat, answer with an account.": "Hier siehst du, wer geantwortet hat und welche Termine feststehen. Zum Chatten antworte mit einem Konto.",

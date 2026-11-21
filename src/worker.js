@@ -1616,6 +1616,12 @@ async function getPoll(request, env, ctx, url, id) {
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
     out.participantCount = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(id).first('n');
+    if (!admin) { // read-only People tab: names and whether they answered this round (no ids or emails)
+      const { results: pp } = await env.DB.prepare(
+        `SELECT p.name, p.user_id IS NOT NULL AS account, EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS answered
+         FROM participants p WHERE p.poll_id = ? ORDER BY p.name COLLATE NOCASE`).bind(sel.id, id).all();
+      out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered }));
+    }
   }
   const user = userOf(request);
   if (user) { // signed in: their answers are linked to the account
