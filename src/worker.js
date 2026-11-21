@@ -66,7 +66,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
-  "connect-src 'self' https://photon.komoot.io",
+  "connect-src 'self'",
   'frame-src https://challenges.cloudflare.com',
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -90,6 +90,30 @@ class HttpError extends Error {
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
 
+// Place suggestions for location fields: GET /api/places?q=…&lang=… asks Photon (photon.komoot.io, OpenStreetMap data,
+// no key) from here instead of from the browser, so phone content blockers, tracking protection and shared mobile IPs
+// (rate limits) can't stop it. Only the typed text goes out; answers are trimmed to the address parts and cached for a day.
+const PLACE_KEYS = ['name', 'street', 'housenumber', 'postcode', 'city', 'town', 'village', 'district', 'state', 'country'];
+async function placeSearch(url, ctx) {
+  const q = (url.searchParams.get('q') || '').trim().slice(0, 120);
+  if (q.length < 3) return json({ places: [] });
+  const lang = ['de', 'en', 'fr'].includes(url.searchParams.get('lang')) ? url.searchParams.get('lang') : 'default'; // Photon refuses others (400)
+  const key = new Request(`https://places.cache/?q=${encodeURIComponent(q.toLowerCase())}&lang=${lang}`);
+  const cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return hit;
+  let r;
+  try {
+    r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=${lang}`, { headers: { 'user-agent': 'when-who (https://when-who.app)' } });
+  } catch (e) { throw new HttpError(502, 'Place search is not available right now'); }
+  if (!r.ok) throw new HttpError(r.status === 429 ? 429 : 502, 'Place search is not available right now');
+  const j = await r.json().catch(() => ({}));
+  const places = (j.features || []).map((f) => Object.fromEntries(PLACE_KEYS.filter((k) => f.properties && typeof f.properties[k] === 'string').map((k) => [k, f.properties[k].slice(0, 120)])));
+  const res = json({ places }, 200, { 'cache-control': 'public, max-age=86400' });
+  ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
+}
+
 async function route(request, env, ctx, url) {
   const parts = url.pathname.split('/').filter(Boolean); // ['api','polls',id,...]
   const m = request.method;
@@ -98,6 +122,7 @@ async function route(request, env, ctx, url) {
   // Sign-in requests too, so another site can't sign a visitor into an attacker's account.
   if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
+  if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   USERS.set(request, await getUser(env, cookies));
   if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {

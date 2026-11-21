@@ -120,6 +120,7 @@
   .locsug button.on,.locsug button:hover{background:var(--sunken)}
   .locsug.up{top:auto;bottom:calc(100% + 4px)}
   .locsug .attr{font-size:11px;color:var(--muted);padding:4px 10px 2px}
+  body:has(.locsug:not([hidden])) .chatdock{display:none} /* the round chat button would cover the list on phones */
   input[type=text],input[type=email],input[type=search],input[type=url],input[type=password],input[type=date],input[type=month],input[type=number],textarea,select{
     font:inherit;font-size:14px;min-height:40px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--ink);width:100%;
     transition:border-color .12s,box-shadow .12s}
@@ -3308,13 +3309,14 @@ function myVotes(){ const r=P.myResp&&(P.data.responses||[]).find(x=>x.id===P.my
 function votersOf(m){ const rs=P.data.responses; return rs?rs.filter(r=>(r.votes||[]).includes(m.id)):null; }
 // Link that opens a location in Google Maps (browser or the Maps app).
 const mapUrl = q => 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
-// Place search for a location input: suggestions from Photon (photon.komoot.io: OpenStreetMap data, free, no key).
+// Place search for a location input: suggestions from Photon (OpenStreetMap data, free, no key), asked through
+// GET /api/places so phones' content blockers and tracking protection can't block a third-party request.
 // The field stays free text; picking a suggestion fills in "Name, street, city, country". onChange gets every new value.
 // On touch screens the list must survive the keyboard closing (that blurs the field), and it opens above the field
 // when the on-screen keyboard leaves no room below it.
 function placeSearch(inp,box,onChange){
   let items=[], cur=-1, timer=0, ctl=null, live=false;
-  const lang=['de','fr','it','en'].find(l=>(navigator.language||'').toLowerCase().startsWith(l))||'default';
+  const lang=['de','fr','en'].find(l=>(navigator.language||'').toLowerCase().startsWith(l))||'default';
   const vv=window.visualViewport;
   const place=()=>{ if(box.hidden) return; const r=inp.getBoundingClientRect(), top=vv?vv.offsetTop:0, bot=vv?vv.offsetTop+vv.height:innerHeight;
     const below=bot-r.bottom-8, above=r.top-top-8, up=below<180&&above>below;
@@ -3336,9 +3338,9 @@ function placeSearch(inp,box,onChange){
     if(cur>=0){ inp.setAttribute('aria-activedescendant',`${box.id}_${cur}`); $(`${box.id}_${cur}`).scrollIntoView({block:'nearest'}); } else inp.removeAttribute('aria-activedescendant'); };
   const pick=i=>{ const it=items[i]; if(!it) return; inp.value=it.full; onChange(it.full); live=false; close(); };
   const search=async q=>{ if(ctl) ctl.abort(); ctl=new AbortController();
-    try{ const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=${lang}`,{signal:ctl.signal});
+    try{ const r=await fetch(`/api/places?q=${encodeURIComponent(q)}&lang=${lang}`,{signal:ctl.signal});
       if(!r.ok) return; const j=await r.json(); if(inp.value.trim()!==q||!live||!inp.isConnected) return;
-      items=(j.features||[]).map(f=>fmt(f.properties||{})).filter(it=>it.name); items=items.filter((it,i)=>items.findIndex(o=>o.full===it.full)===i); cur=-1; show(); }
+      items=(j.places||[]).map(fmt).filter(it=>it.name); items=items.filter((it,i)=>items.findIndex(o=>o.full===it.full)===i); cur=-1; show(); }
     catch(e){ /* offline, blocked or aborted: the field still takes free text */ } };
   inp.addEventListener('input',()=>{ onChange(inp.value); clearTimeout(timer); live=true; const q=inp.value.trim();
     if(q.length<3){ if(ctl) ctl.abort(); close(); return; } timer=setTimeout(()=>search(q),300); });
