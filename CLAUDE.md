@@ -75,7 +75,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
 - **Place search** (location fields of meetings): the page asks `GET /api/places?q=&lang=`, which forwards the text to Photon
   (photon.komoot.io, OpenStreetMap) and caches the trimmed answer for a day. It runs before the session lookup (one call per keystroke).
-  Kept server-side on purpose: a direct browser request was blocked on phones (content blockers, shared mobile IPs).
+  Server-side first (direct browser requests get blocked on phones: content blockers, shared mobile IPs); when `/api/places`
+  fails (Photon refuses the Worker from some Cloudflare locations, e.g. a phone on a VPN served in Helsinki) the page asks Photon directly.
 - **Suggest with AI** (✨ in the Meetings planner, organiser only): `POST /api/polls/:id/instances/:iid/suggest-text` `{ text, people }`
   turns "2 evening meetings a week, not Fridays" into the planner's Suggest settings (`{ s, wd, hs, he, dates }`); the page runs the
   normal Suggest with them (Undo restores settings and drafts). Only the text and the number of selected people are sent, no answers.

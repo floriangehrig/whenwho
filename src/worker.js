@@ -66,7 +66,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src https://fonts.gstatic.com",
   "img-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://photon.komoot.io", // place search falls back to Photon from the browser when /api/places fails
   'frame-src https://challenges.cloudflare.com',
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -105,8 +105,9 @@ async function placeSearch(url, ctx) {
   let r;
   try {
     r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=${lang}`, { headers: { 'user-agent': 'when-who (https://when-who.app)' } });
-  } catch (e) { throw new HttpError(502, 'Place search is not available right now'); }
-  if (!r.ok) throw new HttpError(r.status === 429 ? 429 : 502, 'Place search is not available right now');
+  } catch (e) { console.log('places: photon fetch failed', String(e)); throw new HttpError(502, 'Place search is not available right now'); }
+  // Photon refuses some Cloudflare locations (seen for requests served in Helsinki); the page then asks Photon itself.
+  if (!r.ok) { console.log('places: photon status', r.status); throw new HttpError(r.status === 429 ? 429 : 502, 'Place search is not available right now'); }
   const j = await r.json().catch(() => ({}));
   const places = (j.features || []).map((f) => Object.fromEntries(PLACE_KEYS.filter((k) => f.properties && typeof f.properties[k] === 'string').map((k) => [k, f.properties[k].slice(0, 120)])));
   const res = json({ places }, 200, { 'cache-control': 'public, max-age=86400' });
