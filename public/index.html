@@ -576,6 +576,10 @@
   .mhead{display:flex;align-items:flex-start;gap:10px}
   .mtitle{flex:1;min-width:0;padding-top:3px;font-weight:650;font-size:15.5px;line-height:1.3;color:var(--ink);overflow-wrap:anywhere}
   .mhead .btn{flex:none}
+  /* title + icon buttons: one row when they fit, else the icons wrap to their own row above the title (top right) */
+  .mlist:not(.compact) .mhead{flex-wrap:wrap-reverse;column-gap:10px;row-gap:2px} .mlist:not(.compact) .mhead>.mtitle{flex:1 1 9em}
+  .mlist:not(.compact) .mhead>.macts{align-self:flex-end;margin:-4px -4px 0 auto}
+  .mfoot .vtally{margin-left:4px}
   .mmeta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--muted)}
   .mmeta>span,.mmeta>a{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
   .mmeta svg{width:15px;height:15px;flex:none;color:var(--accent)}
@@ -627,7 +631,8 @@
     .mcard:not(.selecting) .mlist:not(.compact) .mtile{grid-column:1;grid-row:1/3;width:44px;padding:5px 0 6px}
     .mcard:not(.selecting) .mlist:not(.compact) .mtile .dn{font-size:18px;margin:1px 0 0}
     .mcard:not(.selecting) .mlist:not(.compact) :is(.mhead,.tm){grid-column:2}
-    .mcard:not(.selecting) .mlist:not(.compact) .mhead{grid-row:1;align-self:end}
+    .mcard:not(.selecting) .mlist:not(.compact) .mhead{grid-row:1;align-self:start}
+    .macts{gap:0} .macts .qb{width:30px} .mcard .vpanel .mlist.mlist{padding:8px 8px 10px}
     .mcard:not(.selecting) .mlist:not(.compact) .mtitle{padding-top:0;font-size:15px}
     .mcard:not(.selecting) .mlist:not(.compact) .tm{grid-row:2;align-self:start;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
     .mcard:not(.selecting) .mlist:not(.compact) .mmeta>:not(.tm){font-size:13.5px;color:var(--muted)}
@@ -901,6 +906,7 @@
   .mdesc{display:flex;flex-direction:column;gap:6px;margin-top:8px} .mdesc textarea{min-height:70px}
   /* organiser Meetings tab: scheduled meetings card + "Plan new meetings" in numbered steps */
   .mcard .mlist{padding:var(--s3) 0 0}
+  .mcard .vpanel .mlist{padding:10px 10px 12px}
   .mcard .mbatch{margin-top:var(--s3);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--accent) 4%,var(--card))}
   .mcard .card-h .mcal{margin-left:auto}
   .card-h h2 .count,.pstep-h h3 .count{vertical-align:2px}
@@ -3248,23 +3254,22 @@ function renderMeetings(){
     if(d.isAdmin&&!sel){ const noMail=invited(m).filter(r=>!r.email);
       const stat=[m.sentAt?`<span title="${esc(new Date(m.sentAt).toLocaleString(LOC))}">${t('Invite emailed {date}.',{date:esc(new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'}))})}</span>`:'',
         noMail.length?t('No email for {names}.',{names:esc(noMail.map(r=>r.name).join(', '))}):''].filter(Boolean).join(' ');
-      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?t('Send again'):t('Send invite')}</span><span class="bs">${m.sentAt?t('Resend'):t('Send')}</span></button>${qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))}`
+      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?t('Send again'):t('Send invite')}</span><span class="bs">${m.sentAt?t('Resend'):t('Send')}</span></button>`
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
-        ${shareB}${calB}${chatRefBtn('m:'+m.id)}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
-    else if(!sel) foot=`<div class="mfoot">${shareB}${calB}${chatRefBtn('m:'+m.id)}</div>`;
+    // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
+    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description')):''}${
+      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${d.isAdmin&&(!full||d.emailEnabled)?qb('data-mail',m.id,'mail',t('Write the invite in my own email app')):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
-    if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div><span class="macts">${
-      d.isAdmin?qb('data-mail',m.id,'mail',t('Write the invite in my own email app')):''}${shareB}${calB}${chatRefBtn('m:'+m.id)}${
-      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}</span></div></div></div>`;
+    if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
     return `<div class="meet${on?' sel':''}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
-      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div></div>
+      <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${foot}</div></div>`; };
-  const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</span>`;
+  const cal=`<span class="mcal">${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mbatch="upd">${t('Update')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   const vote=props.length&&!sel?votePanel(props):'';
@@ -3288,9 +3293,9 @@ function votePanel(props){
     const where=m.location?`<span>${ICON.pin}<span>${esc(m.location)}</span></span>`:'';
     const tally=n==null?'':`<span class="tag ${n&&n===top?'y':''}" title="${esc(vs.length?vs.map(r=>r.name).join(', '):t('No votes yet'))}">${ICON.check}${n}${adm?`/${inv}`:''}</span>${n&&n===top?`<span class="vtop">${t('Most votes')}</span>`:''}`;
     const tog=`<button type="button" class="btn sm withic vbtn${on?' on':''}" data-vote="${m.id}" aria-pressed="${on}" ${canVote?'':'disabled'} title="${esc(canVote?(on?t('Remove your vote'):t('Vote for this option')):t('Send your answer to vote.'))}">${ICON.check}<span>${on?t('Suits me'):t('Vote')}</span></button>`;
-    const foot=adm?`<div class="mfoot"><button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>${tog}${chatRefBtn('m:'+m.id)}${`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`}</div>`
-      :`<div class="mfoot">${tog}${chatCan()?chatRefBtn('m:'+m.id):''}</div>`;
-    return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div><span class="vtally">${tally}</span></div>
+    const acts=`<span class="macts">${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span>`;
+    const foot=`<div class="mfoot">${adm?`<button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>`:''}${tog}<span class="vtally">${tally}</span></div>`;
+    return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts}</div>
       <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
   const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
     :t('Tick every option that suits you. The organiser then confirms the ones that work.');
