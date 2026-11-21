@@ -1396,7 +1396,7 @@
   .wknav.pill .lbl{font-size:13px;padding:0 8px;white-space:nowrap}
   .wknav.mnav{margin:0 auto var(--s3)} .mnav .lbl{min-width:120px;text-align:center;font-weight:600}
   /* compact legend chips */
-  .legend{gap:6px;font-size:11.5px;margin:10px 0 12px;padding-top:0;border-top:0}
+  .legend{gap:6px;font-size:11.5px;margin:2px 0 10px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
   .legend span.ln::before{width:16px;height:5px;border-radius:999px;box-shadow:0 0 0 1.5px var(--card);background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
@@ -3941,7 +3941,7 @@ function renderMine(el){
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
   updateHelp();
   // Under "You", two rows: brush · AI, Quick fill, Clear (their boxes open under it), then the view row
-  // (Days / Hours + the how-to ⓘ, which changes with the mode · Others, Busy), laid out like Everyone's row. Then the grid and its legend.
+  // (Days / Hours + the how-to ⓘ, which changes with the mode · Others, Busy), laid out like Everyone's row. Then the legend and the grid.
   // The ‹ month › / ‹ week › pager sits in the view row (short labels on phones) instead of above the grid.
   let wks=null, real=null, pager='';
   if(P.mode==='days') pager=monthPager(d.dates).html;
@@ -3951,10 +3951,10 @@ function renderMine(el){
   let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
   h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
   h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
-  // Legend under the grid: colours, then only the markers this view can show right now.
+  // Legend above the grid: colours, then only the markers this view can show right now.
   const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
-  const leg=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -3985,7 +3985,7 @@ function renderMine(el){
         h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
-  h+=leg+'</div></div>';
+  h+='</div></div>';
   el.innerHTML=h;
   loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
@@ -4638,12 +4638,12 @@ function renderGroup(el){
   const all=d.responses.length, tot=sel().length, H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days';
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
-  // The view row (ⓘ · who's counted, like My answer's view row), calendar, legend, day panel; then sections: Best days, Comments, Manage responses.
+  // The view row (ⓘ · who's counted, like My answer's view row), legend, calendar, day panel; then sections: Best days, Comments, Manage responses.
   const gTip=(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'))+' '+t('Darker = more of them are free. The line under a day shows how many are free, free if needed or maybe.');
   let h=`<div class="asec">${secH('cal',t('Calendar'),{tip:gTip})}${vrow('',whoDropdown(),monthPager(d.dates).html)}`;
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
-  h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
   if(P.ovDay && S[P.ovDay]){
     const s=S[P.ovDay], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
     const inR=hr=>sr&&hr>=sr[0]&&hr<sr[1];
@@ -4806,7 +4806,7 @@ function renderPlanner(S,who){
     const pager=`<div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button>${lblLS(`${dLabel(real[0])} – ${dLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>`;
     const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
-    h+=vrow(viewSeg+pickSeg(),who,pager)+`
+    h+=vrow(viewSeg+pickSeg(),who,pager)+legend('heat','allfree','monly','mstripe','draft','meeting')+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const nd=k?draftsAt(k).length:0;
       h+=`<div class="hd${nd?' dr':''}${k&&P.panchor===k?' da':''}"${nd>1?` data-dn="${nd}"`:''} ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
@@ -4820,11 +4820,10 @@ function renderPlanner(S,who){
         if(ms.some(x=>inMeeting(x,k,hr))) cls+=' mt';
         const nd=draftsAt(k,hr).length; if(nd) cls+=' dr'; if(P.hanchor&&P.hanchor.k===k&&P.hanchor.h===hr) cls+=' da';
         h+=`<div class="${cls}"${nd>1?` data-dn="${nd}"`:''} style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
-    h+='</div>'+legend('heat','allfree','monly','mstripe','draft','meeting');
+    h+='</div>';
   } else {
-    h+=vrow(pickSeg(),who,monthPager(d.dates).html);
+    h+=vrow(pickSeg(),who,monthPager(d.dates).html)+legend('heat','ifn','maybe','line','draft','meeting');
     h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"${draftsAt(k).length>1?` data-dn="${draftsAt(k).length}"`:''}`,(P.drafts.some(x=>onDay(x,k))?' dr':'')+(P.panchor===k?' da':'')),{nav:false})+'</div>';
-    h+=legend('heat','ifn','maybe','line','draft','meeting');
   }
   return h;
 }
