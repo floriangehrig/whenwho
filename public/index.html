@@ -155,7 +155,8 @@
   .qb.fav[aria-pressed=true] svg{fill:currentColor}
   .pd-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
   .pplist .qb.fav[aria-pressed=true],.acct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
-  .pd-add.ct-add{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto}
+  .pd-add.ct-add,.dlg .padd.cal-f{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+  .dlg-act{display:flex;justify-content:flex-end} .dlg-act .btn{min-width:110px;justify-content:center}
   .dlg-s{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;margin-top:4px}
   .dlg-s:first-child{margin-top:0} .dlg-s>svg{width:13px;height:13px;flex:none} .dlg-s .tip{text-transform:none;letter-spacing:0;font-weight:400}
   .dlg-conn{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
@@ -166,7 +167,8 @@
     .dlg-h::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
     .dlg-h{position:relative;padding-top:16px}
     .pd-add{grid-template-columns:minmax(0,1fr) auto auto} .pd-add #pd_n{grid-column:1/-1}
-    .pd-add.ct-add{grid-template-columns:minmax(0,1fr) auto} .pd-add #ct_n{grid-column:1/-1}
+    .pd-add.ct-add,.dlg .padd.cal-f{grid-template-columns:minmax(0,1fr)} .pd-add.ct-add>input,.dlg .padd.cal-f>input{grid-row:auto;grid-column:auto}
+    .dlg-act .btn{width:100%}
     .pd-add .padd-btn{grid-row:auto;grid-column:auto;align-self:center;height:38px}
     .pd-imp .bl{display:none} }
   .ptools .padd-btn{margin-left:auto}
@@ -2655,7 +2657,8 @@ function ctOpen(){
       <div class="dlg-s">${ICON.plus}${t('New contact')}</div>
       <div class="pd-add ct-add"><input type="text" id="ct_n" maxlength="60" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off" enterkeyhint="next">
         <input type="email" id="ct_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
-        <button type="button" class="btn primary padd-btn" data-ctadd title="${t('Add to favourites')}" aria-label="${t('Add to favourites')}">${ICON.plus}</button></div>
+</div>
+      <div class="dlg-act"><button type="button" class="btn primary withic" data-ctadd title="${t('Add to favourites')}">${ICON.plus}<span>${t('Add')}</span></button></div>
       <div class="err" id="ct_err"></div>
       <div class="dlg-s">${ICON.upload}${t('Import')}</div>
       <div class="pd-imp">${contactImportButtons('data-ctimp')}<input type="file" id="ct_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
@@ -2751,9 +2754,10 @@ function calOpen(url){
         <div class="dlg-conn">${prov.google?`<a class="btn withic" href="/api/oauth/google/start">${ICON.cal}<span>${t('Connect Google')}</span></a>`:''}
           ${prov.microsoft?`<a class="btn withic" href="/api/oauth/microsoft/start">${ICON.cal}<span>${t('Connect Outlook')}</span></a>`:''}</div>`:''}
       <div class="dlg-s">${ICON.link}${oauth?t('Or paste a calendar link'):t('Paste a calendar link')}${howto}</div>
-      <div class="padd"><input type="text" id="caladd_n" maxlength="60" placeholder="${t('Name (optional)')}" aria-label="${t('Name (optional)')}" autocomplete="off">
+      <div class="padd cal-f"><input type="text" id="caladd_n" maxlength="60" placeholder="${t('Name (optional)')}" aria-label="${t('Name (optional)')}" autocomplete="off">
         <input type="url" id="caladd_u" maxlength="2000" placeholder="${t('iCal link (https://… or webcal://…)')}" aria-label="${t('iCal link')}" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(url||'')}">
-        <button type="button" class="btn primary padd-btn" data-caladd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
+</div>
+      <div class="dlg-act"><button type="button" class="btn primary withic" data-caladd>${ICON.plus}<span>${t('Add')}</span></button></div>
       <div class="err" id="caladd_err"></div>
       ${canWebcal?`<div><button type="button" class="btn sm ghost withic" data-calwebcal title="${t('Clicking a webcal:// link then opens when-who to add it')}">${ICON.link}<span>${t('Open webcal links here')}</span></button></div>`:''}
     </div>`;
