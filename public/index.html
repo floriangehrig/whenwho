@@ -1399,9 +1399,9 @@ function pollShareText({id,title,description,range,deadline},greet){
 }
 const inviteSubject = title => t('When are you free?')+' '+title;
 // Share / Copy message buttons for a linkbox. The phone share sheet when there is one, else WhatsApp + email links.
-function shareBtns(info){
+function shareBtns(info,noCopy){
   const msg=pollShareText(info);
-  return ib('note',t('Copy message'),`data-copy="${esc(msg)}"`,'','')
+  return (noCopy?'':ib('note',t('Copy message'),`data-copy="${esc(msg)}"`,'',''))
     +(navigator.share?ib('share',t('Share…'),`data-nshare="${esc(msg)}" data-ntitle="${esc(info.title)}"`,'','')
       :ibl('chat',t('Share via WhatsApp'),'https://wa.me/?text='+encodeURIComponent(msg),'','')
        +ibl('mail',t('Send by email'),`mailto:?subject=${encodeURIComponent(inviteSubject(info.title))}&body=${encodeURIComponent(msg)}`,'',''));
@@ -4562,7 +4562,7 @@ function adminPanes(){
       <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     <div class="pshare"><label class="pshare-l">${ICON.link}<input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}"></label>
-      <button type="button" class="qb pshare-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info)}</div>
+      <button type="button" class="qb pshare-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info,true)}</div>
     ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card sform"><div class="card-h"><h2>${t('Settings')}</h2></div>
     ${sset('details','edit',t('Details'),`
