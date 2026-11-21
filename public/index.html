@@ -501,14 +501,13 @@
   .mstrip{margin-top:var(--s4);border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 4%,var(--card))}
   .mstrip-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
   .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
-  .mstrip.folded .mstrip-h{border-bottom:0}
   /* voting on proposed meetings */
   .vpanel{margin-top:var(--s4);border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 3%,var(--card))}
   .mcard>.vpanel{margin:0 0 var(--s4)}
   .vpanel-h{display:flex;align-items:center;gap:8px;padding:10px 12px 0 16px}
   .vpanel.folded .vpanel-h{padding-bottom:10px}
   .vpanel-h .mfold{flex:1 1 auto}
-  .mcard .card-h .mfold{flex:1 1 auto} .mcard.mfolded .card-h{border-bottom:0;padding-bottom:0;margin-bottom:0}
+  .mcard .card-h .mfold{flex:1 1 auto}
   .vpanel-h h3{display:flex;align-items:center;gap:6px;color:var(--accent-ink)}
   .vpanel-h h3 svg{width:18px;height:18px;flex:none} .vtally .tag svg{width:13px;height:13px}
   .vpanel>.muted{padding:4px 16px 0}
@@ -527,6 +526,12 @@
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
   /* one card per meeting: date tile | title, time · place · who, description, owner actions */
   .mlist{display:flex;flex-direction:column;gap:10px;padding:12px}
+  .mlist.compact{gap:6px}
+  .mlist.compact .meet{align-items:center;gap:10px;padding:7px 8px 7px 8px}
+  .mlist.compact .mtile{width:42px;padding:4px 0 5px} .mlist.compact .mtile .dn{font-size:17px;margin:1px 0 0} .mlist.compact .mtile .wd{display:none}
+  .mlist.compact .mhead{align-items:center;gap:8px} .mlist.compact .mtitle{padding-top:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mlist.compact .tm{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .mlist.compact .tm svg{width:14px;height:14px;color:var(--accent)}
   .meet{display:flex;align-items:flex-start;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm)}
   .mtile{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;padding:7px 0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);line-height:1.1;text-align:center;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
   .mtile .mo{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
@@ -3078,6 +3083,8 @@ function renderMeetings(){
         ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${chatRefBtn('m:'+m.id)}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
     else if(!sel&&chatCan()) foot=`<div class="mfoot">${chatRefBtn('m:'+m.id)}</div>`;
+    const tm=`<span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>`;
+    if(fold) return `<div class="meet">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${tm}${ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div></div></div>`;
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div>
@@ -3088,14 +3095,16 @@ function renderMeetings(){
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   const vote=props.length&&!sel?votePanel(props):'';
-  const foldH=`<button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>`;
-  const foldB=foldBtn('data-mfold',fold,t('Show scheduled meetings'),t('Hide scheduled meetings'));
+  const showT=t('Show meeting details'), hideT=t('Compact view');
+  const foldH=`<button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showT:hideT}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>`;
+  const foldB=foldBtn('data-mfold',fold,showT,hideT);
+  const list=`<div class="mlist${fold?' compact':''}">${ms.map(card).join('')}</div>`;
   if(!ms.length){ el.innerHTML=adm?`<div class="mcard">${vote}</div>`:vote; return; }
-  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}${fold?' mfolded':''}">${vote}<div class="card-h">${foldH}${fold?'':cal+mailAll+selBtn(sel?'primary':'')}${sel?'':foldB}</div>
-    ${fold?'':`${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
-  else el.innerHTML=vote+`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
+  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}">${vote}<div class="card-h">${foldH}${cal}${mailAll}${selBtn(sel?'primary':'')}${sel?'':foldB}</div>
+    ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}${list}</div>`;
+  else el.innerHTML=vote+`<div class="mstrip${sel?' selecting':''}"><div class="mstrip-h">
       ${foldH}${cal}${foldB}</div>
-    ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
+    ${sel?batchPanel(ms,nSel):''}${list}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
 // Chevron button that folds a meetings section (open: ▲, folded: ▼).
@@ -5644,7 +5653,8 @@ function germanText(){ return {
 "Hide answers from respondents": "Antworten vor Teilnehmenden verbergen",
 "Hide everyone's answers from respondents (only you see results)": "Antworten vor den Teilnehmenden verbergen (nur du siehst die Ergebnisse)",
 "Hide others ({n})": "Andere ausblenden ({n})",
-"Hide scheduled meetings": "Geplante Termine ausblenden",
+"Compact view": "Kompakte Ansicht",
+"Show meeting details": "Termindetails anzeigen",
 "Hide where the others are available": "Ausblenden, wann die anderen verfügbar sind",
 "Hours": "Stunden",
 "Plan new": "Neu planen",
@@ -6016,7 +6026,6 @@ function germanText(){ return {
 "Share the poll": "Umfrage teilen",
 "Share…": "Teilen…",
 "Show others ({n})": "Andere zeigen ({n})",
-"Show scheduled meetings": "Geplante Termine anzeigen",
 "Show the options to vote on": "Abstimmungsoptionen anzeigen",
 "Hide the options to vote on": "Abstimmungsoptionen ausblenden",
 "Show where the others are available": "Zeigen, wann die anderen verfügbar sind",
