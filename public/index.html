@@ -864,8 +864,9 @@
   .pcard.new .pc-title{padding:0}
   .pcard.new .tile{background:var(--accent-weak)}
   .pcard.new:hover .pc-title{color:var(--accent)}
-  .polls.answered li{flex-wrap:nowrap} .polls.answered li>.grow{flex-basis:auto;display:flex;flex-direction:column;min-width:0}
-  .polls.answered a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pc-n.minw{min-width:0;max-width:100%}
+  .pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:12px}
+  .pager .btn{padding:0;width:34px} .pager svg{width:18px;height:18px}
 
   /* ---------- account ---------- */
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
@@ -2190,15 +2191,30 @@ function hoursText(arr){
 
 // Unread chat messages of a poll (My polls).
 const unreadBadge=p=>p.unread?` <span class="ubadge" title="${esc(t('{n} unread messages',{n:p.unread}))}">${ICON.chat}${p.unread}</span>`:'';
-function pollCard(p){
+function pollCard(p,answered){
   const c=p.current, open=c&&c.status==='open';
+  const as=answered?`<span class="pc-n minw" title="${esc(t('as {name}',{name:p.name}))}">${ICON.check}<span class="ell">${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span>`:'';
   return `<div class="pcard">${pollTile(p)}
     <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
-      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.clock}${esc(dayLabel(c.deadline))}</span>`:''}`:''}</span>
+      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.clock}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
     <button type="button" class="btn sm ghost pc-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy share link')}" aria-label="${t('Copy share link')}">${ICON.link}</button></div>`;
 }
+// Home lists page after HOME_PAGE polls (own = Your polls, ans = Polls you answered). The page sticks until reload.
+const HOME_PAGE=9, HOME_PG={own:0,ans:0};
+function homePage(key){
+  const own=key==='own', list=(own?ME.polls:ME.answered)||[], n=list.length, last=Math.max(0,Math.ceil(n/HOME_PAGE)-1);
+  const pg=HOME_PG[key]=Math.min(Math.max(0,HOME_PG[key]),last), a=pg*HOME_PAGE;
+  const cards=list.slice(a,a+HOME_PAGE).map(p=>pollCard(p,!own)).join('')
+    +(own?`<a class="pcard new" href="?new"><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">${t('New poll')}</span><span class="pc-meta">${t('Pick dates, an icon and share the link')}</span></a>`:'');
+  const btn=(d,ic,lb,off)=>`<button type="button" class="btn sm ghost" data-hpg="${key}" data-dir="${d}" title="${esc(lb)}" aria-label="${esc(lb)}"${off?' disabled':''}>${svgI(ic)}</button>`;
+  return `<div class="pcards">${cards}</div>${n>HOME_PAGE?`<div class="pager">${btn(-1,'<path d="m15 18-6-6 6-6"/>',t('Previous page'),!pg)}
+    <span class="small muted">${t('{a}–{b} of {n}',{a:a+1,b:Math.min(n,a+HOME_PAGE),n})}</span>${btn(1,'<path d="m9 18 6-6-6-6"/>',t('Next page'),pg>=last)}</div>`:''}`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-hpg]'); if(!b) return;
+  const k=b.dataset.hpg, box=$('hp_'+k); if(!box) return; HOME_PG[k]+=+b.dataset.dir; box.innerHTML=homePage(k);
+  const h=box.parentNode.querySelector('.card-h'); if(h&&h.getBoundingClientRect().top<0) h.scrollIntoView({block:'start'}); });
 function renderHome(){
   document.title='when-who';
   const server = ME.user ? ME.polls : [], answered = ME.user ? ME.answered : [];
@@ -2219,11 +2235,9 @@ function renderHome(){
     </div></section>
     <main class="wrap"><div class="home-grid">
     ${ME.user?`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
-      <div class="pcards">${server.map(pollCard).join('')}
-        <a class="pcard new" href="?new"><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">${t('New poll')}</span><span class="pc-meta">${t('Pick dates, an icon and share the link')}</span></a></div></div>
+      <div id="hp_own">${homePage('own')}</div></div>
       <div class="card span"><div class="card-h"><h2>${t('Polls you answered')}</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
-      ${answered.length?`<ul class="list polls answered">${answered.map(p=>`<li>${pollTile(p,'sm')}<span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}
-        <span class="small muted">${t('as {name}',{name:esc(p.name)})}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span></li>`).join('')}</ul>`
+      ${answered.length?`<div id="hp_ans">${homePage('ans')}</div>`
         :`<p class="help">${t('Polls you answer while signed in show up here, and your answers follow you to every device.')}</p>`}</div>`
     :`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2></div>
       ${localOnly.length?`<p class="help mt-0">${t('These polls were created in this browser with an admin link. Sign in to move them into your account; only the account that owns a poll can manage it.')}</p>
@@ -6530,6 +6544,9 @@ function germanText(){ return {
 "Polls created in this browser": "In diesem Browser erstellte Umfragen",
 "Polls you answer while signed in show up here, and your answers follow you to every device.": "Umfragen, die du angemeldet beantwortest, erscheinen hier, und deine Antworten sind auf jedem Gerät dabei.",
 "Polls you answered": "Beantwortete Umfragen",
+"{a}–{b} of {n}": "{a}–{b} von {n}",
+"Previous page": "Vorherige Seite",
+"Next page": "Nächste Seite",
 "Press P to carry on": "Drück P zum Weitermachen",
 "Preview": "Vorschau",
 "Previous": "Zurück",

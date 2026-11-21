@@ -1464,8 +1464,10 @@ async function myPolls(request, env) {
      WHERE p.owner_id = ? ORDER BY p.created_at DESC`).bind(user.id).all();
   const { results: answered } = await env.DB.prepare(
     `SELECT p.id, p.title, p.kind, p.icon, p.image_at, p.image IS NOT NULL AS has_image, pa.name,
-       (SELECT MAX(r.updated_at) FROM responses r WHERE r.participant_id = pa.id) AS last
+       (SELECT MAX(r.updated_at) FROM responses r WHERE r.participant_id = pa.id) AS last,
+       i.start_date, i.end_date, i.status, i.deadline, (SELECT COUNT(*) FROM responses r WHERE r.instance_id = i.id) AS answers
      FROM participants pa JOIN polls p ON p.id = pa.poll_id
+     LEFT JOIN instances i ON i.id = (SELECT id FROM instances WHERE poll_id = p.id ORDER BY seq DESC LIMIT 1)
      WHERE pa.user_id = ? AND (p.owner_id IS NULL OR p.owner_id != ?) ORDER BY last DESC`).bind(user.id, user.id).all();
   // Unread chat messages per poll (others' messages since I last read that chat), only for polls I can chat in.
   const { results: ur } = await env.DB.prepare(
@@ -1475,11 +1477,13 @@ async function myPolls(request, env) {
        AND m.poll_id IN (SELECT id FROM polls WHERE allow_comments = 1)
      GROUP BY m.poll_id`).bind(user.id).all();
   const unread = Object.fromEntries(ur.map((r) => [r.poll_id, r.n]));
+  const current = (p) => (p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
+    status: effStatus({ status: p.status, end_date: p.end_date }) } : null);
   return json({
     polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at, unread: unread[p.id] || 0,
-      current: p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
-        status: effStatus({ status: p.status, end_date: p.end_date }) } : null })),
-    answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last, unread: unread[p.id] || 0 })),
+      current: current(p) })),
+    answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last,
+      unread: unread[p.id] || 0, current: current(p) })),
   });
 }
 // Move a poll that was only reachable by its (old) admin link into the signed-in account.
