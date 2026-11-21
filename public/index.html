@@ -365,8 +365,9 @@
   /* "Show others" hints in My availability */
   .day .oth{font-size:11px;font-weight:650;margin-top:4px;color:var(--ink);white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
   .day .oth .om{color:var(--maybe-ink);margin-left:3px}
-  .day.hasbar{padding-bottom:10px}
-  .day .othbar{position:absolute;left:0;right:0;bottom:0;height:4px;display:flex;background:color-mix(in srgb,var(--line) 70%,transparent);pointer-events:none}
+  .day.hasbar{padding-bottom:13px}
+  /* Inset pill with a card-coloured ring, so the line stays visible on green / yellow days */
+  .day .othbar{position:absolute;left:6px;right:6px;bottom:4px;height:5px;border-radius:999px;overflow:hidden;display:flex;background:var(--empty);box-shadow:0 0 0 1.5px var(--card);pointer-events:none}
   .day .othbar i{display:block;height:100%} .day .othbar .ry{background:var(--yes)} .day .othbar .ri{background:var(--ifn)} .day .othbar .rm{background:var(--maybe)}
   .slot.oh{background:color-mix(in srgb,var(--yes) var(--a),var(--card));position:relative}
   .slot.omb{box-shadow:inset 3px 0 0 var(--maybe)}
@@ -527,7 +528,7 @@
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day.heat.allfree{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 70%,#000)} .day.heat.allfree .n,.day.heat.allfree .t,.day.heat.allfree .t .om{color:#fff}
-  .day.heat.allfree .othbar{background:color-mix(in srgb,#fff 35%,transparent)}
+  .day.heat.allfree .othbar .ry{background:color-mix(in srgb,var(--yes) 65%,#000)}
   .list.best li.everyone .sc{background:var(--yes);color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--yes)}
   .day .t .om,.day .oth .om{color:var(--maybe-ink);margin-left:3px}
   .dpanel{margin-top:var(--s4);padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken);animation:chipIn .14s ease-out}
@@ -1039,7 +1040,7 @@
   .legend{gap:6px;font-size:11.5px;margin:10px 0 12px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
-  .legend span.ln::before{width:16px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
+  .legend span.ln::before{width:16px;height:5px;border-radius:999px;box-shadow:0 0 0 1.5px var(--card);background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
   /* save bar */
   .savebar{gap:8px;padding:10px 12px;background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
   .sstat{display:inline-flex;align-items:center;gap:7px;margin-right:auto;min-width:0;font-size:13px;font-weight:600;color:var(--muted)}
