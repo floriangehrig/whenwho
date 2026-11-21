@@ -8,6 +8,15 @@
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#0B1F3A">
+<script>
+// Light/dark: saved choice ("theme" in localStorage) or the system setting. Set before the CSS so there is no flash.
+(function(){ var d=document.documentElement, mq=matchMedia('(prefers-color-scheme: dark)'), saved=null;
+  try{ saved=JSON.parse(localStorage.getItem('theme')); }catch(e){}
+  d.dataset.theme = saved==='dark'||saved==='light' ? saved : (mq.matches?'dark':'light');
+  mq.addEventListener&&mq.addEventListener('change',function(e){ var s=null; try{ s=JSON.parse(localStorage.getItem('theme')); }catch(x){}
+    if(s!=='dark'&&s!=='light'){ d.dataset.theme=e.matches?'dark':'light'; document.dispatchEvent(new Event('themechange')); } });
+})();
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
   /* ---------- design tokens: navy + blue corporate palette ---------- */
@@ -28,8 +37,7 @@
     --shadow-pop:0 16px 40px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.06);
     --ring:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent);
   }
-  @media (prefers-color-scheme: dark){
-    :root{ color-scheme:dark;
+  :root[data-theme="dark"]{ color-scheme:dark;
       --brand:#0A1830; --brand-2:#12284A; --on-brand-muted:#8FA0BF;
       --accent:#4C7DFF; --accent-hover:#6A93FF; --accent-weak:#1A2747; --accent-ink:#A9C0FF;
       --bg:#0E1525; --card:#151E31; --sunken:#111A2C; --ink:#E6EAF2; --ink-2:#C3CBDA; --muted:#94A0B8;
@@ -39,7 +47,6 @@
       --ifn:#3BB5AB; --ifn-ink:#6FD3C9; --ifn-bg:#123332;
       --no:#E86A6A; --no-bg:#3D1E22;
       --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 4px 14px rgba(0,0,0,.35); --shadow-pop:0 16px 40px rgba(0,0,0,.5);
-    }
   }
 
   /* ---------- base ---------- */
@@ -1183,7 +1190,12 @@
   @media (max-width:400px){
     .ws-tools.tbar .iseg button{padding:6px 3px} .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:32px;min-width:32px}
   }
-  .langb{font-weight:650;letter-spacing:.3px;min-width:36px;justify-content:center;margin-right:4px}
+  .langb{font-weight:650;letter-spacing:.3px;min-width:36px;justify-content:center;gap:5px}
+  .langb svg,.themeb svg{width:17px;height:17px;flex:none}
+  .themeb{width:34px;min-width:34px;padding:0!important;justify-content:center;margin-right:4px}
+  .appbar .logo,.appbar .dd>summary{white-space:nowrap}
+  @media (max-width:420px){ .appbar-in{gap:8px} .acct{gap:2px} .langb{padding-inline:6px!important} .themeb{margin-right:2px} }
+  .appbar .langb,.appbar .themeb{color:#fff} .appbar .langb:hover,.appbar .themeb:hover{background:rgba(255,255,255,.1)}
   .legal{max-width:760px} .legal h2{font-size:18px;margin:26px 0 6px} .legal h2:first-child{margin-top:0}
   .legal p,.legal li{color:var(--ink-2);line-height:1.6} .legal ul{padding-left:20px;margin:6px 0}
   .site-foot{max-width:1100px;margin:40px auto 28px;padding:0 16px;display:flex;gap:16px;justify-content:center;font-size:13px}
@@ -1476,6 +1488,9 @@ let CONFIG={emailEnabled:false};
 let ME={user:null,polls:[],answered:[]};
 const nameKey = s => String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 const ICON = {
+  globe:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>`,
+  sun:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>`,
+  moon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>`,
   trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5a2 2 0 0 0 2 1.5h6a2 2 0 0 0 2-1.5L18 7M9 7V4.5h6V7"/></svg>`,
   edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>`,
   copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/></svg>`,
@@ -1640,12 +1655,23 @@ function ibl(icon,label,href,cls='',short='',title=''){
 // Navy app bar shown on every page: logo, optional "All polls" link, account menu or sign-in.
 function appbar(crumb){
   return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>when-who</a>
-    ${crumb?`<a class="crumb" href="${esc(origin)}">${esc(crumb)}</a>`:''}<div class="acct">${langButton()}${accountBar()}</div></div></header>`;
+    ${crumb?`<a class="crumb" href="${esc(origin)}">${esc(crumb)}</a>`:''}<div class="acct">${langButton()}${themeButton()}${accountBar()}</div></div></header>`;
 }
 // EN/DE switch: shows the other language; the choice is saved in this browser.
 function langButton(){ const o=LANG==='de'?'en':'de';
-  return `<button type="button" class="btn ghost sm langb" data-setlang="${o}" lang="${o}" title="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}" aria-label="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}">${o.toUpperCase()}</button>`;
+  return `<button type="button" class="btn ghost sm langb" data-setlang="${o}" lang="${o}" title="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}" aria-label="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}">${ICON.globe}<span>${o.toUpperCase()}</span></button>`;
 }
+// Light/dark switch: shows the icon of the mode it switches to; the choice is saved in this browser.
+const isDark = () => document.documentElement.dataset.theme==='dark';
+function themeButton(){ const l=isDark()?t('Switch to light mode'):t('Switch to dark mode');
+  return `<button type="button" class="btn ghost sm themeb" data-settheme title="${esc(l)}" aria-label="${esc(l)}">${isDark()?ICON.sun:ICON.moon}</button>`;
+}
+function syncTheme(){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=isDark()?'#0A1830':'#0B1F3A';
+  document.querySelectorAll('[data-settheme]').forEach(b=>b.outerHTML=themeButton()); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-settheme]'); if(!b) return; e.preventDefault();
+  const n=isDark()?'light':'dark'; document.documentElement.dataset.theme=n; try{ localStorage.setItem('theme',JSON.stringify(n)); }catch(x){}
+  syncTheme(); document.dispatchEvent(new Event('themechange')); });
+document.addEventListener('themechange',syncTheme); syncTheme();
 // ---------- profile, avatars, poll icons ----------
 const displayName = u => (u&&(u.name||(u.email||'').split('@')[0]))||'';
 const TINTS=['#1F5EFF','#0E9F8E','#7C4DFF','#E2683C','#D23F7E','#2F8FD8','#5B6CFF','#1E7B4E'];
@@ -4707,7 +4733,6 @@ const Pigeon=(()=>{
   function onPtr(e){ e.preventDefault(); if(s.paused){ s.paused=false; return; }
     const now=performance.now(); if(now-lastTap<260) poop(); lastTap=now; flap(); }
   function onVis(){ if(document.hidden&&s&&s.state==='play') s.paused=true; }
-  const darkMq=matchMedia('(prefers-color-scheme: dark)');
   function onScheme(){ tokens(); }
   function onResize(){ size(); if(s&&s.state==='ready') s.y=H*.5; }
   function reveal(grow,done){ // window pops out of (and back into) the spot the game was opened from
@@ -4732,12 +4757,12 @@ const Pigeon=(()=>{
     $('pgX').onclick=close;
     $('pgSnd').onclick=()=>{ muted=!muted; store.set('ww_pigeon_muted',muted); sndLabel(); coo(); ov.focus(); };
     cv.addEventListener('pointerdown',onPtr); ov.addEventListener('pointerdown',e=>{ if(e.target===ov) close(); });
-    window.addEventListener('keydown',onKey,true); window.addEventListener('resize',onResize); document.addEventListener('visibilitychange',onVis); darkMq.addEventListener('change',onScheme);
+    window.addEventListener('keydown',onKey,true); window.addEventListener('resize',onResize); document.addEventListener('visibilitychange',onVis); document.addEventListener('themechange',onScheme);
     ov.focus(); last=0; raf=requestAnimationFrame(frame);
   }
   function close(){
     if(!ov||closing) return; closing=true;
-    window.removeEventListener('keydown',onKey,true); window.removeEventListener('resize',onResize); document.removeEventListener('visibilitychange',onVis); darkMq.removeEventListener('change',onScheme);
+    window.removeEventListener('keydown',onKey,true); window.removeEventListener('resize',onResize); document.removeEventListener('visibilitychange',onVis); document.removeEventListener('themechange',onScheme);
     reveal(false,()=>{ cancelAnimationFrame(raf); raf=0; ov.remove(); ov=null; s=null; closing=false; document.body.style.overflow=prevOverflow; });
     if(location.hash==='#pigeon') history.replaceState(null,'',location.pathname+location.search);
   }
@@ -4787,6 +4812,8 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
 "Meetings: {title}": "Termine: {title}",
+"Switch to light mode": "Zum hellen Modus wechseln",
+"Switch to dark mode": "Zum dunklen Modus wechseln",
 "Add all to your calendar:": "Alle in deinen Kalender:",
 "Subscribe (stays up to date):": "Abonnieren (bleibt aktuell):",
 "Write all meetings in my own email app": "Alle Termine in meiner eigenen E-Mail-App schreiben",
