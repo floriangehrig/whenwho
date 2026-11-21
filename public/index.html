@@ -4714,6 +4714,9 @@ function hourOpts(lo,hi,cur){ let o=''; for(let h=lo;h<=hi;h++) o+=`<option valu
 // ---- planner (admin): pick people, drag slots, create several meetings at once ----
 let draftSeq=0;
 function addDraft(date,allDay,start,end,endDate){ P.drafts.push({key:++draftSeq,date,allDay,start,end,participants:selParticipants(),...(allDay&&endDate&&endDate>date?{endDate}:{})}); P.drafts.sort((a,b)=>a.date.localeCompare(b.date)||(a.allDay?-1:b.allDay?1:a.start-b.start)); }
+// Polls that take hours: a "whole day" means the day's allowed hours (hours(k), day patterns included), not all day.
+const hourMode = () => P.data.poll.answerMode!=='days';
+function dayRange(k){ const H=hours(k); return H.length?[H[0],Math.min(24,H[H.length-1]+1)]:null; }
 function inMeeting(m,k,hr){ return onDay(m,k) && (m.allDay || (hr>=m.start && hr<m.end)); }
 // Drafts on day k: all-day ones (hr null) or timed ones covering hour hr. Drafts may overlap.
 const draftsAt = (k,hr) => P.drafts.filter(x=>hr==null?x.allDay&&onDay(x,k):!x.allDay&&inMeeting(x,k,hr));
@@ -4724,9 +4727,12 @@ const pRange = () => P.prange&&!isWeekly();
 function pickDays(a,b){
   let lo=a<b?a:b, hi=a<b?b:a; const anc=P.panchor;
   if(lo===hi&&pRange()&&anc){ P.panchor=null; lo=anc<lo?anc:lo; hi=anc>hi?anc:hi; }
-  else if(lo===hi&&draftsAt(lo).length){ renderBody(); draftMenu(lo,null); return; }
+  else if(lo===hi&&(hourMode()?P.drafts.some(x=>onDay(x,lo)):draftsAt(lo).length)){ renderBody(); draftMenu(lo,null); return; }
   else if(lo===hi&&pRange()){ P.panchor=lo; P.hanchor=null; renderBody(); toast(t('Now tap the last day')); return; }
   P.panchor=null; P.hanchor=null;
+  if(hourMode()){ // one timed meeting per day over its allowed hours
+    let n=0; P.data.dates.filter(k=>k>=lo&&k<=hi).forEach(k=>{ const r=dayRange(k); if(r){ addDraft(k,false,r[0],r[1]); n++; } });
+    renderBody(); if(n>1) toast(t('{n} meetings added',{n})); return; }
   addDraft(lo,true,null,null,hi); renderBody();
   if(lo!==hi) toast(t('One meeting over {n} days added',{n:spanDays(lo,hi).length}));
 }
@@ -4741,7 +4747,7 @@ function blockPlan(a,b){
   days.forEach(k=>{
     const H=hours(k), sel=H.filter(h=>(k!==a.k||h>=a.h)&&(k!==b.k||h<=b.h));
     sel.forEach(h=>cells.add(k+'|'+h));
-    if(multi&&sel.length&&sel.length===H.length){ full.add(k); if(run&&addDaysL(run.b,1)===k) run.b=k; else { flush(); run={a:k,b:k}; } return; }
+    if(multi&&!hourMode()&&sel.length&&sel.length===H.length){ full.add(k); if(run&&addDaysL(run.b,1)===k) run.b=k; else { flush(); run={a:k,b:k}; } return; }
     flush();
     for(let i=0;i<sel.length;){ let j=i; while(j+1<sel.length&&sel[j+1]===sel[j]+1) j++; drafts.push({date:k,allDay:false,start:sel[i],end:sel[j]+1}); i=j+1; }
   });
@@ -4758,7 +4764,7 @@ function closeDraftMenu(){ const m=$('dmenu'); if(m) m.remove(); }
 function draftMenu(k,hr){
   closeDraftMenu();
   const box=hr==null?($('pcal')||$('pgrid')):$('pgrid'), cell=box&&box.querySelector(hr==null?`[data-pday="${k}"]`:`.slot[data-k="${k}"][data-h="${hr}"]`);
-  const ds=draftsAt(k,hr); if(!cell||!ds.length) return;
+  const ds=hr==null&&hourMode()?P.drafts.filter(x=>onDay(x,k)):draftsAt(k,hr); if(!cell||!ds.length) return;
   const rng=pRange(), lbl=x=>x.allDay?allDayText(x)+(x.endDate?' · '+shortRange(x.date,x.endDate):''):`${hh(x.start)}–${hh24(x.end)}`;
   const el=document.createElement('div'); el.id='dmenu'; el.className='dmenu'; el.setAttribute('role','menu');
   el.innerHTML=`<div class="dm-h">${esc(dLabel(k))}${hr==null?'':' · '+hh(hr)}</div>`
@@ -4773,7 +4779,7 @@ function draftMenu(k,hr){
     if(d){ P.drafts=P.drafts.filter(x=>x.key!==+d.dataset.dmdel); renderBody(); draftMenu(k,hr); }
     else if(add){ closeDraftMenu();
       if(rng){ if(hr==null){ P.panchor=k; P.hanchor=null; } else { P.hanchor={k,h:hr}; P.panchor=null; } renderBody(); toast(hr==null?t('Now tap the last day'):t('Now tap the last hour')); }
-      else { hr==null?addDraft(k,true,null,null):addDraft(k,false,hr,hr+1); renderBody(); } } };
+      else { const dr=hr==null&&hourMode()?dayRange(k):null; dr?addDraft(k,false,dr[0],dr[1]):hr==null?addDraft(k,true,null,null):addDraft(k,false,hr,hr+1); renderBody(); } } };
   if(!TOUCH) el.querySelector('[data-dmadd]').focus({preventScroll:true});
 }
 document.addEventListener('pointerdown',e=>{ const m=$('dmenu'); if(m&&!m.contains(e.target)) m.remove(); },true);
@@ -4825,7 +4831,7 @@ function renderPlanner(S,who){
     h+=vrow(viewSeg+pickSeg(),who,pager)+legend('heat','allfree','monly','mstripe','draft','meeting')+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const nd=k?draftsAt(k).length:0;
-      h+=`<div class="hd${nd?' dr':''}${k&&P.panchor===k?' da':''}"${nd>1?` data-dn="${nd}"`:''} ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
+      h+=`<div class="hd${nd?' dr':''}${k&&P.panchor===k?' da':''}"${nd>1?` data-dn="${nd}"`:''} ${k?`data-pday="${k}" title="${hourMode()?t('Add a meeting over the poll hours on {day}. Drag across days for one per day.',{day:esc(dLabel(k))}):isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k){ h+=`<div class="slot na${pos}"></div>`; return; }
@@ -4867,7 +4873,8 @@ function draftTray(){
     return `<div class="dft${x.ownDesc?' open':''}">${dateTile({date:x.date,endDate:x.endDate})}
       <div class="dmain">${time}
         <div class="dmeta"><span class="tag ${free===inv.length?'y':free?'m':'x'}" title="${t('Invited people who are available, available if needed, or maybe for the whole time')}">${ICON.users}${free}/${inv.length}</span><span class="who" title="${esc(who)}">${esc(who)}</span></div></div>
-      <div class="dacts">${pqb('day',x.allDay?t('Set a time'):t('All day'),`data-dall="${x.key}" aria-pressed="${!!x.allDay}"`,' tog')}${pqb('note',x.ownDesc?t('Remove extra description'):t('Extra description'),`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,' tog')}${pqb('x',t('Remove draft'),`data-deldraft="${x.key}"`,' danger')}</div>
+      <div class="dacts">${(()=>{ const r=hourMode()?dayRange(x.date):null, on=r?!x.allDay&&x.start===r[0]&&x.end===r[1]:!!x.allDay;
+        return pqb('day',r?t('Whole day ({h})',{h:`${hh(r[0])}–${hh24(r[1])}`}):x.allDay?t('Set a time'):t('All day'),`data-dall="${x.key}" aria-pressed="${on}"`,' tog'); })()}${pqb('note',x.ownDesc?t('Remove extra description'):t('Extra description'),`data-ddesc="${x.key}" aria-pressed="${!!x.ownDesc}"`,' tog')}${pqb('x',t('Remove draft'),`data-deldraft="${x.key}"`,' danger')}</div>
       ${x.ownDesc?`<textarea class="ddesc" data-ddtext="${x.key}" maxlength="1000" rows="2" aria-label="${t('Extra description')}" placeholder="${t('Extra description for this meeting only, shown below the shared one')}">${esc(x.note||'')}</textarea>`:''}</div>`; }).join('');
   // Shared details: icon inside each field instead of a label row.
   return `<div id="drafts"><div class="drafts">${rows}</div>
@@ -4887,7 +4894,9 @@ function wirePlanner(){
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
   document.querySelectorAll('[data-dvote]').forEach(cb=>cb.onchange=()=>{ P.dvote=cb.checked; renderBody(); });
   document.querySelectorAll('[data-ddtext]').forEach(ta=>ta.oninput=()=>{ find(ta.dataset.ddtext).note=ta.value; });
-  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall); x.allDay=!x.allDay; if(!x.allDay) delete x.endDate; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
+  document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall), r=hourMode()?dayRange(x.date):null;
+    if(r){ x.allDay=false; delete x.endDate; x.start=r[0]; x.end=r[1]; renderBody(); return; }
+    x.allDay=!x.allDay; if(!x.allDay) delete x.endDate; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
   document.querySelectorAll('[data-dstart]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dstart); x.start=+se.value; if(x.end<=x.start) x.end=Math.min(24,x.start+1); renderBody(); });
   document.querySelectorAll('[data-dend]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dend); x.end=+se.value; if(x.end<=x.start) x.start=Math.max(0,x.end-1); renderBody(); });
   if(!isWeekly()) wireDayPick($('pcal')||$('pgrid'));
@@ -5029,7 +5038,7 @@ function sugBest(k,rs,o,slotsOn,hs,he){
       if(better(x,best)>0) best=x; } }
   if(!best) return null;
   // Auto length and everyone free all day (with no hour limit): an all-day meeting, as before.
-  const all=hours(k); if(!o.len&&best.free===rs.length&&best.start===all[0]&&best.end===all[all.length-1]+1&&hs<=all[0]&&he>all[all.length-1]) best.allDay=true;
+  const all=hours(k); if(!hourMode()&&!o.len&&best.free===rs.length&&best.start===all[0]&&best.end===all[all.length-1]+1&&hs<=all[0]&&he>all[all.length-1]) best.allDay=true;
   return best;
 }
 const dayDiff = (a,b) => Math.round(Math.abs(parseD(a)-parseD(b))/864e5);
@@ -6110,7 +6119,7 @@ document.addEventListener('click',async e=>{
   if(ds.pwk){ P[P.pavail?'ppage':'pweek']+=+ds.pwk; renderBody(); return; }
   if(ds.pview){ P.pavail=ds.pview==='avail'; P.panchor=P.hanchor=null; renderBody(); return; }
   if(ds.prange){ P.prange=ds.prange==='1'; P.panchor=P.hanchor=null; store.set('prange',P.prange?1:0); renderBody(); return; }
-  if(ds.pday){ if(!isWeekly()&&Date.now()-(P.pdayT||0)<600) return; if(draftsAt(ds.pday).length){ draftMenu(ds.pday,null); return; } addDraft(ds.pday,true,null,null); renderBody(); return; }
+  if(ds.pday){ if(!isWeekly()&&Date.now()-(P.pdayT||0)<600) return; pickDays(ds.pday,ds.pday); return; }
   if(ds.ddesc){ const x=P.drafts.find(y=>y.key===+ds.ddesc); if(x){ x.ownDesc=!x.ownDesc; renderBody(); } return; }
   if(ds.deldraft){ P.drafts=P.drafts.filter(x=>x.key!==+ds.deldraft); renderBody(); return; }
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
@@ -6705,6 +6714,8 @@ function germanText(){ return {
 "Agenda, what to bring, a call link …": "Ablauf, was mitbringen, ein Call-Link …",
 "All": "Alle",
 "All day": "Ganztägig",
+"Whole day ({h})": "Ganzer Tag ({h})",
+"Add a meeting over the poll hours on {day}. Drag across days for one per day.": "Termin über die Umfragezeiten am {day} hinzufügen. Über mehrere Tage ziehen für einen pro Tag.",
 "All free": "Alle frei",
 "Also delete {name}'s {n}?\n\nOK = delete them\nCancel = keep them (no longer linked to the name)": "Auch die {n} von {name} löschen?\n\nOK = löschen\nAbbrechen = behalten (nicht mehr mit dem Namen verknüpft)",
 "An emoji or a picture. Without one, the first letter of the title is used.": "Ein Emoji oder ein Bild. Ohne wird der erste Buchstabe des Titels verwendet.",

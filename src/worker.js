@@ -1843,6 +1843,9 @@ function icsFold(line) {
 // A weekly meeting's first date: its weekday, on or after repeat.from.
 const meetingStart = (mt) => (mt.repeat ? firstOnWeekday(mt.repeat.from, wdOf(mt.date)) : mt.date);
 function meetingToIcs(mt, poll, link) {
+  // Older single-day "all day" meetings of a poll that takes hours: export them over the poll's hours instead.
+  if (mt.allDay && !mt.endDate && poll.answer_mode !== 'days' && poll.hour_end > poll.hour_start)
+    mt = { ...mt, allDay: false, start: poll.hour_start, end: Math.min(24, poll.hour_end) };
   const day = meetingStart(mt), d = day.replace(/-/g, '');
   const stamp = now().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}@whenwho`, `DTSTAMP:${stamp}`];
