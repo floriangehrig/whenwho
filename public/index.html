@@ -2919,6 +2919,7 @@ function renderMeetings(){
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
         ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
+    else if(!sel) foot=`<div class="mfoot">${qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))}${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}</div>`;
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div>
@@ -4480,8 +4481,8 @@ document.addEventListener('click',async e=>{
       try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/meetings/${m.id}/send`,{},headers());
         toast(t('Invite sent to {n}',{n:plural(r.sent,t('person'),t('people'))})); await loadPoll(false); }
       catch(ex){ toast(ex.message); tg.disabled=false; } return; }
-    const to=invited(m).filter(r=>r.email).map(r=>r.email);
-    if(!to.length) toast(t('Nobody invited left an email. Opening a blank email.'));
+    const to=P.data.isAdmin?invited(m).filter(r=>r.email).map(r=>r.email):[];
+    if(!to.length&&P.data.isAdmin) toast(t('Nobody invited left an email. Opening a blank email.'));
     location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent((m.title||P.data.poll.title)+' · '+(m.repeat?repeatText(m).split(' · ')[0]:dayLabel(m.date)))}&body=${encodeURIComponent(inviteText(m))}`;
     return;
   }
