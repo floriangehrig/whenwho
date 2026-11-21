@@ -1202,7 +1202,7 @@
   .tbar>.ml-auto{flex:1}
   .tbar .dd{margin-top:0} .tbar .row.tight{flex-wrap:nowrap;gap:6px} .tbar .btn{white-space:nowrap}
   #body{container-type:inline-size}
-  @container (max-width:720px){ .tbar .brush .bl{display:none} }
+  @container (max-width:720px){ .tbar .brush .bl{display:none} .tbar .seg.brush button{padding:0;width:30px} }
   @container (max-width:520px){ .tbar .iseg .bl{display:none} .ws-tools.tbar{flex-wrap:wrap;row-gap:6px} }
   /* Suggest panel (planner ⚡): steppers for each setting (a number, or a toggle like All / Auto) */
   .sugp .pat-l{width:74px} .sugp .patp{margin-top:0} .sugp .sug-end{justify-content:flex-end;margin-top:8px}
@@ -1223,8 +1223,12 @@
   .ptbar .dd{min-width:0} .ptbar .dd>summary{max-width:100%;white-space:nowrap} .ptbar .dd>summary b{overflow:hidden;text-overflow:ellipsis}
   .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
   .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
-  .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
-  .brush .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong)} .brush button.on .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong),0 0 0 2px var(--card),0 0 0 3.5px var(--muted)}
+  .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--c)}
+  /* Colour buttons are square when only the dot shows, so the white around the picked colour is even on all sides. */
+  .tbar .seg.brush button{height:30px;min-width:30px;justify-content:center;padding:0 10px}
+  .tbar .seg.brush .dot{margin:0}
+  .brush .segl{display:inline-flex;align-items:center;padding:0 4px 0 6px;color:var(--muted)} .brush .segl svg{width:16px;height:16px}
+  .brush .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong)} .brush button.on .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong),0 0 0 2px var(--card),0 0 0 4px var(--muted)}
   .legend span.gry::before{box-shadow:inset 0 0 0 1.5px var(--line-strong)}
   .badgeb{position:relative;gap:6px} .badgeb svg{width:16px;height:16px}
   .badge{font-style:normal;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
@@ -1391,7 +1395,7 @@
     .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1} .ws-h #wsmeta{flex-basis:auto;margin-left:6px}
     .ws-views .segic{margin-right:5px}
-    .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:13px;height:13px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
+    .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:14px;height:14px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
     /* the answer toolbar must fit a 360px phone in one row (these beat .ws-tools.tbar and the touch-screen sizes) */
     .ws-tools.tbar{gap:4px} .ws-tools.tbar .iseg{padding:2px} .ws-tools.tbar .iseg button{padding:6px 5px}
     .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:34px;min-width:34px;padding:0;justify-content:center}
@@ -1748,6 +1752,7 @@ Object.assign(ICON,{
   chevd:svgI('<path d="m6 9 6 6 6-6"/>'),
   zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
   spark:svgI('<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>'),
+  brush:svgI('<path d="M19.5 3.5a2.1 2.1 0 0 1 3 3L13 16l-3-3z"/><path d="M10 13c-2.2 0-3.8 1.6-3.8 3.8 0 1.5-1 2.5-2.7 2.9 1.1 1.4 2.8 2.3 4.7 2.3 3 0 5-2.1 5-5z"/>'),
   user:svgI('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   mic:svgI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
@@ -3472,7 +3477,7 @@ function renderMine(el){
   const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
-  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
+  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}"><span class="segl" title="${t('Brush')}" aria-hidden="true">${ICON.brush}</span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
   const bzOn=showBusy();
