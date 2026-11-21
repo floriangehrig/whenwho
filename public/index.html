@@ -1118,7 +1118,7 @@
   .choice .ch.on{border-color:var(--accent);background:var(--accent-weak);box-shadow:0 0 0 1px var(--accent)}
   .ch-t{font-size:14.5px;font-weight:650;color:var(--ink)}
   .ch-d{font-size:13px;font-weight:400;color:var(--muted);line-height:1.4}
-  .series-grid{margin-top:var(--s1)} .series-grid>.field{margin-top:var(--s3)} .series-grid input[type=month],.series-grid input[type=date]{width:100%}
+  .series-rows{margin-top:var(--s3)}
   .sum-h{display:flex;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .sum-title{font-weight:650;font-size:16px;line-height:1.3;overflow-wrap:anywhere;margin-top:2px}
   .sum-list{margin:4px 0 0}
@@ -1368,16 +1368,6 @@
   .sdates{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px;margin-top:12px}
   .sdl>.srow-l{min-height:20px;align-items:center} .sdl>.srow-l .tip{height:20px;width:22px} /* the ⓘ doesn't make Reply by's label taller than Dates' */
   .sdl{display:flex;flex-direction:column;gap:5px;min-width:0} .sdl .dpk{min-width:0} .sdl .dpk-btn{width:100%;min-width:0;overflow:hidden} .sdl .dpk-v{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sopts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px} .sset-b>.sopts:first-child{margin-top:0}
-  .sopt{position:relative;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;margin:0;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;user-select:none;transition:background .12s,color .12s,border-color .12s;white-space:nowrap}
-  .sopt:hover{color:var(--ink);border-color:var(--line-strong)}
-  .sopt>input[type=checkbox]{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
-  .sopt>svg{width:16px;height:16px;flex:none}
-  .sopt:has(>input:checked){color:var(--accent-ink);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
-  .sopt:has(>input:checked)>svg{color:var(--accent)}
-  .sopt.danger:has(>input:checked){color:#d14343;background:color-mix(in srgb,#d14343 12%,transparent);border-color:color-mix(in srgb,#d14343 45%,transparent)}
-  .sopt.danger:has(>input:checked)>svg{color:#d14343}
-  .sopt:has(>input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
   .mrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
   .mrow{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid var(--line)}
   .mrows>.mrow:first-child,.mrows>.mrow.hide+.mrow{border-top:0}
@@ -1386,7 +1376,11 @@
   .mrow-n{display:inline-flex;align-items:center;gap:7px;margin:0;font-size:13px;color:var(--muted);white-space:nowrap;transition:opacity .12s}
   .mrow-n input{width:52px;height:32px;min-height:0;padding:0 6px;text-align:center;font-weight:600}
   .mrow-n.off{opacity:.45}
-  .mrow-tip{display:flex;align-items:center;gap:6px;padding:8px 14px;border-top:1px solid var(--line);background:var(--sunken)}
+  .mrow-n select{width:auto;height:32px;min-height:0;padding:0 28px 0 10px} .mrow-n input[type=month],.mrow-n input[type=date]{width:auto;min-width:150px;text-align:left;padding:0 8px}
+  .mrow .pwf{width:200px;height:34px;grid-column:3/-1} .mrow .pwf:has(+.mrow-x){grid-column:3}
+  .mrow-x{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap} .mrow-x input{margin:0;accent-color:#d14343}
+  .mrow-x:has(input:checked){color:#d14343}
+  .mrow-t b.row{gap:4px}
   .sw{position:relative;display:inline-block;flex:none;width:40px;height:24px;margin:0;cursor:pointer}
   .sw>input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
   .sw>span{position:absolute;inset:0;border-radius:999px;background:var(--line-strong);transition:background .15s}
@@ -1397,7 +1391,6 @@
   .pwf.set{color:var(--accent)}
   .pwf svg{width:16px;height:16px;flex:none} .pwf input{flex:1;min-width:0;border:0;background:none;padding:0;height:100%;box-shadow:none;outline:0;font:inherit;color:var(--ink)}
   .pwf:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
-  .sopts>.btn.sm{height:38px;border-radius:999px}
   details.sset>summary::after{content:"";flex:none;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 6px 3px 4px;transition:transform .15s}
   details.sset[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
   details.sset .sx{display:inline-flex;gap:6px;color:var(--muted)} details.sset .sx svg{width:15px;height:15px}
@@ -1418,12 +1411,10 @@
     .sdates{grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:8px 10px} .sdl{display:contents} .sdl>.srow-l{white-space:nowrap} /* labels in one column, sized to the longest */
     .sseg{flex:1} .sseg button{flex:1;justify-content:center;padding:8px 6px} .sseg button{white-space:nowrap} .srow>.srow-l:first-child{display:none}
     .sdesc-s{display:none}
-    .sopts.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:6px}
-    .sopts.tiles .sopt{flex-direction:column;justify-content:center;gap:4px;height:auto;min-height:62px;padding:8px 4px;border-radius:12px;font-size:12px;line-height:1.2;white-space:normal;text-align:center}
-    .sopts.tiles .sopt>svg{width:19px;height:19px}
-    .pwf{flex-basis:130px}
     .mrow{grid-template-columns:30px minmax(0,1fr) auto;gap:4px 10px} .mrow-ic{width:30px;height:30px} .mrow .mrow-n{grid-column:2;grid-row:2;justify-self:start} .mrow .sw{grid-column:3;grid-row:1/3}
     .pnav .iseg button{padding:7px 8px}
+    .mrow .pwf,.mrow .pwf:has(+.mrow-x){grid-column:2/-1;grid-row:2;width:auto} .mrow .mrow-x{grid-column:3;grid-row:1} .mrow .pwf:has(+.mrow-x){grid-column:2/-1}
+    .mrow .mrow-n input[type=month],.mrow .mrow-n input[type=date]{min-width:0;width:170px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1}
     .ws-views .segic{margin-right:5px}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:14px;height:14px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
@@ -2414,23 +2405,19 @@ function renderNew(){
       <div id="singleBox" class="sdates"><div class="sdl"><label class="srow-l" for="dpkb_rng">${t('Dates')}</label>${dpk('rng',{mode:'range',a:'start',b:'end',title:t('Pick dates'),empty:t('Pick a date range')})}</div>
         <div class="sdl"><span class="srow-l row tight"><label for="dpkb_dl">${t('Reply by')}</label>${tip(t('Optional. The poll closes after this day.'))}</span>${dpk('dl',{mode:'single',a:'dl',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>[$('start').value,$('end').value]})}</div></div>
       <div id="weeklyBox" class="sdates hide"><div class="sdl"><span class="srow-l row tight"><label for="dpkb_dlw">${t('Reply by')}</label>${tip(t('Optional. The poll closes after this day.'))}</span>${dpk('dlw',{mode:'single',a:'dlw',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline')})}</div></div>
-      <div id="seriesBox" class="hide grid2 series-grid">
-        <div class="field"><label for="every">${t('Repeats every')}</label><div class="unit-in"><input type="number" id="every" min="1" max="12" value="1">
-          <select id="unit" aria-label="${t('Unit')}"><option value="month">${t('month(s)')}</option><option value="week">${t('week(s)')}</option></select></div></div>
-        <div class="field"><label for="first" id="firstLbl">${t('First month')}</label><input type="month" id="first"></div>
-        <div class="field"><label for="openDays">${t('Opens')}</label><div class="unit-in"><input type="number" id="openDays" min="0" max="90" value="11"><span>${t('days before it starts')}</span></div></div>
-        <div class="field"><label for="dlDays">${t('Reply by')} <span class="opt">${t('optional')}</span></label><div class="unit-in"><input type="number" id="dlDays" min="0" max="90" value="4"><span>${t('days before it starts')}</span></div></div>
+      <div id="seriesBox" class="hide mrows series-rows">
+        ${srow('repeat',t('Repeats every'),'',`<span class="mrow-n"><input type="number" id="every" min="1" max="12" value="1" aria-label="${t('Repeats every')}">
+          <select id="unit" aria-label="${t('Unit')}"><option value="month">${t('month(s)')}</option><option value="week">${t('week(s)')}</option></select></span>`)}
+        ${srow('cal',t('First month'),'',`<span class="mrow-n"><input type="month" id="first" aria-labelledby="firstLbl"></span>`,{tid:'firstLbl'})}
+        ${dayRows('openDays','dlDays',11,4)}
       </div>`,'',NOPEN)}
     ${sset('answering','check',t('Answering'),`
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'both',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
-      <div class="sopts">${opt('hide','eyeoff',t('Hide answers'),false,t('Hide answers from respondents'))}
-        <label class="pwf" title="${t('Only people with the password can open the poll')}">${ICON.lock}<input type="password" id="pw" maxlength="100" placeholder="${t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>
-        ${tip(`<b>${t('Hide answers')}:</b> ${t("Only you see everyone's answers.")}<br><b>${t('Password')}:</b> ${t('Only people with the password can open the poll')}`,'right')}</div>`,'',NOPEN)}
-    ${mail?sset('email','mail',t('Email'),mailRows({notify:'notify',remind:'remind',days:'remindDays',notifyOn:true,remindOn:true,n:2,notifyHidden:true,
-        tip:t("People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email{email}.",{email:ME.user?` (${esc(ME.user.email)})`:''})}),'',NOPEN):''}
+      ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
+    ${mail?sset('email','mail',t('Email'),mailRows({notify:'notify',remind:'remind',days:'remindDays',notifyOn:true,remindOn:true,n:2,notifyHidden:true}),'',NOPEN):''}
     </div>
     <aside class="card new-sum">
       <div class="sum-h"><span id="sumTile"></span><div class="grow"><div class="eyebrow">${t('Preview')}</div><div class="sum-title" id="sumTitle"></div></div></div>
@@ -5170,9 +5157,7 @@ function adminPanes(){
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
-      <div class="grid2">
-        <div class="field"><label for="s_open">${t('Opens')}</label><div class="unit-in"><input type="number" id="s_open" min="0" max="90" value="${p.openDays}"><span>${t('days before it starts')}</span></div></div>
-        <div class="field"><label for="s_dld">${t('Reply by')} <span class="opt">${t('optional')}</span></label><div class="unit-in"><input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span>${t('days before it starts')}</span></div></div></div>
+      <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'')}</div>
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
@@ -5191,12 +5176,9 @@ function adminPanes(){
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`)}
     ${sset('privacy','lock',t('Privacy'),`
-      <div class="sopts">${opt('s_hide','eyeoff',t('Hide answers'),p.hideResults,t('Hide answers from respondents'))}
-        <label class="pwf${p.hasPassword?' set':''}" title="${p.hasPassword?t('Password (currently set)'):t('Password (none)')}">${ICON.lock}<input type="password" id="s_pw" placeholder="${p.hasPassword?t('New password'):t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>
-        ${p.hasPassword?opt('s_pwclear','x',t('Remove'),false,t('Remove password'),' danger'):''}</div>`,
+      ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
       p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:'')}
-    ${sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2,
-        tip:t("Emails come from when-who's address under your name. Replies and your copy go to your account email{email}.",{email:ME.user?`, <b>${esc(ME.user.email)}</b>`:''})})
+    ${sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2})
       :`<div class="row tight muted small">${t('Not set up: invites open in your email app.')}${tip(t('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.'),'right')}</div>`,
       d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:'')}
     <div class="err" id="serr"></div>
@@ -5219,19 +5201,31 @@ function viewerPeople(){
     ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b></span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
       :`<div class="empty-v"><span class="ev-ic">${ICON.users}</span><b>${t('Nobody is in this poll yet.')}</b></div>`}`;
 }
-// A toggle chip: a checkbox shown as an icon pill (tinted when on). full = the long wording (tooltip and screen readers).
-function opt(id,icon,label,on,full='',cls=''){
-  return `<label class="sopt${cls}" title="${esc(full||label)}"><input type="checkbox" id="${id}" ${on?'checked':''} aria-label="${esc(full||label)}">${ICON[icon]}<span>${esc(label)}</span></label>`;
+// Settings rows (New poll and Settings): icon, title + hint (+ ⓘ tip), then the controls (.mrow-n = extra control, .sw = switch).
+// Phones put .mrow-n / .mrow-in on a second line under the title.
+const swc=(id,on,label)=>`<label class="sw" title="${esc(label)}"><input type="checkbox" id="${id}" ${on?'checked':''} aria-label="${esc(label)}"><span></span></label>`;
+function srow(icon,title,hint,ctl,o={}){
+  return `<div class="mrow${o.hid?' hide':''}${o.cls?' '+o.cls:''}"${o.id?` id="${o.id}"`:''}><span class="mrow-ic">${ICON[icon]}</span><span class="mrow-t"><b class="row tight">${o.tid?`<span id="${o.tid}">${title}</span>`:title}${o.tip?tip(o.tip,'right'):''}</b>${hint?`<small>${hint}</small>`:''}</span>${ctl}</div>`;
 }
-// Email section rows (New poll and Settings): icon, title + hint, the day count for reminders, and a switch.
-// o = { notify, remind, days: input ids (notify '' = no row), notifyOn, remindOn, n: reminder days, notifyHidden: start hidden (New poll), tip }
+// Email section rows. o = { notify, remind, days: input ids (notify '' = no row), notifyOn, remindOn, n: reminder days, notifyHidden: start hidden (New poll) }
 function mailRows(o){
-  const sw=(id,on,label)=>`<label class="sw" title="${esc(label)}"><input type="checkbox" id="${id}" ${on?'checked':''} aria-label="${esc(label)}"><span></span></label>`;
-  const row=(icon,title,hint,ctl,hid=false)=>`<div class="mrow${hid?' hide':''}"${hid?' id="notifyRow"':''}><span class="mrow-ic">${ICON[icon]}</span><span class="mrow-t"><b>${title}</b><small>${hint}</small></span>${ctl}</div>`;
   return `<div class="mrows">
-    ${o.notify?row('repeat',t('New round'),t('Email everyone when a round opens'),sw(o.notify,o.notifyOn,t('Email everyone in the series when a new round opens')),!!o.notifyHidden):''}
-    ${row('bell',t('Reminder'),t("To people who haven't answered"),`<label class="mrow-n${o.remindOn?'':' off'}"><input type="number" id="${o.days}" min="0" max="30" value="${esc(o.n)}" aria-label="${t('Days before the reply-by date')}"${o.remindOn?'':' disabled'}><span>${t('days before')}</span></label>${sw(o.remind,o.remindOn,t('Email a reminder before the reply-by date'))}`)}
-    <div class="mrow-tip small muted">${tip(o.tip,'right')}<span>${t('Where emails come from')}</span></div></div>`;
+    ${o.notify?srow('repeat',t('New round'),t('Email everyone when a round opens'),swc(o.notify,o.notifyOn,t('Email everyone in the series when a new round opens')),{hid:!!o.notifyHidden,id:'notifyRow'}):''}
+    ${srow('bell',t('Reminder'),t("To people who haven't answered"),`<label class="mrow-n${o.remindOn?'':' off'}"><input type="number" id="${o.days}" min="0" max="30" value="${esc(o.n)}" aria-label="${t('Days before the reply-by date')}"${o.remindOn?'':' disabled'}><span>${t('days before')}</span></label>${swc(o.remind,o.remindOn,t('Email a reminder before the reply-by date'))}`)}</div>`;
+}
+// A series' timing rows (New poll's Recurring box, Rounds tab): when a round opens and its reply-by, in days before it starts.
+function dayRows(open,dl,openN,dlN){
+  const n=(id,v,l)=>`<span class="mrow-n"><input type="number" id="${id}" min="0" max="90" value="${esc(v)}" aria-label="${esc(l)}"><span>${t('days before')}</span></span>`;
+  return srow('day',t('Opens'),t('Before the round starts'),n(open,openN,t('Opens')))
+    +srow('clock',t('Reply by'),t('Optional. Leave empty for no deadline.'),n(dl,dlN,t('Reply by')));
+}
+// Privacy rows: hide answers (switch) and password (input; Settings adds a Remove switch when one is set).
+// o = { hide, pw, clear: input ids, hideOn, has: password set }
+function privacyRows(o){
+  return `<div class="mrows">
+    ${srow('eyeoff',t('Hide answers'),t("Only you see everyone's answers"),swc(o.hide,o.hideOn,t('Hide answers from respondents')))}
+    ${srow('lock',t('Password'),o.has?t('Set. Type a new one to change it.'):t('Only people with the password can open the poll'),
+      `<label class="mrow-in pwf${o.has?' set':''}">${ICON.lock}<input type="password" id="${o.pw}" maxlength="100" placeholder="${o.has?t('New password'):t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>${o.has?`<label class="mrow-x" title="${t('Remove password')}"><input type="checkbox" id="${o.clear}"><span>${t('Remove')}</span></label>`:''}`)}</div>`;
 }
 document.addEventListener('change',e=>{ const c=e.target; if(c.id!=='remind'&&c.id!=='s_remind') return;
   const n=c.closest('.mrow').querySelector('.mrow-n'); n.classList.toggle('off',!c.checked); n.querySelector('input').disabled=!c.checked; });
@@ -5244,8 +5238,10 @@ function segRadio(id,opts,cur,label,pat=''){
 const ansOpts=()=>[['days','day',t('Days'),t('Whole days')],['slots','clock',t('Hours'),t('Time slots')],['both','day+clock',t('Both'),t('Days and time slots')]];
 // Chat / Email required / Invited only chips with their tip. ids = [chat (allowComments), require email, invited only].
 function answerChips(ids,o){
-  return `<div class="sopts tiles">${opt(ids[0],'chat',t('Chat'),o.com,t('Allow the group chat'))}${opt(ids[1],'mail',t('Email required'),o.req,t('Require name and email to answer'))}${opt(ids[2],'users',t('Invited only'),o.inv,t('Only invited people can answer'))}
-    ${tip(`<b>${t('Chat')}:</b> ${t('A group chat for you and everyone who answers with an account. Guests can leave a comment with their answer. Off = no chat and no comments.')}<br><b>${t('Email required')}:</b> ${t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.')}<br><b>${t('Invited only')}:</b> ${t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')}`,'right')}</div>`;
+  return `<div class="mrows mt-3">
+    ${srow('chat',t('Chat'),t('A group chat for the poll'),swc(ids[0],o.com,t('Allow the group chat')),{tip:t('A group chat for you and everyone who answers with an account. Guests can leave a comment with their answer. Off = no chat and no comments.')})}
+    ${srow('mail',t('Email required'),t('Guests give their email to answer'),swc(ids[1],o.req,t('Require name and email to answer')),{tip:t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.')})}
+    ${srow('users',t('Invited only'),t('Only people you add can answer'),swc(ids[2],o.inv,t('Only invited people can answer')),{tip:t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')})}</div>`;
 }
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-sans]');
@@ -6275,7 +6271,6 @@ function germanText(){ return {
 "Email {n} who haven't answered yet?": "{n}, die noch nicht geantwortet haben, eine E-Mail senden?",
 "Email {n}<span class=\"bl\"> who haven't answered</span>": "E-Mail an {n}<span class=\"bl\"> ohne Antwort</span>",
 "Email<span class=\"bl\"> invite</span>": "E-Mail<span class=\"bl\">-Einladung</span>",
-"Emails come from when-who's address under your name. Replies and your copy go to your account email{email}.": "E-Mails kommen von der Adresse von when-who unter deinem Namen. Antworten und deine Kopie gehen an deine Konto-E-Mail{email}.",
 "End hour": "Endstunde",
 "Enter an account name": "Gib einen Kontonamen ein",
 "Enter an iCal link (https:// or webcal://)": "Gib einen iCal-Link ein (https:// oder webcal://)",
@@ -6358,8 +6353,6 @@ function germanText(){ return {
 "Hide answers": "Antworten verbergen",
 "Email a reminder before the reply-by date": "Erinnerung per E-Mail vor dem Antwortdatum",
 "Days before the reply-by date": "Tage vor dem Antwortdatum",
-"Password (currently set)": "Passwort (gesetzt)",
-"Password (none)": "Passwort (keins)",
 "How it works": "So funktioniert’s",
 "How many meetings to suggest": "Wie viele Termine vorschlagen",
 "How people answer": "Wie geantwortet wird",
@@ -6505,7 +6498,6 @@ function germanText(){ return {
 "Title, e.g. Band rehearsals": "Titel, z. B. Bandprobe",
 "Kind of poll": "Art der Umfrage",
 "Weekly": "Wöchentlich",
-"Only you see everyone's answers.": "Nur du siehst die Antworten aller.",
 "invited only": "nur Eingeladene",
 "Only days when someone is free ({n})": "Nur Tage, an denen jemand frei ist ({n})",
 "Only for this meeting": "Nur für diesen Termin",
@@ -6556,7 +6548,6 @@ function germanText(){ return {
 "People": "Personen",
 "People answer with": "Geantwortet wird mit",
 "People can answer": "Antworten möglich",
-"People get emails if they left their address when answering (or you added it under People). Emails come from when-who's address under your name; replies go to your account email{email}.": "E-Mails gehen an alle, die beim Antworten ihre Adresse angegeben haben (oder die du unter Personen eingetragen hast). Sie kommen von der Adresse von when-who unter deinem Namen; Antworten gehen an deine Konto-E-Mail{email}.",
 "People mark the days and hours that usually work for them in a typical week (Monday to Sunday, no dates). You then pick a slot and send it as a repeating calendar event.": "Alle markieren die Tage und Stunden, die ihnen in einer typischen Woche meist passen (Montag bis Sonntag, ohne Daten). Dann wählst du eine Zeit und verschickst sie als wiederkehrenden Kalendertermin.",
 "Pick a colour, then drag (or tap) across the hours you can make.": "Wähle eine Farbe und ziehe dann über die Stunden (oder tippe), in denen du kannst.",
 "Pick a colour, then tap hours, or press and hold and drag to paint several.": "Wähle eine Farbe und tippe dann auf Stunden, oder halte gedrückt und ziehe, um mehrere zu markieren.",
@@ -6635,7 +6626,6 @@ function germanText(){ return {
 "Email everyone when a round opens": "Alle per E-Mail benachrichtigen, wenn eine Runde öffnet",
 "To people who haven't answered": "An alle, die noch nicht geantwortet haben",
 "days before": "Tage vorher",
-"Where emails come from": "Woher die E-Mails kommen",
 "Allow the group chat": "Gruppenchat erlauben",
 "A group chat for you and everyone who answers with an account. Guests can leave a comment with their answer. Off = no chat and no comments.": "Ein Gruppenchat für dich und alle, die mit einem Konto antworten. Gäste können zu ihrer Antwort einen Kommentar schreiben. Aus = kein Chat und keine Kommentare.",
 "The chat is turned off for this poll": "Der Chat ist für diese Umfrage ausgeschaltet",
@@ -6698,6 +6688,13 @@ function germanText(){ return {
 "Select none": "Keine auswählen",
 "Select several meetings to edit, move or delete them together": "Mehrere Termine auswählen, um sie gemeinsam zu bearbeiten, zu verschieben oder zu löschen",
 "Select {name}": "{name} auswählen",
+"A group chat for the poll": "Ein Gruppenchat für die Umfrage",
+"Guests give their email to answer": "Gäste geben zum Antworten ihre E-Mail an",
+"Only people you add can answer": "Nur Personen, die du hinzufügst, können antworten",
+"Only you see everyone's answers": "Nur du siehst die Antworten aller",
+"Set. Type a new one to change it.": "Gesetzt. Gib ein neues ein, um es zu ändern.",
+"Before the round starts": "Bevor die Runde beginnt",
+"Optional. Leave empty for no deadline.": "Optional. Leer lassen für keine Frist.",
 "Send": "Senden",
 "Send again": "Erneut senden",
 "Send invite": "Einladung senden",
@@ -6900,7 +6897,6 @@ function germanText(){ return {
 "certain hours": "bestimmte Stunden",
 "closed": "geschlossen",
 "days": "Tage",
-"days before it starts": "Tage vor Beginn",
 "e.g. Band rehearsals, Summer trip": "z. B. Bandprobe, Sommerausflug",
 "every month": "jeden Monat",
 "every week": "jede Woche",
