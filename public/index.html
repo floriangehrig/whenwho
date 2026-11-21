@@ -3117,10 +3117,9 @@ function renderAccount(){
   }
   const u=ME.user, polls=ME.polls||[], open=polls.filter(x=>x.current&&x.current.status==='open').length;
   const answers=polls.reduce((n,x)=>n+(x.current?x.current.answers:0),0);
-  const since=u.since?new Date(u.since).toLocaleDateString(LOC,{month:'long',year:'numeric'}):'';
   $app.innerHTML=`${appbar()}
     <section class="band"><div class="wrap"><div class="hero-me">${avatarOf(u,'xl')}<div><div class="eyebrow">${t('Account')}</div>
-      <h1>${esc(displayName(u))}</h1><p class="lead">${esc(u.email)}${since?` · ${t('member since {date}',{date:esc(since)})}`:''}</p></div></div></div></section>
+      <h1>${esc(displayName(u))}</h1><p class="lead">${esc(u.email)}</p></div></div></div></section>
     <main class="wrap"><div class="home-grid">
       <div class="card"><div class="card-h"><h2>${t('Profile')}</h2></div>
         <form id="pf">
@@ -7547,7 +7546,6 @@ function germanText(){ return {
 "maybe {h}": "vielleicht {h}",
 "meeting": "Termin",
 "meetings": "Termine",
-"member since {date}": "dabei seit {date}",
 "month(s)": "Monat(e)",
 "no answers yet": "noch keine Antworten",
 "no comments": "keine Kommentare",
