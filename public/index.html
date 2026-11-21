@@ -390,7 +390,7 @@
   .day.i{background:var(--ifn-bg);border-color:color-mix(in srgb,var(--ifn) 55%,transparent)} .day.i .t{color:var(--ifn-ink)}
   .day.m{background:var(--maybe-bg);border-color:color-mix(in srgb,var(--maybe) 60%,transparent)} .day.m .t{color:var(--maybe-ink)}
   .day.sel{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 16%,transparent)}
-  .day .star{position:absolute;top:6px;right:8px;color:var(--accent);font-size:13px}
+  .day .star{margin-left:3px;color:var(--accent);font-size:12px;vertical-align:1px}
   .day.heat .t{color:var(--ink)}
   .ratio{display:flex;height:6px;border-radius:999px;overflow:hidden;margin-top:9px;background:var(--empty)}
   .ratio i{display:block;height:100%}
@@ -419,8 +419,11 @@
   /* Inset pill with a card-coloured ring, so the line stays visible on green / yellow days */
   /* others free on this day: one small n/total pill, greener when more are free */
   .day .ocnt{position:absolute;right:5px;top:5px;padding:1px 6px;border-radius:999px;font-size:10.5px;font-weight:650;line-height:1.5;font-variant-numeric:tabular-nums;color:var(--ink);background:color-mix(in srgb,var(--yes) var(--a),var(--card));box-shadow:0 0 0 1px color-mix(in srgb,var(--yes) 35%,var(--line));pointer-events:none}
-  .day .ocnt~.star{right:44px} .day .ocnt~.bzm{right:44px} .day .ocnt~.star~.bzm{right:60px}
-  @media (max-width:560px){ .day .ocnt{position:static;display:inline-block;margin-top:3px;padding:0 4px;font-size:9.5px} .day .ocnt~.star,.day .ocnt~.bzm{right:6px} .day .ocnt~.star~.bzm{right:20px} }
+  .day .ocnt~.bzm{right:44px}
+  /* A meeting day's ★ sits after the number, where the busy square / count pill would be: move those out of its row. */
+  .day:has(.star) .bzm{top:auto;bottom:6px;right:8px}
+  @media (max-width:720px){ .day:has(.star) .ocnt{position:static;display:inline-block;margin-top:3px;padding:0 4px;font-size:9.5px} }
+  @media (max-width:560px){ .day .ocnt{position:static;display:inline-block;margin-top:3px;padding:0 4px;font-size:9.5px} .day .ocnt~.bzm{right:6px} .day:has(.star) .bzm{position:static;display:block;margin-top:4px} }
   .day .ocnt.none{background:var(--card);color:var(--muted);box-shadow:0 0 0 1px var(--line)}
   /* Others / Busy: a switch with a ▾ list of people / calendars */
   .vtsplit{display:inline-flex;align-items:stretch}
@@ -459,7 +462,6 @@
   .day.bzf{isolation:isolate}
   .day.bzf:not(.y):not(.i):not(.m):not(.part){background:var(--sunken)}
   .day .bzm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--busy-hatch),var(--sunken);border:1px solid var(--line);pointer-events:none}
-  .day .star~.bzm,.day .bzm.star2{right:24px}
   /* Account: Contacts and Calendars share one look: header with count + ＋, optional toolbar, grouped list of what you have */
   .card-h .qb.add{width:34px;height:34px;border-radius:50%;background:var(--accent);border-color:var(--accent);color:#fff}
   .card-h .qb.add:hover{filter:brightness(1.08)}
@@ -1278,7 +1280,7 @@
     .appbar-in{gap:10px}
     .hide-sm{display:none!important}
     .cal{gap:4px}
-    .day{min-height:54px;padding:5px;border-radius:9px} .day .t{font-size:10px} .blank{min-height:54px}
+    .day{min-height:54px;padding:5px;border-radius:9px} .day .t{font-size:10px} .day .star{margin-left:1px;font-size:10px} .blank{min-height:54px}
     .day .oth{font-size:10px;letter-spacing:-.2px} .day .oth .oi{display:none} .day .oth .om{margin-left:2px}
     .dd .ddp.signin{width:calc(100vw - 24px);padding:18px 16px}
     .tabs button{padding:12px 10px;font-size:14px}
@@ -3967,7 +3969,7 @@ function renderMine(el){
       if(bt) tip=tip?tip+' · '+bt:bt;
       // No status word in the cell (the legend names the colours); it stays in the tooltip.
       if(s.t) tip=tip?s.t+' · '+tip:s.t;
-      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${md.has(k)?'<span class="star">★</span>':''}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; },{nav:false})+'</div>';
+      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}${md.has(k)?'<span class="star">★</span>':''}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; },{nav:false})+'</div>';
   } else {
     const wk=wks[P.week], H=hours();
     h+=`<div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
@@ -4600,8 +4602,8 @@ function countText(y,m,tot){ return tot&&(y||m)?`${y}/${tot}${m?`<span class="om
 // s = {peak, peakIfn, peakMaybe}. Also drawn by the landing demo, so both always look the same.
 function heatDay(day,s,tot,attrs='',cls='',star=false){
   const r=tot?s.peak/tot:0, all=tot>0&&s.peak===tot;
-  return `<div class="day heat${s.peak?' hot':''}${all?' allfree':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${all?t('Everyone free')+' · ':''}${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}</div>
-    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}${star?'<span class="star">★</span>':''}</div>`;
+  return `<div class="day heat${s.peak?' hot':''}${all?' allfree':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${all?t('Everyone free')+' · ':''}${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}${star?'<span class="star">★</span>':''}</div>
+    <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}</div>`;
 }
 function heatCell(k,day,s,tot,attrs,cls=''){ return heatDay(day,s,tot,attrs,cls+(refN('d:'+k)?' hasnote':''),meetingDays().has(k)); }
 // One "Best days" row: score pill, label + detail, yes/if-needed/maybe bar. Shared with the landing demo.
