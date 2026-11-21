@@ -432,7 +432,8 @@ function validateEntries(entries, poll, dates) {
   return out;
 }
 
-// Quick fill behind an answer: { rules: [{ pat, hs, he, st }], base: {entries} } (base = the hand-made marks).
+// Quick fill behind an answer: { rules: [{ pat, hs, he, st, off? }], base: {entries}, over?: {entries} }
+// (base = marks from before the rules, over = days changed by hand after them).
 // Returns the JSON to store, or '' when there are no rules.
 const MAX_FILL_RULES = 20;
 function parseFill(v, poll, dates) {
@@ -445,9 +446,11 @@ function parseFill(v, poll, dates) {
     const pat = parseDays(r.pat), hs = int(r.hs, 0, 23, 'First hour'), he = int(r.he, 1, 24, 'Last hour');
     if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
     if (!['y', 'i', 'm', 'x'].includes(r.st)) throw new HttpError(400, 'Invalid quick fill');
-    return { pat, hs, he, st: r.st };
+    return { pat, hs, he, st: r.st, ...(r.off === true ? { off: true } : {}) }; // off = switched off, kept in the list
   });
-  return JSON.stringify({ rules, base: validateEntries(v.base, poll, dates) });
+  // over = days changed by hand after the rules ('n' = cleared by hand); they sit on top of the rules
+  const over = validateEntries(v.over, poll, dates);
+  return JSON.stringify({ rules, base: validateEntries(v.base, poll, dates), ...(Object.keys(over).length ? { over } : {}) });
 }
 
 function validateMeetings(list, poll) {

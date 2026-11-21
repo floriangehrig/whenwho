@@ -210,15 +210,42 @@
   .qf{margin-top:12px}
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
-  .pat-chips .qf-apply{margin-left:auto}
-  .pat-chips .em-pill.pop{animation:chipIn .16s ease-out}
   .em-pill .pat-brush{display:inline-flex;align-items:center;gap:4px;width:auto;height:auto;min-width:0;padding:0;font:inherit;opacity:1;overflow:hidden}
   .em-pill .pat-brush:hover{background:none;text-decoration:underline}
   .pat-keys{margin-left:auto}
   .pat-keys kbd{font:inherit;font-size:11.5px;padding:0 4px;border:1px solid var(--line,currentColor);border-radius:3px}
   @media (hover:none){ .pat-keys{display:none} }
   .pat-chips .em-pill .dot{flex:none;display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c);margin-right:2px}
-  .pat-chips .em-pill.draft{border-style:dashed;background:transparent}
+  .pat-chips .em-pill.draft{border-style:dashed;background:transparent;padding-right:9px}
+  /* quick fill rules: the one being built, then the stack (top first, lower wins) */
+  .qf-draft{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;min-height:30px}
+  .qf-draft .em-pill .small{flex:none}
+  .qf-draft .btn svg{width:15px;height:15px}
+  .qfl-h{display:flex;align-items:center;gap:6px;width:100%;margin-top:4px;padding-top:8px;border-top:1px solid var(--line);font-size:12.5px;font-weight:650;color:var(--muted)}
+  .qfl-h .qb{width:28px;height:28px}
+  .qfl{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:4px;counter-reset:qf}
+  .qfl-r{display:flex;align-items:center;gap:6px;min-width:0;padding:4px 4px 4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);}
+  .qfl-r.pop{animation:chipIn .16s ease-out}
+  .qfl-r[draggable=true]{cursor:grab}
+  .qfl-r.drag{opacity:.45}
+  .qfl-r.dropb{box-shadow:0 -2px 0 var(--accent)} .qfl-r.dropa{box-shadow:0 2px 0 var(--accent)}
+  .qfl-r.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .qfl-r.off .qfl-t,.qfl-r.off .qfl-b{opacity:.45} .qfl-r.off .qfl-t>span{text-decoration:line-through}
+  .qfl-g{flex:none;display:inline-flex;color:var(--muted);opacity:.6} .qfl-g svg{width:14px;height:14px}
+  .qfl-b{flex:none;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:none;cursor:pointer}
+  .qfl-b:hover{background:var(--sunken)}
+  .qfl-b .dot{width:12px;height:12px;border-radius:4px;background:var(--c)} .qfl-b .dot.gry,.seg .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong)}
+  .qfl-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .qfl-t>span{font-size:13.5px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qfl-t small{font-size:11.5px;color:var(--muted)}
+  .qfl-a{flex:none;display:flex;gap:0}
+  .qfl-a .qb{width:28px;height:28px} .qfl-a .qb svg{width:15px;height:15px} .qfl-a .qb:disabled{opacity:.3;cursor:default}
+  .qfl-a .qb:not(:disabled):hover{background:var(--sunken);color:var(--ink)}
+  @media (hover:hover){ .qfl-r:not(:hover):not(:focus-within) .qfl-a .qb[data-qfl=up],.qfl-r:not(:hover):not(:focus-within) .qfl-a .qb[data-qfl=down]{visibility:hidden} }
+  @media (prefers-reduced-motion:reduce){ .qfl-r.pop{animation:none} }
+  @media (max-width:560px){ .qfl-t>span{white-space:normal} }
+  /* preview of the rule being built */
+  .day.qfp,.slot.qfp{outline:2px dashed var(--qc);outline-offset:-3px}
   .pat-add{flex:none;width:26px;height:26px;padding:0;border-radius:5px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);background:var(--accent-weak);color:var(--accent-ink);font-size:17px;line-height:1;cursor:pointer}
   .pat-add:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
   .pat-add.pat-addw{width:auto;padding:0 10px;font-size:13.5px;font-weight:600}
@@ -235,7 +262,7 @@
     .qf .wdchips{display:flex;width:100%;gap:3px} .qf .wdc{flex:1;width:auto;min-width:0;height:34px}
     .qf .pat-pre{gap:0 12px}
     .qf .pat-in{font-size:13.5px} .qf .num-sm{width:50px!important;padding-inline:6px}
-    .qf .seg{display:flex;width:100%;gap:1px;padding:2px} .qf .seg button{flex:1 1 auto;justify-content:center;padding:7px 3px;font-size:12px;letter-spacing:-.1px;white-space:nowrap} .qf .seg .dot{width:8px;height:8px;margin-right:3px}
+    .qf .seg{display:flex;width:100%;gap:1px;padding:2px} .qf .seg button[data-qfs=x]{flex:0 0 auto;padding-inline:10px} .qf .seg button[data-qfs=x] .bl{display:none} .qf .seg button[data-qfs=x] .dot{margin:0} .qf .seg button{flex:1 1 auto;justify-content:center;padding:7px 3px;font-size:12px;letter-spacing:-.1px;white-space:nowrap} .qf .seg .dot{width:8px;height:8px;margin-right:3px}
   }
   .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
@@ -1357,13 +1384,14 @@ function patText(pat,hs,he,{allDayFrom,allDayTo,hours=true}={}){
 }
 // Picker state: PAT[id] = {wd:Set, dom:[a|'',b|''], hs, he, hmin, hmax, hours, count:()=>string}
 const PAT={};
-function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false,chips=false,multi=false}={}){
-  if(!keep||!PAT[id]){ PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, chips, multi, count:PAT[id]&&PAT[id].count};
+// empty: no days picked at the start (quick fill builds rules from nothing).
+function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=false,noDom=false,multi=false,empty=false}={}){
+  if(!keep||!PAT[id]){ PAT[id]={wd:new Set(pat&&pat.wd?pat.wd:empty?[]:[0,1,2,3,4,5,6]), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he, hmin, hmax, hours, noDom, multi, empty, count:PAT[id]&&PAT[id].count};
     // Multi: several periods, each with its own days and time. The fields above are the one being edited (periods[cur]).
     if(multi){ const st=PAT[id], ps=pat&&pat.periods;
       st.periods=ps&&ps.length?ps.map(x=>({wd:new Set(x.wd||[0,1,2,3,4,5,6]), dom:x.dom?[...x.dom]:['',''], hs:x.hs, he:x.he})):[{}];
       st.cur=0; if(ps&&ps.length) patLoad(st,0,true); else patStore(st); } }
-  else Object.assign(PAT[id],{hmin,hmax,hours,noDom,chips});
+  else Object.assign(PAT[id],{hmin,hmax,hours,noDom});
   return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
 }
 function patInner(id){
@@ -1376,9 +1404,9 @@ function patInner(id){
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
       <select class="inline" data-patto="${id}" aria-label="${t('To')}">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">${t('All day')}</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">${t('Evening 18–22')}</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">${t('From 17:00')}</button>`:''}</span></div>
-    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.chips||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`;
+    ${st.extraRow?st.extraRow():''}<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`;
 }
-const patSumHtml = id => PAT[id].chips?patChips(id):PAT[id].multi?patPeriods(id):esc(patSummary(id));
+const patSumHtml = id => PAT[id].sumHtml?PAT[id].sumHtml():PAT[id].multi?patPeriods(id):esc(patSummary(id)); // sumHtml: e.g. quick fill's rule list
 // ---- several periods (create / settings): copy the edited fields into periods[cur], or load period i into them.
 function patStore(st){ st.periods[st.cur]={wd:new Set(st.wd), dom:[...st.dom], hs:st.hs, he:st.he}; }
 function patLoad(st,i,noStore){ if(!noStore) patStore(st); st.cur=i; const x=st.periods[i]; st.wd=new Set(x.wd); st.dom=[...x.dom]; st.hs=x.hs; st.he=x.he; }
@@ -1412,31 +1440,14 @@ function patPeriods(id){
   const v=patMulti(st), c=!v.empty&&st.count?st.count(v):'';
   return h+(c?`<span class="muted small">${esc(c)}</span>`:'');
 }
-// Chip view of the summary (quick fill): saved rules as chips, then the rule being edited (dashed) with + to save it and start another.
-// Each rule is one criterion: days, dates and time together, e.g. "Weekdays 12:00–15:00".
+// The picker read as one rule: days, dates and time together, e.g. "Weekdays 12:00–15:00".
 function patRule(id){
   const st=PAT[id], v=patValue(id); if(v.empty) return null;
   const days=[v.pat&&v.pat.wd?wdText(v.pat.wd):'', v.pat&&v.pat.dom?t('{a}–{b} of the month',{a:ord(v.pat.dom[0]),b:ord(v.pat.dom[1])}):''].filter(Boolean).join(', ');
   const all=!st.hours||(v.hs<=st.hmin&&v.he>=st.hmax), time=all?'':(v.he===24?t('from {h}',{h:hh24(v.hs)}):`${hh24(v.hs)}–${hh24(v.he)}`);
   return {pat:v.pat, hs:all?st.hmin:v.hs, he:all?st.hmax:v.he, dflt:!days&&!time, text:`${days||t('Every day')}${time?' '+time:''}`, ...(st.ruleExtra?st.ruleExtra():{})};
 }
-// The rules a fill uses: the saved ones plus the one being edited (unless it's untouched and there are saved ones).
-function patRules(id){ const st=PAT[id], rs=st.rules||[], d=patRule(id); return d&&(!d.dflt||!rs.length)?[...rs,d]:[...rs]; }
-function patResetDraft(st){ st.wd=new Set([0,1,2,3,4,5,6]); st.dom=['','']; st.hs=st.hmin; st.he=st.hmax; }
-function patChips(id){
-  const st=PAT[id], rs=st.rules||(st.rules=[]), d=patRule(id), seen=st.seenChips||new Set(), now=new Set();
-  // r.st (quick fill brush): y = available, i = if needed, m = maybe, x = clear
-  // With a brush, the tag's label is a button that switches it: Available → If needed → Maybe → Clear.
-  const chip=(r,attr,cls='',bi='')=>{ const tx=r.text, k=(r.st||'')+tx, b=r.st==='y'?t('Available'):r.st==='i'?t('If needed'):r.st==='m'?t('Maybe'):r.st==='x'?t('Clear'):''; now.add(k);
-    const lab=r.st?`<button type="button" class="pat-brush" data-qfbrush="${bi}" title="${t('{b} · click to switch',{b})}" aria-label="${esc(t('{x}, switch brush',{x:b+': '+tx}))}">${r.st!=='x'?`<span class="dot" style="--c:var(--${r.st==='y'?'yes':r.st==='i'?'ifn':'maybe'})"></span>`:''}<span>${r.st==='x'?t('Clear: '):''}${esc(tx)}</span></button>`:`<span>${esc(tx)}</span>`;
-    return `<span class="em-pill${cls}${seen.has(k)?'':' pop'}">${lab}<button type="button" ${attr} aria-label="${esc(t('Remove {x}',{x:(b?b+': ':'')+tx}))}">×</button></span>`; };
-  let h=rs.map((r,i)=>chip(r,`data-patrule="${id}" data-i="${i}"`,'',i)).join('');
-  if(!d) h+=`<span class="muted">${t('Pick at least one day.')}</span>`;
-  else if(!d.dflt) h+=chip(d,`data-patchip="${id}"`,' draft','d')+`<button type="button" class="pat-add" data-patadd="${id}" title="${t('Add another rule')}" aria-label="${esc(t('Keep {x} and add another rule',{x:d.text}))}">+</button>`;
-  else if(!rs.length) h+='<span class="muted">'+t('Every day')+(st.hours?' · '+t('all day'):'')+'</span>';
-  st.seenChips=now;
-  return h+(st.sumEnd?st.sumEnd():''); // e.g. quick fill's Apply button, at the end of the rule tags
-}
+function patResetDraft(st){ st.wd=new Set(st.empty?[]:[0,1,2,3,4,5,6]); st.dom=['','']; st.hs=st.hmin; st.he=st.hmax; }
 // Reading the picker. dom is filled in from blanks (only "to 20" means 1st–20th) and ordered.
 function patValue(id){
   if(PAT[id].multi) return patMulti(PAT[id]);
@@ -1461,11 +1472,6 @@ document.addEventListener('click',e=>{
       const used=new Set(st.periods.flatMap(x=>[...x.wd])), rest=[0,1,2,3,4,5,6].filter(d=>!used.has(d));
       st.periods.push({wd:new Set(rest.length?rest:[0,1,2,3,4,5,6]), dom:['',''], hs:st.hs, he:st.he}); patLoad(st,st.periods.length-1,true); }
     patRefresh(id,true); return; }
-  const x=e.target.closest('[data-patchip]');
-  if(x){ patResetDraft(PAT[x.dataset.patchip]); patRefresh(x.dataset.patchip,true); return; }
-  const ru=e.target.closest('[data-patrule]'); if(ru){ PAT[ru.dataset.patrule].rules.splice(+ru.dataset.i,1); patRefresh(ru.dataset.patrule,true); return; }
-  const ad=e.target.closest('[data-patadd]');
-  if(ad){ const id=ad.dataset.patadd, st=PAT[id], d=patRule(id); if(d&&!d.dflt){ (st.rules||(st.rules=[])).push(d); patResetDraft(st); } patRefresh(id,true); return; }
   const c=e.target.closest('[data-patwd]'), p=e.target.closest('[data-patpre]'); if(!c&&!p) return;
   if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
   const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
@@ -2669,7 +2675,7 @@ async function save(retried){
   P.saving=true; P.dirty=false; saveBar();
   const em=(P.mine.email||'').trim(), key=respKey(), had=!!P.myResp;
   const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries,
-    fill:qfActive()?{rules:P.qfApplied.map(r=>({pat:r.pat||null,hs:r.hs,he:r.he,st:r.st||'y'})),base:qfCurrentBase()}:null};
+    fill:qfActive()?{rules:P.qfApplied.map(r=>({pat:r.pat||null,hs:r.hs,he:r.he,st:r.st||'y',...(r.off?{off:true}:{})})),...qfLayersNow()}:null};
   let msg, retry=false, ok=false;
   try{
     if(P.myResp){ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
@@ -3132,7 +3138,7 @@ function renderMine(el){
   const menuOn=ME.user&&ME.user.calendarsAuto&&editable();
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
-  const qfN=qfActive()?P.qfApplied.length:0;
+  const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
   const qfIc=`<button type="button" class="btn sm withic ib${qfN?' badgeb':''} ${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
   const clrIc=io('x',qfN?t('Clear my own marks'):t('Clear all'),'data-bulk="clear"','danger');
   const helpTxt=P.mode==='days'
@@ -3177,91 +3183,163 @@ function renderMine(el){
   el.innerHTML=h;
   loadBusy();
   if(P.mode==='slots') wireGrid(); else wireDays();
+  qfPreview();
 }
-// Quick fill: mark every day matching a pattern (optionally only some hours) in one go.
+// Quick fill: rules that mark every day matching a pattern (optionally only some hours), stacked like layers.
+// Rules apply from top to bottom, so where two overlap the lower one wins. Everything is live: adding, editing,
+// reordering, switching off or removing a rule rebuilds the answer right away.
+const QF_MAX=20; // the Worker's limit (MAX_FILL_RULES)
+const QF_C={y:'yes',i:'ifn',m:'maybe'};
+const qfBrushName=b=>b==='y'?t('Available'):b==='i'?t('If needed'):b==='m'?t('Maybe'):t('Not available');
+const qfDot=b=>`<span class="dot${b==='x'?' gry':''}" style="--c:var(--${QF_C[b]||'empty'})"></span>`;
 function quickFill(){
   if(!P.qfOpen) return '';
   const p=P.data.poll, slots=ansMode()!=='days';
-  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly(),chips:true};
+  const o={hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slots,keep:true,noDom:isWeekly(),empty:true};
   // A new poll (or new hours) starts the quick-fill fresh.
   if(PAT.qf&&(PAT.qf.poll!==P.id||PAT.qf.hmin!==p.hourStart||PAT.qf.hmax!==p.hourEnd)) delete PAT.qf;
   patternPicker('qf',o); PAT.qf.poll=P.id;
   if(!(PAT.qf.rules&&PAT.qf.rules.length)&&qfActive()) PAT.qf.rules=P.qfApplied.map(r=>({...r})); // saved with the answer
   PAT.qf.ruleExtra=()=>({st:P.qfs||'y'});
-  // The brush is part of the rule being built, so it sits with the other criteria (above the rule tags).
+  // The brush is part of the rule being built, so it sits with the other criteria.
   PAT.qf.extraRow=()=>{ const b=P.qfs||'y'; return `<div class="pat-row"><span class="pat-l">${t('Mark as')}</span><div class="seg">
-    <button type="button" data-qfs="y" class="${b==='y'?'on':''}"><span class="dot" style="--c:var(--yes)"></span>${t('Available')}</button>
-    <button type="button" data-qfs="i" class="${b==='i'?'on':''}"><span class="dot" style="--c:var(--ifn)"></span>${t('If needed')}</button>
-    <button type="button" data-qfs="m" class="${b==='m'?'on':''}"><span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</button>
-    <button type="button" data-qfs="x" class="${b==='x'?'on':''}">${t('Clear')}</button></div>
+    ${['y','i','m','x'].map(x=>`<button type="button" data-qfs="${x}" class="${b===x?'on':''}" title="${esc(qfBrushName(x))}" aria-label="${esc(qfBrushName(x))}">${qfDot(x)}<span class="bl">${qfBrushName(x)}</span></button>`).join('')}</div>
     <span class="pat-keys muted small">${t('Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule')}</span></div>`; };
-  PAT.qf.sumEnd=()=>`${(PAT.qf.rules||[]).length?pqb('trash',t('Remove all Quick fill'),'data-qfclearall',' danger qf-clr'):''}<button type="button" class="btn sm primary qf-apply" data-qfapply>${t('Apply')}</button>`;
+  PAT.qf.sumHtml=qfLayers;
   return `<div class="qf">${patternPicker('qf',o)}</div>`;
 }
+// How many poll days a rule matches, and how many of those it takes over from rules above it (same day, overlapping hours).
+function qfCounts(rs){
+  const ds=P.data.dates, hrs=ansMode()!=='days';
+  return rs.map((r,i)=>{ const m=ds.filter(k=>matchPat(k,r.pat));
+    const over=r.off?0:m.filter(k=>rs.slice(0,i).some(q=>!q.off&&matchPat(k,q.pat)&&(!hrs||(q.hs<r.he&&r.hs<q.he)))).length;
+    return {n:m.length, over}; });
+}
+const qfDays=n=>n===1?t('{n} day',{n}):t('{n} days',{n});
+// The rule being built (dashed, with Add / Update) and the list of rules below it.
+function qfLayers(){
+  const st=PAT.qf, rs=st.rules||(st.rules=[]), d=patRule('qf'), ed=st.editRef&&rs.includes(st.editRef)?st.editRef:(st.editRef=null);
+  const full=!ed&&rs.length>=QF_MAX, b=P.qfs||'y';
+  let h='<div class="qf-draft">';
+  if(!d) h+=`<span class="muted">${ed?t('Pick at least one day.'):t('Pick days to add a rule')}</span>`;
+  else { const n=P.data.dates.filter(k=>matchPat(k,d.pat)).length;
+    h+=`<span class="em-pill draft">${qfDot(b)}<span>${esc(d.text)}</span><span class="muted small">· ${esc(qfDays(n))}</span></span>`; }
+  if(ed) h+=`<button type="button" class="btn sm primary" data-qfadd ${d?'':'disabled'}>${ICON.check}<span>${t('Update')}</span></button><button type="button" class="btn sm ghost" data-qfl="cancel">${t('Cancel')}</button>`;
+  else h+=`<button type="button" class="btn sm primary withic" data-qfadd ${d&&!full?'':'disabled'} title="${esc(full?t('At most {n} rules',{n:QF_MAX}):t('Add this rule (+)'))}">${ICON.plus}<span>${t('Add')}</span></button>`;
+  h+='</div>';
+  if(!rs.length) return h;
+  const cs=qfCounts(rs), many=rs.length>1;
+  h+=`<div class="qfl-h"><span>${t('Rules')}</span>${tip(t('Rules apply from top to bottom: where they overlap, the lower one wins. Drag or use the arrows to reorder. Days you change by hand stay on top, until you add a rule that covers them.'))}<span class="ml-auto"></span>${pqb('trash',t('Remove all Quick fill'),'data-qfclearall',' danger')}</div><ol class="qfl">`;
+  rs.forEach((r,i)=>{ const c=cs[i], s=r.st||'y', nm=qfBrushName(s);
+    h+=`<li class="qfl-r${r.off?' off':''}${r===ed?' cur':''}${r===st.pop&&Date.now()-st.popAt<600?' pop':''}" data-qfi="${i}"${TOUCH?'':' draggable="true"'}>
+      ${many&&!TOUCH?`<span class="qfl-g" aria-hidden="true">${ICON.grip}</span>`:''}
+      <button type="button" class="qfl-b" data-qfl="brush" title="${esc(t('{b} · click to switch',{b:nm}))}" aria-label="${esc(t('{x}, switch brush',{x:nm+': '+r.text}))}">${qfDot(s)}</button>
+      <span class="qfl-t"><span>${esc(r.text)}</span><small>${esc(qfDays(c.n))}${c.over?` · ${esc(t('overrides {n}',{n:c.over}))}`:''}</small></span>
+      <span class="qfl-a">${many?pqb('up',t('Move up'),`data-qfl="up" ${i?'':'disabled'}`)+pqb('down',t('Move down'),`data-qfl="down" ${i<rs.length-1?'':'disabled'}`):''}${pqb(r.off?'eyeoff':'eye',r.off?t('Switch on'):t('Switch off'),'data-qfl="off"')}${pqb('edit',t('Edit'),'data-qfl="edit"')}${pqb('x',t('Remove'),'data-qfl="del"')}</span></li>`; });
+  return h+'</ol>';
+}
 document.addEventListener('change',e=>{ if(e.target.id==='s_ans') patShowHours('sp',e.target.value!=='days'); });
-// Brush for the rule being built (also from the keyboard: A / I / M / C, + saves the rule).
+// Brush for the rule being built (also from the keyboard: A / I / M / C, + adds the rule).
 function qfBrush(b){ P.qfs=b; document.querySelectorAll('.qf [data-qfs]').forEach(x=>x.classList.toggle('on',x.dataset.qfs===b)); patRefresh('qf'); }
 document.addEventListener('keydown',e=>{
   if(!P.qfOpen||!document.querySelector('.qf')||e.ctrlKey||e.metaKey||e.altKey||e.target.closest('input,select,textarea,[contenteditable]')) return;
   const b={a:'y',i:'i',m:'m',c:'x'}[e.key.toLowerCase()];
   if(b){ e.preventDefault(); qfBrush(b); }
-  else if(e.key==='+'){ e.preventDefault(); document.querySelector('.qf [data-patadd]')?.click(); }
+  else if(e.key==='+'){ e.preventDefault(); document.querySelector('.qf [data-qfadd]')?.click(); }
 });
-// Applied rules stay live: the entries from before the first Apply are kept (P.qfBase), and every Apply or rule change
-// (removing a tag, switching its brush) rebuilds the answer from them, so removing a rule reverts what it filled.
-// Days changed by hand since the last fill count as part of the base, so they survive.
-// The applied rules (P.qfApplied) and the hand-made layer (P.qfBase) are saved with the answer (fill), so they survive
-// closing the panel and reloading; ✕ then clears only the hand-made layer.
+// While a rule is being built, the days (or hours) it would mark get a dashed outline in its colour.
+function qfPreview(){
+  document.querySelectorAll('.qfp').forEach(x=>x.classList.remove('qfp'));
+  const st=PAT.qf; if(!P.qfOpen||!st||st.poll!==P.id||!document.querySelector('.qf')) return;
+  const d=patRule('qf'); if(!d) return;
+  const c=`var(--${QF_C[P.qfs||'y']||'muted'})`, ks=P.data.dates.filter(k=>matchPat(k,d.pat));
+  if(P.mode==='slots') ks.forEach(k=>document.querySelectorAll(`#grid .slot[data-k="${k}"]`).forEach(x=>{ const hr=+x.dataset.h; if(hr>=d.hs&&hr<d.he){ x.classList.add('qfp'); x.style.setProperty('--qc',c); } }));
+  else ks.forEach(k=>{ const x=document.querySelector(`#dgrid .day[data-day="${k}"]`); if(x){ x.classList.add('qfp'); x.style.setProperty('--qc',c); } });
+}
+document.addEventListener('patchange',e=>{ if(e.target.id==='pat_qf') qfPreview(); });
+// Three layers make the answer: the marks from before the first rule (P.qfBase), the rules on top of them
+// (P.qfApplied, top to bottom), and on top of everything the days changed by hand since (P.qfOver, 'n' = cleared by hand).
+// Every rule change rebuilds the answer from them, so removing a rule reverts what it filled and hand-made days stay.
+// All three are saved with the answer (fill), so they survive closing the panel and reloading; ✕ then clears the hand-made marks.
 const qfSame=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const qfActive=()=>!!(P.qfApplied&&P.qfApplied.length&&P.qfFor===P.id&&P.qfBase);
-function qfReset(){ P.qfApplied=null; P.qfBase=P.qfLast=null; P.qfFor=null; delete PAT.qf; }
-// A saved rule as a rule tag (same label as patRule builds while picking).
+function qfReset(){ P.qfApplied=null; P.qfBase=P.qfLast=P.qfOver=null; P.qfFor=null; delete PAT.qf; }
+// A saved rule as a rule object (same label as patRule builds while picking).
 function qfRuleObj(r){
   const p=P.data.poll, slots=ansMode()!=='days', pat=r.pat||null;
   const days=[pat&&pat.wd?wdText(pat.wd):'', pat&&pat.dom?t('{a}–{b} of the month',{a:ord(pat.dom[0]),b:ord(pat.dom[1])}):''].filter(Boolean).join(', ');
   const all=!slots||(r.hs<=p.hourStart&&r.he>=p.hourEnd), time=all?'':(r.he===24?t('from {h}',{h:hh24(r.hs)}):`${hh24(r.hs)}–${hh24(r.he)}`);
-  return {pat, hs:r.hs, he:r.he, st:r.st||'y', dflt:false, text:`${days||t('Every day')}${time?' '+time:''}`};
+  return {pat, hs:r.hs, he:r.he, st:r.st||'y', ...(r.off?{off:true}:{}), text:`${days||t('Every day')}${time?' '+time:''}`};
 }
 function qfRestore(f){
   if(!f||!Array.isArray(f.rules)||!f.rules.length) return;
   P.qfApplied=f.rules.map(qfRuleObj); P.qfBase=cleanEntries(f.base||{}); P.qfLast=Object.assign({},P.mine.entries); P.qfFor=P.id;
+  P.qfOver={}; for(const k in f.over||{}) if(f.over[k]==='n') P.qfOver[k]='n'; else { const x=cleanEntries({[k]:f.over[k]})[k]; if(x!=null) P.qfOver[k]=x; }
 }
-// The hand-made layer now: the base from the last fill, plus days changed by hand since then.
-function qfCurrentBase(){
-  const cur=P.mine.entries; if(P.qfFor!==P.id||!P.qfBase) return Object.assign({},cur);
-  const base=Object.assign({},P.qfBase);
-  if(P.qfLast) new Set([...Object.keys(cur),...Object.keys(P.qfLast)]).forEach(k=>{ if(!qfSame(cur[k],P.qfLast[k])){ if(cur[k]==null) delete base[k]; else base[k]=cur[k]; } });
-  return base;
+// The layers now: before any rule everything is the base; after that, days changed by hand since the last fill join the top layer.
+function qfLayersNow(){
+  const cur=P.mine.entries; if(P.qfFor!==P.id||!P.qfBase) return {base:Object.assign({},cur), over:{}};
+  const over=Object.assign({},P.qfOver||{});
+  if(P.qfLast) new Set([...Object.keys(cur),...Object.keys(P.qfLast)]).forEach(k=>{ if(!qfSame(cur[k],P.qfLast[k])) over[k]=cur[k]==null?'n':cur[k]; });
+  return {base:Object.assign({},P.qfBase), over};
 }
-// base + rules → the answer (and which days the rules touched).
+// base + rules (top to bottom, switched-off ones skipped) → the answer (and which days the rules touched).
 function qfCompute(base,rs){
   const en=Object.assign({},base), done=new Set(), hrs=ansMode()!=='days';
-  rs.forEach(r=>{ const st=r.st||'y';
+  rs.forEach(r=>{ if(r.off) return; const st=r.st||'y';
     P.data.dates.filter(k=>matchPat(k,r.pat)).forEach(k=>{ const H=hours(k), whole=!hrs||(r.hs<=H[0]&&r.he>=H[H.length-1]+1);
       done.add(k); if(whole){ if(st==='x') delete en[k]; else en[k]=st; return; }
       const m=hourMap(en[k],k); H.forEach(h=>{ if(h>=r.hs&&h<r.he){ if(st==='x') m.delete(h); else m.set(h,st); } }); const x=fromMap(m,k); if(x==null) delete en[k]; else en[k]=x; }); });
   return {en,done};
 }
-function applyQuickFill(live){
-  if(!live){ const st=PAT.qf, d=patRule('qf'); if(d&&!d.dflt){ (st.rules||(st.rules=[])).push(d); patResetDraft(st); } }
-  const rs=live?(PAT.qf.rules||[]).slice():patRules('qf'); if(!rs.length&&!live){ toast(t('Pick at least one day')); return; }
-  const cur=P.mine.entries, base=qfCurrentBase(), {en,done}=qfCompute(base,rs);
-  P.qfBase=base; P.qfLast=Object.assign({},en); P.qfFor=P.id; P.qfApplied=rs.map(r=>({...r}));
-  const n=done.size; if(!qfSame(en,cur)){ P.mine.entries=en; changed(); } renderBody();
-  if(!live) toast(n?(rs.every(r=>r.st==='x')?(n===1?t('Cleared {n} day',{n}):t('Cleared {n} days',{n})):(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n}))):t('No days in this poll match'));
+// … then the hand-made top layer.
+function qfWithOver(en,over){ for(const k in over||{}){ if(over[k]==='n') delete en[k]; else en[k]=over[k]; } return en; }
+// Rebuild the answer from the current rules (or just redraw the panel when the answer can't be changed).
+// fresh = a rule just added or changed: it takes over the hand-made days it covers (the latest action wins).
+function applyQuickFill(fresh){
+  if(!editable()){ patRefresh('qf',true); qfPreview(); return; }
+  const rs=(PAT.qf.rules||[]).slice(), cur=P.mine.entries, {base,over}=qfLayersNow();
+  if(fresh) Object.keys(over).forEach(k=>{ if(matchPat(k,fresh.pat)) delete over[k]; });
+  const en=qfWithOver(qfCompute(base,rs).en,over);
+  P.qfBase=base; P.qfOver=over; P.qfLast=Object.assign({},en); P.qfFor=P.id; P.qfApplied=rs.map(r=>({...r}));
+  if(!qfSame(en,cur)){ P.mine.entries=en; changed(); } renderBody();
 }
+function qfMove(a,b){ const rs=PAT.qf.rules; if(a===b||a<0||b<0||a>=rs.length||b>=rs.length) return; rs.splice(b,0,rs.splice(a,1)[0]); applyQuickFill(); }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-qf]')){ P.qfOpen=!P.qfOpen; renderBody(); return; } // closing keeps the rules (they're saved with the answer)
-  if(e.target.closest('[data-qfclearall]')){ if(PAT.qf) PAT.qf.rules=[]; if(P.qfBase&&P.qfFor===P.id&&editable()) applyQuickFill(true); else patRefresh('qf',true); return; }
-  // After an Apply, removing a rule tag updates the answer right away (the picker's own handler has already removed it).
-  if(e.target.closest('[data-patrule="qf"]')&&P.qfBase&&P.qfFor===P.id&&editable()){ applyQuickFill(true); return; }
   if(e.target.closest('[data-hint]')){ P.hint=!P.hint; store.set('showOthers',P.hint); renderBody(); return; }
+  if(!e.target.closest('.qf')||!PAT.qf) return;
+  const st=PAT.qf, rs=st.rules||(st.rules=[]);
+  if(e.target.closest('[data-qfclearall]')){ if(rs.length>1&&!confirm(t('Remove all Quick fill rules?'))) return; st.rules=[]; st.editRef=null; applyQuickFill(); return; }
   const s=e.target.closest('[data-qfs]'); if(s){ qfBrush(s.dataset.qfs); return; }
-  const qb=e.target.closest('[data-qfbrush]');
-  if(qb){ const nx={y:'i',i:'m',m:'x',x:'y'}, i=qb.dataset.qfbrush;
-    if(i==='d') qfBrush(nx[P.qfs||'y']); else { const r=PAT.qf.rules[+i]; r.st=nx[r.st||'y']; if(P.qfBase&&P.qfFor===P.id&&editable()) applyQuickFill(true); else patRefresh('qf'); } return; }
-  if(e.target.closest('[data-qfapply]')){ if(typeof editable==='function'&&!editable()) return; applyQuickFill(); }
+  if(e.target.closest('[data-qfadd]')){ const d=patRule('qf'); if(!d) return;
+    const i=st.editRef?rs.indexOf(st.editRef):-1;
+    if(i>=0) rs[i]={...d, ...(rs[i].off?{off:true}:{})}; else { if(rs.length>=QF_MAX) return; rs.push(d); st.pop=d; st.popAt=Date.now(); }
+    st.editRef=null; patResetDraft(st); applyQuickFill(d);
+    if(i<0){ const n=P.data.dates.filter(k=>matchPat(k,d.pat)).length;
+      toast(n?(d.st==='x'?(n===1?t('Cleared {n} day',{n}):t('Cleared {n} days',{n})):(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n}))):t('No days in this poll match')); }
+    return; }
+  const a=e.target.closest('[data-qfl]'); if(!a) return;
+  const act=a.dataset.qfl;
+  if(act==='cancel'){ st.editRef=null; patResetDraft(st); patRefresh('qf',true); return; }
+  const li=a.closest('[data-qfi]'), i=li?+li.dataset.qfi:-1, r=rs[i]; if(!r) return;
+  if(act==='brush'){ r.st={y:'i',i:'m',m:'x',x:'y'}[r.st||'y']; applyQuickFill(); }
+  else if(act==='up') qfMove(i,i-1);
+  else if(act==='down') qfMove(i,i+1);
+  else if(act==='off'){ if(r.off) delete r.off; else r.off=true; applyQuickFill(); }
+  else if(act==='del'){ rs.splice(i,1); if(st.editRef===r){ st.editRef=null; patResetDraft(st); } applyQuickFill(); }
+  else if(act==='edit'){ // load the rule into the fields above; Update puts it back in the same place
+    st.editRef=r; st.wd=new Set(r.pat&&r.pat.wd?r.pat.wd:[0,1,2,3,4,5,6]); st.dom=r.pat&&r.pat.dom?r.pat.dom.map(String):['',''];
+    st.hs=Math.max(st.hmin,r.hs); st.he=Math.min(st.hmax,r.he); P.qfs=r.st||'y'; patRefresh('qf',true); }
 });
+// Drag a rule (desktop) to reorder.
+document.addEventListener('dragstart',e=>{ const li=e.target.closest&&e.target.closest('.qfl-r'); if(!li) return; P.qfDrag=+li.dataset.qfi; li.classList.add('drag'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain',''); }catch{} });
+document.addEventListener('dragover',e=>{ const li=e.target.closest&&e.target.closest('.qfl-r'); if(!li||P.qfDrag==null) return; e.preventDefault();
+  document.querySelectorAll('.qfl-r.dropb,.qfl-r.dropa').forEach(x=>x!==li&&x.classList.remove('dropb','dropa'));
+  const r=li.getBoundingClientRect(), after=e.clientY>r.top+r.height/2; li.classList.toggle('dropa',after); li.classList.toggle('dropb',!after); });
+document.addEventListener('drop',e=>{ const li=e.target.closest&&e.target.closest('.qfl-r'); if(!li||P.qfDrag==null) return; e.preventDefault();
+  const from=P.qfDrag, to0=+li.dataset.qfi+(li.classList.contains('dropa')?1:0); P.qfDrag=null; qfMove(from,to0>from?to0-1:to0); });
+document.addEventListener('dragend',()=>{ P.qfDrag=null; document.querySelectorAll('.qfl-r.drag,.qfl-r.dropb,.qfl-r.dropa').forEach(x=>x.classList.remove('drag','dropb','dropa')); });
 // ---------- calendar import (iCal feed or .ics file) ----------
 // The Worker only fetches a feed (browsers can't, because of CORS); parsing happens here.
 // Busy events become absolute times, then the poll's hours (floating local time) are checked in this browser's time zone.
@@ -4543,7 +4621,7 @@ document.addEventListener('click',async e=>{
   if(ds.delresp){ if(!confirm(t('Delete this response?'))) return; try{ await api('DELETE',`/polls/${P.id}/responses/${ds.delresp}`,null,headers()); await loadPoll(false); }catch(err){ toast(err.message); } return; }
   if(!editable()) return;
   if(ds.bulk==='clear'&&qfActive()){ // only the hand-made marks go; the Quick fill rules fill in again
-    const {en}=qfCompute({},P.qfApplied); P.qfBase={}; P.qfLast=Object.assign({},en);
+    const {en}=qfCompute({},P.qfApplied); P.qfBase={}; P.qfOver={}; P.qfLast=Object.assign({},en);
     if(!qfSame(en,P.mine.entries)){ P.mine.entries=en; changed(); } renderBody(); toast(t('Your own marks are cleared; Quick fill stays')); return; }
   if(ds.bulk){ const dates=P.data.dates, en=Object.assign({},P.mine.entries);
     if(ds.bulk==='wkend') dates.forEach(k=>{ if(wdOf(k)>=5) en[k]='y'; });
@@ -5239,6 +5317,18 @@ function germanText(){ return {
 "Invited people who are available, available if needed, or maybe for the whole time": "Eingeladene, die die ganze Zeit verfügbar, wenn nötig verfügbar oder vielleicht verfügbar sind",
 "Invited {when}": "Eingeladen {when}",
 "Keep {x} and add another rule": "{x} behalten und weitere Regel hinzufügen",
+"Pick days to add a rule": "Tage wählen, um eine Regel hinzuzufügen",
+"Update": "Übernehmen",
+"At most {n} rules": "Höchstens {n} Regeln",
+"Add this rule (+)": "Diese Regel hinzufügen (+)",
+"Rules": "Regeln",
+"Rules apply from top to bottom: where they overlap, the lower one wins. Drag or use the arrows to reorder. Days you change by hand stay on top, until you add a rule that covers them.": "Regeln gelten von oben nach unten: Wo sie sich überschneiden, gewinnt die untere. Zum Umsortieren ziehen oder die Pfeile nutzen. Von Hand geänderte Tage bleiben obenauf, bis du eine Regel hinzufügst, die sie abdeckt.",
+"overrides {n}": "überschreibt {n}",
+"Move up": "Nach oben",
+"Move down": "Nach unten",
+"Switch on": "Einschalten",
+"Switch off": "Ausschalten",
+"Remove all Quick fill rules?": "Alle Regeln für Schnell ausfüllen entfernen?",
 "Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule": "Tasten: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> Pinsel · <kbd>+</kbd> Regel hinzufügen",
 "Last day of the month": "Letzter Tag des Monats",
 "Last hour": "Letzte Stunde",
