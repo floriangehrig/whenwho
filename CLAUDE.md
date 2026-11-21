@@ -37,7 +37,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
   people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
-  Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't. The page polls
+  Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't.
+  `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls
   `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails). `chat_reads.read_at` drives unread counts
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
   thread (`d:YYYY-MM-DD` / `m:<meeting id>`), `reactions` (JSON emoji → user ids, sent as counts) via `POST .../chat/:mid/react`,

@@ -5,7 +5,7 @@
 //   ASSETS    (optional) static assets binding serving /public; the single-file build inlines the page instead
 //   RESEND_API_KEY (optional secret) Resend API key (sending access). With MAIL_FROM, turns on server-sent emails
 //   MAIL_FROM (optional) sender address on a domain verified in Resend, e.g. noreply@example.com
-//   MAIL_PER_DAY (optional) recipients of invites / test emails per account (or per poll without one) per day, default 50
+//   MAIL_PER_DAY (optional) recipients of invites per account (or per poll without one) per day, default 50
 //   SITE_URL  (optional) public address of the site, e.g. https://polls.example.workers.dev (used in emails sent by the cron job)
 //   TURNSTILE_SITE_KEY (optional var) + TURNSTILE_SECRET (secret): bot check before a sign-in code is emailed.
 //   CAL_TOKEN_KEY (optional secret) encrypts stored calendar tokens; needed for Google / Outlook calendar sign-in, plus
@@ -150,7 +150,6 @@ async function route(request, env, ctx, url) {
   }
   if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
   if (a === 'image' && m === 'GET') return pollImage(request, env, url, id);
-  if (a === 'test-email' && m === 'POST') return testEmail(request, env, url, id);
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
   if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
@@ -820,7 +819,7 @@ async function deleteFavourite(request, env, fid) {
 // The page polls for new messages while the chat is open; there are no emails, only unread counts.
 const CHAT_MAX_LEN = 2000, CHAT_PAGE = 200, CHAT_MAX_PER_POLL = 5000, CHAT_BURST = 30, CHAT_BURST_MIN = 10;
 async function chatAllowed(env, poll, user) {
-  if (!user) return false;
+  if (!user || !poll.allow_comments) return false; // allow_comments = the poll's Chat switch (also covers the guest Comment field)
   if (poll.owner_id && poll.owner_id === user.id) return true;
   return !!(await accountParticipant(env, poll.id, user.id));
 }
@@ -830,6 +829,7 @@ async function chatAccess(request, env, id) {
   const poll = await loadPoll(env, id);
   const owner = isAdmin(request, poll);
   if (!owner) await checkPassword(request, poll);
+  if (!poll.allow_comments) throw new HttpError(403, 'The chat is turned off for this poll');
   if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Answer the poll with your account to join the chat');
   return { poll, user, owner };
 }
@@ -1353,6 +1353,7 @@ async function myPolls(request, env) {
     `SELECT m.poll_id, COUNT(*) AS n FROM messages m LEFT JOIN chat_reads cr ON cr.poll_id = m.poll_id AND cr.user_id = ?1
      WHERE m.user_id != ?1 AND m.created_at > COALESCE(cr.read_at, '') AND m.poll_id IN (
        SELECT id FROM polls WHERE owner_id = ?1 UNION SELECT poll_id FROM participants WHERE user_id = ?1)
+       AND m.poll_id IN (SELECT id FROM polls WHERE allow_comments = 1)
      GROUP BY m.poll_id`).bind(user.id).all();
   const unread = Object.fromEntries(ur.map((r) => [r.poll_id, r.n]));
   return json({
@@ -1504,8 +1505,8 @@ async function getPoll(request, env, ctx, url, id) {
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
     // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
-    const can = admin || !!part;
-    out.chat = { can, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
+    const can = !!poll.allow_comments && (admin || !!part);
+    out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
     if (can) { // header peek (newest message) and message counts per day / meeting thread
       const [last, refs] = await env.DB.batch([
         env.DB.prepare('SELECT m.body, m.created_at, m.user_id, u.name, u.email FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT 1').bind(id),
@@ -1732,7 +1733,7 @@ function periodText(poll, inst) {
   const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   return `${f(inst.start_date)} – ${f(inst.end_date)}`;
 }
-// Emails started by a person (invites, test emails) count against a daily cap per account, or per poll without one.
+// Emails started by a person (invites) count against a daily cap per account, or per poll without one.
 async function mailQuota(env, poll, count) {
   const key = poll.owner_id || 'poll:' + poll.id;
   const since = new Date(Date.now() - 86400000).toISOString();
@@ -1932,18 +1933,6 @@ async function invitePoll(request, env, url, id) {
   return json({ ok: true, sent, missing, ...(added || {}) });
 }
 
-async function testEmail(request, env, url, id) {
-  const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
-  await adoptLang(request, env, poll);
-  const owner = await ownerOf(env, poll);
-  if (!owner || !owner.email) throw new HttpError(400, 'This poll has no owner account');
-  const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
-  await sendMail(env, poll, poll.lang === 'de'
-    ? { to: [owner.email], subject: `Test-E-Mail von „${poll.title}“`, text: `Der E-Mail-Versand funktioniert.\n\nUmfrage: ${link}`, quota: true }
-    : { to: [owner.email], subject: `Test email from “${poll.title}”`, text: `Email sending works.\n\nPoll: ${link}`, quota: true });
-  return json({ ok: true });
-}
 
 // Who gets series emails: everyone in the poll's participant list who has an email address, not only last round's answers.
 // Accounts: the account's email. Guests who answered: the email on their latest answer (removing it there stops the emails).
