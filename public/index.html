@@ -960,6 +960,49 @@
   }
   .chat-form{display:flex;align-items:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
   .chat-form textarea{flex:1;resize:none;min-height:40px;max-height:140px;margin:0}
+  /* chat: header, tags, attached meetings, quotes, message menu, tag list, search */
+  .cd-t{display:flex;align-items:center;gap:7px;margin:0;font-size:15px;font-weight:700} .cd-t svg{width:17px;height:17px;color:var(--muted)}
+  .chatdock .count.at{top:auto;bottom:-3px;background:var(--accent-ink);box-shadow:0 0 0 2px var(--card)} .chatdock .count[hidden]{display:none}
+  .chat-form .chat-attb{flex:none;height:40px;width:40px}
+  .mchip{display:inline;border:0;padding:0 3px;margin:0 1px;border-radius:5px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink);font:inherit;font-weight:650;cursor:pointer}
+  .mchip.me{background:var(--accent);color:#fff}
+  .meet-att{display:flex;align-items:center;gap:9px;width:100%;max-width:300px;margin:4px 0;padding:7px 10px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer;white-space:normal}
+  .meet-att:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))} .meet-att.prop{border-left-color:var(--maybe)} .meet-att.gone{opacity:.6;cursor:default}
+  .ma-ic{flex:none;line-height:0;color:var(--accent)} .ma-ic svg{width:16px;height:16px} .meet-att.prop .ma-ic,.ac-it .ma-ic{color:var(--maybe-ink)}
+  .ma-b{display:flex;flex-direction:column;min-width:0;flex:1} .ma-b b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ma-b span{font-size:12px;color:var(--muted)}
+  .ma-tag{flex:none;display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:650;color:var(--muted)} .ma-tag svg{width:11px;height:11px}
+  .msg-b{position:relative;touch-action:pan-y;transition:transform .15s} .msg-b.swiping{transition:none}
+  .msg.tagme .msg-b{box-shadow:inset 3px 0 0 var(--accent)}
+  .msg-q{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin:2px 0 4px;padding:4px 8px;border:0;border-left:3px solid var(--accent);border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:inherit;font:inherit;text-align:left;cursor:pointer;min-width:0}
+  .msg-q b{font-size:12px;color:var(--accent-ink)} .msg-q span{font-size:12.5px;opacity:.85;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+  .msg-more{position:absolute;top:3px;right:3px;border:0;padding:1px;border-radius:6px;background:inherit;color:var(--muted);line-height:0;cursor:pointer;opacity:0}
+  .msg-more svg{width:15px;height:15px} .msg:hover .msg-more,.msg-more:focus-visible,.msg.menuopen .msg-more{opacity:1}
+  @media (hover:none){ .msg-more{display:none} .msg-b{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none} }
+  .msg-menu{margin-top:4px;padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;min-width:220px}
+  .msg-menu .rx-pick{margin:0;border:0;box-shadow:none;padding:0}
+  .msg-menu .rx-pick button[aria-pressed="true"]{background:var(--accent-weak)}
+  .mm-acts{display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:4px}
+  .mm-acts button{display:flex;align-items:center;gap:10px;border:0;background:none;color:var(--ink);font:inherit;font-size:14px;padding:7px 8px;border-radius:8px;cursor:pointer;text-align:left}
+  .mm-acts button:hover{background:var(--empty)} .mm-acts button svg{width:16px;height:16px;color:var(--muted)} .mm-acts .danger,.mm-acts .danger svg{color:var(--no)}
+  .msg.flash .msg-b,.meet.flash{animation:dflash 1.6s ease}
+  .chat-reply{display:flex;align-items:center;gap:8px;padding:6px 0 0} .chat-reply[hidden]{display:none}
+  .chat-reply .msg-q{margin:0;flex:1} .cr-ic{line-height:0;color:var(--accent)} .cr-ic svg{width:16px;height:16px}
+  .chat-ac{max-height:240px;overflow-y:auto;margin-top:6px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:var(--shadow)} .chat-ac[hidden]{display:none}
+  .ac-h{display:flex;align-items:center;gap:6px;padding:6px 8px 3px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)} .ac-h svg{width:13px;height:13px}
+  .ac-it{display:flex;align-items:center;gap:9px;width:100%;padding:6px 8px;border:0;border-radius:8px;background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+  .ac-it.on,.ac-it:hover{background:var(--empty)} .ac-it .tile.avatar{width:26px;height:26px} .ac-none{padding:8px}
+  .act-ev .ev-more{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer} .act-ev .ev-more:hover{text-decoration:underline}
+  .act-ev.ev-meet{flex-wrap:wrap} .ev-l{display:flex;align-items:center;gap:8px} .ev-l svg{width:15px;height:15px;color:var(--muted)}
+  .ev-meet .meet-att{flex:1 1 220px;margin:0} .ev-acts{display:flex;align-items:center;gap:4px;margin-left:auto}
+  .chat-find{display:flex;flex-direction:column;gap:8px;padding:10px 16px 4px;border-bottom:1px solid var(--line)} .chat-find[hidden]{display:none}
+  .cf-in{display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)} .cf-in svg{width:16px;height:16px;color:var(--muted);flex:none}
+  .cf-in input{border:0;margin:0;padding:8px 0;background:none;box-shadow:none;outline:0;flex:1;min-width:0}
+  .cf-in:focus-within{border-color:var(--accent)}
+  .cf-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-bottom:6px} .cf-show button{padding:4px 10px;font-size:12.5px}
+  .qchip.on{background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 50%,transparent);color:var(--accent-ink);font-weight:650}
+  .cf-sel{width:auto;margin:0;padding:4px 26px 4px 10px;font-size:12.5px;border-radius:999px;height:auto} .cf-sel.on{border-color:var(--accent);color:var(--accent-ink)}
+  .chat-count{text-align:center;font-size:12px;color:var(--muted);margin:6px 0 2px}
+  .chat-list mark{background:color-mix(in srgb,var(--maybe) 55%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
   .ubadge svg{width:12px;height:12px}
   .pstep{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line);scroll-margin-top:76px}
@@ -1696,6 +1739,8 @@ Object.assign(ICON,{
   more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
   day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
   chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
+  reply:svgI('<path d="M9.5 7.5 4.5 12l5 4.5"/><path d="M4.5 12h9a6 6 0 0 1 6 6v1"/>'),
+  clip:svgI('<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/>'),
   smile:svgI('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0M9.5 9.5v.1M14.5 9.5v.1"/>'),
   down:svgI('<path d="M12 5v14M6 13l6 6 6-6"/>'),
   eyeoff:svgI('<path d="M10.6 5.6A10 10 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.3 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2M3.5 3.5l17 17"/>'),
@@ -3182,10 +3227,10 @@ function renderMeetings(){
     else if(!sel) foot=`<div class="mfoot">${calB}${chatRefBtn('m:'+m.id)}</div>`;
     const tm=`<span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
-    if(fold) return `<div class="meet">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div><span class="macts">${
+    if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div><span class="macts">${
       d.isAdmin?qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))+qb('data-copyinvite',m.id,'copy',t('Copy invite text')):''}${calB}${chatRefBtn('m:'+m.id)}${
       d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}</span></div></div></div>`;
-    return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
+    return `<div class="meet${on?' sel':''}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div></div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
@@ -3220,7 +3265,7 @@ function votePanel(props){
     const tog=`<button type="button" class="btn sm withic vbtn${on?' on':''}" data-vote="${m.id}" aria-pressed="${on}" ${canVote?'':'disabled'} title="${esc(canVote?(on?t('Remove your vote'):t('Vote for this option')):t('Send your answer to vote.'))}">${ICON.check}<span>${on?t('Suits me'):t('Vote')}</span></button>`;
     const foot=adm?`<div class="mfoot"><button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>${tog}${chatRefBtn('m:'+m.id)}${`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`}</div>`
       :`<div class="mfoot">${tog}${chatCan()?chatRefBtn('m:'+m.id):''}</div>`;
-    return `<div class="meet prop${on?' voted':''}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div><span class="vtally">${tally}</span></div>
+    return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div><span class="vtally">${tally}</span></div>
       <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
   const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
     :t('Tick every option that suits you. The organiser then confirms the ones that work.');
@@ -4406,14 +4451,19 @@ async function saveDrafts(btn){
 // One chat per poll for the owner and everyone answering with an account (a series shares it). It lives in a drawer
 // (side panel on desktop, bottom sheet on phones) opened from the round button bottom-right, the header peek, or the
 // 💬 buttons on a day / meeting (which open that thread: messages with ref 'd:<date>' / 'm:<meeting id>').
-// "Activity" mixes the messages with poll events worked out here (answers, meetings, rounds). Guests get only that.
+// One timeline: messages plus poll events worked out here (answers, meetings, rounds). Guests see only the events.
+// Messages can tag people (<@user id>) and attach meetings (<#m:meeting id>) inline, quote another message (re / rq)
+// and carry reactions. Press and hold (right-click, or the ⌄ button) a message to react, reply, copy or delete;
+// swipe right to reply. Search and filters work on the loaded messages (up to CHAT_KEEP).
 // New messages are fetched while the drawer is open and the tab is in front: every 15 s, slowing to 60 s while quiet.
 const CHAT_MIN=15000, CHAT_MAX=60000, CHAT_KEEP=500, CHAT_EMOJI=['👍','❤️','😂','✅','🙏','😮'];
 const chatTip=()=>t('Only the organiser and people who answer with an account can read and write here.');
 const chatCan=()=>!!(P.data&&P.data.chat&&P.data.chat.can);
 function chatState(){
-  if(!P.chat||P.chat.id!==P.id){ chatStop(); P.chat={id:P.id,msgs:null,people:{},draft:'',timer:null,busy:false,since:null,owner:null,canDel:false,
-    open:store.get('chatOpen:'+P.id,false),view:store.get('chatView',null)==='act'?'act':'chat',ref:null,delay:CHAT_MIN,newId:null,unseen:0,pick:null,seq:0}; }
+  if(!P.chat||P.chat.id!==P.id){ chatStop(); const sh=store.get('chatShow','all');
+    P.chat={id:P.id,msgs:null,people:{},members:[],draft:'',timer:null,busy:false,since:null,owner:null,canDel:false,
+      open:store.get('chatOpen:'+P.id,false),show:sh==='msg'||sh==='ev'?sh:'all',ref:null,delay:CHAT_MIN,newId:null,unseen:0,seq:0,
+      menu:null,held:0,reply:null,tok:{},ac:null,find:false,q:'',f:'',exp:new Set()}; }
   return P.chat;
 }
 function chatStop(){ if(P.chat&&P.chat.timer){ clearTimeout(P.chat.timer); P.chat.timer=null; } }
@@ -4423,7 +4473,7 @@ const isPhone=()=>matchMedia('(max-width:640px)').matches;
 function refLabel(ref){
   if(!ref) return '';
   if(ref.startsWith('d:')) return '📅 '+dLabel(ref.slice(2));
-  const id=ref.slice(2), m=(P.data.instances||[]).concat([inst()]).flatMap(x=>x.meetings||[]).find(x=>x.id===id);
+  const m=meetById(ref.slice(2));
   return '★ '+(m?(m.title||dLabel(m.date))+(m.allDay||m.start==null?'':' '+hh(m.start)):t('Meeting'));
 }
 const refN=ref=>(P.data&&P.data.chat&&P.data.chat.refs&&P.data.chat.refs[ref])||0;
@@ -4431,34 +4481,75 @@ const refN=ref=>(P.data&&P.data.chat&&P.data.chat.refs&&P.data.chat.refs[ref])||
 const chatRefBtn=(ref,cls='')=>chatCan()?`<button type="button" class="qb chatref${cls}" data-chatgo="${esc(ref)}" title="${t('Chat about this')}" aria-label="${t('Chat about this')}">${ICON.chat}<span class="n"${refN(ref)?'':' hidden'}>${refN(ref)}</span></button>`:'';
 function chatRefBadges(){ document.querySelectorAll('[data-chatgo]').forEach(b=>{ const n=refN(b.dataset.chatgo), s=b.querySelector('.n'); if(s){ s.textContent=n; s.hidden=!n; } }); }
 function bumpRef(ref){ const c=P.data.chat; if(!ref||!c) return; c.refs=c.refs||{}; c.refs[ref]=(c.refs[ref]||0)+1; }
-// Round button + drawer, rendered at the end of the poll page (for everyone: guests get the Activity view and a sign-in note).
+// ---- tags (<@user id>) and attached meetings (<#m:meeting id>) inside a message ----
+const TOK_RE=/<@([A-Za-z0-9_]{4,40})>|<#m:([A-Za-z0-9_-]{1,24})>/g;
+const myId=()=>(P.chat&&P.chat.me)||null; // from GET .../chat
+// Every meeting of the poll (all rounds the page knows), proposed and set.
+function allMeetings(){ const seen=new Map(); [inst(),...(P.data.instances||[])].forEach(x=>((x&&x.meetings)||[]).forEach(m=>{ if(!seen.has(m.id)) seen.set(m.id,m); })); return [...seen.values()]; }
+const meetById=id=>allMeetings().find(m=>m.id===id)||null;
+const meetWhen=m=>dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start));
+const meetTitle=m=>m.title||P.data.poll.title;
+const chatName=uid=>{ const p=P.chat&&P.chat.people[uid]; return p?p.name:null; };
+// The text with tags and meetings as words (quotes, Copy, search, the header peek).
+const plainText=s=>String(s||'').replace(TOK_RE,(_,u,mid)=>{ if(u) return '@'+(chatName(u)||'?'); const m=meetById(mid); return '★ '+(m?meetTitle(m)+' · '+meetWhen(m):t('Meeting removed')); });
+const normQ=s=>String(s||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+const mentionChip=uid=>{ const n=chatName(uid)||'?'; return `<button type="button" class="mchip${uid===myId()?' me':''}" data-chatperson="${esc(uid)}" title="${esc(t('Show messages from {name}',{name:n}))}">@${esc(n)}</button>`; };
+function meetChip(id){
+  const m=meetById(id);
+  if(!m) return `<span class="meet-att gone"><span class="ma-ic">${ICON.star}</span><span class="ma-b"><b>${t('Meeting removed')}</b></span></span>`;
+  const vs=m.proposed&&inst().meetings.includes(m)?votersOf(m):null;
+  return `<button type="button" class="meet-att${m.proposed?' prop':''}" data-chatmeet="${esc(id)}" title="${t('Show this meeting')}"><span class="ma-ic">${ICON[m.proposed?'check':'star']}</span><span class="ma-b"><b>${esc(meetTitle(m))}</b><span>${esc(meetWhen(m))}${m.location?' · '+esc(m.location):''}</span></span><span class="ma-tag">${m.proposed?t('Proposed'):t('Set')}${vs?` · ${ICON.check}${vs.length}`:''}</span></button>`;
+}
+// Highlights the search words in escaped html (only outside tags).
+function markHl(html,q){
+  if(!q) return html;
+  const re=new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+  return html.replace(/(<[^>]*>)|([^<]+)/g,(a,tag,txt)=>tag||txt.replace(re,x=>`<mark>${x}</mark>`));
+}
+// A message's text: links, date chips, tags and attached meetings.
+function msgText(body,q){
+  const s=String(body||''); let out='', at=0;
+  for(const mm of s.matchAll(TOK_RE)){ out+=markHl(linkText(s.slice(at,mm.index)),q)+(mm[1]?mentionChip(mm[1]):meetChip(mm[2])); at=mm.index+mm[0].length; }
+  return out+markHl(linkText(s.slice(at)),q);
+}
+// Goes to a meeting card (Meetings tab for the organiser, the meetings strip for everyone else).
+function goMeeting(id){
+  const m=meetById(id); if(!m) return;
+  if(!inst().meetings.some(x=>x.id===id)){ toast(t('{title} is in another round.',{title:meetTitle(m)})); return; }
+  if(isPhone()) chatSetOpen(false);
+  if(P.data.isAdmin){ if(msub()!=='list') setMsub('list',false); if(P.atab!=='meetings') setAdminTab('meetings'); else renderBody(); }
+  else { if(m.proposed&&P.vfold){ P.vfold=false; store.set('vfold:'+P.id,false); } if(!m.proposed&&P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); } renderMeetings(); }
+  requestAnimationFrame(()=>{ const el=document.querySelector(`#meetings [data-mtg="${CSS.escape(id)}"]`);
+    if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); } });
+}
+// Round button + drawer, rendered at the end of the poll page (for everyone: guests get the events and a sign-in note).
 function chatDock(){
   const d=P.data;
   if(d.poll.allowComments===false){ document.body.classList.remove('chatopen'); return ''; } // the organiser turned the chat off
-  const c=chatState(), can=chatCan(), n=can?(d.chat.unread||0):0;
+  const c=chatState(), can=chatCan(), n=can?(d.chat.unread||0):0, at=n&&d.chat.mentions;
   document.body.classList.toggle('chatopen',c.open);
-  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="count" id="chatn"${n?'':' hidden'}>${n}</span></button>
+  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="count" id="chatn"${n?'':' hidden'}>${n}</span><span class="count at" id="chatat"${at?'':' hidden'} title="${t('You were tagged')}">@</span></button>
     <div class="chatback${c.open?' open':''}" data-chatclose></div>
     <aside class="chatdrawer${c.open?' open':''}" id="chatdrawer" aria-label="${t('Chat')}"${c.open?'':' inert'}>
       <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
-        <div class="seg ws-views cd-views" role="tablist" aria-label="${t('Chat')}">
-          <button type="button" role="tab" data-chatview="chat" class="${c.view==='chat'?'on':''}" aria-selected="${c.view==='chat'}"><span class="segic">${ICON.chat}</span>${t('Chat')}</button>
-          <button type="button" role="tab" data-chatview="act" class="${c.view==='act'?'on':''}" aria-selected="${c.view==='act'}"><span class="segic">${ICON.clock}</span>${t('Activity')}</button></div>
-        ${tip(esc(can?chatTip():t('Activity shows who answered and which meetings were set. To chat, answer with an account.')),'right')}
-        <span class="ml-auto"></span>${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
+        <h2 class="cd-t">${ICON.chat}${t('Chat')}</h2>
+        ${tip(esc(can?chatTip():t('Here you see who answered and which meetings were set. To chat, answer with an account.')),'right')}
+        <span class="ml-auto"></span>${ib('search',t('Search and filter'),`id="chatfindb" data-chatfind aria-expanded="${c.find}" aria-controls="chatfind"`,'sm ghost'+(c.find||c.show!=='all'?' on':''))}${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
+      <div class="chat-find" id="chatfind"${c.find?'':' hidden'}></div>
       <div class="cd-ref" id="chatref"></div>
       <div id="chatbox" class="chatbox"></div></aside>`;
 }
 function chatUnreadBadges(n){
-  if(P.data&&P.data.chat) P.data.chat.unread=n;
+  const ch=P.data&&P.data.chat; if(ch){ ch.unread=n; if(!n) ch.mentions=0; }
   const el=$('chatn'); if(el){ el.textContent=n; el.hidden=!n; }
+  const a=$('chatat'); if(a) a.hidden=!(n&&ch&&ch.mentions);
 }
 function chatSetOpen(on,ref){
   const c=chatState();
-  if(ref!==undefined){ c.ref=ref||null; if(ref) c.view='chat'; }
+  if(ref!==undefined) c.ref=ref||null;
   if(c.open===on&&ref===undefined) return;
   const was=c.open; c.open=on; store.set('chatOpen:'+P.id,on);
-  if(!on){ c.newId=null; c.pick=null; }
+  if(!on){ c.newId=null; c.menu=null; c.ac=null; }
   document.body.classList.toggle('chatopen',on);
   const dr=$('chatdrawer'), dk=$('chatdock'), bk=document.querySelector('.chatback');
   if(dr){ dr.classList.toggle('open',on); dr.inert=!on; }
@@ -4467,7 +4558,7 @@ function chatSetOpen(on,ref){
   if(on){ const box=$('chatbox'); if(box&&was) box.innerHTML=''; chatSync(); const ta=$('chatin'); if(ta&&!isPhone()) ta.focus(); }
   else { chatStop(); if(dk&&dr&&dr.contains(document.activeElement)) dk.focus(); }
 }
-// Call after the chat may have appeared, disappeared or been rebuilt (render, open, view switch).
+// Call after the chat may have appeared, disappeared or been rebuilt (render, open).
 function chatSync(){
   if(!$('chatbox')){ chatStop(); return; }
   const c=chatState();
@@ -4485,7 +4576,14 @@ function chatTick(){
 }
 const chatFast=()=>{ const c=P.chat; if(c){ c.delay=CHAT_MIN; if(c.timer) chatTick(); } };
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&P.chat&&P.chat.id===P.id&&chatVisible()&&P.chat.msgs){ P.chat.delay=CHAT_MIN; chatFetch(false); chatTick(); } });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&P.chat&&P.chat.open&&$('chatdrawer')&&!document.querySelector('dialog[open],.dpk-pop:not(.hide)')){ chatSetOpen(false); } });
+// Esc closes the innermost thing first: message menu, tag list, then the drawer.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape'||!P.chat||!P.chat.open||!$('chatdrawer')||document.querySelector('dialog[open],.dpk-pop:not(.hide)')) return;
+  const c=P.chat;
+  if(c.menu){ c.menu=null; chatDraw(true); return; }
+  if(c.ac){ c.ac=null; chatAcDraw(); return; }
+  chatSetOpen(false);
+});
 async function chatFetch(full){
   const c=chatState(); if(c.busy) return; c.busy=true;
   let again=false;
@@ -4494,10 +4592,10 @@ async function chatFetch(full){
     const after=full?null:c.since;
     const r=await api('GET',`/polls/${P.id}/chat${after?'?after='+encodeURIComponent(after):''}`,null,headers());
     if(c!==P.chat) return;
-    c.since=r.now; c.owner=r.owner; c.canDel=!!r.canDeleteAll;
+    c.since=r.now; c.owner=r.owner; c.canDel=!!r.canDeleteAll; c.me=r.me||c.me||null;
     if(full){
       const unread=(P.data.chat&&P.data.chat.unread)||0;
-      c.msgs=r.messages.concat((c.msgs||[]).filter(m=>m.tmp)); c.people=r.people||{};
+      c.msgs=r.messages.concat((c.msgs||[]).filter(m=>m.tmp)); c.people=r.people||{}; c.members=r.members||[];
       // "New" divider above the first unread message from someone else.
       c.newId=null; if(unread){ let k=0; for(let i=r.messages.length-1;i>=0;i--){ if(!r.messages[i].mine&&++k===unread){ c.newId=r.messages[i].id; break; } } }
     } else {
@@ -4506,11 +4604,11 @@ async function chatFetch(full){
       for(const m of r.messages){ if(byId.has(m.id)){ const o=c.msgs[byId.get(m.id)]; if(JSON.stringify(o.rx)!==JSON.stringify(m.rx)){ c.msgs[byId.get(m.id)]=m; changed=true; } } else add.push(m); }
       if(!add.length&&!changed){ c.delay=Math.min(CHAT_MAX,Math.round(c.delay*1.5)); return; }
       c.delay=CHAT_MIN;
-      if(add.some(m=>!c.people[m.uid])){ again=true; return; } // someone new wrote: reload once to get their name and picture
+      if(add.some(m=>!c.people[m.uid]||(m.rq&&!c.people[m.rq.uid]))){ again=true; return; } // someone new wrote: reload once to get their name and picture
       c.msgs.push(...add); if(c.msgs.length>CHAT_KEEP) c.msgs.splice(0,c.msgs.length-CHAT_KEEP);
       const others=add.filter(m=>!m.mine);
       others.forEach(m=>bumpRef(m.ref));
-      if(others.length){ const l=others[others.length-1], p=c.people[l.uid]||{}; P.data.chat.last={name:p.name||'?',body:l.body.slice(0,120),at:l.at,mine:false}; c.unseen+=others.length; }
+      if(others.length){ const l=others[others.length-1], p=c.people[l.uid]||{}; P.data.chat.last={name:p.name||'?',body:plainText(l.body).slice(0,120),at:l.at,mine:false}; c.unseen+=others.length; }
     }
     chatUnreadBadges(0); chatRefBadges(); chatDraw(true);
   }catch(e){ if(e.status===401||e.status===403){ chatStop(); const b=$('chatbox'); if(b) b.innerHTML=`<p class="muted small chat-empty">${esc(e.message)}</p>`; } }
@@ -4554,69 +4652,231 @@ function goDay(k){
   P.tab='group'; store.set('view:'+P.id,'group'); P.ovDay=k; renderBody();
   const el=document.querySelector(`#body [data-ov="${k}"]`); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); }
 }
-// ---- activity: events worked out from the poll data ----
+// ---- events: worked out from the poll data, shown between the messages ----
 function activityItems(){
   const d=P.data, out=[];
-  (d.responses||[]).forEach(r=>r.updatedAt&&out.push({at:r.updatedAt,ic:'check',html:t('{name} answered',{name:`<b>${esc(r.name)}</b>`})}));
-  (d.instances||[]).forEach(x=>(x.meetings||[]).forEach(m=>m.at&&out.push({at:m.at,ic:m.proposed?'check':'star',html:t(m.proposed?'{title} proposed for {when}':'{title} set for {when}',{title:`<b>${esc(m.title||d.poll.title)}</b>`,when:esc(dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start)))}),ref:'m:'+m.id})));
-  if(d.poll.kind==='series') (d.instances||[]).forEach(x=>x.createdAt&&out.push({at:x.createdAt,ic:'repeat',html:t('Round {round} opened',{round:`<b>${esc(instLabel(x))}</b>`})}));
+  (d.responses||[]).forEach(r=>r.updatedAt&&out.push({at:r.updatedAt,kind:'ans',name:r.name}));
+  allMeetings().forEach(m=>m.at&&out.push({at:m.at,kind:'meet',mt:m,ref:'m:'+m.id})); // mt, not m: m marks a message
+  if(d.poll.kind==='series') (d.instances||[]).forEach(x=>x.createdAt&&out.push({at:x.createdAt,kind:'round',html:t('Round {round} opened',{round:`<b>${esc(instLabel(x))}</b>`})}));
   return out;
 }
+// Messages that pass the search box and filter chips.
+function chatMatch(c,m){
+  const me=myId(), f=c.f, nq=normQ(c.q.trim());
+  if(f==='me'&&!(me&&m.body.includes(`<@${me}>`))) return false;
+  if(f==='meet'&&!(m.body.includes('<#m:')||(m.ref||'').startsWith('m:'))) return false;
+  if(f==='rep'&&!(m.rq&&m.rq.uid===me&&!m.mine)) return false;
+  if(f.startsWith('u:')&&m.uid!==f.slice(2)) return false;
+  return !nq||normQ(plainText(m.body)+' '+((c.people[m.uid]||{}).name||'')).includes(nq);
+}
+const chatFiltering=c=>!!(c.q.trim()||c.f);
 function chatHtml(c){
-  const act=c.view==='act', ref=c.ref;
-  let items=(c.msgs||[]).filter(m=>!ref||m.ref===ref).map(m=>({m,at:m.at}));
-  if(act&&!ref) items=items.concat(activityItems()).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:0);
+  const ref=c.ref, me=myId(), filt=chatFiltering(c), q=c.q.trim(), can=chatCan();
+  let msgs=(c.msgs||[]).filter(m=>!ref||m.ref===ref);
+  if(filt) msgs=msgs.filter(m=>chatMatch(c,m));
+  let items=c.show==='ev'?[]:msgs.map(m=>({m,at:m.at}));
+  if(c.show!=='msg'&&!filt) items=items.concat(activityItems().filter(x=>!ref||x.ref===ref)).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:0);
   if(!items.length) return '';
-  let h='', prevDay='', prev=null;
-  for(const it of items){
-    const d=new Date(it.at), day=d.toDateString();
+  let h=filt?`<div class="chat-count">${t(msgs.length===1?'{n} message':'{n} messages',{n:msgs.length})}</div>`:'', prevDay='', prev=null;
+  const timeOf=at=>{ const d=new Date(at); return `<time datetime="${esc(at)}" title="${esc(d.toLocaleString(LOC))}">${esc(d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}))}</time>`; };
+  for(let i=0;i<items.length;i++){
+    const it=items[i], d=new Date(it.at), day=d.toDateString();
     if(day!==prevDay){ h+=`<div class="chat-day"><span>${esc(d.toLocaleDateString(LOC,{weekday:'short',day:'numeric',month:'short'}))}</span></div>`; prevDay=day; prev=null; }
-    const time=`<time datetime="${esc(it.at)}" title="${esc(d.toLocaleString(LOC))}">${esc(d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}))}</time>`;
-    if(!it.m){ h+=`<div class="act-ev">${ICON[it.ic]}<span class="grow minw">${it.html}</span>${it.ref?chatRefBtn(it.ref):''}${time}</div>`; prev=null; continue; }
+    if(!it.m){
+      prev=null;
+      if(it.kind==='ans'){
+        // Answers close together become one line ("Anna, Ben and 3 more answered"); tap to list them.
+        const run=[it];
+        while(i+1<items.length&&!items[i+1].m&&items[i+1].kind==='ans'&&new Date(items[i+1].at).toDateString()===day&&new Date(items[i+1].at)-new Date(run[run.length-1].at)<36e5) run.push(items[++i]);
+        const key=run[0].at, names=[...new Set(run.map(x=>x.name))];
+        if(names.length<2||c.exp.has(key)){ run.forEach(x=>{ h+=`<div class="act-ev">${ICON.check}<span class="grow minw">${t('{name} answered',{name:`<b>${esc(x.name)}</b>`})}</span>${timeOf(x.at)}</div>`; }); continue; }
+        const b=s=>`<b>${esc(s)}</b>`;
+        const txt=names.length===2?t('{a} and {b} answered',{a:b(names[0]),b:b(names[1])}):t('{a}, {b} and {n} more answered',{a:b(names[0]),b:b(names[1]),n:names.length-2});
+        h+=`<div class="act-ev">${ICON.users}<button type="button" class="ev-more grow minw" data-chatexp="${esc(key)}" title="${t('Show everyone')}">${txt}</button>${timeOf(run[run.length-1].at)}</div>`;
+        continue;
+      }
+      if(it.kind==='meet'){
+        const m=it.mt, att=can?`<button type="button" class="qb" data-chatattm="${esc(m.id)}" title="${t('Write about this meeting')}" aria-label="${t('Write about this meeting')}">${ICON.reply}</button>`:'';
+        h+=`<div class="act-ev ev-meet"><span class="ev-l">${ICON[m.proposed?'check':'star']}${m.proposed?t('New option to vote on'):t('Meeting set')}</span>${meetChip(m.id)}<span class="ev-acts">${chatRefBtn(it.ref)}${att}${timeOf(it.at)}</span></div>`;
+        continue;
+      }
+      h+=`<div class="act-ev">${ICON.repeat}<span class="grow minw">${it.html}</span>${timeOf(it.at)}</div>`;
+      continue;
+    }
     const m=it.m;
-    if(m.id===c.newId) h+=`<div class="chat-new"><span>${t('New')}</span></div>`;
-    const p=c.people[m.uid]||{name:'?'}, cont=!!prev&&prev.uid===m.uid&&prev.ref===m.ref&&d-new Date(prev.at)<300000&&m.id!==c.newId;
-    const del=!m.tmp&&(m.mine||c.canDel)?`<button type="button" class="msg-del" data-chatdel="${esc(m.id)}" title="${t('Delete message')}" aria-label="${t('Delete message')}">${ICON.trash}</button>`:'';
-    const rxb=m.tmp?'':`<button type="button" class="msg-del msg-rxb" data-chatpick="${esc(m.id)}" title="${t('React')}" aria-label="${t('React')}" aria-expanded="${c.pick===m.id}">${ICON.smile}</button>`;
+    if(!filt&&m.id===c.newId) h+=`<div class="chat-new"><span>${t('New')}</span></div>`;
+    const p=c.people[m.uid]||{name:'?'}, cont=!filt&&!!prev&&prev.uid===m.uid&&prev.ref===m.ref&&d-new Date(prev.at)<300000&&m.id!==c.newId&&!m.re;
+    const canDel=!m.tmp&&(m.mine||c.canDel), tagme=!m.mine&&!!me&&m.body.includes(`<@${me}>`);
     const rx=Object.entries(m.rx||{}).map(([e,v])=>`<button type="button" class="rx${v.mine?' mine':''}" data-chatrx="${esc(m.id)}" data-e="${esc(e)}" aria-pressed="${!!v.mine}">${e}<span>${v.n}</span></button>`).join('');
-    const pick=c.pick===m.id?`<div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}">${e}</button>`).join('')}</div>`:'';
-    const stat=m.failed?`<button type="button" class="msg-retry" data-chatretry="${esc(m.id)}" title="${t('Not sent. Tap to try again.')}">${ICON.repeat}${t('Retry')}</button>`:m.tmp?`<span class="msg-sending">${t('Sending…')}</span>`:time;
-    h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}${m.tmp?' pending':''}${m.failed?' failed':''}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
-      <div class="msg-w"><div class="msg-b">${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}<div class="msg-t">${linkText(m.body)}</div>
-      <div class="msg-m">${del}${rxb}${stat}</div></div>${rx?`<div class="msg-rx">${rx}</div>`:''}${pick}</div></div>`;
+    const stat=m.failed?`<button type="button" class="msg-retry" data-chatretry="${esc(m.id)}" title="${t('Not sent. Tap to try again.')}">${ICON.repeat}${t('Retry')}</button>`:m.tmp?`<span class="msg-sending">${t('Sending…')}</span>`:timeOf(m.at);
+    const more=m.tmp?'':`<button type="button" class="msg-more" data-chatmenu="${esc(m.id)}" title="${t('More')}" aria-label="${t('More')}" aria-expanded="${c.menu===m.id}">${ICON.chevd}</button>`;
+    const quote=m.re?quoteHtml(c,m.re,m.rq,'data-chatquote'):'';
+    const menu=c.menu===m.id?`<div class="msg-menu" role="menu"><div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}" aria-pressed="${!!(m.rx&&m.rx[e]&&m.rx[e].mine)}">${e}</button>`).join('')}</div>
+      <div class="mm-acts">${can?`<button type="button" role="menuitem" data-chatreply="${esc(m.id)}">${ICON.reply}${t('Reply')}</button>`:''}<button type="button" role="menuitem" data-chatcopy="${esc(m.id)}">${ICON.copy}${t('Copy')}</button>${canDel?`<button type="button" role="menuitem" class="danger" data-chatdel="${esc(m.id)}">${ICON.trash}${t('Delete')}</button>`:''}</div></div>`:'';
+    h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}${m.tmp?' pending':''}${m.failed?' failed':''}${tagme?' tagme':''}${c.menu===m.id?' menuopen':''}" data-mid="${esc(m.id)}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
+      <div class="msg-w"><div class="msg-b">${more}${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}${quote}<div class="msg-t">${msgText(m.body,q)}</div>
+      <div class="msg-m">${stat}</div></div>${rx?`<div class="msg-rx">${rx}</div>`:''}${menu}</div></div>`;
     prev=m;
   }
   return h;
 }
+// The quoted message above a reply (and in the reply bar).
+function quoteHtml(c,id,rq,attr){
+  const name=rq?(rq.uid===myId()?t('You'):chatName(rq.uid)||'?'):'';
+  return `<button type="button" class="msg-q" ${attr}="${esc(id)}">${rq?`<b>${esc(name)}</b><span>${esc(plainText(rq.body))}</span>`:`<span class="muted">${t('Deleted message')}</span>`}</button>`;
+}
+// Search box and filter chips under the drawer header.
+function chatFindDraw(){
+  const el=$('chatfind'), c=P.chat; if(!el||!c) return;
+  const b=$('chatfindb'); if(b){ b.classList.toggle('on',c.find||c.show!=='all'); b.setAttribute('aria-expanded',c.find); b.style.display=chatCan()?"":"none"; }
+  el.hidden=!c.find;
+  if(!c.find){ el.innerHTML=''; return; }
+  if(!$('chatq')){
+    el.innerHTML=`<label class="cf-in">${ICON.search}<input type="search" id="chatq" placeholder="${t('Search messages')}" aria-label="${t('Search messages')}" autocomplete="off"></label><div class="cf-chips" id="chatfchips"></div>`;
+    const qi=$('chatq'); qi.value=c.q; qi.oninput=()=>{ c.q=qi.value; c.menu=null; chatDraw(false); };
+  }
+  const me=myId(), chip=(attr,v,on,label)=>`<button type="button" class="qchip${on?' on':''}" ${attr}="${v}" aria-pressed="${on}">${label}</button>`;
+  const ppl=c.members.concat(Object.keys(c.people)).filter((u,i,a)=>a.indexOf(u)===i&&u!==me&&c.people[u]).sort((a,b)=>c.people[a].name.localeCompare(c.people[b].name));
+  const uf=c.f.startsWith('u:')?c.f.slice(2):'';
+  $('chatfchips').innerHTML=`<span class="seg cf-show" role="group" aria-label="${t('Show')}">${[['all',t('Everything')],['msg',t('Messages')],['ev',t('Events')]].map(([v,l])=>`<button type="button" class="${c.show===v?'on':''}" data-chatshow="${v}" aria-pressed="${c.show===v}">${l}</button>`).join('')}</span>
+    ${chip('data-chatf','me',c.f==='me','@ '+t('Tagged me'))}${chip('data-chatf','meet',c.f==='meet','★ '+t('Meetings'))}${chip('data-chatf','rep',c.f==='rep','↩ '+t('Replies to me'))}
+    ${ppl.length?`<select id="chatfu" class="cf-sel${uf?' on':''}" aria-label="${t('From')}"><option value="">${t('Anyone')}</option>${ppl.map(u=>`<option value="${esc(u)}"${u===uf?' selected':''}>${esc(c.people[u].name)}</option>`).join('')}</select>`:''}`;
+  const sel=$('chatfu'); if(sel) sel.onchange=()=>{ c.f=sel.value?'u:'+sel.value:''; chatDraw(false); };
+}
+// Reply bar above the message box.
+function chatReplyDraw(){
+  const el=$('chatreply'), c=P.chat; if(!el||!c) return;
+  const m=c.reply&&(c.msgs||[]).find(x=>x.id===c.reply);
+  if(!m){ c.reply=null; el.hidden=true; el.innerHTML=''; return; }
+  el.innerHTML=`<span class="cr-ic">${ICON.reply}</span>${quoteHtml(c,m.id,{uid:m.uid,body:m.body},'data-chatquote')}${ib('x',t('Cancel reply'),'data-chatnoreply','sm ghost')}`;
+  el.hidden=false;
+}
+// Tag list: people while typing "@…", people and meetings from the 📎 button.
+function chatAcItems(c){
+  const me=myId(), nq=normQ(c.ac.q||'');
+  const ppl=c.members.filter(u=>u!==me&&c.people[u]&&(!nq||normQ(c.people[u].name).includes(nq))).sort((a,b)=>c.people[a].name.localeCompare(c.people[b].name));
+  const ms=c.ac.mode==='att'?allMeetings().slice().sort((a,b)=>(b.proposed?1:0)-(a.proposed?1:0)||(a.date<b.date?-1:a.date>b.date?1:(a.start||0)-(b.start||0))):[];
+  return ppl.map(id=>({k:'u',id})).concat(ms.map(m=>({k:'m',id:m.id})));
+}
+function chatAcDraw(){
+  const el=$('chatac'), c=P.chat; if(!el||!c) return;
+  const ab=$('chatattb'); if(ab) ab.setAttribute('aria-expanded',!!(c.ac&&c.ac.mode==='att'));
+  if(!c.ac){ el.hidden=true; el.innerHTML=''; return; }
+  const items=c.ac.items=chatAcItems(c), att=c.ac.mode==='att';
+  if(c.ac.sel>=items.length) c.ac.sel=0;
+  if(!items.length){ if(!att){ el.hidden=true; el.innerHTML=''; return; } el.innerHTML=`<p class="muted small ac-none">${t('Nothing to attach yet. People appear here once they answer with an account.')}</p>`; el.hidden=false; return; }
+  let h='', head='';
+  items.forEach((it,i)=>{
+    const on=i===c.ac.sel;
+    if(att&&head!==it.k){ head=it.k; h+=`<div class="ac-h">${ICON[it.k==='u'?'users':'star']}${it.k==='u'?t('People'):t('Meetings')}</div>`; }
+    let inner;
+    if(it.k==='u'){ const p=c.people[it.id]; inner=`${tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:it.id},'avatar')}<span class="grow minw">${esc(p.name)}</span>`; }
+    else { const m=meetById(it.id); inner=`<span class="ma-ic">${ICON[m.proposed?'check':'star']}</span><span class="ma-b grow minw"><b>${esc(meetTitle(m))}</b><span>${esc(meetWhen(m))}</span></span><span class="ma-tag">${m.proposed?t('Proposed'):t('Set')}</span>`; }
+    h+=`<button type="button" role="option" class="ac-it${on?' on':''}" data-chatac="${i}" aria-selected="${on}">${inner}</button>`;
+  });
+  el.innerHTML=h; el.hidden=false;
+  const on=el.querySelector('.ac-it.on'); if(on) on.scrollIntoView({block:'nearest'});
+}
+// "@" right before the cursor (at the start or after a space) opens the people list.
+function chatAcDetect(){
+  const c=P.chat, ta=$('chatin'); if(!c||!ta) return;
+  if(c.ac&&c.ac.mode==='att') return;
+  const pos=ta.selectionStart, mm=ta.value.slice(0,pos).match(/(?:^|\s)@([\p{L}\p{N}_.\-]{0,20})$/u);
+  const was=c.ac; c.ac=mm?{mode:'at',start:pos-mm[1].length-1,q:mm[1],sel:was&&was.q===mm[1]?was.sel:0}:null;
+  chatAcDraw();
+}
+// Puts a tag or meeting into the message box as readable text; chatSend turns it back into the token.
+function chatInsert(k,id,from){
+  const c=P.chat, ta=$('chatin'); if(!c||!ta) return;
+  let label, tok;
+  if(k==='u'){ const p=c.people[id]; if(!p) return; label='@'+p.name; tok=`<@${id}>`; }
+  else { const m=meetById(id); if(!m) return; label=`★ ${meetTitle(m)} (${meetWhen(m)})`; tok=`<#m:${id}>`; }
+  let L=label, n=2; while(c.tok[L]&&c.tok[L]!==tok) L=label+' '+(n++);
+  c.tok[L]=tok;
+  const v=ta.value, pos=ta.selectionStart??v.length, start=from==null?pos:from, ins=(start&&!/\s/.test(v[start-1])?' ':'')+L+' ';
+  ta.value=v.slice(0,start)+ins+v.slice(pos);
+  const np=start+ins.length; ta.focus(); ta.setSelectionRange(np,np);
+  c.ac=null; ta.dispatchEvent(new Event('input'));
+}
+function chatAcPick(i){ const c=P.chat, it=c&&c.ac&&c.ac.items&&c.ac.items[i]; if(it) chatInsert(it.k,it.id,c.ac.mode==='at'?c.ac.start:null); }
+const chatTokenize=text=>{ const c=P.chat; Object.keys(c.tok).sort((a,b)=>b.length-a.length).forEach(L=>{ text=text.split(L).join(c.tok[L]); }); return text; };
+function chatMenu(id){ const c=P.chat, m=c&&(c.msgs||[]).find(x=>x.id===id); if(!m||m.tmp) return; c.menu=id; c.ac=null; chatDraw(true); chatAcDraw();
+  const mm=document.querySelector('#chatbox .msg-menu'); if(mm) mm.scrollIntoView({block:'nearest'}); }
+function chatReplyTo(id){
+  const c=P.chat, m=c&&(c.msgs||[]).find(x=>x.id===id); if(!m||m.tmp||!chatCan()) return;
+  c.reply=id; c.menu=null; chatDraw(true);
+  const ta=$('chatin'); if(ta) ta.focus();
+}
+// Scrolls to a message (from a quote or a search result), clearing filters that hide it.
+function chatJump(id){
+  const c=P.chat; if(!(c.msgs||[]).some(m=>m.id===id)){ toast(t('That message isn’t loaded anymore.')); return; }
+  if(chatFiltering(c)||c.ref||c.show==='ev'){ c.q=''; c.f=''; c.ref=null; if(c.show==='ev') c.show='all'; c.find=false; chatDraw(false); }
+  const el=document.querySelector(`#chatbox .msg[data-mid="${CSS.escape(id)}"]`);
+  if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); }
+}
+// Press and hold (touch) opens the message menu; swiping a bubble to the right replies to it.
+function chatGestures(list){
+  let g=null;
+  const end=()=>{ if(!g) return; clearTimeout(g.t); if(g.b){ g.b.style.transform=''; g.b.classList.remove('swiping'); } g=null; };
+  list.addEventListener('pointerdown',e=>{
+    if(e.button!==0||e.pointerType==='mouse') return;
+    const el=e.target.closest('.msg[data-mid]');
+    if(!el||el.classList.contains('pending')||e.target.closest('.msg-menu,.msg-rx,a,.msg-more,.mchip,.meet-att,.dchip,.msg-ref')) return;
+    g={id:el.dataset.mid,x:e.clientX,y:e.clientY,b:el.querySelector('.msg-b'),dx:0,
+      t:setTimeout(()=>{ if(!g) return; const id=g.id; end(); if(navigator.vibrate) navigator.vibrate(10); P.chat.held=Date.now(); chatMenu(id); },450)};
+  });
+  list.addEventListener('pointermove',e=>{
+    if(!g) return;
+    const dx=e.clientX-g.x, dy=e.clientY-g.y;
+    if(Math.abs(dx)>8||Math.abs(dy)>8) clearTimeout(g.t);
+    if(Math.abs(dy)>24){ end(); return; }
+    if(dx>0&&chatCan()&&g.b){ g.dx=dx; g.b.classList.add('swiping'); g.b.style.transform=`translateX(${Math.min(dx,80)}px)`; }
+  });
+  list.addEventListener('pointerup',()=>{ if(g&&g.dx>=60){ const id=g.id; end(); P.chat.held=Date.now(); chatReplyTo(id); return; } end(); });
+  list.addEventListener('pointercancel',end);
+  list.addEventListener('contextmenu',e=>{
+    const el=e.target.closest('.msg[data-mid]'); if(!el||el.classList.contains('pending')||e.target.closest('a')) return;
+    e.preventDefault(); if(P.chat.menu!==el.dataset.mid) chatMenu(el.dataset.mid);
+  });
+}
 function chatDraw(fresh){
   const box=$('chatbox'), c=P.chat; if(!box||!c) return;
-  const can=chatCan(), act=c.view==='act';
-  document.querySelectorAll('[data-chatview]').forEach(b=>{ const on=b.dataset.chatview===c.view; b.classList.toggle('on',on); b.setAttribute('aria-selected',on); });
+  const can=chatCan();
+  chatFindDraw();
   const rf=$('chatref'); if(rf) rf.innerHTML=c.ref?`<span class="cd-chip">${esc(refLabel(c.ref))}<button type="button" class="chip-x" data-chatgo="" title="${t('Show the whole chat')}" aria-label="${t('Show the whole chat')}">${ICON.x}</button></span>`:'';
-  if(!can&&!act){
-    const signin=!ME.user;
-    box.innerHTML=`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Send your answer to join the chat.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`;
-    return;
-  }
   let list=box.querySelector('.chat-list'), first=false;
   if(!list||box.dataset.mode!==(can?'chat':'ro')){
     first=true; box.dataset.mode=can?'chat':'ro';
+    const signin=!ME.user;
     box.innerHTML=`<div class="chat-list" role="log" aria-live="polite" aria-label="${t('Messages')}"></div>
       <button type="button" class="chat-jump" hidden title="${t('Jump to the newest')}" aria-label="${t('Jump to the newest')}">${ICON.down}<span class="n"></span></button>
       ${can?`<div class="chat-quick" id="chatquick">${[t('Works for me'),t('Can’t make it'),t('Running late')].map(q=>`<button type="button" class="qchip" data-chatquick>${esc(q)}</button>`).join('')}</div>
-      <form class="chat-form"><textarea id="chatin" rows="1" maxlength="2000" aria-label="${t('Message')}"></textarea>
-      <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`:''}`;
+      <div class="chat-reply" id="chatreply" hidden></div>
+      <div class="chat-ac" id="chatac" role="listbox" aria-label="${t('Attach')}" hidden></div>
+      <form class="chat-form"><button type="button" class="qb chat-attb" id="chatattb" data-chatatt title="${t('Tag people or attach a meeting')}" aria-label="${t('Tag people or attach a meeting')}" aria-expanded="false" aria-controls="chatac">${ICON.clip}</button>
+      <textarea id="chatin" rows="1" maxlength="2000" aria-label="${t('Message')}"></textarea>
+      <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`
+      :`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Send your answer to join the chat.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`}`;
     list=box.querySelector('.chat-list');
     const jump=box.querySelector('.chat-jump');
     jump.onclick=()=>{ list.scrollTo({top:list.scrollHeight,behavior:'smooth'}); };
     list.onscroll=()=>{ const far=list.scrollHeight-list.scrollTop-list.clientHeight>160; if(!far) c.unseen=0; jump.hidden=!far; jump.querySelector('.n').textContent=c.unseen||''; };
+    chatGestures(list);
     if(can){
-      const ta=$('chatin'), f=box.querySelector('form');
+      const ta=$('chatin'), f=box.querySelector('form'), ac=$('chatac');
       ta.value=c.draft;
       const grow=()=>{ ta.style.height='auto'; if(ta.value) ta.style.height=Math.min(ta.scrollHeight+2,140)+'px'; }; // +2: border (border-box)
-      ta.oninput=()=>{ c.draft=ta.value; grow(); quick(); };
-      ta.onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSend(); } };
+      ta.oninput=()=>{ c.draft=ta.value; grow(); quick(); chatAcDetect(); };
+      ta.onclick=chatAcDetect;
+      ta.onkeydown=e=>{
+        const n=c.ac&&c.ac.items?c.ac.items.length:0;
+        if(n&&(e.key==='ArrowDown'||e.key==='ArrowUp')){ e.preventDefault(); c.ac.sel=(c.ac.sel+(e.key==='ArrowDown'?1:n-1))%n; chatAcDraw(); return; }
+        if(n&&(e.key==='Enter'||e.key==='Tab')&&!e.shiftKey){ e.preventDefault(); chatAcPick(c.ac.sel); return; }
+        if(e.key==='Escape'&&(c.ac||c.reply)){ e.preventDefault(); e.stopPropagation(); if(c.ac){ c.ac=null; chatAcDraw(); } else { c.reply=null; chatReplyDraw(); } return; }
+        if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSend(); }
+      };
       f.onsubmit=e=>{ e.preventDefault(); chatSend(); };
+      ac.onmousedown=e=>e.preventDefault(); // keep the cursor in the message box
       box.querySelector('.chat-quick').onclick=e=>{ const b=e.target.closest('[data-chatquick]'); if(b) chatSend(b.textContent); };
       grow();
     }
@@ -4626,28 +4886,31 @@ function chatDraw(fresh){
   const near=list.scrollHeight-list.scrollTop-list.clientHeight<80;
   const body=chatHtml(c);
   list.innerHTML=can&&c.msgs===null?`<p class="muted small chat-empty">${t('Loading…')}</p>`
-    :body||`<p class="muted small chat-empty">${c.ref?t('Nothing about this yet. Start the conversation!'):act?t('Nothing has happened yet.'):t('No messages yet. Say hi!')}</p>`;
-  if(first||!fresh||near){ const nw=c.newId&&first&&list.querySelector('.chat-new'); if(nw) nw.scrollIntoView({block:'center'}); else list.scrollTop=list.scrollHeight; }
+    :body||`<p class="muted small chat-empty">${!can?t('Nothing has happened yet.'):chatFiltering(c)||c.show!=='all'?t('Nothing found.'):c.ref?t('Nothing about this yet. Start the conversation!'):t('No messages yet. Say hi!')}</p>`;
+  if(first||!fresh||near){ const nw=c.newId&&first&&list.querySelector('.chat-new'); if(nw) nw.scrollIntoView({block:'center'}); else if(chatFiltering(c)) list.scrollTop=0; else list.scrollTop=list.scrollHeight; }
   list.onscroll&&list.onscroll();
-  function quick(){ const q=$('chatquick'), t2=$('chatin'); if(q&&t2) q.hidden=!!t2.value.trim()||c.view==='act'; }
+  chatReplyDraw(); chatAcDraw();
+  function quick(){ const q=$('chatquick'), t2=$('chatin'); if(q&&t2) q.hidden=!!t2.value.trim(); }
 }
 async function chatSend(text,retry){
   const c=chatState(), ta=$('chatin');
-  const fromBox=text==null; if(fromBox){ if(!ta) return; text=ta.value.trim(); }
+  const fromBox=text==null; if(fromBox){ if(!ta) return; text=chatTokenize(ta.value.trim()); }
   if(!text) return;
-  const ref=retry?retry.ref:c.ref;
+  const ref=retry?retry.ref:c.ref, re=retry?retry.re:c.reply;
   let m=retry;
-  if(!m){ m={id:'tmp'+(++c.seq),tmp:true,mine:true,uid:ME.user&&ME.user.id,body:text,at:new Date().toISOString(),ref,rx:{}}; (c.msgs=c.msgs||[]).push(m); }
+  if(!m){ const q=re&&(c.msgs||[]).find(x=>x.id===re);
+    m={id:'tmp'+(++c.seq),tmp:true,mine:true,uid:myId(),body:text,at:new Date().toISOString(),ref,rx:{},re:re||null,rq:q?{uid:q.uid,body:q.body.slice(0,140)}:null}; (c.msgs=c.msgs||[]).push(m); }
   m.failed=false;
-  if(fromBox&&ta){ ta.value=''; c.draft=''; ta.style.height='auto'; }
+  if(!retry){ c.reply=null; c.ac=null; }
+  if(fromBox&&ta){ ta.value=''; c.draft=''; c.tok={}; ta.style.height='auto'; }
   chatDraw(false); chatFast();
   try{
-    const r=await api('POST',`/polls/${P.id}/chat`,{body:text,...(ref?{ref}:{})},headers()), s=r.message;
+    const r=await api('POST',`/polls/${P.id}/chat`,{body:text,...(ref?{ref}:{}),...(re?{reply_to:re}:{})},headers()), s=r.message;
     if(c!==P.chat) return;
     if(!c.people[s.uid]&&ME.user) c.people[s.uid]={name:displayName(ME.user),avatar:ME.user.avatar,avatarImg:ME.user.avatarImg};
     const i=c.msgs.indexOf(m); if(c.msgs.some(x=>x.id===s.id)){ if(i>=0) c.msgs.splice(i,1); } else if(i>=0) c.msgs[i]=s; else c.msgs.push(s);
     bumpRef(ref); chatRefBadges();
-    P.data.chat.last={name:'',body:text.slice(0,120),at:s.at,mine:true};
+    P.data.chat.last={name:'',body:plainText(text).slice(0,120),at:s.at,mine:true};
   }catch(e){ m.failed=true; toast(e.message); }
   chatDraw(true);
   if(ta&&!isPhone()) ta.focus();
@@ -4655,31 +4918,54 @@ async function chatSend(text,retry){
 async function chatDelete(mid){
   if(!confirm(t('Delete this message?'))) return;
   const c=chatState();
-  try{ await api('DELETE',`/polls/${P.id}/chat/${encodeURIComponent(mid)}`,null,headers()); c.msgs=(c.msgs||[]).filter(m=>m.id!==mid); chatDraw(true); }
+  try{ await api('DELETE',`/polls/${P.id}/chat/${encodeURIComponent(mid)}`,null,headers());
+    c.msgs=(c.msgs||[]).filter(m=>m.id!==mid); c.msgs.forEach(m=>{ if(m.re===mid) m.rq=null; }); if(c.reply===mid) c.reply=null; chatDraw(true); }
   catch(e){ toast(e.message); }
 }
 async function chatReact(mid,e){
   const c=chatState(), m=(c.msgs||[]).find(x=>x.id===mid); if(!m) return;
   const old=m.rx, rx={...(m.rx||{})}, v=rx[e]||{n:0,mine:false};
   rx[e]=v.mine?{n:v.n-1,mine:false}:{n:v.n+1,mine:true}; if(!rx[e].n) delete rx[e];
-  m.rx=rx; c.pick=null; chatDraw(true); chatFast();
+  m.rx=rx; c.menu=null; chatDraw(true); chatFast();
   try{ const r=await api('POST',`/polls/${P.id}/chat/${encodeURIComponent(mid)}/react`,{emoji:e},headers()); m.rx=r.message.rx; }
   catch(err){ m.rx=old; toast(err.message); }
   chatDraw(true);
 }
-// All chat clicks (dock, drawer, peek, 💬 buttons on days and meetings, date chips).
+// All chat clicks (dock, drawer, peek, 💬 buttons on days and meetings, date chips, chips and menus in messages).
+const CHAT_CLICK='[data-chatopen],[data-chatclose],[data-chatgo],[data-goday],[data-chatdel],[data-chatmenu],[data-chatrx],[data-chatretry],[data-chatreply],[data-chatcopy],[data-chatquote],[data-chatperson],[data-chatmeet],[data-chatatt],[data-chatac],[data-chatattm],[data-chatnoreply],[data-chatfind],[data-chatshow],[data-chatf],[data-chatexp]';
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-chatopen],[data-chatclose],[data-chatview],[data-chatgo],[data-goday],[data-chatdel],[data-chatpick],[data-chatrx],[data-chatretry]'); if(!b||!P.chat) return;
-  const ds=b.dataset, c=P.chat;
+  if(!P.chat||!e.target.closest) return;
+  const c=P.chat, b=e.target.closest(CHAT_CLICK);
+  // The click that ends a long press or swipe only lifts the finger.
+  if(Date.now()-c.held<700&&e.target.closest('#chatbox')){ e.preventDefault(); e.stopPropagation(); return; }
+  if(c.menu&&!e.target.closest('.msg-menu,[data-chatmenu]')){ c.menu=null; if(!b) { chatDraw(true); return; } }
+  if(c.ac&&!e.target.closest('#chatac,#chatin,[data-chatatt]')){ c.ac=null; chatAcDraw(); }
+  if(!b){ // in search results, a tap on a message shows it in the conversation
+    const mel=e.target.closest('#chatbox .msg[data-mid]'); if(mel&&chatFiltering(c)&&!e.target.closest('a,button,select,input')) chatJump(mel.dataset.mid);
+    return;
+  }
+  const ds=b.dataset, msg=id=>(c.msgs||[]).find(x=>x.id===id);
   if(ds.chatopen!==undefined){ if(c.open) chatSetOpen(false); else chatSetOpen(true,null); return; }
   if(ds.chatclose!==undefined){ chatSetOpen(false); return; }
-  if(ds.chatview){ c.view=ds.chatview; store.set('chatView',c.view); c.pick=null; if(c.view==='act') c.ref=null; chatDraw(false); return; }
   if(ds.chatgo!==undefined){ e.preventDefault(); e.stopPropagation(); chatSetOpen(true,ds.chatgo||null); chatDraw(false); return; }
   if(ds.goday){ goDay(ds.goday); return; }
-  if(ds.chatdel){ chatDelete(ds.chatdel); return; }
-  if(ds.chatpick){ c.pick=c.pick===ds.chatpick?null:ds.chatpick; chatDraw(true); return; }
+  if(ds.chatdel){ c.menu=null; chatDraw(true); chatDelete(ds.chatdel); return; }
+  if(ds.chatmenu){ c.menu=c.menu===ds.chatmenu?null:ds.chatmenu; if(c.menu) chatMenu(c.menu); else chatDraw(true); return; }
   if(ds.chatrx){ chatReact(ds.chatrx,ds.e); return; }
-  if(ds.chatretry){ const m=(c.msgs||[]).find(x=>x.id===ds.chatretry); if(m) chatSend(m.body,m); }
+  if(ds.chatretry){ const m=msg(ds.chatretry); if(m) chatSend(m.body,m); return; }
+  if(ds.chatreply){ chatReplyTo(ds.chatreply); return; }
+  if(ds.chatcopy){ const m=msg(ds.chatcopy); c.menu=null; chatDraw(true); if(m) copy(plainText(m.body)); return; }
+  if(ds.chatquote){ chatJump(ds.chatquote); return; }
+  if(ds.chatperson){ if(!chatCan()) return; c.find=true; c.f='u:'+ds.chatperson; chatDraw(false); return; }
+  if(ds.chatmeet){ goMeeting(ds.chatmeet); return; }
+  if(ds.chatatt!==undefined){ c.ac=c.ac&&c.ac.mode==='att'?null:{mode:'att',q:'',sel:0}; c.menu=null; chatAcDraw(); return; }
+  if(ds.chatac){ chatAcPick(+ds.chatac); return; }
+  if(ds.chatattm){ chatInsert('m',ds.chatattm); return; }
+  if(ds.chatnoreply!==undefined){ c.reply=null; chatReplyDraw(); const ta=$('chatin'); if(ta) ta.focus(); return; }
+  if(ds.chatfind!==undefined){ c.find=!c.find; if(!c.find){ c.q=''; c.f=''; } chatDraw(false); const q=$('chatq'); if(q) q.focus(); return; }
+  if(ds.chatshow){ c.show=ds.chatshow; store.set('chatShow',c.show); chatDraw(false); return; }
+  if(ds.chatf){ c.f=c.f===ds.chatf?'':ds.chatf; chatDraw(false); return; }
+  if(ds.chatexp){ c.exp.add(ds.chatexp); chatDraw(true); return; }
 },true);
 
 // ---- admin ----
@@ -5407,6 +5693,40 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"{title} is in another round.": "{title} gehört zu einer anderen Runde.",
+"You were tagged": "Du wurdest erwähnt",
+"Here you see who answered and which meetings were set. To chat, answer with an account.": "Hier siehst du, wer geantwortet hat und welche Termine feststehen. Zum Chatten antworte mit einem Konto.",
+"Search and filter": "Suchen und filtern",
+"Meeting removed": "Termin entfernt",
+"Show messages from {name}": "Nachrichten von {name} anzeigen",
+"Show this meeting": "Diesen Termin anzeigen",
+"Proposed": "Vorgeschlagen",
+"Set": "Fest",
+"{n} message": "{n} Nachricht",
+"{n} messages": "{n} Nachrichten",
+"{a} and {b} answered": "{a} und {b} haben geantwortet",
+"{a}, {b} and {n} more answered": "{a}, {b} und {n} weitere haben geantwortet",
+"Show everyone": "Alle anzeigen",
+"Write about this meeting": "Über diesen Termin schreiben",
+"New option to vote on": "Neue Option zur Abstimmung",
+"Meeting set": "Termin festgelegt",
+"Reply": "Antworten",
+"Deleted message": "Gelöschte Nachricht",
+"Search messages": "Nachrichten durchsuchen",
+"Show": "Anzeigen",
+"Everything": "Alles",
+"Events": "Ereignisse",
+"Tagged me": "Mich erwähnt",
+"Replies to me": "Antworten an mich",
+"Anyone": "Alle",
+"Cancel reply": "Antwort abbrechen",
+"Attach": "Anhängen",
+"Nothing to attach yet. People appear here once they answer with an account.": "Noch nichts zum Anhängen. Personen erscheinen hier, sobald sie mit einem Konto antworten.",
+"That message isn’t loaded anymore.": "Diese Nachricht ist nicht mehr geladen.",
+"Tag people or attach a meeting": "Personen erwähnen oder einen Termin anhängen",
+"Nothing found.": "Nichts gefunden.",
+"Invalid reply": "Ungültige Antwort",
+"Too many tags in one message": "Zu viele Erwähnungen in einer Nachricht",
 "Fill from text or voice…": "Per Text oder Sprache ausfüllen…",
 "e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th": "z. B. werktags ab 18 Uhr, Samstagvormittag vielleicht, nicht am 12.",
 "Stop listening": "Zuhören beenden",

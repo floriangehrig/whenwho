@@ -46,9 +46,17 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
   thread (`d:YYYY-MM-DD` / `m:<meeting id>`), `reactions` (JSON emoji → user ids, sent as counts) via `POST .../chat/:mid/react`,
   `updated_at` makes `?after=` return changed reactions. `GET /api/polls/:id` adds `chat.last` (header peek) and `chat.refs` (thread counts).
-  The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. Its Activity view
-  mixes in events worked out on the page (answers, meetings by their `at` stamp, rounds by `createdAt`). Dates of the poll written in
-  a message become chips that jump to that day. People who can chat don't get the Comment field under My answer.
+  The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. It is one
+  timeline: messages plus events worked out on the page (answers, grouped when close together; meetings by their `at` stamp; rounds by
+  `createdAt`). Guests see only the events. Dates of the poll written in a message become chips that jump to that day.
+  People who can chat don't get the Comment field under My answer.
+  Tags and attachments are inline tokens in `messages.body`: `<@user id>` (a chat member: owner + account participants, listed as
+  `members` in the full `GET .../chat`, with `me` = caller's id) and `<#m:meeting id>` (proposed or set). The composer shows readable
+  labels (typed `@` list or the 📎 list) and turns them into tokens on send; max 20 tokens per message. 0018: `messages.reply_to`
+  quotes another message (`re` / `rq` in the API; `rq` null once the original is deleted). `chat.mentions` in `GET /api/polls/:id` =
+  unread messages that tag me (the dock's `@` badge). Hold (touch), right-click or ⌄ opens the message menu (react, reply, copy, delete);
+  swipe right replies. Search and filters (tagged me, meetings, replies to me, person; everything / messages / events) run on the page
+  over the loaded messages (`CHAT_KEEP`).
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

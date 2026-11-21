@@ -933,9 +933,10 @@ async function chatAccess(request, env, id) {
   return { poll, user, owner };
 }
 // Unread messages in a poll's chat for a user (written by others after they last read it).
-const chatUnread = (env, pollId, userId) => env.DB.prepare(
+// tagged: only those that tag the user (<@user id> in the body).
+const chatUnread = (env, pollId, userId, tagged) => env.DB.prepare(
   `SELECT COUNT(*) AS n FROM messages m WHERE m.poll_id = ?1 AND m.user_id != ?2
-   AND m.created_at > COALESCE((SELECT read_at FROM chat_reads WHERE poll_id = ?1 AND user_id = ?2), '')`).bind(pollId, userId).first('n');
+   AND m.created_at > COALESCE((SELECT read_at FROM chat_reads WHERE poll_id = ?1 AND user_id = ?2), '')${tagged ? " AND instr(m.body, '<@' || ?2 || '>') > 0" : ''}`).bind(pollId, userId).first('n');
 const markChatRead = (env, pollId, userId) => env.DB.prepare(
   'INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
   .bind(pollId, userId, now()).run();
@@ -948,8 +949,13 @@ function rxOut(raw, user) {
   for (const [e, ids] of Object.entries(r)) if (Array.isArray(ids) && ids.length) out[e] = { n: ids.length, mine: ids.includes(user.id) };
   return out;
 }
+// Tags and attachments are inline tokens in the body: <@user id> (a person in the chat), <#m:meeting id> (a meeting).
+const CHAT_TOKEN_RE = /<@[A-Za-z0-9_]{4,40}>|<#m:[A-Za-z0-9_-]{1,24}>/g, CHAT_MAX_TOKENS = 20;
+// re: id of the quoted message; rq: its author and start (null once it's deleted), from the q_* columns of chatSelect.
 const msgOut = (m, user) => ({ id: m.id, uid: m.user_id, body: m.body, at: m.created_at, mine: m.user_id === user.id,
-  ref: m.ref || null, rx: rxOut(m.reactions, user), upd: m.updated_at || null });
+  ref: m.ref || null, rx: rxOut(m.reactions, user), upd: m.updated_at || null, re: m.reply_to || null,
+  rq: m.reply_to && m.q_uid ? { uid: m.q_uid, body: String(m.q_body || '').slice(0, 140) } : null });
+const chatSelect = 'SELECT m.*, q.user_id AS q_uid, substr(q.body, 1, 300) AS q_body FROM messages m LEFT JOIN messages q ON q.id = m.reply_to';
 // ?after=<iso>: only messages from then on (>=, the page drops ones it has). Without it: the newest CHAT_PAGE plus who wrote them.
 async function listChat(request, env, url, id) {
   const { poll, user, owner } = await chatAccess(request, env, id);
@@ -957,19 +963,26 @@ async function listChat(request, env, url, id) {
   let msgs;
   if (after) {
     if (!/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(after)) throw new HttpError(400, 'Invalid time');
-    ({ results: msgs } = await env.DB.prepare('SELECT * FROM messages WHERE poll_id = ? AND COALESCE(updated_at, created_at) >= ? ORDER BY COALESCE(updated_at, created_at), id LIMIT ?')
+    ({ results: msgs } = await env.DB.prepare(`${chatSelect} WHERE m.poll_id = ? AND COALESCE(m.updated_at, m.created_at) >= ? ORDER BY COALESCE(m.updated_at, m.created_at), m.id LIMIT ?`)
       .bind(id, after, CHAT_PAGE).all());
   } else {
-    ({ results: msgs } = await env.DB.prepare('SELECT * FROM (SELECT * FROM messages WHERE poll_id = ? ORDER BY created_at DESC LIMIT ?) ORDER BY created_at, id')
+    ({ results: msgs } = await env.DB.prepare(`SELECT * FROM (${chatSelect} WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT ?) ORDER BY created_at, id`)
       .bind(id, CHAT_PAGE).all());
   }
   // now: the server's clock, so the page can ask for "messages after this" even while the chat is empty.
-  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: t0 };
-  // Who wrote them (pictures only on the first load; a later message from someone new makes the page reload once).
+  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: t0, me: user.id }; // me: to spot my tags
+  // Who wrote them and who is in the chat (members can be tagged). Pictures only on the first load;
+  // a later message from someone new makes the page reload once.
   if (!after) {
-    const ids = [...new Set([user.id, ...msgs.map((m) => m.user_id)])];
-    const { results: us } = await env.DB.prepare(`SELECT id, email, name, avatar, avatar_img FROM users WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
-    out.people = Object.fromEntries(us.map((u) => { const p = personOut(u); delete p.email; delete p.uid; return [u.id, p]; }));
+    const { results: mem } = await env.DB.prepare('SELECT DISTINCT user_id FROM participants WHERE poll_id = ? AND user_id IS NOT NULL').bind(id).all();
+    out.members = [...new Set([...(poll.owner_id ? [poll.owner_id] : []), ...mem.map((r) => r.user_id)])];
+    const ids = [...new Set([user.id, ...out.members, ...msgs.map((m) => m.user_id), ...msgs.map((m) => m.q_uid).filter(Boolean)])];
+    out.people = {};
+    for (let i = 0; i < ids.length; i += 90) { // D1 caps bound parameters per query
+      const part = ids.slice(i, i + 90);
+      const { results: us } = await env.DB.prepare(`SELECT id, email, name, avatar, avatar_img FROM users WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+      for (const u of us) { const p = personOut(u); delete p.email; delete p.uid; out.people[u.id] = p; }
+    }
   }
   if (!after || msgs.some((m) => m.user_id !== user.id && m.created_at >= after)) await markChatRead(env, id, user.id);
   return json(out);
@@ -981,13 +994,20 @@ async function postChat(request, env, id) {
   const text = str(b.body, CHAT_MAX_LEN, 'Message', true);
   const ref = b.ref == null || b.ref === '' ? null : String(b.ref);
   if (ref && !REF_RE.test(ref)) throw new HttpError(400, 'Invalid thread');
+  if ((text.match(CHAT_TOKEN_RE) || []).length > CHAT_MAX_TOKENS) throw new HttpError(400, 'Too many tags in one message');
+  const replyTo = b.reply_to == null || b.reply_to === '' ? null : String(b.reply_to);
+  let q = null;
+  if (replyTo) {
+    q = ID_RE.test(replyTo) ? await env.DB.prepare('SELECT user_id, body FROM messages WHERE id = ? AND poll_id = ?').bind(replyTo, id).first() : null;
+    if (!q) throw new HttpError(400, 'Invalid reply');
+  }
   const since = new Date(Date.now() - CHAT_BURST_MIN * 60000).toISOString();
   const c = await env.DB.prepare('SELECT COUNT(*) AS total, SUM(user_id = ? AND created_at > ?) AS recent FROM messages WHERE poll_id = ?').bind(user.id, since, id).first();
   if ((c.recent || 0) >= CHAT_BURST) throw new HttpError(429, 'You’re sending a lot of messages. Wait a few minutes.');
   if ((c.total || 0) >= CHAT_MAX_PER_POLL) throw new HttpError(409, 'This chat is full. Delete old messages first.');
-  const m = { id: randomId(12), poll_id: id, user_id: user.id, body: text, created_at: now(), ref, reactions: '{}' };
+  const m = { id: randomId(12), poll_id: id, user_id: user.id, body: text, created_at: now(), ref, reactions: '{}', reply_to: replyTo, q_uid: q && q.user_id, q_body: q && q.body };
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO messages (id, poll_id, user_id, body, created_at, ref) VALUES (?, ?, ?, ?, ?, ?)').bind(m.id, id, user.id, text, m.created_at, ref),
+    env.DB.prepare('INSERT INTO messages (id, poll_id, user_id, body, created_at, ref, reply_to) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(m.id, id, user.id, text, m.created_at, ref, replyTo),
     env.DB.prepare('INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
       .bind(id, user.id, m.created_at),
   ]);
@@ -1009,7 +1029,7 @@ async function reactChat(request, env, id, mid) {
   if (!ID_RE.test(mid)) throw new HttpError(404, 'Message not found');
   const b = await body(request);
   if (!CHAT_EMOJI.includes(b.emoji)) throw new HttpError(400, 'Invalid reaction');
-  const m = await env.DB.prepare('SELECT * FROM messages WHERE id = ? AND poll_id = ?').bind(mid, id).first();
+  const m = await env.DB.prepare(`${chatSelect} WHERE m.id = ? AND m.poll_id = ?`).bind(mid, id).first();
   if (!m) throw new HttpError(404, 'Message not found');
   let r; try { r = JSON.parse(m.reactions || '{}'); } catch { r = {}; }
   const ids = Array.isArray(r[b.emoji]) ? r[b.emoji] : [];
@@ -1606,6 +1626,7 @@ async function getPoll(request, env, ctx, url, id) {
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
     const can = !!poll.allow_comments && (admin || !!part);
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
+    if (out.chat.unread) out.chat.mentions = (await chatUnread(env, id, user.id, true)) || 0; // unread messages that tag me
     if (can) { // header peek (newest message) and message counts per day / meeting thread
       const [last, refs] = await env.DB.batch([
         env.DB.prepare('SELECT m.body, m.created_at, m.user_id, u.name, u.email FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT 1').bind(id),
