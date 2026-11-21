@@ -154,9 +154,13 @@
   .pd-list .acts{flex:none;display:flex;gap:2px} .pd-list .help{padding-top:12px;margin:0}
   .qb.fav[aria-pressed=true] svg{fill:currentColor}
   .pd-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
-  .pplist .qb.fav[aria-pressed=true],.ct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
+  .pplist .qb.fav[aria-pressed=true],.acct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
   .pd-add.ct-add{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto}
-  .ct-list{padding:0;max-height:min(460px,60dvh);margin-top:4px} .ct-list .list li{margin-left:0;margin-right:0}
+  .dlg-s{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;margin-top:4px}
+  .dlg-s:first-child{margin-top:0} .dlg-s>svg{width:13px;height:13px;flex:none} .dlg-s .tip{text-transform:none;letter-spacing:0;font-weight:400}
+  .dlg-conn{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .dlg-conn .btn{justify-content:center}
+  .dlg .pd-list:empty{display:none}
   @media (max-width:560px){
     .dlg{width:100vw;max-width:100vw;max-height:88dvh;margin:auto 0 0;border-radius:16px 16px 0 0;border-bottom:0}
     .dlg-h::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
@@ -451,32 +455,39 @@
   .day.bzf:not(.y):not(.i):not(.m):not(.part){background:var(--sunken)}
   .day .bzm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--busy-hatch),var(--sunken);border:1px solid var(--line);pointer-events:none}
   .day .star~.bzm,.day .bzm.star2{right:24px}
-  /* Account: calendars */
-  .callist .cgrp{font-size:12px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:14px 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .callist .cgrp .grow{min-width:0} .callist .cgrp>svg{width:15px;height:15px;flex:none}
-  .callist .cgrp:first-child{padding-top:4px}
-  .callist li{flex-wrap:nowrap;align-items:center;gap:10px}
-  .callist .pmain{display:flex;flex-direction:column;min-width:0}
-  .callist .pmain>.small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .callist .acts{flex:none;gap:2px;align-items:center}
-  .callist li .cdot{flex:none;width:12px;height:12px;border-radius:4px;background:var(--c,var(--accent))}
-  .callist li.off .cname{color:var(--muted)}
+  /* Account: Contacts and Calendars share one look: header with count + ＋, optional toolbar, grouped list of what you have */
+  .card-h .qb.add{width:34px;height:34px;border-radius:50%;background:var(--accent);border-color:var(--accent);color:#fff}
+  .card-h .qb.add:hover{filter:brightness(1.08)}
+  .acct-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 2px}
+  .acct-tools[hidden]{display:none} .acct-tools .pd-q{flex:1 1 220px;margin:0}
+  .acct-tools .seg button{padding:5px 10px}
+  .acct-list{max-height:min(460px,60dvh);overflow:auto;overscroll-behavior:contain}
+  .acct-list .cgrp{position:sticky;top:0;z-index:1;background:var(--card);font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:12px 0 4px;display:flex;align-items:center;gap:6px}
+  .acct-list .cgrp:first-child{padding-top:6px}
+  .acct-list .cgrp>svg{width:14px;height:14px;flex:none} .acct-list .cgrp .grow{min-width:0}
+  .acct-list .cgrp .cem{text-transform:none;letter-spacing:0;font-weight:500}
+  .acct-list .cgrp .qb{width:28px;height:28px} .acct-list .cgrp .qb svg{width:15px;height:15px}
+  .acct-list .cgrp .btn{min-height:26px;padding:2px 10px;font-size:12px;text-transform:none;letter-spacing:0}
+  .acct-list .list{margin:0}
+  .acct-list .list li{flex-wrap:nowrap;align-items:center;gap:10px;padding:7px 8px;margin:0;border-top:0;border-radius:10px}
+  .acct-list .list li:hover{background:var(--sunken)}
+  .acct-list .pmain{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+  .acct-list .pmain>.small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acct-list .acts{flex:none;display:flex;gap:2px;align-items:center}
+  .acct-list .acts .qb{width:32px;height:32px}
+  .acct-list .help{margin:6px 0}
+  .cmark{flex:none;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 16%,transparent)}
+  .cmark svg{width:16px;height:16px}
+  .acct-list li.off .cname{color:var(--muted)} .acct-list li.off .cmark{filter:grayscale(1);opacity:.6}
+  .acct-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:22px 12px;margin-top:6px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);color:var(--muted);font-size:14px}
+  .acct-empty>svg{width:26px;height:26px;color:var(--accent)}
   .padd-new{position:relative}
   .qb.tog[aria-pressed=true]{color:var(--accent);background:var(--accent-weak);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
-  .caladd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
-  .caladd .padd{flex:1 1 100%}
-  .callist .cgrp .cem{text-transform:none;letter-spacing:0;font-weight:500}
   .notice.me-lock{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .notice.me-lock .btn{flex:none;margin-left:auto}
-  /* phones: tighter calendar rows and smaller buttons; adding a link is one line (rename it afterwards) */
+  /* phones: tighter rows, the search takes its own line above the filter */
   @media (max-width:560px){
-    #calcard .callist .cgrp{padding:10px 0 2px;gap:4px} #calcard .callist .cgrp:first-child{padding-top:0}
-    #calcard .callist .cgrp .qb{width:32px;height:32px}
-    #calcard .callist li{padding:5px 6px;margin:0 -6px;gap:8px}
-    #calcard .callist .pmain{line-height:1.3}
-    #calcard .callist .qb{width:34px;height:34px}
-    #calcard .caladd{gap:6px;margin-top:10px;padding-top:10px}
-    #calcard .caladd .padd{grid-template-columns:minmax(0,1fr) auto} #calcard #caladd_n{display:none}
-    #calcard #caladd_u{grid-row:auto;grid-column:auto} #calcard .caladd .padd-btn{grid-row:auto;grid-column:auto;height:40px;width:40px;align-self:center}
+    .acct-list .list li{padding:6px 4px;gap:8px}
+    .acct-tools .pd-q{flex-basis:100%} .acct-tools .seg{display:flex;flex-wrap:nowrap;width:100%} .acct-tools .seg button{flex:1 1 auto;min-width:0;justify-content:center;white-space:nowrap;padding:6px 8px;font-size:12.5px} .acct-tools .seg button>span:last-child{overflow:hidden;text-overflow:ellipsis} .acct-tools .seg .segic{display:none}
   }
   .calpick{display:flex;flex-direction:column;gap:4px;margin:2px 0 6px}
   .calpick .check{margin:0} .calpick .cdot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c,var(--accent));margin-right:2px}
@@ -839,7 +850,7 @@
   .pf-mail svg{flex:none;width:14px;height:14px}
   .pf-mailed{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer}
   .pf-mailed:hover,.pf-mailed[aria-expanded="true"]{background:var(--sunken);color:var(--ink)}
-  .em-f{margin-top:12px;display:flex;flex-direction:column;gap:6px} .em-f label{margin:0} #em_step2{display:flex;flex-direction:column;gap:6px} #em_step2[hidden]{display:none} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .em-f{margin-top:12px;display:flex;flex-direction:column;gap:6px} .em-f[hidden]{display:none} .em-f label{margin:0} #em_step2{display:flex;flex-direction:column;gap:6px} #em_step2[hidden]{display:none} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pf-pk{margin-top:14px} .pf-pk .pk-preview{display:none} .pf-pk .picker{padding:10px}
   @media (max-width:560px){ .pf-id{gap:10px;align-items:flex-start} .pf-av .pf-tile{width:56px;height:56px} .pf-save{min-width:40px;padding-inline:10px} }
 
@@ -2623,27 +2634,57 @@ async function importContacts(k,btn,st,render,fileId,ret){
   finally{ st.busy=''; if(btn) btn.disabled=false; render(); }
 }
 
-// Account page Contacts card: favourites only, unless "Show all" is on or something is typed in the search.
-const CT={q:'',all:false,imported:[],items:[],busy:''};
+// Account page Contacts card: the people you have (favourites + people from your polls), narrowed by the filter and the search.
+// Its ＋ opens the Add-contacts popup: type someone in (saved as a favourite) or import and star who to keep.
+const CT={q:'',filter:'all',imported:[],items:[],dItems:[],busy:''};
+try{ const f=localStorage.getItem('ct_filter'); if(f==='fav'||f==='polls') CT.filter=f; }catch(e){}
 function renderContactsCard(){
+  renderCtDlg();
   const box=$('ctbox'); if(!box) return;
   if(!box.dataset.ready){ box.dataset.ready='1';
-    box.innerHTML=`<div class="pd-add ct-add"><input type="text" id="ct_n" maxlength="60" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off" enterkeyhint="next">
+    const seg=[['all','',t('All')],['fav','star',t('Favourites')],['polls','users',t('From your polls')]];
+    box.innerHTML=`<div class="acct-tools" id="ct_tools" hidden><label class="pd-q">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
+        <div class="seg" role="group">${seg.map(([k,ic,l])=>`<button type="button" data-ctf="${k}" aria-pressed="false">${ic?`<span class="segic">${ICON[ic]}</span>`:''}<span>${esc(l)}</span></button>`).join('')}</div></div>
+      <div id="ct_list" class="acct-list"></div>`; }
+  const list=$('ct_list'); if(!FRIENDS){ list.innerHTML=`<p class="help">${t('Loading…')}</p>`; loadFriends().then(r=>{ if(r) renderContactsCard(); else if($('ct_list')) $('ct_list').innerHTML=`<p class="err">${t('Couldn’t load your contacts.')}</p>`; }); return; }
+  const n=contactGroups([],contactKeep('')).slice(0,2).reduce((s,g)=>s+g.list.length,0), q=CT.q.trim();
+  const cnt=$('ct_count'); if(cnt){ cnt.textContent=n; cnt.hidden=!n; }
+  $('ct_tools').hidden=!n;
+  box.querySelectorAll('[data-ctf]').forEach(b=>{ const on=b.dataset.ctf===CT.filter; b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
+  if(!n){ list.innerHTML=`<div class="acct-empty">${ICON.users}<span>${t('No contacts yet. Add people or import them from your phone or mail account.')}</span>
+    <button type="button" class="btn sm primary withic" data-ctopen>${ICON.plus}<span>${t('Add contacts')}</span></button></div>`; return; }
+  const all=contactGroups([],contactKeep(q)).slice(0,2), groups=CT.filter==='fav'?[all[0]]:CT.filter==='polls'?[all[1]]:all, favs=favEmails();
+  CT.items=[];
+  const h=contactListHtml(groups,CT.items,f=>f.email?favBtn(f,favs):'');
+  list.innerHTML=h||`<p class="help">${q?t('Nobody found.'):CT.filter==='fav'?t('No favourites yet. Star people to keep them here.'):t('Nobody from your polls yet.')}</p>`;
+}
+// The Add-contacts popup: a new person (saved as a favourite), import buttons, and the imported list to star from.
+function ctOpen(){
+  let d=$('ctdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='ctdlg'; d.className='dlg'; d.setAttribute('aria-labelledby','ct_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  d.innerHTML=`<div class="dlg-h"><h2 id="ct_h">${t('Add contacts')}</h2>${tip(t('People you add here become favourites: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you star them.'),'right')}${pqb('x',t('Close'),'data-ctclose=""')}</div>
+    <div class="dlg-b">
+      <div class="dlg-s">${ICON.plus}${t('New contact')}</div>
+      <div class="pd-add ct-add"><input type="text" id="ct_n" maxlength="60" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off" enterkeyhint="next">
         <input type="email" id="ct_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
         <button type="button" class="btn primary padd-btn" data-ctadd title="${t('Add to favourites')}" aria-label="${t('Add to favourites')}">${ICON.plus}</button></div>
       <div class="err" id="ct_err"></div>
-      <div class="pd-imp mt-2">${contactImportButtons('data-ctimp')}<input type="file" id="ct_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
-      <div class="row mt-2"><label class="pd-q grow">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
-        <button type="button" class="btn sm" id="ct_all" aria-pressed="false"></button></div>
-      <div id="ct_list" class="pd-list ct-list"></div>`; }
-  const list=$('ct_list'); if(!FRIENDS){ list.innerHTML=`<p class="help mt-0">${t('Loading…')}</p>`; loadFriends().then(r=>{ if(r) renderContactsCard(); else if($('ct_list')) $('ct_list').innerHTML=`<p class="err">${t('Couldn’t load your contacts.')}</p>`; }); return; }
-  const groups=contactGroups(CT.imported,contactKeep(CT.q)), favs=favEmails();
-  const others=groups.slice(1).reduce((n,g)=>n+g.list.length,0), wide=CT.all||!!CT.q.trim();
-  const b=$('ct_all'); b.setAttribute('aria-pressed',String(CT.all)); b.textContent=CT.all?t('Favourites only'):t('Show all ({n})',{n:others}); b.hidden=!!CT.q.trim();
-  CT.items=[];
-  let h=contactListHtml(wide?groups:groups.slice(0,1),CT.items,f=>f.email?favBtn(f,favs):'');
-  if(CT.busy) h=`<p class="help mt-0">${esc(CT.busy)}</p>`+h;
-  list.innerHTML=h||`<p class="help mt-0">${CT.q.trim()?t('Nobody found.'):t('No favourites yet. Add someone above, or star people under Show all.')}</p>`;
+      <div class="dlg-s">${ICON.upload}${t('Import')}</div>
+      <div class="pd-imp">${contactImportButtons('data-ctimp')}<input type="file" id="ct_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
+    </div>
+    <div id="ct_dlist" class="pd-list"></div>`;
+  if(!d.open) d.showModal();
+  renderCtDlg(); if(!TOUCH) $('ct_n').focus(); else if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+}
+function renderCtDlg(){
+  const box=$('ct_dlist'); if(!box) return;
+  const favs=favEmails(), keep=contactKeep(''), list=CT.imported.filter(keep);
+  CT.dItems=[];
+  let h=contactListHtml([{ic:'upload',title:t('Imported'),list}],CT.dItems,f=>f.email?favBtn(f,favs):`<span class="muted small">${t('no email')}</span>`,
+    g=>g.list.filter(f=>f.email&&!favs.has(f.email.toLowerCase())).length>1?`<button type="button" class="btn sm withic" data-ctstarall>${ICON.star}<span>${t('Star all')}</span></button>`:'');
+  if(CT.busy) h=`<p class="help">${esc(CT.busy)}</p>`+h;
+  box.innerHTML=h;
 }
 async function contactAdd(btn){
   const n=$('ct_n'), m=$('ct_e'), err=$('ct_err'); if(!n) return; err.textContent='';
@@ -2654,32 +2695,44 @@ async function contactAdd(btn){
   catch(ex){ err.textContent=ex.message; }
   finally{ btn.disabled=false; }
 }
+// Star every imported contact with an email (one request each; stops at the first error, e.g. the favourites cap).
+async function ctStarAll(btn){
+  const favs=favEmails(), rows=CT.imported.filter(f=>f.email&&!favs.has(f.email.toLowerCase())); let n=0;
+  btn.disabled=true;
+  try{ for(const f of rows){ await api('POST','/me/favourites',{name:f.name.slice(0,60),email:f.email}); n++; } }
+  catch(ex){ toast(ex.message); }
+  await loadFriends(true); renderContactsCard(); if(n) toast(t('{n} added to favourites',{n}));
+}
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-ctadd],[data-ctimp],#ct_all'); if(!b||!$('ctbox')) return;
-  if(b.id==='ct_all'){ CT.all=!CT.all; renderContactsCard(); }
-  else if(b.dataset.ctadd!==undefined) contactAdd(b);
-  else importContacts(b.dataset.ctimp,b,CT,renderContactsCard,'ct_file',null);
+  const b=e.target.closest('[data-ctadd],[data-ctimp],[data-ctf],[data-ctopen],[data-ctclose],[data-ctstarall]'); if(!b) return; const d=b.dataset;
+  if(d.ctopen!==undefined) ctOpen();
+  else if(d.ctclose!==undefined) $('ctdlg').close();
+  else if(d.ctf){ CT.filter=d.ctf; try{ localStorage.setItem('ct_filter',CT.filter); }catch(ex){} renderContactsCard(); }
+  else if(d.ctstarall!==undefined) ctStarAll(b);
+  else if(d.ctadd!==undefined) contactAdd(b);
+  else importContacts(d.ctimp,b,CT,renderContactsCard,'ct_file',null);
 });
 document.addEventListener('input',e=>{ if(e.target.id==='ct_q'){ CT.q=e.target.value; renderContactsCard(); } });
 document.addEventListener('keydown',e=>{ if((e.target.id==='ct_n'||e.target.id==='ct_e')&&e.key==='Enter'){ e.preventDefault();
   if(e.target.id==='ct_n'&&!$('ct_e').value.trim()) $('ct_e').focus(); else contactAdd(document.querySelector('[data-ctadd]')); } });
-// Back on the Account page from a Google / Outlook contacts sign-in started in the Contacts card: true if it was one.
+// Back on the Account page from a Google / Outlook contacts sign-in started in the Add-contacts popup: true if it was one.
 function contactsImportResume(res){
   let k=''; try{ k=sessionStorage.getItem('ct_import')||''; sessionStorage.removeItem('ct_import'); }catch(e){}
   if(!k) return false;
-  if(res==='ok'&&(k==='google'||k==='microsoft')){ CT.all=true; importContacts(k,null,CT,renderContactsCard,'ct_file',null); }
+  if(res==='ok'&&(k==='google'||k==='microsoft')) setTimeout(()=>{ ctOpen(); importContacts(k,null,CT,renderContactsCard,'ct_file',null); },300);
   else setTimeout(()=>toast(res==='denied'?t('Access to your contacts wasn’t granted'):t('Connecting didn’t work. Please try again.')),300);
   return true;
 }
 
+// Account page Calendars card: the connected accounts and calendar links you have. Its ＋ opens the Add-calendar popup.
 async function renderCalCard(){
   const box=$('calbox'); if(!box) return;
   const r=await loadCals(); if(!r||!$('calbox')) return;
-  const prov=Object.assign({google:false,microsoft:false},CONFIG.calProviders||{});
+  const mark=c=>`<span class="cmark" style="--c:${esc(c.color||'var(--accent)')}">${ICON.cal}</span>`;
   const row=c=>CALUI.edit===c.id
-    ?`<li><span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span><span class="padd grow"><input type="text" id="cal_ren" maxlength="60" value="${esc(c.name)}" aria-label="${t('Name')}" data-calrenkey="${esc(c.id)}" autocomplete="off"></span>
+    ?`<li>${mark(c)}<span class="grow"><input type="text" id="cal_ren" maxlength="60" value="${esc(c.name)}" aria-label="${t('Name')}" data-calrenkey="${esc(c.id)}" autocomplete="off"></span>
         <span class="acts">${pqb('check',t('Save'),`data-calrensave="${esc(c.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-calrencancel=""')}</span></li>`
-    :`<li class="${c.auto?'':'off'}"><span class="cdot" style="--c:${esc(c.color||'var(--accent)')}"></span>
+    :`<li class="${c.auto?'':'off'}">${mark(c)}
         <span class="grow pmain"><b class="cname ell">${esc(c.name)}</b>${c.host&&c.host!==c.name?`<span class="muted small ell">${esc(c.host)}</span>`:''}</span>
         <span class="acts"><button type="button" class="qb tog" data-calauto="${esc(c.id)}" aria-pressed="${c.auto}" title="${c.auto?t('Greying out busy times: on'):t('Greying out busy times: off')}" aria-label="${t('Grey out busy times')}">${ICON.eye}</button>
           ${pqb('edit',t('Rename'),`data-calren="${esc(c.id)}"`)}${c.accountId?'':pqb('trash',t('Remove'),`data-caldel="${esc(c.id)}"`,' danger')}</span></li>`;
@@ -2687,25 +2740,38 @@ async function renderCalCard(){
     return `<div class="cgrp">${ICON.cal}<span class="grow ell">${esc(pn)}${a.email?` · <span class="cem">${esc(a.email)}</span>`:''}</span>
       ${a.status==='expired'?`<a class="btn sm primary" href="/api/oauth/${esc(a.provider)}/start?hint=${encodeURIComponent(a.email||'')}">${t('Reconnect')}</a>`:pqb('repeat',t('Reload the calendar list'),`data-calrefresh="${esc(a.id)}"`)}
       ${pqb('x',t('Disconnect'),`data-caldisc="${esc(a.id)}"`,' danger')}</div>
-      ${a.status==='expired'?`<p class="help mt-0">${t('Access ended or was revoked. Reconnect to keep using these calendars.')}</p>`:''}
-      ${cs.length?`<ul class="list">${cs.map(row).join('')}</ul>`:`<p class="help mt-0">${t('No calendars found.')}</p>`}`; }).join('');
+      ${a.status==='expired'?`<p class="help">${t('Access ended or was revoked. Reconnect to keep using these calendars.')}</p>`:''}
+      ${cs.length?`<ul class="list">${cs.map(row).join('')}</ul>`:`<p class="help">${t('No calendars found.')}</p>`}`; }).join('');
   const links=r.calendars.filter(c=>!c.accountId);
   const linkGrp=links.length?`<div class="cgrp">${ICON.link}<span class="grow">${t('Calendar links')}</span></div><ul class="list">${links.map(row).join('')}</ul>`:'';
-  const canWebcal=!TOUCH&&navigator.registerProtocolHandler&&location.protocol==='https:';
-  const typed={n:$('caladd_n')?$('caladd_n').value:'',u:$('caladd_u')?$('caladd_u').value:''};
-  box.innerHTML=`<div class="callist">${groups}${linkGrp}${!groups&&!linkGrp?`<p class="help mt-0">${t('No calendars yet. Connect one below.')}</p>`:''}</div>
-    <div class="caladd">
-      ${prov.google?`<a class="btn sm withic" href="/api/oauth/google/start">${ICON.plus}<span>${t('Connect Google')}</span></a>`:''}
-      ${prov.microsoft?`<a class="btn sm withic" href="/api/oauth/microsoft/start">${ICON.plus}<span>${t('Connect Outlook')}</span></a>`:''}
-      ${prov.google||prov.microsoft?tip(t('when-who only reads when you’re busy and never stores your events. <a href="?privacy">Privacy policy</a>'),'right'):''}
-      <span class="muted small">${prov.google||prov.microsoft?t('or add a calendar link:'):t('Add a calendar link:')}</span>
-      ${tip(t('<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.'),'right')}
-      ${canWebcal?`<button type="button" class="btn sm ghost withic" data-calwebcal title="${t('Clicking a webcal:// link then opens when-who to add it')}">${ICON.link}<span>${t('Open webcal links here')}</span></button>`:''}
-      <div class="padd"><input type="text" id="caladd_n" maxlength="60" placeholder="${t('Name (optional)')}" aria-label="${t('Name (optional)')}" autocomplete="off" value="${esc(typed.n)}">
-        <input type="url" id="caladd_u" maxlength="2000" placeholder="${t('iCal link (https://… or webcal://…)')}" aria-label="${t('iCal link')}" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(typed.u)}">
-        <button type="button" class="btn primary padd-btn" data-caladd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
-      <div class="err" id="caladd_err"></div></div>`;
+  const cnt=$('cal_count'); if(cnt){ cnt.textContent=r.calendars.length; cnt.hidden=!r.calendars.length; }
+  box.innerHTML=groups||linkGrp?`<div class="acct-list">${groups}${linkGrp}</div>`
+    :`<div class="acct-empty">${ICON.cal}<span>${t('No calendars yet. Add one to see when you’re busy while you answer polls.')}</span>
+      <button type="button" class="btn sm primary withic" data-calopen>${ICON.plus}<span>${t('Add calendar')}</span></button></div>`;
   if(CALUI.edit){ const x=$('cal_ren'); if(x){ x.focus(); x.select(); } }
+}
+// The Add-calendar popup: sign in to Google / Outlook, or paste an iCal link (url = pre-filled, e.g. from a webcal:// link).
+function calOpen(url){
+  let d=$('caldlg');
+  if(!d){ d=document.createElement('dialog'); d.id='caldlg'; d.className='dlg'; d.setAttribute('aria-labelledby','cal_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  const prov=Object.assign({google:false,microsoft:false},CONFIG.calProviders||{}), oauth=prov.google||prov.microsoft;
+  const canWebcal=!TOUCH&&navigator.registerProtocolHandler&&location.protocol==='https:';
+  const howto=tip(t('<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.'),'right');
+  d.innerHTML=`<div class="dlg-h"><h2 id="cal_h">${t('Add calendar')}</h2>${pqb('x',t('Close'),'data-calclose=""')}</div>
+    <div class="dlg-b" style="border-bottom:0">
+      ${oauth?`<div class="dlg-s">${ICON.user}${t('Sign in to your calendar')}${tip(t('when-who only reads when you’re busy and never stores your events. <a href="?privacy">Privacy policy</a>'),'right')}</div>
+        <div class="dlg-conn">${prov.google?`<a class="btn withic" href="/api/oauth/google/start">${ICON.cal}<span>${t('Connect Google')}</span></a>`:''}
+          ${prov.microsoft?`<a class="btn withic" href="/api/oauth/microsoft/start">${ICON.cal}<span>${t('Connect Outlook')}</span></a>`:''}</div>`:''}
+      <div class="dlg-s">${ICON.link}${oauth?t('Or paste a calendar link'):t('Paste a calendar link')}${howto}</div>
+      <div class="padd"><input type="text" id="caladd_n" maxlength="60" placeholder="${t('Name (optional)')}" aria-label="${t('Name (optional)')}" autocomplete="off">
+        <input type="url" id="caladd_u" maxlength="2000" placeholder="${t('iCal link (https://… or webcal://…)')}" aria-label="${t('iCal link')}" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(url||'')}">
+        <button type="button" class="btn primary padd-btn" data-caladd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
+      <div class="err" id="caladd_err"></div>
+      ${canWebcal?`<div><button type="button" class="btn sm ghost withic" data-calwebcal title="${t('Clicking a webcal:// link then opens when-who to add it')}">${ICON.link}<span>${t('Open webcal links here')}</span></button></div>`:''}
+    </div>`;
+  if(!d.open) d.showModal();
+  if(!TOUCH||url) $('caladd_u').focus(); else if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
 }
 async function calChanged(msg){ CALS.list=null; BUSY.key=''; try{ sessionStorage.removeItem('busy'); }catch(e){}
   try{ Object.assign(ME, await api('GET','/me')); }catch(e){} await renderCalCard(); if(msg) toast(msg); }
@@ -2713,7 +2779,7 @@ async function calAdd(btn){
   const u=$('caladd_u'), n=$('caladd_n'), err=$('caladd_err'); if(!u) return; err.textContent='';
   if(!u.value.trim()){ err.textContent=t('Paste your calendar’s iCal link first'); u.focus(); return; }
   btn.disabled=true;
-  try{ await api('POST','/me/calendars',{url:u.value.trim(),name:n.value.trim()}); u.value=''; n.value=''; await calChanged(t('Calendar added')); }
+  try{ await api('POST','/me/calendars',{url:u.value.trim(),name:n.value.trim()}); const d=$('caldlg'); if(d&&d.open) d.close(); await calChanged(t('Calendar added')); }
   catch(ex){ err.textContent=ex.message; }
   finally{ btn.disabled=false; }
 }
@@ -2722,8 +2788,10 @@ async function calRename(id){
   try{ await api('PATCH',`/me/calendars/${encodeURIComponent(id)}`,{name}); CALUI.edit=null; await calChanged(t('Saved')); }catch(ex){ toast(ex.message); }
 }
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-calauto],[data-calren],[data-calrensave],[data-calrencancel],[data-caldel],[data-caldisc],[data-calrefresh],[data-caladd],[data-calwebcal]');
+  const b=e.target.closest('[data-calauto],[data-calren],[data-calrensave],[data-calrencancel],[data-caldel],[data-caldisc],[data-calrefresh],[data-caladd],[data-calwebcal],[data-calopen],[data-calclose]');
   if(!b||!$('calbox')) return; const d=b.dataset, r=CALS.list;
+  if(d.calopen!==undefined){ calOpen(); return; }
+  if(d.calclose!==undefined){ $('caldlg').close(); return; }
   if(d.caladd!==undefined){ calAdd(b); return; }
   if(d.calwebcal!==undefined){ try{ navigator.registerProtocolHandler('webcal',location.origin+'/?account&addcal=%s'); toast(t('Your browser may ask to confirm')); }catch(ex){ toast(ex.message); } return; }
   if(d.calrencancel!==undefined){ CALUI.edit=null; renderCalCard(); return; }
@@ -2751,7 +2819,7 @@ function calReturn(qs){
   const msg={ok:t('Calendar connected'),denied:t('Calendar access wasn’t granted'),signin:t('Sign in first, then connect your calendar'),
     toomany:t('You can connect at most 5 calendar accounts'),error:t('Connecting the calendar didn’t work. Please try again.')}[res];
   if(res&&contactsImportResume(res)) {} else if(msg) setTimeout(()=>toast(msg),300);
-  if(add) setTimeout(()=>{ const u=$('caladd_u'); if(u){ u.value=add.replace(/^web\+?webcal:/,'').trim(); u.focus(); } },400);
+  if(add) setTimeout(()=>{ if($('calbox')) calOpen(add.replace(/^web\+?webcal:/,'').trim()); },400);
   qs.delete('cal'); qs.delete('addcal');
   history.replaceState(null,'',location.pathname+(String(qs)?'?'+String(qs).replace(/=(&|$)/g,'$1'):'')+location.hash);
 }
@@ -2804,9 +2872,9 @@ function renderAccount(){
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
-      <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}</h2>${tip(t('Your favourites come first when you add people to a poll. <b>Show all</b> also lists the people from your polls and contacts you import; star them to keep them as favourites. Imported contacts stay in this browser until you star them.'),'right')}</div>
+      <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
         <div id="ctbox"></div></div>
-      <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}</h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}</div>
+      <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
     </div></main>${siteFoot()}`;
   renderCalCard(); renderContactsCard();
@@ -5357,7 +5425,7 @@ document.addEventListener('input',e=>{ if(e.target.id==='pd_q'){ PD.q=e.target.v
 document.addEventListener('change',async e=>{
   const ct=e.target.id==='ct_file'; if(e.target.id!=='pd_file'&&!ct) return; const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
   if(f.size>5e6){ toast(t('That file is too big')); return; }
-  if(ct){ CT.all=true; addImported(CT,parseVcf(await f.text()),f.name,renderContactsCard); } else addImported(PD,parseVcf(await f.text()),f.name,pdRender);
+  if(ct) addImported(CT,parseVcf(await f.text()),f.name,renderContactsCard); else addImported(PD,parseVcf(await f.text()),f.name,pdRender);
 });
 // Back from the Google / Outlook contacts sign-in (?contacts=google|microsoft|err-…): open People and the popup again.
 async function contactsReturn(qs){
@@ -6342,11 +6410,7 @@ function germanText(){ return {
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
 "Contacts": "Kontakte",
-"Your favourites come first when you add people to a poll. <b>Show all</b> also lists the people from your polls and contacts you import; star them to keep them as favourites. Imported contacts stay in this browser until you star them.": "Deine Favoriten stehen ganz oben, wenn du Personen zu einer Umfrage hinzufügst. <b>Alle zeigen</b> listet auch die Personen aus deinen Umfragen und importierte Kontakte; markier sie mit dem Stern, um sie als Favoriten zu behalten. Importierte Kontakte bleiben in diesem Browser, bis du sie markierst.",
 "Couldn’t load your contacts.": "Deine Kontakte konnten nicht geladen werden.",
-"Favourites only": "Nur Favoriten",
-"Show all ({n})": "Alle zeigen ({n})",
-"No favourites yet. Add someone above, or star people under Show all.": "Noch keine Favoriten. Füg oben jemanden hinzu oder markier Personen unter Alle zeigen.",
 "Your favourites, people from your polls and imported contacts show up here.": "Hier erscheinen deine Favoriten, Personen aus deinen Umfragen und importierte Kontakte.",
 "From your polls": "Aus deinen Umfragen",
 "Pick someone from the list": "Wähl jemanden aus der Liste",
@@ -6935,6 +6999,21 @@ function germanText(){ return {
 "Hide my busy times": "Meine belegten Zeiten ausblenden",
 "Show my busy times": "Meine belegten Zeiten zeigen",
 "Calendars": "Kalender",
+"Add contacts": "Kontakte hinzufügen",
+"Add calendar": "Kalender hinzufügen",
+"New contact": "Neuer Kontakt",
+"no email": "keine E-Mail",
+"Star all": "Alle markieren",
+"{n} added to favourites": "{n} zu Favoriten hinzugefügt",
+"No contacts yet. Add people or import them from your phone or mail account.": "Noch keine Kontakte. Füge Personen hinzu oder importiere sie von deinem Handy oder Mail-Konto.",
+"No favourites yet. Star people to keep them here.": "Noch keine Favoriten. Markiere Personen mit dem Stern, um sie hier zu behalten.",
+"Nobody from your polls yet.": "Noch niemand aus deinen Umfragen.",
+"People you add here become favourites: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you star them.": "Personen, die du hier hinzufügst, werden Favoriten: Sie stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst. Importierte Kontakte werden nur hier in deinem Browser angezeigt, bis du sie mit dem Stern markierst.",
+"Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.": "Favoriten (★) stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst. <b>Aus deinen Umfragen</b> zeigt die Personen, die du per E-Mail zu deinen Umfragen hinzugefügt hast. Markiere jemanden mit dem Stern, um ihn zum Favoriten zu machen.",
+"No calendars yet. Add one to see when you’re busy while you answer polls.": "Noch keine Kalender. Füge einen hinzu, um beim Beantworten von Umfragen zu sehen, wann du belegt bist.",
+"Sign in to your calendar": "Beim Kalender anmelden",
+"Or paste a calendar link": "Oder einen Kalenderlink einfügen",
+"Paste a calendar link": "Kalenderlink einfügen",
 "Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.": "Füge die Kalender von deinem Handy, Computer oder Mail-Programm hinzu. Ist <b>Ausgrauen</b> an, erscheinen die Stunden, in denen du in diesem Kalender belegt bist, in jeder Umfrage, die du beantwortest, schraffiert. So siehst du Überschneidungen sofort. Deine Antworten ändern sich nicht von selbst. Nur du siehst deine Kalender und ihre Termine.",
 "Greying out busy times: on": "Belegte Zeiten ausgrauen: an",
 "Greying out busy times: off": "Belegte Zeiten ausgrauen: aus",
@@ -6945,11 +7024,8 @@ function germanText(){ return {
 "Access ended or was revoked. Reconnect to keep using these calendars.": "Der Zugriff ist abgelaufen oder wurde widerrufen. Verbinde neu, um diese Kalender weiter zu nutzen.",
 "No calendars found.": "Keine Kalender gefunden.",
 "Calendar links": "Kalender-Links",
-"No calendars yet. Connect one below.": "Noch keine Kalender. Füge unten einen hinzu.",
 "Connect Google": "Google verbinden",
 "Connect Outlook": "Outlook verbinden",
-"or add a calendar link:": "oder füge einen Kalender-Link hinzu:",
-"Add a calendar link:": "Kalender-Link hinzufügen:",
 "<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.": "<b>iPhone / iCloud:</b> Kalender-App › Kalender › ⓘ neben einem Kalender › Öffentlicher Kalender › Link teilen. <b>Google:</b> calendar.google.com › Einstellungen › dein Kalender › <i>Privatadresse im iCal-Format</i>. <b>Outlook:</b> Einstellungen › Kalender › Freigegebene Kalender › Veröffentlichen, dann den ICS-Link kopieren. <b>Thunderbird und andere Mail-Programme:</b> In den Eigenschaften des Kalenders steht sein iCal-/Abo-Link. webcal://-Links gehen auch.",
 "Clicking a webcal:// link then opens when-who to add it": "Ein Klick auf einen webcal://-Link öffnet dann when-who, um ihn hinzuzufügen",
 "Open webcal links here": "webcal-Links hier öffnen",
