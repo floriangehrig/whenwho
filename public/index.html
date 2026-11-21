@@ -206,9 +206,13 @@
   .wdc{font:inherit;font-size:13px;font-weight:600;width:38px;height:34px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--muted);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
   .wdc:hover{border-color:var(--accent);color:var(--ink)}
   .wdc.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .pat-pre{display:inline-flex;flex-wrap:wrap;gap:2px 10px}
-  .pat-pre button{font:inherit;font-size:13px;font-weight:500;border:0;background:none;padding:2px 0;color:var(--accent);cursor:pointer}
-  .pat-pre button:hover{text-decoration:underline}
+  .pat-pre{display:inline-flex;flex-wrap:wrap;gap:4px}
+  .pat-pre button{font:inherit;font-size:12.5px;font-weight:550;line-height:1.2;border:1px solid var(--line-strong);border-radius:999px;background:var(--card);padding:3px 10px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,border-color .12s}
+  .pat-pre button:hover{border-color:var(--accent);color:var(--ink)}
+  .pat-pre button.on{background:var(--accent-weak);border-color:var(--accent);color:var(--accent-ink)}
+  /* the grey box: filters on top, then (under a line) what to do with them */
+  .pat-act{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+  .pat-act .pat-sum{padding-top:0}
   .pat-sum{font-size:13.5px;font-weight:600;color:var(--ink);padding-top:2px}
   .qf{margin-top:var(--s2)}
   .aif{margin-top:var(--s2)}
@@ -267,7 +271,7 @@
     .qf .pat-row{gap:6px 10px}
     .qf .pat-l,.qf .pat-keys,.qf .pat-in .muted{display:none}
     .qf .wdchips{display:flex;width:100%;gap:3px} .qf .wdc{flex:1;width:auto;min-width:0;height:34px}
-    .qf .pat-pre{gap:0 12px}
+    .qf .pat-pre{gap:4px}
     .qf .pat-in{font-size:13.5px} .qf .num-sm{width:50px!important;padding-inline:6px}
     .qf .seg{display:flex;width:100%;gap:1px;padding:2px} .qf .seg button[data-qfs=x]{flex:0 0 auto;padding-inline:10px} .qf .seg button[data-qfs=x] .bl{display:none} .qf .seg button[data-qfs=x] .dot{margin:0} .qf .seg button{flex:1 1 auto;justify-content:center;padding:7px 3px;font-size:12px;letter-spacing:-.1px;white-space:nowrap} .qf .seg .dot{width:8px;height:8px;margin-right:3px}
   }
@@ -1204,7 +1208,7 @@
     .seg button{padding:9px 12px}
     .pc-copy{width:40px;min-height:40px}
     .slot{height:32px} .grid .hr{line-height:32px} .pgrid .slot{line-height:30px}
-    .pat-pre button{padding:6px 0}
+    .pat-pre button{padding:6px 11px}
     .em-pill button{width:26px;height:26px}
     .wdc{height:40px}
     .dd .ddp label,.menu a{padding-top:10px;padding-bottom:10px}
@@ -1303,7 +1307,7 @@
   @container (max-width:720px){ .tbar .brush .bl{display:none} .tbar .seg.brush button{padding:0;width:30px} }
   @container (max-width:520px){ .tbar .iseg .bl{display:none} .ws-tools.tbar{flex-wrap:wrap;row-gap:6px} }
   /* Suggest panel (planner ⚡): steppers for each setting (a number, or a toggle like All / Auto) */
-  .sugp .pat-l{width:74px} .sugp .patp{margin-top:0} .sugp .sug-end{justify-content:flex-end;margin-top:8px}
+  .sugp .pat-l{width:74px} .sugp .patp{margin-top:0}
   .sugp .check{display:inline-flex;align-items:center;gap:5px;font-size:14px}
   .sugp .check .dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c)}
   .sugp .pat-row>.muted{white-space:nowrap} .sugp .pat-row{position:relative} .sugp .pat-row .tip{position:static} /* tip bubbles line up with the row, so they stay on screen */
@@ -1691,14 +1695,16 @@ function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=fa
 function patInner(id){
   const st=PAT[id], opt=(lo,hi,cur)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh24(h)}</option>`; return o; };
   const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
+  const pre=(v,l,on)=>`<button type="button" data-patpre="${id}" data-v="${v}" class="${on?'on':''}" aria-pressed="${!!on}">${esc(l)}</button>`;
+  const wk=[...st.wd].sort().join(''), dm=st.dom.map(x=>x===''?'':+x).join('-');
   return `${st.title?`<div class="boxh">${st.title}</div>`:''}<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
-      <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="all">${t('Every day')}</button><button type="button" data-patpre="${id}" data-v="wk">${t('Weekdays')}</button><button type="button" data-patpre="${id}" data-v="we">${t('Weekends')}</button></span></div>
-    <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in">${t('Only the')} <input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">
-      ${t('to')} <input type="number" class="num-sm" min="1" max="31" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"> ${t('of each month')} <span class="muted small">(${t('optional')})</span></span></div>
+      <span class="pat-pre">${pre('all',t('Every day'),wk==='0123456')}${pre('wk',t('Weekdays'),wk==='01234')}${pre('we',t('Weekends'),wk==='56')}</span></div>
+    <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in"><input type="number" class="num-sm" min="1" max="31" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">–<input type="number" class="num-sm" min="1" max="31" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"></span>
+      <span class="pat-pre">${pre('d1','1–15',dm==='1-15')}${pre('d2','16–31',dm==='16-31')}</span>${tip(t('Only these days of each month (1–31). Leave empty for every day.'))}</div>
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
       <select class="inline" data-patto="${id}" aria-label="${t('To')}">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
-      <span class="pat-pre"><button type="button" data-patpre="${id}" data-v="allday">${t('All day')}</button>${ev?`<button type="button" data-patpre="${id}" data-v="eve">${t('Evening 18–22')}</button>`:''}${fr?`<button type="button" data-patpre="${id}" data-v="from17">${t('From 17:00')}</button>`:''}</span></div>
-    ${st.extraRow?st.extraRow():''}${st.noSum?'':`<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`}`;
+      <span class="pat-pre">${pre('allday',t('All day'),st.hs<=st.hmin&&st.he>=st.hmax)}${ev?pre('eve',t('Evening 18–22'),st.hs===18&&st.he===22):''}${fr?pre('from17',t('From 17:00'),st.hs===17&&st.he>=st.hmax&&st.hmin<17):''}</span></div>
+    ${st.extraRow?st.extraRow():''}${st.noSum&&!st.actHtml?'':`<div class="pat-act">${st.noSum?'':`<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`}${st.actHtml?st.actHtml():''}</div>`}`;
 }
 const patSumHtml = id => PAT[id].sumHtml?PAT[id].sumHtml():PAT[id].multi?patRules(id):esc(patSummary(id)); // sumHtml: e.g. quick fill's rule list
 // ---- rule list (create / settings): one period per rule; a day (and hour) is offered if any rule covers it.
@@ -1789,6 +1795,7 @@ document.addEventListener('click',e=>{
   if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
   const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
   if(v==='all') st.wd=new Set([0,1,2,3,4,5,6]); if(v==='wk') st.wd=new Set([0,1,2,3,4]); if(v==='we') st.wd=new Set([5,6]);
+  if(v==='d1'||v==='d2'){ const r=v==='d1'?['1','15']:['16','31']; st.dom=st.dom.map(x=>x===''?'':String(+x)).join()===r.join()?['','']:r; }
   if(v==='allday'){ st.hs=st.hmin; st.he=st.hmax; } if(v==='eve'){ st.hs=18; st.he=22; } if(v==='from17'){ st.hs=17; st.he=st.hmax; }
   patRefresh(id,true);
 });
@@ -4669,8 +4676,9 @@ function sugPanel(){
     t('Which answers count as free. Available always does.'));
   PAT.sug.extraRow=()=>h;
   PAT.sug.sumEnd=null; PAT.sug.noSum=true;
-  const end=`<div class="row tight sug-end">${sugCustom()?`<button type="button" class="btn sm ghost" data-sugreset>${t('Reset')}</button>`:''}<button type="button" class="btn sm primary" data-suggest ${tot?'':'disabled'}>${ICON.zap}${t('Suggest')}</button></div>`;
-  return `<div class="qf sugp" id="sugp">${patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true})}${end}</div>`;
+  PAT.sug.title=`${ICON.zap}<span>${t('Suggest')}</span>${tip(t('Pick days, hours and rules, then Suggest adds the best times for the selected people as drafts.'))}`;
+  PAT.sug.actHtml=()=>`<div class="qf-draft"><button type="button" class="btn sm primary withic" data-suggest ${tot?'':'disabled'}>${ICON.zap}<span>${t('Suggest')}</span></button>${sugCustom()?`<button type="button" class="btn sm ghost" data-sugreset>${t('Reset')}</button>`:''}</div>`;
+  return `<div class="qf sugp" id="sugp">${patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true})}</div>`;
 }
 function sugRedraw(){ const el=$('sugp'); if(el) el.outerHTML=sugPanel(); const b=document.querySelector('[data-sugopen]'); if(b){ const n=sugCustom(); b.querySelector('.badge')?.remove(); b.classList.toggle('badgeb',!!n); if(n) b.insertAdjacentHTML('beforeend',`<span class="badge">${n}</span>`); } }
 function sugButton(){
@@ -6080,6 +6088,8 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Only these days of each month (1–31). Leave empty for every day.": "Nur diese Tage jedes Monats (1–31). Leer lassen für alle Tage.",
+"Pick days, hours and rules, then Suggest adds the best times for the selected people as drafts.": "Tage, Uhrzeiten und Regeln wählen, dann fügt Vorschlagen die besten Zeiten für die ausgewählten Personen als Entwürfe hinzu.",
 "Poll sections": "Bereiche der Umfrage",
 "The organiser hasn’t scheduled any meetings yet.": "Die Organisator:in hat noch keine Termine festgelegt.",
 "{n} of {total} answered": "{n} von {total} haben geantwortet",
