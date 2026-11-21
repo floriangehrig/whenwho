@@ -535,7 +535,8 @@
   .msub .count{margin-left:6px}
   /* Meetings tab: one card with the sub-view switch in its header, like the Answers tab */
   .mws .mcard>.card-h{border-bottom:0;padding:var(--s3) 0 0;margin:0;justify-content:flex-end}
-  .mws .mcard>.empty-v{margin-top:var(--s4)} .mws #mplan>.pstep:first-child{margin-top:var(--s2);padding-top:var(--s2);border-top:0}
+  .mws .mcard>.empty-v{margin-top:var(--s4)} .mws #mplan>.asec:first-child{margin-top:var(--s3);padding-top:0;border-top:0} #mplan>.asec{scroll-margin-top:76px}
+  .asec>.sech+.vrow{margin-top:0} .asec>.vrow+.empty-v{margin-top:var(--s3)} #mplan .vrow+.grid{margin-top:var(--s3)}
   .ws-views button.on{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(31,94,255,.25)}
   /* Answers tab sections: one header style (icon · title · ⓘ · actions on the right) for every block */
   .asec{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line)}
@@ -585,6 +586,7 @@
     .vrow .iseg button{padding:3px 5px}
     .vrow .wknav.pill .btn{min-width:22px}
     .vrow .wknav.pill .lbl{padding:0 1px;font-size:12px}
+    #mplan .vrow{flex-wrap:wrap;row-gap:6px} #mplan .vrow>.vrow-m{order:5;flex:1 1 100%} #mplan .vrow>.vrow-m .wknav.pill{flex:1;justify-content:space-between}
   }
   .ws-me .help{margin-top:8px}
   .ws-me .field.mt-0+.field,.ws-me .grid2+.field{margin-top:var(--s3)}
@@ -623,6 +625,8 @@
   .mm-p.off{opacity:.5;cursor:default}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfold-b{color:var(--accent-ink)}
+  .mfold{gap:6px} .mfold>svg,.vpanel-h h3 svg{width:17px;height:17px;flex:none;color:var(--accent)} .mfold h3{margin:0;font-size:15px;white-space:nowrap}
+  .vpanel-h h3{font-size:15px;color:var(--ink)}
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
   /* one card per meeting: date tile | title, time · place · who, description, owner actions */
   .mlist{display:flex;flex-direction:column;gap:10px;padding:12px}
@@ -739,7 +743,7 @@
     .mcard:not(.selecting) .mlist:not(.compact) :is(.mhead,.tm){grid-column:2}
     .mcard:not(.selecting) .mlist:not(.compact) .mhead{grid-row:1;align-self:start}
     .macts{gap:0} .macts .qb{width:30px} .mcard .vpanel .mlist.mlist{padding:6px 6px 8px;gap:6px}
-    .vpanel-h{gap:2px;padding:8px 6px 0 12px} .vpanel-h .mfold{margin-right:4px} .vpanel-h .mfold{min-width:0;overflow:hidden} .vpanel-h h3{white-space:nowrap;font-size:16px;min-width:0} .vpanel-h h3 .count{flex:none} .vpanel-h [data-vend]{flex:none;width:32px;min-width:32px;padding:0;justify-content:center} .vpanel-h [data-vend] .bl{display:none} .vpanel-h .mfold-b{display:none}
+    .vpanel-h{gap:2px;padding:8px 6px 0 12px} .vpanel-h .mfold{margin-right:4px} .vpanel-h .mfold{min-width:0;overflow:hidden} .vpanel-h h3{white-space:nowrap;min-width:0} .vpanel-h h3 .count{flex:none} .vpanel-h [data-vend]{flex:none;width:32px;min-width:32px;padding:0;justify-content:center} .vpanel-h [data-vend] .bl{display:none} .vpanel-h .mfold-b{display:none}
     .mcard .vpanel .mfoot{gap:6px} .mcard .vpanel .vtally{margin-left:auto} .mcard .vpanel .vtop{display:none} .mcard .vpanel .mfoot>.btn{min-height:38px;margin:0}
     .mcard:not(.selecting) .mlist:not(.compact) .mtitle{padding-top:0;font-size:15px}
     .mcard:not(.selecting) .mlist:not(.compact) .tm{grid-row:2;align-self:start;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
@@ -980,7 +984,6 @@
   #pcal .day.dr{background:var(--sel-bg);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
   #pcal .day.dr :is(.n,.t,.t .om){color:var(--accent-ink)}
   .day.sel{box-shadow:var(--shadow)}
-  .pnav .pick{margin-left:auto}
   /* Details (step 3): one compact row per draft, then the shared fields with icons instead of labels */
   .drafts{margin-top:10px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
   .drafts .dft{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:14px}
@@ -1021,7 +1024,7 @@
   .mcard .vpanel .mlist{padding:10px 10px 12px}
   .mcard .mbatch{margin-top:var(--s3);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--accent) 4%,var(--card))}
   .mcard .card-h .mcal{margin-left:auto}
-  .card-h h2 .count,.pstep-h h3 .count{vertical-align:2px}
+  .card-h h2 .count{vertical-align:2px}
   .tabs button .count{margin-left:6px;vertical-align:1px} .count[hidden]{display:none}
   /* ---------- chat ---------- */
   .chat-note{display:flex;align-items:center;gap:10px;padding:12px 16px} .chat-note>svg{width:18px;height:18px;color:var(--muted);flex:none}
@@ -1138,18 +1141,7 @@
   .chat-list mark{background:color-mix(in srgb,var(--maybe) 55%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
   .ubadge svg{width:12px;height:12px}
-  .pstep{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line);scroll-margin-top:76px}
-  .card-h+.pstep{margin-top:var(--s2);padding-top:var(--s2);border-top:0}
-  .pstep-h{display:flex;align-items:flex-start;gap:12px}
-  .pstep-h h3{margin:3px 0 0} .pstep-h .help{margin:4px 0 0}
-  .pstep-h>.btn{flex:none}
-  .pstep-n{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent-weak);color:var(--accent-ink);font-weight:750;font-size:14px;font-variant-numeric:tabular-nums;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 25%,transparent)}
-  .pstep>:not(.pstep-h){margin-left:40px}
-  .pstep>.ws-tools{margin-top:var(--s3)}
-  .pstep .empty-v{margin-top:var(--s3)}
-  @media (max-width:560px){ .pstep>:not(.pstep-h){margin-left:0} .pstep-h{gap:10px} .mcard .card-h .mcal{margin-left:0}
-    #mplan>.card-h>.muted{display:none}
-    .pstep .wknav{flex-wrap:wrap} .pstep .wknav .lbl{flex:1;text-align:center} .pstep .wknav .seg{order:-1;flex-basis:100%;margin-left:0;display:flex} .pstep .wknav .seg button{flex:1;justify-content:center} }
+  @media (max-width:560px){ .mcard .card-h .mcal{margin-left:0} }
 
   /* ---------- new poll page ---------- */
   .btn.withic svg{width:16px;height:16px;flex:none}
@@ -1334,9 +1326,6 @@
   .sugn input{width:34px;border:0;padding:0;text-align:center;background:transparent;font:inherit;font-size:13px;font-weight:600;-moz-appearance:textfield;min-height:28px}
   .sugn input::-webkit-inner-spin-button,.sugn input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   /* planner toolbar: who, Suggest and the count all share one height */
-  .ptbar .dd>summary,.ptbar>.btn,.ptbar .sugn{height:36px;min-height:36px;padding-block:0}
-  .ptbar .sugn button,.ptbar .sugn input{height:100%;min-height:0}
-  .ptbar .dd{min-width:0} .ptbar .dd>summary{max-width:100%;white-space:nowrap} .ptbar .dd>summary b{overflow:hidden;text-overflow:ellipsis}
   .iseg{flex-wrap:nowrap;flex:none} .iseg button{padding:6px 10px;gap:6px} .iseg .segic{margin-right:0} .iseg .segic svg{width:16px;height:16px}
   .iseg .bl{margin-left:6px} .brush .dot{width:14px;height:14px;border-radius:999px;margin-right:0;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.12)}
   .brush button.on .dot{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--c)}
@@ -1394,7 +1383,7 @@
   .sendbtn svg{width:18px!important;height:18px!important}
   .savebar.dirty .sendbtn:not(:disabled){box-shadow:0 6px 18px -6px color-mix(in srgb,var(--accent) 70%,transparent)}
   /* Meetings */
-  .pstep-h .tip{margin-top:-2px} .pnav{flex-wrap:nowrap;gap:6px;margin-top:var(--s3)} .pnav .wknav.pill{margin:0;flex:1 1 auto;min-width:0;width:auto;justify-content:space-between} .pnav .lbl{overflow:hidden;text-overflow:ellipsis}
+
   .ev-ic{display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);margin-bottom:6px} .ev-ic svg{width:18px;height:18px}
   /* People */
   .pst{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1.5px dashed var(--line-strong)}
@@ -1499,7 +1488,6 @@
     .mrow{grid-template-columns:30px minmax(0,1fr) auto;gap:4px 10px} .mrow-ic{width:30px;height:30px} .mrow .mrow-n{grid-column:2;grid-row:2;justify-self:start} .mrow .sw{grid-column:3;grid-row:1/3}
     .mrow .pwf,.mrow .pwf:has(+.mrow-x){grid-column:2/-1;grid-row:2;width:auto} .mrow .mrow-x{grid-column:3;grid-row:1} .mrow .pwf:has(+.mrow-x){grid-column:2/-1}
     .mrow .mrow-n input[type=month],.mrow .mrow-n input[type=date]{min-width:0;width:170px}
-    .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1}
     .ws-h:has(>h2+.ws-views){flex-wrap:wrap} .ws-h>h2+.ws-views{flex:1 1 100%}
     .ws-views .segic{margin-right:5px}
@@ -2019,7 +2007,7 @@ function langButton(){ const cur=store0('lang'), c=cur==='de'||cur==='en'?cur:'s
     <div class="ddp right menu pickm" role="menu">${pickItem('data-setlang','system',t('System default'),c==='system',ICON.monitor)}<div class="menu-sep"></div>
     ${pickItem('data-setlang','en','English',c==='en','','en')}${pickItem('data-setlang','de','Deutsch',c==='de','','de')}</div></details>`;
 }
-// Appearance picker (opens on click): System default / Light / Dark; shows the current mode's icon; saved in this browser.
+// Appearance picker (opens on click): System default / Light (default) / Dark; shows the current mode's icon; saved in this browser.
 const isDark = () => document.documentElement.dataset.theme==='dark';
 function themeButton(){ const cur=store0('theme'), c=cur==='dark'||cur==='light'?cur:'system';
   return `<details class="dd pickdd themedd"><summary class="themeb" title="${t('Appearance')}" aria-label="${t('Appearance')}">${isDark()?ICON.moon:ICON.sun}</summary>
@@ -3458,7 +3446,7 @@ function renderMeetings(listOnly){
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   const vote=props.length&&!sel?votePanel(props):'';
   const showT=t('Show meeting details'), hideT=t('Compact view');
-  const foldH=`<button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showT:hideT}"><h3>★ <span class="mfl">${t('Scheduled')}</span> <span class="count">${ms.length}</span></h3></button>`;
+  const foldH=`<button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?showT:hideT}">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></button>`;
   const foldB=foldBtn('data-mfold',fold,showT,hideT);
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); syncBatchBar(pv,nSel,ms.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
@@ -3665,6 +3653,9 @@ async function saveMeetings(list){
 function monthsOf(dates){ const g=[]; dates.forEach(k=>{ const ym=k.slice(0,7); let x=g[g.length-1]; if(!x||x.ym!==ym){ x={ym,days:[]}; g.push(x);} x.days.push(k); }); return g; }
 // Long label, plus a short one that phones show instead (e.g. in My answer's view row).
 const lblLS=(l,s)=>`<span class="lbl"><span class="lbl-l">${esc(l)}</span><span class="lbl-s">${esc(s)}</span></span>`;
+// "3–7 Nov" for the short (phone) label of a week pager.
+function shortRange(a,b){ const sd=k=>parseD(k).toLocaleDateString(LOC,{day:'numeric',month:'short'});
+  try{ return new Intl.DateTimeFormat(LOC,{day:'numeric',month:'short'}).formatRange(parseD(a),parseD(b)).replace(/\s*[–-]\s*/,'–'); }catch(e){ return `${sd(a)} – ${sd(b)}`; } }
 // The ‹ month › pager of the day calendar ('' for weekly polls or a single month); keeps P.month in range.
 function monthPager(dates){
   const groups=monthsOf(dates);
@@ -3735,9 +3726,7 @@ function renderMine(el){
   let wks=null, real=null, pager='';
   if(P.mode==='days') pager=monthPager(d.dates).html;
   else { wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); real=wks[P.week].filter(Boolean);
-    const sd=k=>parseD(k).toLocaleDateString(LOC,{day:'numeric',month:'short'});
-    const sr=(a,b)=>{ try{ return new Intl.DateTimeFormat(LOC,{day:'numeric',month:'short'}).formatRange(parseD(a),parseD(b)).replace(/\s*[–-]\s*/,'–'); }catch(e){ return `${sd(a)} – ${sd(b)}`; } };
-    if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,sr(real[0],real[real.length-1]))}
+    if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`; }
   let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
   h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
@@ -4316,7 +4305,7 @@ function selParticipants(){ return P.who?sel().map(r=>({id:r.id,name:r.name})):'
 function whoDropdown(){
   const rs=P.data.responses||[], n=sel().length;
   const lbl=!P.who?t('Everyone ({n})',{n:rs.length}):rs.length===1?t('{n} of {total} person',{n,total:rs.length}):t('{n} of {total} people',{n,total:rs.length});
-  return `<details class="dd" id="whodd" ${P.whoOpen?'open':''}><summary aria-label="${t('Participants: {who}',{who:esc(lbl)})}"><span class="muted small hide-sm">${t('Participants:')}</span><span class="sm-only ddic">${ICON.users}</span> <b>${esc(lbl)}</b></summary><div class="ddp">
+  return `<details class="dd" id="whodd" ${P.whoOpen?'open':''}><summary aria-label="${t('Participants: {who}',{who:esc(lbl)})}"><span class="muted small hide-sm">${t('Participants:')}</span><span class="sm-only ddic">${ICON.users}</span> <b><span class="lbl-l">${esc(lbl)}</span><span class="lbl-s">${P.who?`${n}/${rs.length}`:rs.length}</span></b></summary><div class="ddp">
     <div class="ddb"><button type="button" class="btn" data-whoall>${t('All')}</button><button type="button" class="btn" data-whonone>${t('None')}</button></div>
     ${rs.map(r=>`<label><input type="checkbox" data-who="${esc(r.id)}" ${!P.who||P.who.has(r.id)?'checked':''}> ${esc(r.name||t('Someone'))}</label>`).join('')}</div></details>`;
 }
@@ -4374,12 +4363,12 @@ function bestBlock(s){ // longest contiguous run of best hours
 
 // ---- shared pieces for every view (same colours, legend wording and markers everywhere) ----
 const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','No','gry'],
-  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
-  allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
+  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','More free'], best:['var(--yes-dark)','Best hours'],
+  allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe'],
   mstripe:['var(--maybe)','Rest maybe'],
   draft:['var(--sel-bg)','Draft','drf'], meeting:['var(--accent)','Scheduled','sym','★'], busy:['var(--busy-hatch),var(--sunken)','Busy'],
-  othn:['','Others free','sym','<i class="lg-oc">2/5</i>'],
-  line:['','Line = how many are free','ln'], myline:['','Your day, 0–24 h','ln'] };
+  othn:['','Others','sym','<i class="lg-oc">2/5</i>'],
+  line:['','Share free','ln'], myline:['','Your day','ln'] };
 // [colour, label, class, symbol]: a "sym" item shows its symbol (blue ★, the n/total badge) instead of a colour dot.
 function legend(...keys){ return `<div class="legend">${keys.filter(Boolean).map(k=>{ const [c,lb,cls,sym]=LEG[k]; return `<span${cls?` class="${cls}"`:''} style="--c:${c}">${sym?`<b class="lg-s" aria-hidden="true">${sym}</b>`:''}${t(lb)}</span>`; }).join('')}</div>`; }
 // Thin yes/maybe bar along the bottom of a day cell.
@@ -4420,7 +4409,7 @@ function scheduleDay(k){
   P.range=null; planShow(k); setMsub('plan',false);
   if(P.atab==='meetings') renderBody(); else setPollTab('meetings');
   toast(t('Draft added. Set the details, then create the meeting.'));
-  const tr=$('drafts'); if(tr) tr.closest('.pstep').scrollIntoView({block:'start'});
+  const tr=$('drafts'); if(tr) tr.closest('.asec').scrollIntoView({block:'start'});
 }
 
 function renderGroup(el){
@@ -4431,7 +4420,7 @@ function renderGroup(el){
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
   // The view row (ⓘ · who's counted, like My answer's view row), calendar, legend, day panel; then sections: Best days, Comments, Manage responses.
   const gTip=(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'))+' '+t('Darker = more of them are free. The line under a day shows how many are free, free if needed or maybe.');
-  let h=`<div class="asec calsec">${secH('cal',t('Calendar'),{tip:gTip})}${vrow('',whoDropdown(),monthPager(d.dates).html)}`;
+  let h=`<div class="asec">${secH('cal',t('Calendar'),{tip:gTip})}${vrow('',whoDropdown(),monthPager(d.dates).html)}`;
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
@@ -4550,17 +4539,18 @@ function pickSeg(){
   const b=(on,v,ic,l,tt)=>`<button data-prange="${v}" class="${on?'on':''}" title="${tt}" aria-label="${l}" aria-pressed="${on}"><span class="segic">${ICON[ic]}</span><span class="bl">${l}</span></button>`;
   return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
 }
-function renderPlanner(S){
+function renderPlanner(S,who){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
   let h='';
   if(slotsOn){
     const {avail,pages}=planPages(S);
-    if(!pages.length) return `<div class="empty-v"><b>${t('No free hours yet.')}</b><span class="muted small">${t('None of the selected people has marked any hours as available.')}</span></div>`;
+    if(!pages.length) return vrow(pickSeg(),who)+`<div class="empty-v"><b>${t('No free hours yet.')}</b><span class="muted small">${t('None of the selected people has marked any hours as available.')}</span></div>`;
     const pk=P.pavail?'ppage':'pweek'; P[pk]=Math.min(Math.max(0,P[pk]),pages.length-1); const wk=pages[P[pk]], real=wk.filter(Boolean);
-    // One row: date pager pill + icon toggle (free days / weeks).
-    h+=`<div class="row tight pnav"><div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button><span class="lbl">${esc(dLabel(real[0]))} – ${esc(dLabel(real[real.length-1]))}${P.pavail&&pages.length>1?` <span class="muted small">${P[pk]+1}/${pages.length}</span>`:''}</span>
-      <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>
-      <div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>${pickSeg()}</div>
+    // One view row: free days / weeks + separate days / one range · ‹ dates › · who.
+    const pager=`<div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button>${lblLS(`${dLabel(real[0])} – ${dLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
+      <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>`;
+    const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
+    h+=vrow(viewSeg+pickSeg(),who,pager)+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const ad=k&&P.drafts.some(x=>x.allDay&&onDay(x,k));
       h+=`<div class="hd${ad?' dr':''}${k&&P.panchor===k?' da':''}" ${k?`data-pday="${k}" title="${isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
@@ -4576,29 +4566,23 @@ function renderPlanner(S){
         h+=`<div class="${cls}" style="--a:${Math.round(12+(c||m)/tot*55)}%" data-k="${k}" data-h="${hr}" title="${esc(dLabel(k))} ${hh(hr)} · ${esc(freeTip(c,f,m,tot))}">${c||(m?m+'?':'')}</div>`; }); });
     h+='</div>'+legend('heat','allfree','monly','mstripe','draft','meeting');
   } else {
-    const ps=pickSeg(); if(ps) h+=`<div class="row tight pnav">${ps}</div>`;
-    h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,(P.drafts.some(x=>onDay(x,k))?' dr':'')+(P.panchor===k?' da':'')))+'</div>';
+    h+=vrow(pickSeg(),who,monthPager(d.dates).html);
+    h+=`<div id="pcal">`+calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-pday="${k}"`,(P.drafts.some(x=>onDay(x,k))?' dr':'')+(P.panchor===k?' da':'')),{nav:false})+'</div>';
     h+=legend('heat','ifn','maybe','line','draft','meeting');
   }
   return h;
 }
-// The organiser's Meetings tab, lower card: 1 who, 2 when (grid), 3 details of the drafts + create.
-function step(n,title,help,body,extra=''){
-  return `<section class="pstep"><div class="pstep-h"><span class="pstep-n" aria-hidden="true">${n}</span><div class="grow minw row tight"><h3>${title}</h3>${help?tip(help):''}</div>${extra}</div>${body}</section>`;
-}
+// The organiser's Meetings tab, Plan new: a Calendar section (view row with who to invite, the grid) and Details (drafts + create).
 function renderPlan(el){
   const d=P.data, rs=d.responses||[], slotsOn=d.poll.answerMode!=='days', tot=sel().length, nd=P.drafts.length;
   let h='';
   if(!rs.length){ el.innerHTML=h+`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t("Once people answer, you can plan meetings around when they're free.")}</span><button class="btn sm mt-2" data-atab="people">${t('Share the poll')}</button></div>`; return; }
-  const S={}; d.dates.forEach(k=>S[k]=stats(k));
-  h+=step(1,t('Who should come?'),t('Each meeting invites the people selected when you add it.'),
-    tools(whoDropdown(),'mt-2 tbar ptbar'));
-  h+=step(2,t('Pick the times'),tot?(slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.')
-      :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'))):'',
-    tot?sugAi()+sugPanel()+renderPlanner(S):`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person in step 1.')}</span></div>`,
-    tot?sugAiBtn()+sugButton():'');
-  h+=step(3,`${t('Details')}${nd?` <span class="count">${nd}</span>`:''}`,nd?'':t('Meetings you add in step 2 show up here. Set the details, then create them in one go.'),
-    draftTray(),nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):'');
+  const S={}, who=whoDropdown(); d.dates.forEach(k=>S[k]=stats(k));
+  const how=slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days), tap a draft to remove it. Darker = more of them are free.')
+    :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'));
+  h+=`<div class="asec">${secH('cal',t('Pick the times'),{tip:(tot?how+' ':'')+t('Each meeting invites the people selected when you add it.'),extra:tot?sugAiBtn()+sugButton():''})}`
+    +(tot?sugAi()+sugPanel()+renderPlanner(S,who):vrow('',who)+`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person to see when they’re free.')}</span></div>`)+'</div>';
+  h+=`<div class="asec">${secH('edit',t('Details'),{count:nd||null,tip:nd?'':t('Meetings you add above show up here. Set the details, then create them in one go.'),extra:nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):''})}${draftTray()}</div>`;
   el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
@@ -6476,7 +6460,7 @@ function germanText(){ return {
 "Create {n} meetings": "{n} Termine erstellen",
 "Created": "Erstellt",
 "Danger zone": "Gefahrenzone",
-"Darker = more free": "Dunkler = mehr frei",
+"More free": "Mehr frei",
 "Dates": "Daten",
 "Days": "Tage",
 "Days or hours": "Tage oder Stunden",
@@ -6513,6 +6497,7 @@ function germanText(){ return {
 "EVERYONE'S": "ALLE",
 "Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.": "Jeder Tag zeigt, wie viele zur besten Zeit frei sind (+ wie viele „vielleicht“ gesagt haben). Tippe auf einen Tag für Details und um einen Termin anzulegen.",
 "Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.": "Jeder Tag zeigt, wie viele zur besten Zeit frei sind (+ wie viele „vielleicht“ gesagt haben). Tippe auf einen Tag für Details.",
+"Darker = more of them are free. The line under a day shows how many are free, free if needed or maybe.": "Dunkler = mehr von ihnen frei. Die Linie unter einem Tag zeigt, wie viele frei, notfalls frei oder vielleicht frei sind.",
 "Each meeting invites the people selected when you add it.": "Jeder Termin lädt die Leute ein, die beim Hinzufügen ausgewählt sind.",
 "Earlier round · see all rounds": "Frühere Runde · alle Runden ansehen",
 "Edit": "Bearbeiten",
@@ -6662,9 +6647,8 @@ function germanText(){ return {
 "Last day of the month": "Letzter Tag des Monats",
 "Last hour": "Letzte Stunde",
 "Let people add a comment": "Kommentare erlauben",
-"Line = how many are free": "Linie = wie viele frei sind",
-"Your day, 0–24 h": "Dein Tag, 0–24 Uhr",
-"Others free": "Andere frei",
+"Share free": "Anteil frei",
+"Your day": "Dein Tag",
 "On days with only some hours, the line shows your day from 0 to 24 h.": "An Tagen mit nur einigen Stunden zeigt die Linie deinen Tag von 0 bis 24 Uhr.",
 "Linked to their account": "Mit dem Konto verknüpft",
 "Loading…": "Lädt…",
@@ -6694,7 +6678,7 @@ function germanText(){ return {
 "Meeting not found": "Termin nicht gefunden",
 "Meeting title": "Termintitel",
 "Meetings": "Termine",
-"Meetings you add in step 2 show up here. Set the details, then create them in one go.": "Termine aus Schritt 2 erscheinen hier. Leg die Details fest und erstelle sie dann alle auf einmal.",
+"Meetings you add above show up here. Set the details, then create them in one go.": "Termine, die du oben hinzufügst, erscheinen hier. Leg die Details fest und erstelle sie dann alle auf einmal.",
 "Message": "Nachricht",
 "Method not allowed": "Methode nicht erlaubt",
 "My answer": "Meine Antwort",
@@ -6766,7 +6750,7 @@ function germanText(){ return {
 "invited only": "nur Eingeladene",
 "Only days when someone is free ({n})": "Nur Tage, an denen jemand frei ist ({n})",
 "Only for this meeting": "Nur für diesen Termin",
-"Only maybe (n?)": "Nur vielleicht (n?)",
+"Only maybe": "Nur vielleicht",
 "Only people with the password can open the poll": "Nur wer das Passwort kennt, kann die Umfrage öffnen",
 "Only recurring series have a next poll": "Nur wiederkehrende Serien haben eine nächste Umfrage",
 "Only the": "Nur vom",
@@ -6825,7 +6809,6 @@ function germanText(){ return {
 "Pick at least one day of the week": "Wähle mindestens einen Wochentag",
 "Pick at least one day of the week.": "Wähle mindestens einen Wochentag.",
 "Pick at least one day.": "Wähl mindestens einen Tag.",
-"Pick at least one person in step 1.": "Wähle in Schritt 1 mindestens eine Person.",
 "Pick at least one person to see when they’re free.": "Wähle mindestens eine Person, um zu sehen, wann sie frei ist.",
 "Pick at least one weekday": "Wähl mindestens einen Wochentag",
 "Pick dates, an icon and share the link": "Daten und Icon wählen, Link teilen",
@@ -7127,7 +7110,6 @@ function germanText(){ return {
 "When are you free? Please mark your availability for “{title}” here:": "Wann hast du Zeit? Bitte trag hier ein, wann du für „{title}“ kannst:",
 "Where:": "Wo:",
 "Which days and times": "Welche Tage und Zeiten",
-"Who should come?": "Wer soll kommen?",
 "Who's bringing snacks?": "Wer bringt Snacks mit?",
 "Who:": "Wer:",
 "Whole days": "Ganze Tage",
