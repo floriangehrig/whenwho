@@ -3984,7 +3984,7 @@ function wirePlanner(){
 // days and hours (PAT.sug) are per poll, in memory.
 // n: how many (0 = all) per 'all' | 'week' | 'month'; len: hours per meeting (0 = auto: longest best block);
 // min: at least this many of the selected people free (0 = all of them); gap: days between meetings; ifn / maybe: count those answers as free.
-const SUG0={n:0,per:'all',len:0,min:1,gap:0,ifn:true,maybe:false};
+const SUG0={n:0,per:'all',len:0,min:0,gap:0,ifn:true,maybe:false};
 function sugOpts(){
   const s=store.get('sugopt',null), o=Object.assign({},SUG0,s&&typeof s==='object'?s:{});
   if(!s){ const n=store.get('sugn',null); if(n!=null) o.n=+n||0; } // the old count stepper
