@@ -666,7 +666,7 @@
   .mlist.compact .meet{align-items:center;gap:10px;padding:7px 8px 7px 8px}
   .mlist.compact .mtile{width:42px;padding:4px 0 5px} .mlist.compact .mtile .dn{font-size:17px;margin:1px 0 0} .mlist.compact .mtile .wd{display:none}
   .mlist.compact .mhead{align-items:center;gap:8px} .mlist.compact .mtitle{padding-top:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .mlist.compact .tm{flex:0 1 auto;min-width:0;overflow:hidden;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .mlist.compact .tm{flex:none;max-width:100%;min-width:0;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
   .mlist.compact .tm svg{width:14px;height:14px;color:var(--accent)}
   .mlist.compact .mmeta{flex:1;min-width:0;align-items:center;flex-direction:row;flex-wrap:nowrap;gap:4px 14px} .mlist.compact .mmeta>a,.mlist.compact .mmeta>span:not(.tm){min-width:0;overflow:hidden} .mlist.compact .mmeta>a>span,.mlist.compact .mmeta>span>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mlist.compact .mhead{flex-wrap:nowrap} .mlist.compact .mmeta{flex:1 1 0;overflow:hidden} .mlist.compact .mmeta>a,.mlist.compact .mmeta>span:not(.tm){flex:0 100 auto} .mlist.compact .mmeta svg{flex:none}
@@ -777,6 +777,7 @@
     .macts{gap:0} .macts .qb{width:30px} .mcard .vpanel .mlist.mlist{padding:6px 6px 8px;gap:6px}
     .vpanel-h{gap:2px;padding:8px 6px 0 12px} .vpanel-h .mfold{margin-right:4px} .vpanel-h .mfold{min-width:0;overflow:hidden} .vpanel-h h3{white-space:nowrap;min-width:0} .vpanel-h h3 .count{flex:none} .vpanel-h [data-vend]{flex:none;width:32px;min-width:32px;padding:0;justify-content:center} .vpanel-h [data-vend] .bl{display:none}
     .mcard .vpanel .mfoot{gap:6px} .mcard .vpanel .vtally{margin-left:auto} .mcard .vpanel .vtop{display:none} .mcard .vpanel .mfoot>.btn{min-height:38px;margin:0}
+    .vpanel .mlist.compact .mhead{flex-wrap:wrap} .vpanel .mlist.compact .mmeta{flex:1 1 100%} .vpanel .mlist.compact .vacts{flex:1 1 100%;justify-content:flex-start} .vpanel .mlist.compact .vtally{margin-right:auto}
     .mcard:not(.selecting) .mlist:not(.compact) .mtitle{padding-top:0;font-size:15px}
     .mcard:not(.selecting) .mlist:not(.compact) .tm{grid-row:2;align-self:start;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
     .mcard:not(.selecting) .mlist:not(.compact) .mmeta>:not(.tm){font-size:13.5px;color:var(--muted)}
@@ -3644,7 +3645,7 @@ function renderMeetings(listOnly){
     const tm=`<span class="tm">${ICON.clock}<span>${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span></span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
     if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
-    return `<div class="meet${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
+    return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
@@ -3675,7 +3676,7 @@ function votePanel(props,fold,selRows){
     const tog=`<button type="button" class="btn sm withic vbtn${on?' on':''}" data-vote="${m.id}" aria-pressed="${on}" ${canVote?'':'disabled'} title="${esc(canVote?(on?t('Remove your vote'):t('Vote for this option')):t('Send your answer to vote.'))}">${ICON.check}<span>${on?t('Suits me'):t('Vote')}</span></button>`;
     const acts=`<span class="macts">${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span>`;
     if(fold){ const cf=adm?`<button type="button" class="qb" data-mconfirm="${m.id}" title="${t('Confirm')}" aria-label="${t('Confirm')}">${ICON.star}</button>`:'';
-      return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}</div><span class="macts vacts">${tog}<span class="vtally">${tally}</span>${cf}${chatRefBtn('m:'+m.id)}</span></div></div></div>`; }
+      return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}</div><span class="macts vacts">${tog}<span class="vtally">${tally}</span>${cf}${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span></div></div></div>`; }
     const foot=`<div class="mfoot">${adm?`<button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>`:''}${tog}<span class="vtally">${tally}</span></div>`;
     return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts}</div>
       <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
