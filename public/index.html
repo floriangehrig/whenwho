@@ -415,15 +415,11 @@
   .day .ocnt~.star{right:44px} .day .ocnt~.bzm{right:44px} .day .ocnt~.star~.bzm{right:60px}
   @media (max-width:560px){ .day .ocnt{position:static;display:inline-block;margin-top:3px;padding:0 4px;font-size:9.5px} .day .ocnt~.star,.day .ocnt~.bzm{right:6px} .day .ocnt~.star~.bzm{right:20px} }
   .day .ocnt.none{background:var(--card);color:var(--muted);box-shadow:0 0 0 1px var(--line)}
-  /* show / hide switches under the answer toolbar */
-  .vtog{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
-  .vtog .vt{gap:6px} .vtog .vt svg{width:15px;height:15px}
-  .vtog .vtn{font-style:normal;font-size:11px;font-weight:650;min-width:18px;padding:0 5px;border-radius:999px;background:var(--sunken);color:var(--muted);text-align:center}
-  .vtog .vt.on .vtn{background:var(--card);color:var(--accent-ink)}
+  /* Others / Busy: a switch with a ▾ list of people / calendars */
   .vtsplit{display:inline-flex;align-items:stretch}
   .vtsplit>.vt{border-top-right-radius:0;border-bottom-right-radius:0}
   .vtsplit .vtdd{margin:0;display:flex;position:static}
-  .vtog{position:relative} .vtsplit .vtdd .ddp{left:0;right:auto} /* the list opens under the row's left edge, never off-screen */
+  .vtsplit .vtdd .ddp{left:0;right:auto} /* the list opens under the row's left edge, never off-screen */
   .vtsplit .vtdd>summary{min-height:0;height:100%;padding:0 9px;gap:0;border-radius:0 8px 8px 0;border-left:0;font-size:0}
   .vtsplit .vtdd>summary::after{margin:0}
   .vtsplit .vtdd[open]>summary{background:var(--sunken)}
@@ -550,8 +546,21 @@
   details.asec[open]>summary.sech::after{transform:rotate(-135deg);margin-bottom:-3px}
   details.asec:not([open])>summary.sech{margin-bottom:0}
   .sech .count{margin-left:0}
-  .ws-tools.tbar.sec1{margin-top:0}
-  .vtog-l{font-size:12.5px;font-weight:600;color:var(--muted);margin-right:2px}
+  /* view row (My answer: Days / Hours · ⓘ … Others, Busy; Everyone: ⓘ … Participants): one look in both tabs */
+  .vrow{position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:var(--s2)}
+  .asec>.vrow:first-child{margin-top:0}
+  .vrow-l,.vrow-r{display:flex;align-items:center;gap:6px;min-width:0}
+  .vrow>.ml-auto{flex:1}
+  .vrow .tip{position:static} /* bubbles line up with the row, so they stay on screen */
+  .vrow .vt{gap:6px} .vrow .vt svg{width:15px;height:15px}
+  .vrow .vtn{font-style:normal;font-size:11px;font-weight:650;min-width:18px;padding:0 5px;border-radius:999px;background:var(--sunken);color:var(--muted);text-align:center}
+  .vrow .vt.on .vtn{background:var(--card);color:var(--accent-ink)}
+  .vrow .vrow-r .ddp,.vrow-r .vtsplit .vtdd .ddp{left:auto;right:0}
+  .vrow .dd{margin-top:0}
+  .vrow .dd:not(.vtdd)>summary{min-height:30px;padding:4px 10px;font-size:12.5px;border-radius:8px;gap:6px}
+  .vrow .dd:not(.vtdd)>summary .hide-sm{display:none} /* icon + "Everyone (3)", like the Others button */
+  .vrow .dd:not(.vtdd)>summary .ddic{display:inline-flex} .vrow .dd:not(.vtdd)>summary .ddic svg{width:15px;height:15px}
+  .vrow .iseg{padding:2px} .vrow .iseg button{min-height:24px;padding:3px 10px;font-size:12.5px}
   .ws-me .help{margin-top:8px}
   .ws-me .field.mt-0+.field,.ws-me .grid2+.field{margin-top:var(--s3)}
   .ws-who{display:flex;align-items:center;gap:12px}
@@ -3060,7 +3069,7 @@ async function save(retried){
 }
 // The help line under "Your answer" depends on whether an answer exists.
 function updateHelp(){ const h=$('ansHelp'); if(h) h.innerHTML=ansHelp(); wireDel(); }
-function ansHelp(){ return ansHelp1(); } // the how-to for painting is the ⓘ of the "Your availability" section
+function ansHelp(){ return ansHelp1(); } // the how-to for painting is the ⓘ in the Days / Hours row
 function ansHelp1(){
   if(ME.user) return `${t('Signed in as {email}: your answer follows you to every device.',{email:esc(ME.user.email)})} ${P.myResp?t('Change it any time, then press <b>Update</b>.'):t('Mark your availability, then press <b>Send</b>.')}`;
   return P.myResp?t('Saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update</b>.')
@@ -3600,12 +3609,10 @@ function renderMine(el){
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${am!=='days'?' '+t('On days with only some hours, the line shows your day from 0 to 24 h.'):''}${on?` ${t('3/5 = how many of the {n} others are free at the best time.',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
   updateHelp();
-  // Two sections under "You": Fill faster (AI, Quick fill, Clear; their boxes open inside it) and
-  // Your availability (how you mark: mode + brush · what to show on top: Others, Busy · the grid · its legend).
-  // The how-to text is the ⓘ of Your availability (it changes with the mode).
-  let h=`<div class="asec">${secH('zap',t('Fill faster'),{extra:`${aiIc}${qfIc}${clrIc}`})}${aiFill()}${quickFill()}</div>`;
-  h+=`<div class="asec">${secH('cal',t('Your availability'),{tip:helpTxt})}`+tools(`${modeSeg}${brushSeg}`,'tbar sec1');
-  if(othBtn||bzBtn) h+=`<div class="vtog"><span class="vtog-l">${t('Show')}</span>${othBtn}${bzBtn}</div>`;
+  // Under "You", two rows: brush · AI, Quick fill, Clear (their boxes open under it), then the view row
+  // (Days / Hours + the how-to ⓘ, which changes with the mode · Others, Busy), laid out like Everyone's row. Then the grid and its legend.
+  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
+  h+=vrow(`${modeSeg}${tip(helpTxt)}`,`${othBtn}${bzBtn}`);
   // Legend under the grid: colours, then only the markers this view can show right now.
   const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
@@ -4273,6 +4280,8 @@ function bestLi(s,tot,label,detail,attrs='',acts=''){
 const tools=(inner,cls='')=>`<div class="row ws-tools${cls?' '+cls:''}">${inner}</div>`;
 // The header of a section in the Answers tab: icon · title · count · ⓘ, actions on the right.
 // summary=true for the header of a <details class="asec"> (same look, chevron on the right).
+// A view row: left = how the grid is drawn (+ ⓘ), right = whose answers it shows. Same in My answer and Everyone.
+const vrow=(l,r)=>`<div class="vrow"><span class="vrow-l">${l}</span><span class="ml-auto"></span><span class="vrow-r">${r}</span></div>`;
 function secH(icon,title,{tip:tp='',count=null,extra='',summary=false}={}){
   const tg=summary?'summary':'div';
   return `<${tg} class="sech">${ICON[icon]||''}<h3>${title}</h3>${count!=null?`<span class="count">${count}</span>`:''}${tp?tip(tp):''}${extra?`<span class="ml-auto"></span><span class="sech-a">${extra}</span>`:''}</${tg}>`;
@@ -4295,8 +4304,8 @@ function renderGroup(el){
   const all=d.responses.length, tot=sel().length, H=hours(), S={}; d.dates.forEach(k=>S[k]=stats(k));
   const slotsOn = p.answerMode!=='days';
   if(!all){ el.innerHTML=`<div class="empty-v"><b>${t('No answers yet.')}</b><span class="muted small">${t('Once people respond, the best days show up here.')}</span></div>`; return; }
-  // Sections: Overview (who's counted · calendar · legend · day panel), Best days, Comments, Manage responses.
-  let h=`<div class="asec">${secH('cal',t('Overview'),{tip:d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'),extra:whoDropdown()})}`;
+  // The view row (ⓘ · who's counted, like My answer's view row), calendar, legend, day panel; then sections: Best days, Comments, Manage responses.
+  let h=`<div class="asec">${vrow(tip(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.')),whoDropdown())}`;
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''));
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
@@ -6185,8 +6194,6 @@ function germanText(){ return {
 "Basics": "Grundlagen",
 "Best": "Rekord",
 "Best days": "Beste Tage",
-"Fill faster": "Schneller ausfüllen",
-"Your availability": "Deine Verfügbarkeit",
 "Best hours": "Beste Zeiten",
 "Best: {n}": "Rekord: {n}",
 "Blank = no": "Leer = nein",
