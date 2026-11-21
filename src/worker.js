@@ -77,7 +77,7 @@ function secure(res, url) {
   h.set('x-content-type-options', 'nosniff');
   h.set('referrer-policy', 'same-origin');
   h.set('x-frame-options', 'DENY');
-  h.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  h.set('permissions-policy', 'camera=(), microphone=(self), geolocation=()');
   if ((h.get('content-type') || '').startsWith('text/html')) h.set('content-security-policy', CSP);
   if (url.protocol === 'https:') h.set('strict-transport-security', 'max-age=31536000');
   return r;
