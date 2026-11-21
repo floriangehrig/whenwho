@@ -38,8 +38,13 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
   Only the owner and participants with an account (`participants.user_id`) may read or write; guests can't. The page polls
-  `?after=` every 15 s while the chat is on screen (no WebSockets, no emails). `chat_reads.read_at` drives unread counts
-  (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`).
+  `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails). `chat_reads.read_at` drives unread counts
+  (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
+  thread (`d:YYYY-MM-DD` / `m:<meeting id>`), `reactions` (JSON emoji → user ids, sent as counts) via `POST .../chat/:mid/react`,
+  `updated_at` makes `?after=` return changed reactions. `GET /api/polls/:id` adds `chat.last` (header peek) and `chat.refs` (thread counts).
+  The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. Its Activity view
+  mixes in events worked out on the page (answers, meetings by their `at` stamp, rounds by `createdAt`). Dates of the poll written in
+  a message become chips that jump to that day. People who can chat don't get the Comment field under My answer.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

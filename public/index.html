@@ -837,17 +837,40 @@
   .tabs button .count{margin-left:6px;vertical-align:1px} .count[hidden]{display:none}
   /* ---------- chat ---------- */
   .chat-note{display:flex;align-items:center;gap:10px;padding:12px 16px} .chat-note>svg{width:18px;height:18px;color:var(--muted);flex:none}
-  details.chatcard>summary{display:flex;align-items:center;cursor:pointer;list-style:none} details.chatcard>summary::before{display:none}
-  details.chatcard>summary h2{margin:0;flex:1} details.chatcard>summary h2>svg{width:20px;height:20px;color:var(--accent)}
-  details.chatcard>summary::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 6px 3px 4px;transition:transform .15s}
-  details.chatcard[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
-  details.chatcard[open]>summary{margin-bottom:var(--s3)}
-  .chat-list{display:flex;flex-direction:column;gap:2px;max-height:min(60vh,520px);min-height:120px;overflow-y:auto;padding:4px 2px 8px;overscroll-behavior:contain}
+  /* the round button bottom-right and the drawer it opens (side panel; bottom sheet on phones) */
+  .chatdock{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:var(--accent);color:#fff;
+    display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px -6px color-mix(in srgb,var(--accent) 60%,transparent),var(--shadow);transition:transform .15s,opacity .15s}
+  .chatdock:hover{transform:translateY(-2px)} .chatdock svg{width:24px;height:24px}
+  .chatdock .count{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--no);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--bg);margin:0}
+  .chatdock.dim{background:var(--card);color:var(--muted);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .chatdock.isopen{opacity:0;pointer-events:none;transform:scale(.8)}
+  body:has(.savebar) .chatdock{bottom:calc(96px + env(safe-area-inset-bottom))}
+  .chatback{display:none}
+  .chatdrawer{position:fixed;top:0;right:0;bottom:0;z-index:70;width:min(400px,100vw);display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);
+    box-shadow:var(--shadow-pop);transform:translateX(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+  .chatdrawer.open{transform:none;visibility:visible;transition:transform .22s ease}
+  @media (min-width:1180px){ body.chatopen{padding-right:400px} body.chatopen .chatdrawer{box-shadow:none} }
+  .cd-h{display:flex;align-items:center;gap:8px;padding:12px 12px 10px 16px;border-bottom:1px solid var(--line)}
+  .cd-h .seg button{padding:6px 12px;font-size:13px}
+  .cd-grab{display:none}
+  .cd-ref:empty{display:none} .cd-ref{padding:8px 16px 0}
+  .cd-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 11px;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);font-size:13px;font-weight:600}
+  .chip-x{border:0;background:none;color:inherit;cursor:pointer;padding:2px;line-height:0;border-radius:50%} .chip-x svg{width:14px;height:14px} .chip-x:hover{background:color-mix(in srgb,var(--accent) 15%,transparent)}
+  .chatbox{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 12px 12px}
+  .chatbox>.chat-note{padding:16px 4px}
+  .chat-list{flex:1;display:flex;flex-direction:column;gap:2px;min-height:120px;overflow-y:auto;padding:4px 2px 8px;overscroll-behavior:contain}
   .chat-empty{margin:auto;text-align:center}
-  .chat-day{text-align:center;margin:10px 0 6px;font-size:12px;color:var(--muted)} .chat-day span{background:var(--empty);padding:2px 10px;border-radius:999px}
+  .chat-day{position:sticky;top:0;z-index:1;text-align:center;margin:10px 0 6px;font-size:12px;color:var(--muted)} .chat-day span{box-shadow:0 0 0 3px var(--card)}
+  .chat-new{display:flex;align-items:center;gap:8px;margin:12px 0 4px;color:var(--no);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .chat-new::before,.chat-new::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--no) 45%,transparent)}
+  .chat-jump{position:absolute;right:18px;bottom:76px;z-index:2;display:flex;align-items:center;gap:4px;height:34px;min-width:34px;padding:0 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);box-shadow:var(--shadow);cursor:pointer;font-size:12px;font-weight:700}
+  .chat-jump svg{width:16px;height:16px} .chat-jump .n:empty{display:none} .chat-jump[hidden]{display:none}
+  .act-ev{display:flex;align-items:center;gap:8px;margin:6px 0;padding:4px 6px;font-size:13px;color:var(--ink-2)}
+  .act-ev>svg{width:15px;height:15px;color:var(--muted);flex:none} .act-ev time{font-size:11px;color:var(--muted)} .act-ev .qb{width:auto;height:26px} .chat-day span{background:var(--empty);padding:2px 10px;border-radius:999px}
   .msg{display:flex;align-items:flex-end;gap:8px;max-width:85%;margin-top:8px} .msg.cont{margin-top:0}
   .msg.mine{align-self:flex-end;flex-direction:row-reverse}
   .msg-av{width:30px;flex:none}
+  .msg-w{display:flex;flex-direction:column;min-width:0} .msg.mine .msg-w{align-items:flex-end}
   .msg-b{background:var(--empty);border-radius:14px 14px 14px 4px;padding:7px 11px 5px;min-width:0}
   .msg.mine .msg-b{background:var(--accent-weak);color:var(--accent-ink);border-radius:14px 14px 4px 14px}
   .msg-n{font-size:12.5px;font-weight:700;margin-bottom:1px} .msg-tag{font-weight:600;color:var(--muted);font-size:11.5px}
@@ -856,6 +879,33 @@
   .msg-del{border:0;background:transparent;color:var(--muted);padding:2px;cursor:pointer;line-height:0;opacity:0;border-radius:6px}
   .msg-del svg{width:13px;height:13px} .msg:hover .msg-del,.msg-del:focus-visible{opacity:1} .msg-del:hover{color:var(--no)}
   @media (hover:none){ .msg-del{opacity:.7} }
+  .msg.pending .msg-b{opacity:.65} .msg.failed .msg-b{box-shadow:inset 0 0 0 1px var(--no)}
+  .msg-sending{font-style:italic}
+  .msg-retry{display:inline-flex;align-items:center;gap:3px;border:0;background:none;color:var(--no);font:inherit;font-weight:700;cursor:pointer;padding:0} .msg-retry svg{width:12px;height:12px}
+  .msg-ref{display:inline-flex;margin:1px 0 3px;padding:1px 8px;border:0;border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent-ink);font-size:11.5px;font-weight:600;cursor:pointer}
+  .msg-rx{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+  .rx{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;cursor:pointer;line-height:1.5}
+  .rx span{font-size:11.5px;font-weight:700;color:var(--muted)} .rx.mine{border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:var(--accent-weak)} .rx.mine span{color:var(--accent-ink)}
+  .rx-pick{display:flex;gap:2px;margin-top:4px;padding:3px;border-radius:999px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .rx-pick button{border:0;background:none;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer} .rx-pick button:hover{background:var(--empty)}
+  .dchip{display:inline;border:0;padding:0 5px;margin:0 1px;border-radius:6px;background:color-mix(in srgb,var(--yes) 16%,transparent);color:inherit;font:inherit;font-weight:600;cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
+  .dchip:hover{background:color-mix(in srgb,var(--yes) 28%,transparent)}
+  .chat-quick{display:flex;gap:6px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none} .chat-quick[hidden]{display:none}
+  .qchip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;cursor:pointer} .qchip:hover{border-color:var(--accent);color:var(--accent-ink)}
+  .qb.chatref{width:auto;min-width:32px;gap:3px;padding:0 6px} .qb.chatref .n{font-size:11.5px;font-weight:700;color:var(--accent-ink)}
+  .day.hasnote::before{content:"";position:absolute;bottom:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent);z-index:1}
+  .day.flash{animation:dflash 1.6s ease}
+  @keyframes dflash{0%,60%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+  .chatpeek{display:flex;align-items:center;gap:8px;width:100%;max-width:560px;margin-top:10px;padding:7px 12px;border-radius:var(--r);border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:var(--on-brand);font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+  .chatpeek:hover{background:rgba(255,255,255,.12)} .chatpeek>svg{width:16px;height:16px;flex:none;color:var(--on-brand-muted)} .chatpeek b{font-weight:700}
+  .chatpeek .count{background:var(--no);color:#fff} .chatpeek.unread{border-color:color-mix(in srgb,var(--accent) 60%,transparent)}
+  @media (max-width:640px){
+    .chatdock{right:14px;width:50px;height:50px}
+    .chatback{display:block;position:fixed;inset:0;z-index:65;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .2s}
+    .chatback.open{opacity:1;pointer-events:auto}
+    .chatdrawer{top:auto;left:0;width:100%;height:min(86vh,86dvh);border-left:0;border-radius:18px 18px 0 0;transform:translateY(105%);padding-bottom:env(safe-area-inset-bottom)}
+    .cd-h{padding-top:18px;position:relative} .cd-grab{display:block;position:absolute;top:6px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:999px;background:var(--line-strong);cursor:pointer}
+  }
   .chat-form{display:flex;align-items:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
   .chat-form textarea{flex:1;resize:none;min-height:40px;max-height:140px;margin:0}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
@@ -1537,6 +1587,8 @@ Object.assign(ICON,{
   more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
   day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
   chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
+  smile:svgI('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0M9.5 9.5v.1M14.5 9.5v.1"/>'),
+  down:svgI('<path d="M12 5v14M6 13l6 6 6-6"/>'),
   eyeoff:svgI('<path d="M10.6 5.6A10 10 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.3 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2M3.5 3.5l17 17"/>'),
 });
 // An ⓘ icon that shows its text on hover (desktop) or tap/focus (phones). html is trusted markup built by the caller.
@@ -2555,7 +2607,7 @@ const respKey = () => `resp:${P.id}:${inst().id}`;
 const ansMode = () => P.data.poll.answerMode;
 const instLabel = i => P.data.poll.kind==='weekly' ? t('A typical week') : P.data.poll.kind==='series' ? rangeLabel(P.data.poll.unit, i.startDate, i.endDate) : `${dayLabel(i.startDate)} – ${dayLabel(i.endDate)}`;
 
-async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); P.tab=store.get('view:'+id,'mine');
+async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); if(P.atab==='chat'){ P.atab='answers'; store.set('chatOpen:'+id,true); } // the Chat tab is now the drawer P.tab=store.get('view:'+id,'mine');
   P.msub=null; if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; P.msub='plan'; } // the old "★ Schedule" view now lives in the Meetings tab
   P.password=store.get('pw:'+id,null); await loadPoll(true); }
 async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
@@ -2763,8 +2815,8 @@ function render(){
         :`<div class="notice warn withic">${ICON.lock}<span>${t('Closed · answers for {round} are final.',{round:esc(instLabel(i))})}</span></div>`}
       <div id="body"></div>
       ${editable()?`<div class="savebar wsfoot" id="savebar"><span class="sstat" id="status"></span>${ib('trash',t('Remove my answer'),'id="delMine"','ghost danger hide')}<button type="button" class="btn primary withic sendbtn" id="saveBtn"></button></div>`:''}
-    </div>${chatCard()}</div>
-    ${d.isAdmin?adminPanes():''}</main>`;
+    </div></div>
+    ${d.isAdmin?adminPanes():''}</main>${chatDock()}`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
@@ -2780,8 +2832,10 @@ function render(){
 // One compact row: name (+ email), comment toggle and an ⓘ tip; email (phones) and comment open from icon buttons.
 function meFields(d,p){
   const req=!!p.requireEmail, comOpen=P.comOpen||!!(P.mine.comment||'').trim(), emOpen=req||P.emOpen||!!(P.mine.email||'').trim();
-  const comBtn=p.allowComments?ib('chat',t('Comment'),`data-metog="com" aria-expanded="${comOpen}"`,'sm ghost'+(comOpen?' on':'')):'';
-  const com=p.allowComments?`<textarea id="comment" class="me-com${comOpen?'':' hide'}" maxlength="500" rows="2" aria-label="${t('Comment')}" placeholder="${t('Comment (optional), e.g. only evenings in week 1')}"></textarea>`:'';
+  // People who can chat use the chat drawer instead; a comment they already left stays editable.
+  const comOn=p.allowComments&&(!chatCan()||!!(P.mine.comment||'').trim());
+  const comBtn=comOn?ib('chat',t('Comment'),`data-metog="com" aria-expanded="${comOpen}"`,'sm ghost'+(comOpen?' on':'')):'';
+  const com=comOn?`<textarea id="comment" class="me-com${comOpen?'':' hide'}" maxlength="500" rows="2" aria-label="${t('Comment')}" placeholder="${t('Comment (optional), e.g. only evenings in week 1')}"></textarea>`:'';
   const help=`<span id="ansHelp">${ansHelp()}</span>`;
   if(ME.user) return `<div class="me-row">${avatarOf(ME.user)}${ME.user.name
       ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="${t('Change name')}" aria-label="${t('Change name')}">${ICON.edit}</a>`
@@ -2817,9 +2871,10 @@ function renderHeader(){
     <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" data-msubgo="list" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?t('meeting'):t('meetings')}</a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${i.status==='closed'?'<span class="chip closed">'+t('Closed')+'</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
+    <div id="chatpeek" hidden></div>
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
-  renderMeetings();
+  chatPeekDraw(); renderMeetings();
 }
 function renderBody(){
   const b=$('body'); if(!b) return;
@@ -2966,8 +3021,9 @@ function renderMeetings(){
         noMail.length?t('No email for {names}.',{names:esc(noMail.map(r=>r.name).join(', '))}):''].filter(Boolean).join(' ');
       foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?t('Send again'):t('Send invite')}</span><span class="bs">${m.sentAt?t('Resend'):t('Send')}</span></button>${qb('data-mail',m.id,'mail',t('Write the invite in my own email app'))}`
           :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
-        ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
+        ${qb('data-copyinvite',m.id,'copy',t('Copy invite text'))}${chatRefBtn('m:'+m.id)}${edit?'':qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))}${qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger')}
         ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
+    else if(!sel&&chatCan()) foot=`<div class="mfoot">${chatRefBtn('m:'+m.id)}</div>`;
     return `<div class="meet${on?' sel':''}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${sel?'':ibl('cal',t('Add to calendar'),icsUrl(m.id,true),'sm')}</div>
@@ -3709,7 +3765,7 @@ function heatDay(day,s,tot,attrs='',cls='',star=false){
   return `<div class="day heat${s.peak?' hot':''}${all?' allfree':''}${s.peak||s.peakMaybe?' hasbar':''}${cls}" style="--h:${Math.round(10+r*55)}%"${s.peak||s.peakMaybe?` title="${all?t('Everyone free')+' · ':''}${esc(freeTip(s.peak,s.peakIfn,s.peakMaybe,tot))}"`:''} ${attrs}><div class="n">${day}</div>
     <div class="t">${countText(s.peak,s.peakMaybe,tot)}</div>${heatBar(s.peak,s.peakIfn,s.peakMaybe,tot)}${star?'<span class="star">★</span>':''}</div>`;
 }
-function heatCell(k,day,s,tot,attrs,cls=''){ return heatDay(day,s,tot,attrs,cls,meetingDays().has(k)); }
+function heatCell(k,day,s,tot,attrs,cls=''){ return heatDay(day,s,tot,attrs,cls+(refN('d:'+k)?' hasnote':''),meetingDays().has(k)); }
 // One "Best days" row: score pill, label + detail, yes/if-needed/maybe bar. Shared with the landing demo.
 function bestLi(s,tot,label,detail,attrs='',acts=''){
   const all=tot>0&&s.peak===tot;
@@ -3747,7 +3803,7 @@ function renderGroup(el){
       <div class="row"><div class="grow"><h3>${esc(dLabel(P.ovDay))}</h3>
         <div class="schips">${[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]].filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('')}${s.peak&&slotsOn?`<span class="sc-b" title="${t('Best hours')}">${ICON.clock}${esc(s.window)}</span>`:''}</div></div>
         ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary" data-schedule="${P.ovDay}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}"><span>★<span class="${sr?'bl':''}"> ${t('Schedule')}</span>${sr?` ${esc(rg)}`:''}</span></button>`:''}
-        ${ib('x',t('Close'),`data-ov="${P.ovDay}"`,'sm ghost')}</div>
+        ${chatRefBtn('d:'+P.ovDay)}${ib('x',t('Close'),`data-ov="${P.ovDay}"`,'sm ghost')}</div>
       ${slotsOn?`${legend('yes','best','ifn','maybe')}${pick?`<div class="bartip">${tip(t('Drag across the bars to pick the meeting time.'),'right')}</div>`:''}<div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
       <div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div>`:''}
       <div class="people">${s.list.map(x=>{ const st=statusOf(x.v,P.ovDay); return `<div class="p"><div class="pr"><span>${esc(x.name)}</span><span class="st" style="color:${st.c}">${esc(st.t||t('Not available'))}</span></div>${st.cls==='part'?ratioBar(x.v,P.ovDay):''}</div>`; }).join('')}</div></div>`;
@@ -4054,114 +4110,264 @@ async function saveDrafts(btn){
 }
 
 // ---- chat ----
-// One chat per poll for the owner and everyone answering with an account (a series shares it).
-// New messages are fetched every 15 s, only while the chat is on screen and the tab is in front.
-const CHAT_EVERY=15000, CHAT_KEEP=500;
+// One chat per poll for the owner and everyone answering with an account (a series shares it). It lives in a drawer
+// (side panel on desktop, bottom sheet on phones) opened from the round button bottom-right, the header peek, or the
+// 💬 buttons on a day / meeting (which open that thread: messages with ref 'd:<date>' / 'm:<meeting id>').
+// "Activity" mixes the messages with poll events worked out here (answers, meetings, rounds). Guests get only that.
+// New messages are fetched while the drawer is open and the tab is in front: every 15 s, slowing to 60 s while quiet.
+const CHAT_MIN=15000, CHAT_MAX=60000, CHAT_KEEP=500, CHAT_EMOJI=['👍','❤️','😂','✅','🙏','😮'];
 const chatTip=()=>t('Only the organiser and people who answer with an account can read and write here.');
+const chatCan=()=>!!(P.data&&P.data.chat&&P.data.chat.can);
 function chatState(){
-  if(!P.chat||P.chat.id!==P.id){ chatStop(); P.chat={id:P.id,msgs:null,people:{},draft:'',timer:null,busy:false,since:null,owner:null,canDel:false,open:store.get('chatOpen:'+P.id,false)}; }
+  if(!P.chat||P.chat.id!==P.id){ chatStop(); P.chat={id:P.id,msgs:null,people:{},draft:'',timer:null,busy:false,since:null,owner:null,canDel:false,
+    open:store.get('chatOpen:'+P.id,false),view:store.get('chatView',null)==='act'?'act':'chat',ref:null,delay:CHAT_MIN,newId:null,unseen:0,pick:null,seq:0}; }
   return P.chat;
 }
-function chatStop(){ if(P.chat&&P.chat.timer){ clearInterval(P.chat.timer); P.chat.timer=null; } }
-const chatVisible=()=>{ const b=$('chatbox'); return !!b&&b.offsetParent!==null; };
-// Participants' view: a fold-out card under the answer card (or a one-line hint for guests / people who haven't answered).
-function chatCard(){
-  const d=P.data;
-  if(d.isAdmin) return '';
-  if(!ME.user) return `<div class="card chat-note">${ICON.chat}<span class="grow muted small">${t('Sign in to chat with the others in this poll.')}</span><button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button></div>`;
-  if(!d.chat||!d.chat.can) return `<div class="card chat-note">${ICON.chat}<span class="grow muted small">${t('Send your answer to join the chat.')}</span></div>`;
-  const c=chatState(), n=d.chat.unread||0;
-  return `<details class="card chatcard" id="chatcard"${c.open?' open':''}><summary><h2 class="row tight">${ICON.chat}${t('Chat')}<span class="count" id="chatn"${n&&!c.open?'':' hidden'}>${n}</span>${tip(esc(chatTip()))}</h2></summary><div id="chatbox" class="chatbox"></div></details>`;
+function chatStop(){ if(P.chat&&P.chat.timer){ clearTimeout(P.chat.timer); P.chat.timer=null; } }
+const chatVisible=()=>!!$('chatbox')&&!!P.chat&&P.chat.id===P.id&&P.chat.open;
+const isPhone=()=>matchMedia('(max-width:640px)').matches;
+// Label of a thread: the day, or the meeting's title / date.
+function refLabel(ref){
+  if(!ref) return '';
+  if(ref.startsWith('d:')) return '📅 '+dLabel(ref.slice(2));
+  const id=ref.slice(2), m=(P.data.instances||[]).concat([inst()]).flatMap(x=>x.meetings||[]).find(x=>x.id===id);
+  return '★ '+(m?(m.title||dLabel(m.date))+(m.allDay||m.start==null?'':' '+hh(m.start)):t('Meeting'));
 }
-// Owner's view: the Chat tab.
-const chatPane=()=>`<div id="pane-chat" class="${P.atab==='chat'?'':'hide'}"><div class="card chatcard"><div class="card-h"><h2 class="row tight">${t('Chat')}${tip(esc(chatTip()))}</h2></div><div id="chatbox" class="chatbox"></div></div></div>`;
+const refN=ref=>(P.data&&P.data.chat&&P.data.chat.refs&&P.data.chat.refs[ref])||0;
+// The 💬 button on a day panel or a meeting card.
+const chatRefBtn=(ref,cls='')=>chatCan()?`<button type="button" class="qb chatref${cls}" data-chatgo="${esc(ref)}" title="${t('Chat about this')}" aria-label="${t('Chat about this')}">${ICON.chat}<span class="n"${refN(ref)?'':' hidden'}>${refN(ref)}</span></button>`:'';
+function chatRefBadges(){ document.querySelectorAll('[data-chatgo]').forEach(b=>{ const n=refN(b.dataset.chatgo), s=b.querySelector('.n'); if(s){ s.textContent=n; s.hidden=!n; } }); }
+function bumpRef(ref){ const c=P.data.chat; if(!ref||!c) return; c.refs=c.refs||{}; c.refs[ref]=(c.refs[ref]||0)+1; }
+// Round button + drawer, rendered at the end of the poll page (for everyone: guests get the Activity view and a sign-in note).
+function chatDock(){
+  const d=P.data, c=chatState(), can=chatCan(), n=can?(d.chat.unread||0):0;
+  document.body.classList.toggle('chatopen',c.open);
+  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="count" id="chatn"${n?'':' hidden'}>${n}</span></button>
+    <div class="chatback${c.open?' open':''}" data-chatclose></div>
+    <aside class="chatdrawer${c.open?' open':''}" id="chatdrawer" aria-label="${t('Chat')}"${c.open?'':' inert'}>
+      <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
+        <div class="seg ws-views cd-views" role="tablist" aria-label="${t('Chat')}">
+          <button type="button" role="tab" data-chatview="chat" class="${c.view==='chat'?'on':''}" aria-selected="${c.view==='chat'}"><span class="segic">${ICON.chat}</span>${t('Chat')}</button>
+          <button type="button" role="tab" data-chatview="act" class="${c.view==='act'?'on':''}" aria-selected="${c.view==='act'}"><span class="segic">${ICON.clock}</span>${t('Activity')}</button></div>
+        ${tip(esc(can?chatTip():t('Activity shows who answered and which meetings were set. To chat, answer with an account.')),'right')}
+        <span class="ml-auto"></span>${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
+      <div class="cd-ref" id="chatref"></div>
+      <div id="chatbox" class="chatbox"></div></aside>`;
+}
+// One-line peek at the newest message under the poll header, while the drawer is closed.
+function chatPeekDraw(){
+  const el=$('chatpeek'); if(!el) return;
+  const d=P.data, c=chatState(), l=chatCan()&&d.chat.last;
+  if(!l||c.open){ el.innerHTML=''; el.hidden=true; return; }
+  const n=d.chat.unread||0;
+  el.hidden=false;
+  el.innerHTML=`<button type="button" class="chatpeek${n?' unread':''}" data-chatopen title="${t('Open the chat')}">${ICON.chat}<span class="grow minw ell"><b>${l.mine?t('You'):esc(l.name)}:</b> ${esc(l.body)}</span>${n?`<span class="count">${n}</span>`:''}</button>`;
+}
 function chatUnreadBadges(n){
   if(P.data&&P.data.chat) P.data.chat.unread=n;
-  ['chatn','ctabn'].forEach(id=>{ const el=$(id); if(el){ el.textContent=n; el.hidden=!n; } });
+  const el=$('chatn'); if(el){ el.textContent=n; el.hidden=!n; }
+  chatPeekDraw();
 }
-// Call after the chat box may have appeared, disappeared or been rebuilt (render, tab switch, fold-out).
+function chatSetOpen(on,ref){
+  const c=chatState();
+  if(ref!==undefined){ c.ref=ref||null; if(ref) c.view='chat'; }
+  if(c.open===on&&ref===undefined) return;
+  const was=c.open; c.open=on; store.set('chatOpen:'+P.id,on);
+  if(!on){ c.newId=null; c.pick=null; }
+  document.body.classList.toggle('chatopen',on);
+  const dr=$('chatdrawer'), dk=$('chatdock'), bk=document.querySelector('.chatback');
+  if(dr){ dr.classList.toggle('open',on); dr.inert=!on; }
+  if(bk) bk.classList.toggle('open',on);
+  if(dk){ dk.classList.toggle('isopen',on); dk.setAttribute('aria-expanded',on); }
+  chatPeekDraw();
+  if(on){ const box=$('chatbox'); if(box&&was) box.innerHTML=''; chatSync(); const ta=$('chatin'); if(ta&&!isPhone()) ta.focus(); }
+  else { chatStop(); if(dk&&dr&&dr.contains(document.activeElement)) dk.focus(); }
+}
+// Call after the chat may have appeared, disappeared or been rebuilt (render, open, view switch).
 function chatSync(){
-  const cc=$('chatcard'); if(cc&&!cc._w){ cc._w=1; cc.ontoggle=()=>{ const c=chatState(); c.open=cc.open; store.set('chatOpen:'+P.id,cc.open); chatSync(); }; }
   if(!$('chatbox')){ chatStop(); return; }
   const c=chatState();
+  chatPeekDraw();
   if(!chatVisible()){ chatStop(); return; }
   chatDraw(false);
+  if(!chatCan()) return;
   if(c.msgs===null) chatFetch(true);
-  if(!c.timer) c.timer=setInterval(()=>{ if(!chatVisible()) return chatStop(); if(document.visibilityState==='visible') chatFetch(false); },CHAT_EVERY);
+  if(!c.timer) chatTick();
 }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&P.chat&&P.chat.id===P.id&&P.chat.timer&&P.chat.msgs) chatFetch(false); });
+function chatTick(){
+  const c=chatState(); chatStop();
+  c.timer=setTimeout(async()=>{ c.timer=null; if(c!==P.chat||!chatVisible()) return;
+    if(document.visibilityState==='visible') await chatFetch(false);
+    if(c===P.chat&&chatVisible()) chatTick(); },c.delay);
+}
+const chatFast=()=>{ const c=P.chat; if(c){ c.delay=CHAT_MIN; if(c.timer) chatTick(); } };
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&P.chat&&P.chat.id===P.id&&chatVisible()&&P.chat.msgs){ P.chat.delay=CHAT_MIN; chatFetch(false); chatTick(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&P.chat&&P.chat.open&&$('chatdrawer')&&!document.querySelector('dialog[open],.dpk-pop:not(.hide)')){ chatSetOpen(false); } });
 async function chatFetch(full){
   const c=chatState(); if(c.busy) return; c.busy=true;
   let again=false;
   try{
     if(!c.msgs) full=true;
-    const after=full?null:(c.msgs.length?c.msgs[c.msgs.length-1].at:c.since);
+    const after=full?null:c.since;
     const r=await api('GET',`/polls/${P.id}/chat${after?'?after='+encodeURIComponent(after):''}`,null,headers());
     if(c!==P.chat) return;
     c.since=r.now; c.owner=r.owner; c.canDel=!!r.canDeleteAll;
-    if(full){ c.msgs=r.messages; c.people=r.people||{}; }
-    else {
-      const have=new Set(c.msgs.map(m=>m.id)), add=r.messages.filter(m=>!have.has(m.id));
-      if(!add.length) return;
+    if(full){
+      const unread=(P.data.chat&&P.data.chat.unread)||0;
+      c.msgs=r.messages.concat((c.msgs||[]).filter(m=>m.tmp)); c.people=r.people||{};
+      // "New" divider above the first unread message from someone else.
+      c.newId=null; if(unread){ let k=0; for(let i=r.messages.length-1;i>=0;i--){ if(!r.messages[i].mine&&++k===unread){ c.newId=r.messages[i].id; break; } } }
+    } else {
+      const byId=new Map(c.msgs.map((m,i)=>[m.id,i])), add=[];
+      let changed=false;
+      for(const m of r.messages){ if(byId.has(m.id)){ const o=c.msgs[byId.get(m.id)]; if(JSON.stringify(o.rx)!==JSON.stringify(m.rx)){ c.msgs[byId.get(m.id)]=m; changed=true; } } else add.push(m); }
+      if(!add.length&&!changed){ c.delay=Math.min(CHAT_MAX,Math.round(c.delay*1.5)); return; }
+      c.delay=CHAT_MIN;
       if(add.some(m=>!c.people[m.uid])){ again=true; return; } // someone new wrote: reload once to get their name and picture
       c.msgs.push(...add); if(c.msgs.length>CHAT_KEEP) c.msgs.splice(0,c.msgs.length-CHAT_KEEP);
+      const others=add.filter(m=>!m.mine);
+      others.forEach(m=>bumpRef(m.ref));
+      if(others.length){ const l=others[others.length-1], p=c.people[l.uid]||{}; P.data.chat.last={name:p.name||'?',body:l.body.slice(0,120),at:l.at,mine:false}; c.unseen+=others.length; }
     }
-    chatUnreadBadges(0); chatDraw(true);
+    chatUnreadBadges(0); chatRefBadges(); chatDraw(true);
   }catch(e){ if(e.status===401||e.status===403){ chatStop(); const b=$('chatbox'); if(b) b.innerHTML=`<p class="muted small chat-empty">${esc(e.message)}</p>`; } }
   finally{ c.busy=false; if(again) chatFetch(true); }
 }
-// Escaped text with web links made clickable.
-const linkText=s=>esc(s).replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g,u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+// ---- date chips: dates of this poll written in a message ('Fri 14', '14.11.', 'Nov 14', 'Friday') ----
+let DCHIP=null;
+function dchipRe(){
+  const dates=(P.data&&P.data.dates)||[], key=LOC+dates.join();
+  if(DCHIP&&DCHIP.key===key) return DCHIP;
+  const W={}, Wl={}, M={}, add=(o,s,i)=>{ s=s.toLowerCase().replace(/\.$/,''); if(s.length>=2) o[s]=i; };
+  for(const loc of [...new Set([LOC,'en'])]){
+    for(let i=0;i<7;i++){ const dt=new Date(Date.UTC(2024,0,7+i)); ['long','short'].forEach(w=>add(W,dt.toLocaleDateString(loc,{weekday:w,timeZone:'UTC'}),i)); add(Wl,dt.toLocaleDateString(loc,{weekday:'long',timeZone:'UTC'}),i); }
+    for(let i=0;i<12;i++){ const dt=new Date(Date.UTC(2024,i,15)); ['long','short'].forEach(w=>add(M,dt.toLocaleDateString(loc,{month:w,timeZone:'UTC'}),i)); }
+  }
+  const alt=o=>Object.keys(o).sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const w=alt(W), m=alt(M), wl=alt(Wl), sfx='(?:st|nd|rd|th)?';
+  const re=new RegExp(`(?<![\\p{L}\\d/.])(?:(?:(${w})\\.?,?\\s+)?(\\d{1,2})\\.?\\s*(${m})\\.?|(${m})\\.?\\s+(\\d{1,2})${sfx}|(${w})\\.?,?\\s+(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th|\\.)?|(\\d{1,2})[./](\\d{1,2})\\.?|(${wl}))(?![\\p{L}\\d/])`,'giu');
+  const info=dates.map(k=>{ const [y,mo,dd]=k.split('-').map(Number); return {k,d:dd,m:mo-1,w:new Date(Date.UTC(y,mo-1,dd)).getUTCDay()}; });
+  return DCHIP={key,re,W,M,info};
+}
+function findDay(o){
+  const R=dchipRe(), lw=s=>s==null?null:R.W[s.toLowerCase().replace(/\.$/,'')], lm=s=>s==null?null:R.M[s.toLowerCase().replace(/\.$/,'')];
+  const pick=(d,m,w)=>R.info.filter(x=>(d==null||x.d===d)&&(m==null||x.m===m)&&(w==null||x.w===w)).map(x=>x.k);
+  let c=[];
+  if(o[3]) c=pick(+o[2],lm(o[3]),lw(o[1]));
+  else if(o[4]) c=pick(+o[5],lm(o[4]),null);
+  else if(o[6]) c=pick(+o[7],null,lw(o[6]));
+  else if(o[8]) c=[...new Set([...pick(+o[8],+o[9]-1,null),...pick(+o[9],+o[8]-1,null)])];
+  else if(o[10]) c=pick(null,null,lw(o[10]));
+  return c.length===1?c[0]:null;
+}
+const dchips=s=>isWeekly()||!(P.data&&P.data.dates&&P.data.dates.length)?s:s.replace(dchipRe().re,(...a)=>{ const k=findDay(a); return k?`<button type="button" class="dchip" data-goday="${k}" title="${esc(dLabel(k))}">${a[0]}</button>`:a[0]; });
+// Escaped text with web links made clickable and this poll's dates turned into chips.
+const URL_RE=/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g;
+const linkText=s=>{ const e=esc(s); let out='', at=0; for(const mm of e.matchAll(URL_RE)){ out+=dchips(e.slice(at,mm.index))+`<a href="${mm[0]}" target="_blank" rel="noopener noreferrer">${mm[0]}</a>`; at=mm.index+mm[0].length; } return out+dchips(e.slice(at)); };
+// Everyone view on that day (closes the sheet on phones).
+function goDay(k){
+  if(isPhone()) chatSetOpen(false);
+  if(P.data.isAdmin&&P.atab!=='answers') setAdminTab('answers');
+  P.tab='group'; store.set('view:'+P.id,'group'); P.ovDay=k; renderBody();
+  const el=document.querySelector(`#body [data-ov="${k}"]`); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600); }
+}
+// ---- activity: events worked out from the poll data ----
+function activityItems(){
+  const d=P.data, out=[];
+  (d.responses||[]).forEach(r=>r.updatedAt&&out.push({at:r.updatedAt,ic:'check',html:t('{name} answered',{name:`<b>${esc(r.name)}</b>`})}));
+  (d.instances||[]).forEach(x=>(x.meetings||[]).forEach(m=>m.at&&out.push({at:m.at,ic:'star',html:t('{title} set for {when}',{title:`<b>${esc(m.title||d.poll.title)}</b>`,when:esc(dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start)))}),ref:'m:'+m.id})));
+  if(d.poll.kind==='series') (d.instances||[]).forEach(x=>x.createdAt&&out.push({at:x.createdAt,ic:'repeat',html:t('Round {round} opened',{round:`<b>${esc(instLabel(x))}</b>`})}));
+  return out;
+}
 function chatHtml(c){
+  const act=c.view==='act', ref=c.ref;
+  let items=(c.msgs||[]).filter(m=>!ref||m.ref===ref).map(m=>({m,at:m.at}));
+  if(act&&!ref) items=items.concat(activityItems()).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:0);
+  if(!items.length) return '';
   let h='', prevDay='', prev=null;
-  for(const m of c.msgs){
-    const d=new Date(m.at), day=d.toDateString();
+  for(const it of items){
+    const d=new Date(it.at), day=d.toDateString();
     if(day!==prevDay){ h+=`<div class="chat-day"><span>${esc(d.toLocaleDateString(LOC,{weekday:'short',day:'numeric',month:'short'}))}</span></div>`; prevDay=day; prev=null; }
-    const p=c.people[m.uid]||{name:'?'}, cont=!!prev&&prev.uid===m.uid&&d-new Date(prev.at)<300000;
-    const del=m.mine||c.canDel?`<button type="button" class="msg-del" data-chatdel="${esc(m.id)}" title="${t('Delete message')}" aria-label="${t('Delete message')}">${ICON.trash}</button>`:'';
-    h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
-      <div class="msg-b">${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:''}</div>`}<div class="msg-t">${linkText(m.body)}</div>
-      <div class="msg-m">${del}<time datetime="${esc(m.at)}" title="${esc(d.toLocaleString(LOC))}">${esc(d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}))}</time></div></div></div>`;
+    const time=`<time datetime="${esc(it.at)}" title="${esc(d.toLocaleString(LOC))}">${esc(d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}))}</time>`;
+    if(!it.m){ h+=`<div class="act-ev">${ICON[it.ic]}<span class="grow minw">${it.html}</span>${it.ref?chatRefBtn(it.ref):''}${time}</div>`; prev=null; continue; }
+    const m=it.m;
+    if(m.id===c.newId) h+=`<div class="chat-new"><span>${t('New')}</span></div>`;
+    const p=c.people[m.uid]||{name:'?'}, cont=!!prev&&prev.uid===m.uid&&prev.ref===m.ref&&d-new Date(prev.at)<300000&&m.id!==c.newId;
+    const del=!m.tmp&&(m.mine||c.canDel)?`<button type="button" class="msg-del" data-chatdel="${esc(m.id)}" title="${t('Delete message')}" aria-label="${t('Delete message')}">${ICON.trash}</button>`:'';
+    const rxb=m.tmp?'':`<button type="button" class="msg-del msg-rxb" data-chatpick="${esc(m.id)}" title="${t('React')}" aria-label="${t('React')}" aria-expanded="${c.pick===m.id}">${ICON.smile}</button>`;
+    const rx=Object.entries(m.rx||{}).map(([e,v])=>`<button type="button" class="rx${v.mine?' mine':''}" data-chatrx="${esc(m.id)}" data-e="${esc(e)}" aria-pressed="${!!v.mine}">${e}<span>${v.n}</span></button>`).join('');
+    const pick=c.pick===m.id?`<div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}">${e}</button>`).join('')}</div>`:'';
+    const stat=m.failed?`<button type="button" class="msg-retry" data-chatretry="${esc(m.id)}" title="${t('Not sent. Tap to try again.')}">${ICON.repeat}${t('Retry')}</button>`:m.tmp?`<span class="msg-sending">${t('Sending…')}</span>`:time;
+    h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}${m.tmp?' pending':''}${m.failed?' failed':''}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
+      <div class="msg-w"><div class="msg-b">${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}<div class="msg-t">${linkText(m.body)}</div>
+      <div class="msg-m">${del}${rxb}${stat}</div></div>${rx?`<div class="msg-rx">${rx}</div>`:''}${pick}</div></div>`;
     prev=m;
   }
   return h;
 }
 function chatDraw(fresh){
   const box=$('chatbox'), c=P.chat; if(!box||!c) return;
-  let list=box.querySelector('.chat-list'), first=false;
-  if(!list){
-    first=true;
-    box.innerHTML=`<div class="chat-list" role="log" aria-live="polite" aria-label="${t('Messages')}"></div>
-      <form class="chat-form"><textarea id="chatin" rows="1" maxlength="2000" placeholder="${t('Write a message…')}" aria-label="${t('Message')}"></textarea>
-      <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`;
-    list=box.querySelector('.chat-list');
-    const ta=$('chatin'), f=box.querySelector('form');
-    ta.value=c.draft;
-    const grow=()=>{ ta.style.height='auto'; if(ta.value) ta.style.height=Math.min(ta.scrollHeight+2,140)+'px'; }; // +2: border (border-box)
-    ta.oninput=()=>{ c.draft=ta.value; grow(); };
-    ta.onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSend(); } };
-    f.onsubmit=e=>{ e.preventDefault(); chatSend(); };
-    list.onclick=e=>{ const b=e.target.closest('[data-chatdel]'); if(b) chatDelete(b.dataset.chatdel); };
-    grow();
+  const can=chatCan(), act=c.view==='act';
+  document.querySelectorAll('[data-chatview]').forEach(b=>{ const on=b.dataset.chatview===c.view; b.classList.toggle('on',on); b.setAttribute('aria-selected',on); });
+  const rf=$('chatref'); if(rf) rf.innerHTML=c.ref?`<span class="cd-chip">${esc(refLabel(c.ref))}<button type="button" class="chip-x" data-chatgo="" title="${t('Show the whole chat')}" aria-label="${t('Show the whole chat')}">${ICON.x}</button></span>`:'';
+  if(!can&&!act){
+    const signin=!ME.user;
+    box.innerHTML=`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Send your answer to join the chat.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`;
+    return;
   }
+  let list=box.querySelector('.chat-list'), first=false;
+  if(!list||box.dataset.mode!==(can?'chat':'ro')){
+    first=true; box.dataset.mode=can?'chat':'ro';
+    box.innerHTML=`<div class="chat-list" role="log" aria-live="polite" aria-label="${t('Messages')}"></div>
+      <button type="button" class="chat-jump" hidden title="${t('Jump to the newest')}" aria-label="${t('Jump to the newest')}">${ICON.down}<span class="n"></span></button>
+      ${can?`<div class="chat-quick" id="chatquick">${[t('Works for me'),t('Can’t make it'),t('Running late')].map(q=>`<button type="button" class="qchip" data-chatquick>${esc(q)}</button>`).join('')}</div>
+      <form class="chat-form"><textarea id="chatin" rows="1" maxlength="2000" aria-label="${t('Message')}"></textarea>
+      <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`:''}`;
+    list=box.querySelector('.chat-list');
+    const jump=box.querySelector('.chat-jump');
+    jump.onclick=()=>{ list.scrollTo({top:list.scrollHeight,behavior:'smooth'}); };
+    list.onscroll=()=>{ const far=list.scrollHeight-list.scrollTop-list.clientHeight>160; if(!far) c.unseen=0; jump.hidden=!far; jump.querySelector('.n').textContent=c.unseen||''; };
+    if(can){
+      const ta=$('chatin'), f=box.querySelector('form');
+      ta.value=c.draft;
+      const grow=()=>{ ta.style.height='auto'; if(ta.value) ta.style.height=Math.min(ta.scrollHeight+2,140)+'px'; }; // +2: border (border-box)
+      ta.oninput=()=>{ c.draft=ta.value; grow(); quick(); };
+      ta.onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); chatSend(); } };
+      f.onsubmit=e=>{ e.preventDefault(); chatSend(); };
+      box.querySelector('.chat-quick').onclick=e=>{ const b=e.target.closest('[data-chatquick]'); if(b) chatSend(b.textContent); };
+      grow();
+    }
+  }
+  const ta=$('chatin'); if(ta) ta.placeholder=c.ref?t('Write about {thing}…',{thing:refLabel(c.ref).replace(/^\S+ /,'')}):t('Write a message…');
+  quick();
   const near=list.scrollHeight-list.scrollTop-list.clientHeight<80;
-  list.innerHTML=c.msgs===null?`<p class="muted small chat-empty">${t('Loading…')}</p>`
-    :!c.msgs.length?`<p class="muted small chat-empty">${t('No messages yet. Say hi!')}</p>`:chatHtml(c);
-  if(first||!fresh||near) list.scrollTop=list.scrollHeight;
+  const body=chatHtml(c);
+  list.innerHTML=can&&c.msgs===null?`<p class="muted small chat-empty">${t('Loading…')}</p>`
+    :body||`<p class="muted small chat-empty">${c.ref?t('Nothing about this yet. Start the conversation!'):act?t('Nothing has happened yet.'):t('No messages yet. Say hi!')}</p>`;
+  if(first||!fresh||near){ const nw=c.newId&&first&&list.querySelector('.chat-new'); if(nw) nw.scrollIntoView({block:'center'}); else list.scrollTop=list.scrollHeight; }
+  list.onscroll&&list.onscroll();
+  function quick(){ const q=$('chatquick'), t2=$('chatin'); if(q&&t2) q.hidden=!!t2.value.trim()||c.view==='act'; }
 }
-async function chatSend(){
-  const c=chatState(), ta=$('chatin'); if(!ta) return;
-  const text=ta.value.trim(); if(!text||c.sending) return;
-  c.sending=true;
+async function chatSend(text,retry){
+  const c=chatState(), ta=$('chatin');
+  const fromBox=text==null; if(fromBox){ if(!ta) return; text=ta.value.trim(); }
+  if(!text) return;
+  const ref=retry?retry.ref:c.ref;
+  let m=retry;
+  if(!m){ m={id:'tmp'+(++c.seq),tmp:true,mine:true,uid:ME.user&&ME.user.id,body:text,at:new Date().toISOString(),ref,rx:{}}; (c.msgs=c.msgs||[]).push(m); }
+  m.failed=false;
+  if(fromBox&&ta){ ta.value=''; c.draft=''; ta.style.height='auto'; }
+  chatDraw(false); chatFast();
   try{
-    const r=await api('POST',`/polls/${P.id}/chat`,{body:text},headers()), m=r.message;
-    ta.value=''; c.draft=''; ta.style.height='auto';
-    if(!c.people[m.uid]&&ME.user) c.people[m.uid]={name:displayName(ME.user),avatar:ME.user.avatar,avatarImg:ME.user.avatarImg};
-    if(c.msgs&&!c.msgs.some(x=>x.id===m.id)) c.msgs.push(m);
-    const list=$('chatbox')&&$('chatbox').querySelector('.chat-list');
-    chatDraw(false); if(list) list.scrollTop=list.scrollHeight;
-  }catch(e){ toast(e.message); }
-  finally{ c.sending=false; ta.focus(); }
+    const r=await api('POST',`/polls/${P.id}/chat`,{body:text,...(ref?{ref}:{})},headers()), s=r.message;
+    if(c!==P.chat) return;
+    if(!c.people[s.uid]&&ME.user) c.people[s.uid]={name:displayName(ME.user),avatar:ME.user.avatar,avatarImg:ME.user.avatarImg};
+    const i=c.msgs.indexOf(m); if(c.msgs.some(x=>x.id===s.id)){ if(i>=0) c.msgs.splice(i,1); } else if(i>=0) c.msgs[i]=s; else c.msgs.push(s);
+    bumpRef(ref); chatRefBadges();
+    P.data.chat.last={name:'',body:text.slice(0,120),at:s.at,mine:true};
+  }catch(e){ m.failed=true; toast(e.message); }
+  chatDraw(true);
+  if(ta&&!isPhone()) ta.focus();
 }
 async function chatDelete(mid){
   if(!confirm(t('Delete this message?'))) return;
@@ -4169,17 +4375,39 @@ async function chatDelete(mid){
   try{ await api('DELETE',`/polls/${P.id}/chat/${encodeURIComponent(mid)}`,null,headers()); c.msgs=(c.msgs||[]).filter(m=>m.id!==mid); chatDraw(true); }
   catch(e){ toast(e.message); }
 }
+async function chatReact(mid,e){
+  const c=chatState(), m=(c.msgs||[]).find(x=>x.id===mid); if(!m) return;
+  const old=m.rx, rx={...(m.rx||{})}, v=rx[e]||{n:0,mine:false};
+  rx[e]=v.mine?{n:v.n-1,mine:false}:{n:v.n+1,mine:true}; if(!rx[e].n) delete rx[e];
+  m.rx=rx; c.pick=null; chatDraw(true); chatFast();
+  try{ const r=await api('POST',`/polls/${P.id}/chat/${encodeURIComponent(mid)}/react`,{emoji:e},headers()); m.rx=r.message.rx; }
+  catch(err){ m.rx=old; toast(err.message); }
+  chatDraw(true);
+}
+// All chat clicks (dock, drawer, peek, 💬 buttons on days and meetings, date chips).
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-chatopen],[data-chatclose],[data-chatview],[data-chatgo],[data-goday],[data-chatdel],[data-chatpick],[data-chatrx],[data-chatretry]'); if(!b||!P.chat) return;
+  const ds=b.dataset, c=P.chat;
+  if(ds.chatopen!==undefined){ if(c.open) chatSetOpen(false); else chatSetOpen(true,null); return; }
+  if(ds.chatclose!==undefined){ chatSetOpen(false); return; }
+  if(ds.chatview){ c.view=ds.chatview; store.set('chatView',c.view); c.pick=null; if(c.view==='act') c.ref=null; chatDraw(false); return; }
+  if(ds.chatgo!==undefined){ e.preventDefault(); e.stopPropagation(); chatSetOpen(true,ds.chatgo||null); chatDraw(false); return; }
+  if(ds.goday){ goDay(ds.goday); return; }
+  if(ds.chatdel){ chatDelete(ds.chatdel); return; }
+  if(ds.chatpick){ c.pick=c.pick===ds.chatpick?null:ds.chatpick; chatDraw(true); return; }
+  if(ds.chatrx){ chatReact(ds.chatrx,ds.e); return; }
+  if(ds.chatretry){ const m=(c.msgs||[]).find(x=>x.id===ds.chatretry); if(m) chatSend(m.body,m); }
+},true);
 
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
 // Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
-const adminTabList = () => [['answers',t('Answers')],['meetings',t('Meetings')],...(P.data.poll.kind==='series'?[['rounds',t('Rounds')]]:[]),['chat',t('Chat')],['people',t('People')],['settings',t('Settings')]];
+const adminTabList = () => [['answers',t('Answers')],['meetings',t('Meetings')],...(P.data.poll.kind==='series'?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
 const TAB_ICON = {answers:'check',meetings:'star',rounds:'repeat',chat:'chat',people:'users',settings:'gear'};
 function adminTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
   if(!adminTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
-  const chatN=(P.data.chat&&P.data.chat.unread)||0;
-  return `<nav class="card tabs atabs" aria-label="${t('Manage this poll')}">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='chat'?`<span class="count" id="ctabn"${chatN&&P.atab!=='chat'?'':' hidden'}>${chatN}</span>`:''}</button>`).join('')}</nav>`;
+  return `<nav class="card tabs atabs" aria-label="${t('Manage this poll')}">${adminTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
 // Meetings tab sub-view: 'list' (scheduled meetings) or 'plan' (the scheduler). Remembered per poll;
@@ -4216,7 +4444,6 @@ function adminPanes(){
         <div class="field"><label for="s_dld">${t('Reply by')} <span class="opt">${t('optional')}</span></label><div class="unit-in"><input type="number" id="s_dld" min="0" max="90" value="${p.deadlineDays??''}"><span>${t('days before it starts')}</span></div></div></div>
       <div class="err" id="rerr"></div>
       <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
-  ${chatPane()}
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     <div class="pshare"><label class="pshare-l">${ICON.link}<input type="text" readonly value="${esc(shareLink(p.id))}" aria-label="${t('Share link')}"></label>
       <button type="button" class="qb pshare-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info)}</div>
@@ -5967,6 +6194,29 @@ function germanText(){ return {
 "{n} unread messages": "{n} ungelesene Nachrichten",
 "Sign in to chat with the others in this poll.": "Melde dich an, um mit den anderen in dieser Umfrage zu chatten.",
 "Send your answer to join the chat.": "Schick deine Antwort ab, um dem Chat beizutreten.",
+"Chat about this": "Darüber chatten",
+"Activity": "Verlauf",
+"Activity shows who answered and which meetings were set. To chat, answer with an account.": "Der Verlauf zeigt, wer geantwortet hat und welche Termine stehen. Zum Chatten antworte mit einem Konto.",
+"Open the chat": "Chat öffnen",
+"You": "Du",
+"Meeting": "Termin",
+"{name} answered": "{name} hat geantwortet",
+"{title} set for {when}": "{title} festgelegt auf {when}",
+"Round {round} opened": "Runde {round} geöffnet",
+"New": "Neu",
+"React": "Reagieren",
+"Not sent. Tap to try again.": "Nicht gesendet. Tippe, um es noch einmal zu versuchen.",
+"Retry": "Nochmal",
+"Show the whole chat": "Ganzen Chat zeigen",
+"Jump to the newest": "Zur neuesten Nachricht",
+"Works for me": "Passt mir",
+"Can’t make it": "Kann leider nicht",
+"Running late": "Komme später",
+"Write about {thing}…": "Schreib zu {thing} …",
+"Nothing about this yet. Start the conversation!": "Hierzu gibt es noch nichts. Fang an!",
+"Nothing has happened yet.": "Bisher ist noch nichts passiert.",
+"Invalid thread": "Ungültiger Bezug",
+"Invalid reaction": "Ungültige Reaktion",
 "Only the organiser and people who answer with an account can read and write here.": "Nur die Organisator*in und Leute, die mit einem Konto antworten, können hier lesen und schreiben.",
 "Answer the poll with your account to join the chat": "Beantworte die Umfrage mit deinem Konto, um dem Chat beizutreten",
 "You’re sending a lot of messages. Wait a few minutes.": "Du schickst sehr viele Nachrichten. Warte ein paar Minuten.",

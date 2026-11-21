@@ -454,7 +454,9 @@ function parseFill(v, poll, dates) {
   return JSON.stringify({ rules, base: validateEntries(v.base, poll, dates), ...(Object.keys(over).length ? { over } : {}) });
 }
 
-function validateMeetings(list, poll) {
+// old: the meetings saved before, so only newly added ones get an 'at' stamp (older ones never had one).
+function validateMeetings(list, poll, old = []) {
+  const known = new Set(old.map((x) => x.id));
   if (!Array.isArray(list) || list.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid meetings');
   const weekly = poll.kind === 'weekly';
   return list.map((mt) => {
@@ -477,7 +479,7 @@ function validateMeetings(list, poll) {
       title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
       extra: str(mt.extra, 1000, 'Extra description') || undefined,
       sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
-      at: typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : now(), // when it was added (activity feed)
+      at: typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : known.has(mt.id) ? undefined : now(), // when it was added (activity feed)
       ...(repeat ? { repeat } : {}),
     };
     if (!out.allDay) {
@@ -1575,7 +1577,7 @@ async function updateInstance(request, env, id, iid) {
     const s = b.startDate ?? inst.start_date, e = b.endDate ?? inst.end_date;
     checkRange(s, e); u.start_date = s; u.end_date = e;
   }
-  if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll));
+  if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll, JSON.parse(inst.meetings || '[]')));
   const cols = Object.keys(u);
   if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
   return json({ ok: true, instance: publicInstance(await loadInstance(env, id, iid)) });
