@@ -77,7 +77,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - Secrets (API tokens, email settings) never go in the repo. Use `wrangler secret put` or the dashboard, and `.dev.vars` locally (git-ignored).
 - Keep the app dependency-free: one HTML file, inline CSS/JS. Escape all user content with `esc()` in the page and validate all input in the Worker.
 - **Languages (English + German):** every user-visible string in the page goes through `t('English text',{vars})`, with its German text
-  added to `germanText()` at the end of the script (missing entries fall back to English). Dates use `LOC`. The EN/DE switch is in the app bar
+  added to `germanText()` at the end of the script (missing entries fall back to English). Dates use `LOC`. The language picker (System default / English / Deutsch) is in the app bar
   (saved as `lang` in localStorage; default = browser language). Server error messages stay English and are translated in `api()` via `tErr()`.
   The page sends `x-lang`; the Worker stores it as `polls.lang` when the owner creates, edits or invites, and writes that poll's emails in it.
 - Secrets in requests: respondent edit key in `x-edit-key`, poll password in `x-poll-password` (`?pw=` for calendar and image URLs).

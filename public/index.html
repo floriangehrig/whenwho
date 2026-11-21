@@ -1347,6 +1347,11 @@
   .appbar .logo,.appbar .dd>summary{white-space:nowrap}
   @media (max-width:420px){ .appbar-in{gap:8px} .acct{gap:2px} .langb{padding-inline:6px!important} .themeb{margin-right:2px} }
   .appbar .langb,.appbar .themeb{color:#fff} .appbar .langb:hover,.appbar .themeb:hover{background:rgba(255,255,255,.1)}
+  .appbar .pickdd>summary{border-color:transparent;font-size:13.5px;min-height:34px;padding:6px 10px} .appbar .pickdd>summary::after{display:none}
+  .appbar .pickdd>summary.themeb{padding:0} .appbar .pickdd[open]>summary{background:rgba(255,255,255,.14)}
+  .pickm{min-width:190px} .pickm button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:7px;background:none;color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;text-align:left}
+  .pickm button:hover{background:var(--sunken)} .pickm button svg{width:16px;height:16px;flex:none;color:var(--muted)} .pickm button[aria-checked="true"]{font-weight:650}
+  .pickm button[aria-checked="true"]>svg:last-child{color:var(--accent)}
   .legal{max-width:760px} .legal h2{font-size:18px;margin:26px 0 6px} .legal h2:first-child{margin-top:0}
   .legal p,.legal li{color:var(--ink-2);line-height:1.6} .legal ul{padding-left:20px;margin:6px 0}
   .site-foot{max-width:1100px;margin:40px auto 28px;padding:0 16px;display:flex;gap:16px;justify-content:center;font-size:13px}
@@ -1366,7 +1371,7 @@ const pad = n => String(n).padStart(2,'0');
 const TOUCH = !!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 const store0 = k => { try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } };
 // ---------- language ----------
-// LANG: 'de' when chosen (EN/DE toggle, saved as "lang") or, by default, when the browser is German; else 'en'.
+// LANG: 'de' when chosen (language picker, saved as "lang"; System default removes it) or, by default, when the browser is German; else 'en'.
 // t('English text',{x}) gives the German text from DE (germanText() at the end of the script) with {x} placeholders replaced.
 // Every user-visible string goes through t(); a missing German entry falls back to English.
 const LANG = (l => l==='de'||l==='en' ? l : ((navigator.language||'').toLowerCase().startsWith('de')?'de':'en'))(store0('lang'));
@@ -1374,7 +1379,7 @@ const LOC = LANG==='de' ? 'de-DE' : undefined;
 document.documentElement.lang = LANG;
 const DE = LANG==='de' ? germanText() : {}; // germanText() is at the end of the script
 const t = (s,v) => { let r=(LANG==='de'&&DE[s])||s; if(v) r=r.replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m); return r; };
-function setLang(l){ try{ localStorage.setItem('lang',JSON.stringify(l)); }catch(e){} location.reload(); }
+function setLang(l){ try{ if(l==='system') localStorage.removeItem('lang'); else localStorage.setItem('lang',JSON.stringify(l)); }catch(e){} location.reload(); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-setlang]'); if(b){ e.preventDefault(); setLang(b.dataset.setlang); } });
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
@@ -1663,6 +1668,7 @@ const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 Object.assign(ICON,{
   send:svgI('<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5 21 3z"/>'),
   check:svgI('<path d="m4.5 12.5 5 5 10-11"/>'),
+  monitor:svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   x:svgI('<path d="M6 6l12 12M18 6 6 18"/>'),
   bell:svgI('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2zM10 21h4"/>'),
   search:svgI('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'),
@@ -1820,20 +1826,28 @@ function appbar(crumb){
   return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>when-who</a>
     ${crumb?`<a class="crumb" href="${esc(origin)}">${esc(crumb)}</a>`:''}<div class="acct">${langButton()}${themeButton()}${accountBar()}</div></div></header>`;
 }
-// EN/DE switch: shows the other language; the choice is saved in this browser.
-function langButton(){ const o=LANG==='de'?'en':'de';
-  return `<button type="button" class="btn ghost sm langb" data-setlang="${o}" lang="${o}" title="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}" aria-label="${o==='de'?'Auf Deutsch umstellen':'Switch to English'}">${ICON.globe}<span>${o.toUpperCase()}</span></button>`;
+// Language picker (opens on click): System default / English / Deutsch; the choice is saved in this browser.
+function pickItem(attr,val,label,on,icon='',lang=''){
+  return `<button type="button" role="menuitemradio" aria-checked="${on}" ${attr}="${val}"${lang?` lang="${lang}"`:''}>${icon}<span class="grow">${label}</span>${on?ICON.check:''}</button>`;
 }
-// Light/dark switch: shows the icon of the mode it switches to; the choice is saved in this browser.
+function langButton(){ const cur=store0('lang'), c=cur==='de'||cur==='en'?cur:'system';
+  return `<details class="dd pickdd langdd"><summary class="langb" title="${t('Language')}" aria-label="${t('Language')}">${ICON.globe}<span>${LANG.toUpperCase()}</span></summary>
+    <div class="ddp right menu pickm" role="menu">${pickItem('data-setlang','system',t('System default'),c==='system',ICON.monitor)}<div class="menu-sep"></div>
+    ${pickItem('data-setlang','en','English',c==='en','','en')}${pickItem('data-setlang','de','Deutsch',c==='de','','de')}</div></details>`;
+}
+// Appearance picker (opens on click): System default / Light / Dark; shows the current mode's icon; saved in this browser.
 const isDark = () => document.documentElement.dataset.theme==='dark';
-function themeButton(){ const l=isDark()?t('Switch to light mode'):t('Switch to dark mode');
-  return `<button type="button" class="btn ghost sm themeb" data-settheme title="${esc(l)}" aria-label="${esc(l)}">${isDark()?ICON.sun:ICON.moon}</button>`;
+function themeButton(){ const cur=store0('theme'), c=cur==='dark'||cur==='light'?cur:'system';
+  return `<details class="dd pickdd themedd"><summary class="themeb" title="${t('Appearance')}" aria-label="${t('Appearance')}">${isDark()?ICON.moon:ICON.sun}</summary>
+    <div class="ddp right menu pickm" role="menu">${pickItem('data-settheme','system',t('System default'),c==='system',ICON.monitor)}<div class="menu-sep"></div>
+    ${pickItem('data-settheme','light',t('Light'),c==='light',ICON.sun)}${pickItem('data-settheme','dark',t('Dark'),c==='dark',ICON.moon)}</div></details>`;
 }
 function syncTheme(){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=isDark()?'#0A1830':'#0B1F3A';
-  document.querySelectorAll('[data-settheme]').forEach(b=>b.outerHTML=themeButton()); }
+  document.querySelectorAll('.themedd').forEach(b=>b.outerHTML=themeButton()); }
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-settheme]'); if(!b) return; e.preventDefault();
-  const n=isDark()?'light':'dark'; document.documentElement.dataset.theme=n; try{ localStorage.setItem('theme',JSON.stringify(n)); }catch(x){}
-  syncTheme(); document.dispatchEvent(new Event('themechange')); });
+  const v=b.dataset.settheme, n=v==='light'||v==='dark'?v:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  try{ if(v==='system') localStorage.removeItem('theme'); else localStorage.setItem('theme',JSON.stringify(v)); }catch(x){}
+  document.documentElement.dataset.theme=n; syncTheme(); document.dispatchEvent(new Event('themechange')); });
 document.addEventListener('themechange',syncTheme); syncTheme();
 // ---------- profile, avatars, poll icons ----------
 const displayName = u => (u&&(u.name||(u.email||'').split('@')[0]))||'';
@@ -5444,6 +5458,11 @@ function germanText(){ return {
 "Meetings: {title}": "Termine: {title}",
 "Switch to light mode": "Zum hellen Modus wechseln",
 "Switch to dark mode": "Zum dunklen Modus wechseln",
+"Language": "Sprache",
+"Appearance": "Darstellung",
+"System default": "Systemstandard",
+"Light": "Hell",
+"Dark": "Dunkel",
 "Add all to your calendar:": "Alle in deinen Kalender:",
 "Subscribe (stays up to date):": "Abonnieren (bleibt aktuell):",
 "Write all meetings in my own email app": "Alle Termine in meiner eigenen E-Mail-App schreiben",
