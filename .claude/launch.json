@@ -128,6 +128,24 @@
       ],
       "port": 8796,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-pages",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8797",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8797",
+        "--persist-to",
+        ".wrangler/pages-state"
+      ],
+      "port": 8797,
+      "autoPort": false
     }
   ]
 }

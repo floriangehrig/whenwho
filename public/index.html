@@ -988,7 +988,7 @@
   .dgrid2{gap:10px}
   .ifld{position:relative;display:block;margin:0;min-width:0}
   .ifld>svg{position:absolute;left:11px;top:12px;width:16px;height:16px;color:var(--muted);pointer-events:none;z-index:1}
-  .ifld>input,.ifld>textarea,.ifld>select{width:100%;padding-left:35px;margin:0}
+  .ifld>input,.ifld>textarea,.ifld>select{width:100%;padding-left:35px;margin:0;font-weight:400}
   .ifld>textarea{min-height:0;resize:vertical}
   .ifld:focus-within>svg{color:var(--accent)}
   .drep{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -1476,9 +1476,9 @@
     .sseg{flex:1} .sseg button{flex:1;justify-content:center;padding:8px 6px} .sseg button{white-space:nowrap} .srow>.srow-l:first-child{display:none}
     .sdesc-s{display:none}
     .mrow{grid-template-columns:30px minmax(0,1fr) auto;gap:4px 10px} .mrow-ic{width:30px;height:30px} .mrow .mrow-n{grid-column:2;grid-row:2;justify-self:start} .mrow .sw{grid-column:3;grid-row:1/3}
-    .pnav .iseg button{padding:7px 8px}
     .mrow .pwf,.mrow .pwf:has(+.mrow-x){grid-column:2/-1;grid-row:2;width:auto} .mrow .mrow-x{grid-column:3;grid-row:1} .mrow .pwf:has(+.mrow-x){grid-column:2/-1}
     .mrow .mrow-n input[type=month],.mrow .mrow-n input[type=date]{min-width:0;width:170px}
+    .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1}
     .ws-views .segic{margin-right:5px}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:14px;height:14px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
@@ -2153,7 +2153,7 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account &amp; profile')}</a><a href="${esc(origin)}">${t('Your polls')}</a>
+    <a href="?account">${t('Account overview')}</a><a href="${esc(origin)}">${t('Your polls')}</a>
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -3415,16 +3415,9 @@ function renderMeetings(listOnly){
     const range=m.repeat?repeatText(m).split(' · ').slice(1).join(' · '):'';
     const calB=`<a class="qb" href="${esc(icsUrl(m.id,true))}" title="${t('Download calendar file (.ics)')}" aria-label="${t('Download calendar file (.ics)')}">${ICON.download}</a>`;
     const shareB=qb('data-copyinvite',m.id,shareIc,shareL);
-    let foot='';
-    if(d.isAdmin&&!sel){ const noMail=invited(m).filter(r=>!r.email);
-      const stat=[m.sentAt?`<span title="${esc(new Date(m.sentAt).toLocaleString(LOC))}">${t('Invite emailed {date}.',{date:esc(new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'}))})}</span>`:'',
-        noMail.length?t('No email for {names}.',{names:esc(noMail.map(r=>r.name).join(', '))}):''].filter(Boolean).join(' ');
-      foot=`<div class="mfoot">${d.emailEnabled?`<button class="btn sm primary withic" data-sendinvite="${m.id}">${ICON.mail}<span class="bl">${m.sentAt?t('Send again'):t('Send invite')}</span><span class="bs">${m.sentAt?t('Resend'):t('Send')}</span></button>`
-          :`<button class="btn sm primary withic" data-mail="${m.id}" title="${t('Opens your email app with the invitees who left an address in BCC')}">${ICON.mail}<span>${t('Email<span class="bl"> invite</span>')}</span></button>`}
-        ${stat?`<span class="mstat">${stat}</span>`:''}</div>`; }
     // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
     const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description')):''}${
-      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${d.isAdmin&&(!full||d.emailEnabled)?qb('data-mail',m.id,'mail',t('Write the invite in my own email app')):''}${shareB}${calB}</span>`;
+      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
     if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
@@ -3433,7 +3426,7 @@ function renderMeetings(listOnly){
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
-        ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${foot}</div></div>`; };
+        ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}</div></div>`; };
   const cal=`<span class="mcal">${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}</span>`;
   const selBtn=cls=>ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
@@ -4356,7 +4349,7 @@ function bestBlock(s){ // longest contiguous run of best hours
 }
 
 // ---- shared pieces for every view (same colours, legend wording and markers everywhere) ----
-const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','Blank = no','gry'],
+const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','No','gry'],
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Darker = more free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe (n?)'],
   mstripe:['var(--maybe)','Rest maybe'],
@@ -6314,7 +6307,7 @@ function germanText(){ return {
 "A weekly meeting needs a start date": "Ein wöchentlicher Termin braucht ein Startdatum",
 "Access": "Zugang",
 "Account": "Konto",
-"Account &amp; profile": "Konto &amp; Profil",
+"Account overview": "Kontoübersicht",
 "Account menu": "Kontomenü",
 "Account name": "Kontoname",
 "Add": "Hinzufügen",
@@ -6366,7 +6359,7 @@ function germanText(){ return {
 "Best days": "Beste Tage",
 "Best hours": "Beste Zeiten",
 "Best: {n}": "Rekord: {n}",
-"Blank = no": "Leer = nein",
+"No": "Nein",
 "Blank = not available.": "Leer = nicht verfügbar.",
 "Both": "Beides",
 "Both are signed-in accounts, so they can’t be merged": "Beide sind angemeldete Konten, deshalb können sie nicht zusammengeführt werden",
@@ -6607,7 +6600,6 @@ function germanText(){ return {
 "Invalid status": "Ungültiger Status",
 "Invalid weekday": "Ungültiger Wochentag",
 "Invite": "Einladung",
-"Invite emailed {date}.": "Einladung am {date} gemailt.",
 "Invite sent to {n}": "Einladung an {n} gesendet",
 "Invited people who are available, available if needed, or maybe for the whole time": "Eingeladene, die die ganze Zeit verfügbar, wenn nötig verfügbar oder vielleicht verfügbar sind",
 "Invited {when}": "Eingeladen {when}",
@@ -6755,7 +6747,6 @@ function germanText(){ return {
 "Open the poll for {range} now?": "Umfrage für {range} jetzt öffnen?",
 "Opened": "Geöffnet",
 "Opens": "Öffnet",
-"Opens your email app with the invitees who left an address in BCC": "Öffnet deine E-Mail-App mit allen Eingeladenen, die eine Adresse hinterlassen haben, in BCC",
 "Opens your email app with their addresses in BCC": "Öffnet deine Mail-App mit ihren Adressen in BCC",
 "Optional emails nudge people before the deadline, so you don't have to.": "Optionale E-Mails erinnern die Leute vor der Frist, damit du es nicht musst.",
 "Optional. The poll closes after this day.": "Optional. Die Umfrage schließt nach diesem Tag.",
@@ -6886,12 +6877,18 @@ function germanText(){ return {
 "Repeat interval": "Wiederholungsintervall",
 "Repeats": "Wiederholung",
 "Repeats every": "Wiederholt sich alle",
+"A group chat for the poll": "Ein Gruppenchat für die Umfrage",
+"Guests give their email to answer": "Gäste geben zum Antworten ihre E-Mail an",
+"Only people you add can answer": "Nur Personen, die du hinzufügst, können antworten",
+"Only you see everyone's answers": "Nur du siehst die Antworten aller",
+"Set. Type a new one to change it.": "Gesetzt. Gib ein neues ein, um es zu ändern.",
+"Before the round starts": "Bevor die Runde beginnt",
+"Optional. Leave empty for no deadline.": "Optional. Leer lassen für keine Frist.",
 "Reply by": "Antwort bis",
 "Reply-by days before": "Antwortfrist (Tage vorher)",
 "Request from another site was blocked": "Anfrage von einer anderen Website wurde blockiert",
 "Request too large": "Anfrage zu groß",
 "Rescheduled to \"sometime\"": "Verschoben auf „irgendwann“",
-"Resend": "Erneut",
 "Response not found": "Antwort nicht gefunden",
 "Rest maybe": "Rest vielleicht",
 "Rounds": "Runden",
@@ -6921,13 +6918,6 @@ function germanText(){ return {
 "Select none": "Keine auswählen",
 "Select several meetings to edit, move or delete them together": "Mehrere Termine auswählen, um sie gemeinsam zu bearbeiten, zu verschieben oder zu löschen",
 "Select {name}": "{name} auswählen",
-"A group chat for the poll": "Ein Gruppenchat für die Umfrage",
-"Guests give their email to answer": "Gäste geben zum Antworten ihre E-Mail an",
-"Only people you add can answer": "Nur Personen, die du hinzufügst, können antworten",
-"Only you see everyone's answers": "Nur du siehst die Antworten aller",
-"Set. Type a new one to change it.": "Gesetzt. Gib ein neues ein, um es zu ändern.",
-"Before the round starts": "Bevor die Runde beginnt",
-"Optional. Leave empty for no deadline.": "Optional. Leer lassen für keine Frist.",
 "Send": "Senden",
 "Send again": "Erneut senden",
 "Send invite": "Einladung senden",
@@ -7100,7 +7090,6 @@ function germanText(){ return {
 "Whole days or time slots": "Ganze Tage oder Zeitfenster",
 "Whole days, or hours when they only have some": "Ganze Tage, oder Stunden, wenn sie nur teilweise können",
 "Whole weeks": "Ganze Wochen",
-"Write the invite in my own email app": "Einladung in meiner eigenen E-Mail-App schreiben",
 "Wrong password.": "Falsches Passwort.",
 "You delivered {n}": "Du hast {n} zugestellt",
 "You have already answered this poll": "Du hast diese Umfrage schon beantwortet",
