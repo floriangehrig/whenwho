@@ -506,6 +506,19 @@
   .mstrip-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px 10px 16px;border-bottom:1px solid color-mix(in srgb,var(--accent) 16%,var(--line))}
   .mstrip-h h3{flex:1;min-width:0;white-space:nowrap;color:var(--accent-ink)}
   .mstrip.folded .mstrip-h{border-bottom:0}
+  /* voting on proposed meetings */
+  .vpanel{margin-top:var(--s4);border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 3%,var(--card))}
+  .mcard>.vpanel{margin:0 0 var(--s4)}
+  .vpanel-h{display:flex;align-items:center;gap:8px;padding:10px 12px 0 16px}
+  .vpanel-h h3{display:flex;align-items:center;gap:6px;color:var(--accent-ink)}
+  .vpanel-h h3 svg{width:18px;height:18px;flex:none} .vtally .tag svg{width:13px;height:13px}
+  .vpanel>.muted{padding:4px 16px 0}
+  .meet.prop .mtile{background:transparent;border:1.5px dashed color-mix(in srgb,var(--accent) 50%,var(--line))}
+  .meet.prop.voted{border-color:color-mix(in srgb,var(--yes) 55%,var(--line))}
+  .vtally{display:inline-flex;align-items:center;gap:6px;flex:none}
+  .vtop{font-size:11.5px;font-weight:700;color:var(--accent-ink);white-space:nowrap}
+  .vbtn.on{background:color-mix(in srgb,var(--yes) 18%,var(--card));border-color:color-mix(in srgb,var(--yes) 55%,var(--line))}
+  .dvote{font-size:14px;white-space:nowrap}
   .mcal{display:flex;gap:6px}
   .mm-list{gap:6px 14px;padding-top:6px}
   .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
@@ -2620,12 +2633,12 @@ async function loadPoll(first){
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.myVotes=[]; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
-      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; qfRestore(r.fill); }
+      try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; P.myVotes=r.votes||[]; qfRestore(r.fill); }
       catch(e){ if(e.status===404||e.status===403){ store.del(respKey()); P.myResp=null; } }
     }
   }
@@ -2868,7 +2881,8 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):t('Poll')}${d.isAdmin?'<span class="pill accent">'+t('Your poll')+'</span>':''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?`<a href="#" class="chip" data-atab="meetings" data-msubgo="list" id="mchip">★ ${i.meetings.length} ${i.meetings.length===1?t('meeting'):t('meetings')}</a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
+    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${d.isAdmin&&i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+      return `<a href="#" class="chip" data-atab="meetings" data-msubgo="list" id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${i.status==='closed'?'<span class="chip closed">'+t('Closed')+'</span>':''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     <div id="chatpeek" hidden></div>
@@ -2920,7 +2934,13 @@ function renderSeries(){
 }
 
 // ---- meetings ----
-const meetingDays = () => new Set(inst().meetings.map(m=>m.date));
+const meetingDays = () => new Set(inst().meetings.filter(m=>!m.proposed).map(m=>m.date));
+// ---- voting on proposed meetings (m.proposed): each answer's `votes` = ids of the proposals it ticked.
+const proposals = () => inst().meetings.filter(m=>m.proposed);
+const confirmedMeetings = () => inst().meetings.filter(m=>!m.proposed);
+function myVotes(){ const r=P.myResp&&(P.data.responses||[]).find(x=>x.id===P.myResp.id); return new Set(r?r.votes||[]:P.myVotes||[]); }
+// Who ticked meeting m (null when the results are hidden from this person).
+function votersOf(m){ const rs=P.data.responses; return rs?rs.filter(r=>(r.votes||[]).includes(m.id)):null; }
 // Link that opens a location in Google Maps (browser or the Maps app).
 const mapUrl = q => 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 // Place search for a location input: suggestions from Photon (photon.komoot.io: OpenStreetMap data, free, no key).
@@ -2986,7 +3006,7 @@ function allInviteText(ms){
     `${t('Add all to your calendar:')} ${icsUrl(null,true)}`, `${t('Subscribe (stays up to date):')} ${icsUrl(null,false).replace(/^https?:/,'webcal:')}`, `${t('Poll:')} ${shareLink(P.id)}`]);
 }
 function shareAllMeetings(how){
-  const ms=inst().meetings; if(!ms.length) return;
+  const ms=confirmedMeetings(); if(!ms.length) return;
   if(how==='copy'){ copy(allInviteText(ms)); return; }
   const to=P.data.isAdmin?[...new Set(ms.flatMap(m=>invited(m).filter(r=>r.email).map(r=>r.email)))]:[];
   location.href=`mailto:?${to.length?'bcc='+encodeURIComponent(to.join(','))+'&':''}subject=${encodeURIComponent(t('Meetings: {title}',{title:P.data.poll.title}))}&body=${encodeURIComponent(allInviteText(ms))}`;
@@ -3001,9 +3021,9 @@ function dateTile(m){
 }
 function renderMeetings(){
   const el=$('meetings'); if(!el) return;
-  const d=P.data, ms=inst().meetings, adm=d.isAdmin;
-  if(adm) ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length; n.hidden=!ms.length; } });
-  if(!ms.length){ P.msel=null;
+  const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
+  if(adm) ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
+  if(!ms.length&&!props.length){ P.msel=null;
     el.innerHTML=adm?`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b><span class="muted small">${t('Plan them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button></div></div>`:'';
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
@@ -3033,14 +3053,50 @@ function renderMeetings(){
   const cal=`<span class="mcal">${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy','copy',t('Copy all meetings as text'))}</span>`;
   const selBtn=cls=>sel?`<button class="btn sm ${cls}" data-mselect>${t('Done')}</button>`:ib('select',t('Select'),'data-mselect title="'+t('Select several meetings to edit, move or delete them together')+'"','sm '+cls);
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
-  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}"><div class="card-h">${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
+  const vote=props.length&&!sel?votePanel(props):'';
+  if(!ms.length){ el.innerHTML=adm?`<div class="mcard">${vote}</div>`:vote; return; }
+  if(adm) el.innerHTML=`<div class="mcard${sel?' selecting':''}">${vote}<div class="card-h">${cal}${mailAll}${selBtn(sel?'primary':'')}</div>
     ${sel?batchPanel(ms,nSel):P.mmail?mailAllPanel():''}<div class="mlist">${ms.map(card).join('')}</div></div>`;
-  else el.innerHTML=`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
+  else el.innerHTML=vote+`<div class="mstrip${fold?' folded':''}${sel?' selecting':''}"><div class="mstrip-h">
       <button type="button" class="mfold" data-mfold tabindex="-1" aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}"><h3>★ ${t('Scheduled')} <span class="count">${ms.length}</span></h3></button>
       ${d.isAdmin&&!fold?selBtn(sel?'ghost on':'ghost'):''}${cal}<button type="button" class="qb mfold-b" data-mfold aria-expanded="${!fold}" title="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}" aria-label="${fold?t('Show scheduled meetings'):t('Hide scheduled meetings')}">${ICON[fold?'down':'up']}</button></div>
     ${fold?'':`${sel?batchPanel(ms,nSel):''}<div class="mlist">${ms.map(card).join('')}</div>`}</div>`;
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; });
 }
+// Proposed meetings: everyone who answered ticks the ones that suit them; the organiser confirms one.
+function votePanel(props){
+  const d=P.data, adm=d.isAdmin, mine=myVotes(), canVote=!!P.myResp;
+  const counts=props.map(m=>{ const v=votersOf(m); return v?v.length:null; }), top=Math.max(0,...counts.map(n=>n||0));
+  const voted=d.responses?d.responses.filter(r=>(r.votes||[]).length).length:null, total=d.responses?d.responses.length:null;
+  const rows=props.map((m,i)=>{ const on=mine.has(m.id), n=counts[i], vs=votersOf(m), inv=invited(m).length;
+    const where=m.location?`<span>${ICON.pin}<span>${esc(m.location)}</span></span>`:'';
+    const tally=n==null?'':`<span class="tag ${n&&n===top?'y':''}" title="${esc(vs.length?vs.map(r=>r.name).join(', '):t('No votes yet'))}">${ICON.check}${n}${adm?`/${inv}`:''}</span>${n&&n===top?`<span class="vtop">${t('Most votes')}</span>`:''}`;
+    const tog=`<button type="button" class="btn sm withic vbtn${on?' on':''}" data-vote="${m.id}" aria-pressed="${on}" ${canVote?'':'disabled'} title="${esc(canVote?(on?t('Remove your vote'):t('Vote for this option')):t('Send your answer to vote.'))}">${ICON.check}<span>${on?t('Suits me'):t('Vote')}</span></button>`;
+    const foot=adm?`<div class="mfoot"><button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>${tog}${chatRefBtn('m:'+m.id)}${`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`}</div>`
+      :`<div class="mfoot">${tog}${chatCan()?chatRefBtn('m:'+m.id):''}</div>`;
+    return `<div class="meet prop${on?' voted':''}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div><span class="vtally">${tally}</span></div>
+      <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?t('All day'):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${foot}</div></div>`; }).join('');
+  const help=adm?t('People who answered tick the options that suit them. Confirm one to make it a meeting; the other options are removed.')
+    :t('Tick every option that suits you. The organiser then confirms one.');
+  return `<div class="vpanel"><div class="vpanel-h"><h3>${ICON.check}${t('Vote on a date')}</h3>${voted!=null?`<span class="count" title="${t('People who voted')}">${voted}/${total}</span>`:''}${tip(help)}</div>
+    ${canVote?'':`<div class="muted small">${t('Send your answer to vote.')}</div>`}<div class="mlist">${rows}</div></div>`;
+}
+async function toggleVote(id,btn){
+  const cur=myVotes(); cur.has(id)?cur.delete(id):cur.add(id); btn.disabled=true;
+  try{ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}/votes`,{votes:[...cur]},headers());
+    P.myVotes=r.votes; const x=(P.data.responses||[]).find(y=>y.id===P.myResp.id); if(x) x.votes=r.votes; renderMeetings(); }
+  catch(ex){ toast(ex.message); btn.disabled=false; }
+}
+async function confirmProposal(id,btn){
+  const others=proposals().length-1;
+  if(others&&!confirm(others===1?t('Confirm this option? The other option is removed.'):t('Confirm this option? The other {n} options are removed.',{n:others}))) return;
+  btn.disabled=true;
+  if(await saveMeetings(inst().meetings.filter(m=>!m.proposed||m.id===id).map(m=>m.id===id?{...m,proposed:false,at:undefined}:m))) toast(t('Meeting confirmed'));
+  else btn.disabled=false;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[data-mconfirm]'); if(!b||!P.data) return;
+  if(b.dataset.vote){ if(P.myResp) toggleVote(b.dataset.vote,b); return; }
+  confirmProposal(b.dataset.mconfirm,b); });
 // "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
 function mailAllPanel(){
   const M=P.mmail, parts=M.parts;
@@ -3116,7 +3172,7 @@ async function runBatch(kind,btn){
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend],[data-mshare]'); if(!t||!P.data) return;
-  const ds=t.dataset, ms=inst().meetings;
+  const ds=t.dataset, ms=confirmedMeetings();
   if(ds.mshare){ shareAllMeetings(ds.mshare); return; }
   if(ds.mailall!==undefined){ if(P.mmail){ P.mmail=null; renderMeetings(); } else openMailAll(); return; }
   if(ds.mmpick&&P.mmail){ t.checked?P.mmail.pick.add(ds.mmpick):P.mmail.pick.delete(ds.mmpick); renderMeetings(); return; }
@@ -3957,12 +4013,13 @@ function draftTray(){
       ${repeatFields()}
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
       <div class="err" id="dm_err"></div>
-      <div class="dfoot">${n>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
+      <div class="dfoot">${n>1?tip(t('Use the note icon on a draft to add text for just that meeting, below this one.')):''}${n>1?`<label class="check m0 dvote"><input type="checkbox" data-dvote${P.dvote?' checked':''}> ${t('Let people vote')}</label>${tip(t('Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm one.'))}`:''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n>1&&P.dvote?t('Propose {n} options',{n}):n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
 }
 function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
   [['dm_title','title'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
+  document.querySelectorAll('[data-dvote]').forEach(cb=>cb.onchange=()=>{ P.dvote=cb.checked; renderBody(); });
   document.querySelectorAll('[data-ddtext]').forEach(ta=>ta.oninput=()=>{ find(ta.dataset.ddtext).note=ta.value; });
   document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall); x.allDay=!x.allDay; if(!x.allDay&&x.start==null){ const [st,en]=bestBlock(stats(x.date)); x.start=st; x.end=Math.min(24,en); } renderBody(); });
   document.querySelectorAll('[data-dstart]').forEach(se=>se.onchange=()=>{ const x=find(se.dataset.dstart); x.start=+se.value; if(x.end<=x.start) x.end=Math.min(24,x.start+1); renderBody(); });
@@ -4082,7 +4139,7 @@ function suggestDrafts(){
   if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ toast(t('Pick at least one day')); return; }
   const pat=pr?pr.pat:null, hs=pr?pr.hs:d.poll.hourStart, he=pr?pr.he:d.poll.hourEnd;
   const need=o.min?Math.min(o.min,tot):tot;
-  const used=[...P.drafts.map(x=>x.date),...inst().meetings.map(m=>m.date)], usedSet=new Set(used);
+  const used=[...P.drafts.map(x=>x.date),...confirmedMeetings().map(m=>m.date)], usedSet=new Set(used);
   const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
   used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
   const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
@@ -4102,11 +4159,12 @@ async function saveDrafts(btn){
   if(!P.drafts.length) return;
   if(ms.length+P.drafts.length>100){ err.textContent=t('A poll can have at most 100 meetings ({n} already scheduled).',{n:ms.length}); return; }
   const rv=repeatValue(err); if(!rv) return;
-  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv};
+  const vote=P.dvote&&P.drafts.length>1;
+  const list=P.drafts.map(x=>{ const m={date:x.date, allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true}:{})};
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
-  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; setMsub('list',false); renderBody(); toast(n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
+  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; setMsub('list',false); renderBody(); toast(vote?t('{n} options up for a vote',{n}):n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
   else btn.disabled=false;
 }
 
@@ -4276,7 +4334,7 @@ function goDay(k){
 function activityItems(){
   const d=P.data, out=[];
   (d.responses||[]).forEach(r=>r.updatedAt&&out.push({at:r.updatedAt,ic:'check',html:t('{name} answered',{name:`<b>${esc(r.name)}</b>`})}));
-  (d.instances||[]).forEach(x=>(x.meetings||[]).forEach(m=>m.at&&out.push({at:m.at,ic:'star',html:t('{title} set for {when}',{title:`<b>${esc(m.title||d.poll.title)}</b>`,when:esc(dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start)))}),ref:'m:'+m.id})));
+  (d.instances||[]).forEach(x=>(x.meetings||[]).forEach(m=>m.at&&out.push({at:m.at,ic:m.proposed?'check':'star',html:t(m.proposed?'{title} proposed for {when}':'{title} set for {when}',{title:`<b>${esc(m.title||d.poll.title)}</b>`,when:esc(dLabel(m.date)+(m.allDay||m.start==null?'':' '+hh(m.start)))}),ref:'m:'+m.id})));
   if(d.poll.kind==='series') (d.instances||[]).forEach(x=>x.createdAt&&out.push({at:x.createdAt,ic:'repeat',html:t('Round {round} opened',{round:`<b>${esc(instLabel(x))}</b>`})}));
   return out;
 }
@@ -4836,7 +4894,7 @@ document.addEventListener('click',async e=>{
   if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;
     if(ds.copyinvite){ copy(inviteText(m)); return; }
-    if(ds.delmeet){ if(confirm(t('Delete this meeting?'))) saveMeetings(inst().meetings.filter(x=>x.id!==m.id)); return; }
+    if(ds.delmeet){ if(confirm(m.proposed?t('Remove this option?'):t('Delete this meeting?'))) saveMeetings(inst().meetings.filter(x=>x.id!==m.id)); return; }
     if(ds.sendinvite){ tg.disabled=true;
       try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/meetings/${m.id}/send`,{},headers());
         toast(t('Invite sent to {n}',{n:plural(r.sent,t('person'),t('people'))})); await loadPoll(false); }
@@ -5119,6 +5177,32 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Most votes": "Meiste Stimmen",
+"No votes yet": "Noch keine Stimmen",
+"Remove your vote": "Stimme zurücknehmen",
+"Vote for this option": "Für diese Option stimmen",
+"Send your answer to vote.": "Sende deine Antwort, um abzustimmen.",
+"Suits me": "Passt mir",
+"Vote": "Abstimmen",
+"Confirm": "Bestätigen",
+"Remove option": "Option entfernen",
+"Remove this option?": "Diese Option entfernen?",
+"People who answered tick the options that suit them. Confirm one to make it a meeting; the other options are removed.": "Wer geantwortet hat, hakt die passenden Optionen ab. Bestätige eine, um daraus einen Termin zu machen; die anderen Optionen werden entfernt.",
+"Tick every option that suits you. The organiser then confirms one.": "Hake jede Option ab, die dir passt. Die Organisatorin oder der Organisator bestätigt dann eine.",
+"Vote on a date": "Über einen Termin abstimmen",
+"People who voted": "Personen, die abgestimmt haben",
+"Confirm this option? The other option is removed.": "Diese Option bestätigen? Die andere Option wird entfernt.",
+"Confirm this option? The other {n} options are removed.": "Diese Option bestätigen? Die anderen {n} Optionen werden entfernt.",
+"Meeting confirmed": "Termin bestätigt",
+"{title} proposed for {when}": "{title} vorgeschlagen für {when}",
+"{n} options up for a vote": "{n} Optionen zur Abstimmung gestellt",
+"Let people vote": "Abstimmen lassen",
+"Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm one.": "Stelle diese Zeiten zur Abstimmung, statt alle anzulegen. Alle, die geantwortet haben, haken die passenden ab, dann bestätigst du eine.",
+"Propose {n} options": "{n} Optionen vorschlagen",
+"{n} to vote on": "{n} zur Abstimmung",
+"Invalid votes": "Ungültige Stimmen",
+"That option is no longer up for a vote": "Über diese Option wird nicht mehr abgestimmt",
+"Confirm this meeting before sending it": "Bestätige diesen Termin, bevor du ihn versendest",
 "Meetings: {title}": "Termine: {title}",
 "Switch to light mode": "Zum hellen Modus wechseln",
 "Switch to dark mode": "Zum dunklen Modus wechseln",

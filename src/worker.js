@@ -175,6 +175,7 @@ async function route(request, env, ctx, url) {
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
+  if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
   if (a === 'responses' && b) {
     if (m === 'GET') return getOwnResponse(request, env, id, b);
     if (m === 'PUT') return updateResponse(request, env, id, b);
@@ -456,7 +457,7 @@ function parseFill(v, poll, dates) {
 
 // old: the meetings saved before, so only newly added ones get an 'at' stamp (older ones never had one).
 function validateMeetings(list, poll, old = []) {
-  const known = new Set(old.map((x) => x.id));
+  const known = new Set(old.map((x) => x.id)), wasProposed = new Set(old.filter((x) => x.proposed).map((x) => x.id));
   if (!Array.isArray(list) || list.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid meetings');
   const weekly = poll.kind === 'weekly';
   return list.map((mt) => {
@@ -479,7 +480,9 @@ function validateMeetings(list, poll, old = []) {
       title: str(mt.title, 120, 'Meeting title'), location: str(mt.location, 200, 'Location'), note: str(mt.note, 1000, 'Note'),
       extra: str(mt.extra, 1000, 'Extra description') || undefined,
       sentAt: typeof mt.sentAt === 'string' && mt.sentAt.length < 40 ? mt.sentAt : undefined,
-      at: typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : known.has(mt.id) ? undefined : now(), // when it was added (activity feed)
+      at: !mt.proposed && wasProposed.has(mt.id) ? now() // a proposal that was just confirmed
+        : typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : known.has(mt.id) ? undefined : now(), // when it was added (activity feed)
+      proposed: mt.proposed ? true : undefined, // put up for a vote (responses.votes); not in .ics or emails until confirmed
       ...(repeat ? { repeat } : {}),
     };
     if (!out.allDay) {
@@ -1485,8 +1488,10 @@ async function getPoll(request, env, ctx, url, id) {
     out.next = { startDate: periodStart(poll, n), endDate: periodEnd(poll, n), opens: openDate(poll, n) };
   }
   if (admin || !poll.hide_results) {
-    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
-    out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at, ...(admin ? { email: r.email } : {}) }));
+    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
+    const props = proposedIds(sel);
+    out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
+      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
@@ -1640,7 +1645,7 @@ async function calendar(env, url, id) {
   const poll = await loadPoll(env, id);
   if (!(await passwordOk(poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
   const { results } = await env.DB.prepare('SELECT id, meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
-  let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]'));
+  let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]')).filter((mt) => !mt.proposed);
   const only = url.searchParams.get('m');
   if (only) meetings = meetings.filter((mt) => mt.id === only);
   const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0] ? meetingStart(meetings[0]) : ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
@@ -1783,6 +1788,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
   const meetings = JSON.parse(inst.meetings || '[]');
   const mt = meetings.find((x) => x.id === mid);
   if (!mt) throw new HttpError(404, 'Meeting not found');
+  if (mt.proposed) throw new HttpError(400, 'Confirm this meeting before sending it');
   const { results } = await env.DB.prepare('SELECT id, name, email FROM responses WHERE instance_id = ?').bind(iid).all();
   const invited = mt.participants === 'all' ? results : results.filter((r) => mt.participants.some((p) => p.id === r.id));
   const withMail = invited.filter((r) => r.email);
@@ -1817,7 +1823,7 @@ async function sendAllMeetings(request, env, url, id) {
   if (ids.length > 500 || extra.length > 50) throw new HttpError(400, 'Too many people');
   if (extra.some((e) => !EMAIL_RE.test(e))) throw new HttpError(400, 'Invalid email');
   const { results } = await env.DB.prepare('SELECT meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
-  const meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]'));
+  const meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]')).filter((mt) => !mt.proposed);
   if (!meetings.length) throw new HttpError(400, 'There are no meetings yet');
   const want = new Set(ids);
   const rows = ids.length ? (await participantRows(env, id, '')).filter((p) => want.has(p.id)) : [];
@@ -2141,7 +2147,26 @@ async function getOwnResponse(request, env, id, rid) {
   const r = await loadResponse(env, id, rid);
   if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
   return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries),
-    fill: r.fill ? JSON.parse(r.fill) : null });
+    fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))) });
+}
+// ---- votes on proposed meetings: responses.votes = JSON array of the meeting ids the person ticked.
+const proposedIds = (inst) => new Set(JSON.parse(inst.meetings || '[]').filter((x) => x.proposed).map((x) => x.id));
+function parseVotes(raw, props) { let v; try { v = JSON.parse(raw || '[]'); } catch { v = []; } return Array.isArray(v) ? v.filter((x) => props.has(x)) : []; }
+// PUT /api/polls/:id/responses/:rid/votes { votes: [meetingId] } — by the answer's owner (same rule as editing it) or the organiser.
+async function voteMeetings(request, env, id, rid) {
+  const poll = await loadPoll(env, id);
+  const r = await loadResponse(env, id, rid);
+  const inst = await loadInstance(env, id, r.instance_id);
+  const admin = await isAdmin(request, poll);
+  if (!admin && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
+  if (!admin) await checkPassword(request, poll);
+  const b = await body(request);
+  const props = proposedIds(inst);
+  if (!Array.isArray(b.votes) || b.votes.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid votes');
+  if (b.votes.some((x) => typeof x !== 'string' || !props.has(x))) throw new HttpError(400, 'That option is no longer up for a vote');
+  const votes = [...new Set(b.votes)];
+  await env.DB.prepare('UPDATE responses SET votes = ? WHERE id = ?').bind(votes.length ? JSON.stringify(votes) : null, r.id).run();
+  return json({ ok: true, votes });
 }
 async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
