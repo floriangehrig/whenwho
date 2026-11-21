@@ -412,6 +412,7 @@
   /* others free on this day: one small n/total pill, greener when more are free */
   .day .ocnt{position:absolute;right:5px;top:5px;padding:1px 6px;border-radius:999px;font-size:10.5px;font-weight:650;line-height:1.5;font-variant-numeric:tabular-nums;color:var(--ink);background:color-mix(in srgb,var(--yes) var(--a),var(--card));box-shadow:0 0 0 1px color-mix(in srgb,var(--yes) 35%,var(--line));pointer-events:none}
   .day .ocnt~.star{right:44px} .day .ocnt~.bzm{right:44px} .day .ocnt~.star~.bzm{right:60px}
+  @media (max-width:560px){ .day .ocnt{position:static;display:inline-block;margin-top:3px;padding:0 4px;font-size:9.5px} .day .ocnt~.star,.day .ocnt~.bzm{right:6px} .day .ocnt~.star~.bzm{right:20px} }
   .day .ocnt.none{background:var(--card);color:var(--muted);box-shadow:0 0 0 1px var(--line)}
   /* show / hide switches under the answer toolbar */
   .vtog{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
