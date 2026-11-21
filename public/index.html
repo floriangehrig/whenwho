@@ -1162,9 +1162,17 @@
   .ws-me{padding:10px 12px;position:relative;z-index:5}
   .me-row{display:flex;align-items:center;gap:8px;min-width:0}
   .me-row>input{min-width:0;margin:0} .me-row>.grow{flex:1 1 0;min-width:0}
-  .me-row .me-em{flex:1 1 0} .me-row .me-emb{display:none}
   .me-row .tile.avatar{width:34px;height:34px;flex:none}
-  .me-com{margin-top:8px;width:100%}
+  /* Guest card: name + email side by side (stacked on phones), optional account below */
+  .me-guest{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+  .me-f{position:relative;display:block;margin:0;min-width:0}
+  .me-f input{width:100%;margin:0;padding-left:38px;height:42px;border-radius:12px}
+  .me-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;color:var(--muted);pointer-events:none}
+  .me-ic svg{width:17px;height:17px}
+  .me-f:focus-within .me-ic{color:var(--accent)}
+  .me-acc{grid-column:1/-1;display:flex;align-items:center;gap:6px;justify-content:space-between;min-width:0}
+  .me-acc .btn{gap:6px;color:var(--accent-ink)} .me-acc .btn svg{width:16px;height:16px} .me-acc .btn .muted{font-weight:400}
+  @media (max-width:560px){ .me-guest{grid-template-columns:1fr} .me-f input{height:46px;font-size:16px} }
   .ws .btn.on{background:var(--accent-weak);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
   /* ⓘ tips: hover on desktop, tap/focus on phones */
   .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;border-radius:999px;color:var(--muted);cursor:help;outline:none}
@@ -1367,9 +1375,6 @@
     .pnav .iseg button{padding:7px 8px}
     .ws-h{flex-wrap:nowrap} .ws-views{width:auto;flex:1} .ws-h #wsmeta{flex-basis:auto;margin-left:6px}
     .ws-views .segic{margin-right:5px}
-    .me-row .me-em{display:none} .me-row .me-em.open{display:block;order:5;flex-basis:100%}
-    .me-row{flex-wrap:wrap} .me-row>#name{flex:1 1 0}
-    .me-row .me-emb{display:inline-flex}
     .tbar .iseg{padding:2px} .tbar .iseg button{padding:7px 6px} .tbar .brush .dot{width:13px;height:13px} .tbar .btn.sm{padding-inline:8px} .tbar{gap:4px} .tbar>.ml-auto{margin:0 -4px 0 0}
     /* the answer toolbar must fit a 360px phone in one row (these beat .ws-tools.tbar and the touch-screen sizes) */
     .ws-tools.tbar{gap:4px} .ws-tools.tbar .iseg{padding:2px} .ws-tools.tbar .iseg button{padding:6px 5px}
@@ -1727,6 +1732,7 @@ Object.assign(ICON,{
   chevd:svgI('<path d="m6 9 6 6 6-6"/>'),
   zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
   spark:svgI('<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>'),
+  user:svgI('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   mic:svgI('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
@@ -2129,6 +2135,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-opensignin]'); if(!b) return; const d=$('signin'); if(!d) return;
   window.scrollTo({top:0}); const mode=b.dataset.opensignin==='signup'?'signup':'signin';
+  if(b.hasAttribute('data-prefill')){ const n=$('su_name'), m=$('su_email'); if(n&&!n.value) n.value=(P.mine&&P.mine.name||'').trim(); if(m&&!m.value) m.value=(P.mine&&P.mine.email||'').trim(); }
   if(d.open) signinMode(mode); else { d.querySelectorAll('.codef').forEach(f=>{ f.hidden=f.dataset.mode!==mode; }); d.querySelector('.verifyf').hidden=true; d.open=true; } });
 // Close the account / sign-in menus in the app bar when clicking elsewhere.
 document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.appbar details[open]').forEach(d=>{ if(!d.contains(e.target)&&!e.target.closest('[data-opensignin]')) d.open=false; }); });
@@ -3005,7 +3012,6 @@ function render(){
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
-  const cm=$('comment'); if(cm){ cm.value=P.mine.comment||''; cm.oninput=e=>{ P.mine.comment=e.target.value; changed(); }; }
   wireDel();
   const sb=$('saveBtn'); if(sb) sb.onclick=()=>save();
   [nm,em].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }); });
@@ -3013,25 +3019,22 @@ function render(){
   renderBody();
   chatSync();
 }
-// "You" strip at the top of the Mine view: name (and email / comment) that go with the answer.
-// One compact row: name (+ email), comment toggle and an ⓘ tip; email (phones) and comment open from icon buttons.
+// "You" strip at the top of the Mine view: the name (and, for guests, email) that go with the answer.
+// Guests get a small card: name, email and an optional "Create account" (opens sign-up with both filled in).
 function meFields(d,p){
-  const req=!!p.requireEmail, comOpen=P.comOpen||!!(P.mine.comment||'').trim(), emOpen=req||P.emOpen||!!(P.mine.email||'').trim();
-  // People who can chat use the chat drawer instead; a comment they already left stays editable.
-  const comOn=p.allowComments&&(!chatCan()||!!(P.mine.comment||'').trim());
-  const comBtn=comOn?ib('chat',t('Comment'),`data-metog="com" aria-expanded="${comOpen}"`,'sm ghost'+(comOpen?' on':'')):'';
-  const com=comOn?`<textarea id="comment" class="me-com${comOpen?'':' hide'}" maxlength="500" rows="2" aria-label="${t('Comment')}" placeholder="${t('Comment (optional), e.g. only evenings in week 1')}"></textarea>`:'';
+  const req=!!p.requireEmail;
   const help=`<span id="ansHelp">${ansHelp()}</span>`;
   if(ME.user) return `<div class="me-row">${avatarOf(ME.user)}${ME.user.name
       ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="${t('Change name')}" aria-label="${t('Change name')}">${ICON.edit}</a>`
       :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}
-      ${comBtn}${tip(help,'right')}</div>${com}`;
-  return `<div class="me-row">
-      <input type="text" id="name" class="grow" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off">
+      ${tip(help,'right')}</div>`;
+  return `<div class="me-guest">
+      <label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="name" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off"></label>
       <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
-      <input type="email" id="email" class="me-em${emOpen?' open':''}" maxlength="200"${req?' required':''} aria-label="${req?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" placeholder="${req?t('Email (required)'):t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}">
-      ${req?'':ib('mail',t('Email (optional)'),`data-metog="em" aria-expanded="${emOpen}"`,'sm ghost me-emb'+(emOpen?' on':''))}${comBtn}${tip(help,'right')}</div>
-    <div id="nameHint"></div>${com}`;
+      <label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="email" maxlength="200" autocomplete="email"${req?' required':''} aria-label="${req?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" placeholder="${req?t('Email (required)'):t('Email (optional)')}" title="${d.emailEnabled?t('Only the organiser sees this (invites & reminders)'):t('Only the organiser sees this')}"></label>
+      <div class="me-acc"><button type="button" class="btn sm ghost withic" data-opensignin="signup" data-prefill>${ICON.spark}<span>${t('Create account')}</span><span class="muted">${t('(optional)')}</span></button>${tip(help,'right')}</div>
+    </div>
+    <div id="nameHint"></div>`;
 }
 // The ⋯ menu closes after a pick or a tap elsewhere; an ⓘ tip closes on a tap elsewhere.
 document.addEventListener('pointerdown',e=>{ const m=$('moredd'); if(m&&m.open&&!m.contains(e.target)) m.open=false;
@@ -3042,12 +3045,6 @@ document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.pmore[o
 // so WhatsApp doesn't show it twice).
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-nshare]'); if(!b) return;
   navigator.share({title:b.dataset.ntitle,text:b.dataset.nshare}).catch(()=>{}); });
-document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-metog]'); if(!t) return;
-  const k=t.dataset.metog, el=k==='com'?$('comment'):$('email'); if(!el) return;
-  const open=k==='com'?el.classList.toggle('hide')===false:el.classList.toggle('open');
-  P[k==='com'?'comOpen':'emOpen']=open; t.classList.toggle('on',open); t.setAttribute('aria-expanded',open); if(open) el.focus();
-});
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
@@ -6106,6 +6103,7 @@ function germanText(){ return {
 "Closed · answers for {round} are final.": "Geschlossen · die Antworten für {round} sind endgültig.",
 "Code": "Code",
 "Comment": "Kommentar",
+"(optional)": "(optional)",
 "Comment (optional), e.g. only evenings in week 1": "Kommentar (optional), z. B. in Woche 1 nur abends",
 "Comments": "Kommentare",
 "Continue": "Weiter",
