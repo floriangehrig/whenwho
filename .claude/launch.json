@@ -110,6 +110,24 @@
       ],
       "port": 8795,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-chat",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8796",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8796",
+        "--persist-to",
+        ".wrangler/chat-state"
+      ],
+      "port": 8796,
+      "autoPort": false
     }
   ]
 }
