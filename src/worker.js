@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-XVt4WhWjvkHdjMM548BxHMJR+X/iaKjt/ci7w6tLqvE=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-6YRfF+ECLyZTdBqyxt0qoSs8KqTiiKz0eiGgUhB/wxg=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -222,10 +222,12 @@ async function route(request, env, ctx, url) {
     if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'busy' && !d && m === 'PUT') return shareBusy(request, env, id, b);
+    if (b && c === 'form' && !d && m === 'GET') return getForm(request, env, url, id, b);
+    if (b && c === 'form' && !d && m === 'PUT') return saveForm(request, env, url, id, b);
+    if (b && c === 'form' && !d && m === 'DELETE') return deleteForm(request, env, url, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
   if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
-  if (a === 'responses' && b && c === 'extra' && !d && m === 'PUT') return answerQuestions(request, env, id, b);
   if (a === 'responses' && b) {
     if (m === 'GET') return getOwnResponse(request, env, id, b);
     if (m === 'PUT') return updateResponse(request, env, id, b);
@@ -402,8 +404,9 @@ async function insertInstance(env, poll, seq, fields, notified) {
   // A new round of a series asks the same questions as the last one (without meeting links; place votes for a meeting stay behind).
   if (seq > 0 && fields.questions === undefined) {
     const prev = await env.DB.prepare('SELECT questions FROM instances WHERE poll_id = ? AND seq < ? ORDER BY seq DESC LIMIT 1').bind(poll.id, seq).first('questions');
-    const qs = questionsOf({ questions: prev }).filter((q) => !q.meetings || q.type !== 'choice' || !q.place)
-      .map(({ meetings, closed, at, ...q }) => ({ ...q, at: now() }));
+    // Questions marked repeat (the default) come along, without links to the old round's meetings.
+    const qs = questionsOf({ questions: prev }).filter((q) => q.repeat !== false)
+      .map(({ closed, at, ...q }) => ({ ...q, link: { to: 'poll' }, who: q.who.mode === 'people' ? q.who : { mode: q.who.mode === 'free' || q.who.mode === 'meeting' ? 'all' : q.who.mode }, at: now() }));
     if (qs.length) fields = { ...fields, questions: JSON.stringify(qs) };
   }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
@@ -851,12 +854,14 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0022';
+const USER_DATA_REVIEWED = '0023';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
   responses: { rows: `SELECT * FROM responses WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
     del: `DELETE FROM responses WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` },
+  form_answers: { rows: `SELECT * FROM form_answers WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
+    del: `DELETE FROM form_answers WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` }, // answers to questions
   shared_busy: { rows: `SELECT * FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
     del: `DELETE FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` },
   participants: { rows: `SELECT * FROM participants WHERE user_id = ? OR poll_id IN (${OWNED})`,
@@ -1877,15 +1882,21 @@ async function getPoll(request, env, ctx, url, id) {
     const n = Math.max(...all.map((i) => i.seq)) + 1;
     out.next = { startDate: periodStart(poll, n), endDate: periodEnd(poll, n), opens: openDate(poll, n) };
   }
-  // Questions: options people suggested are always sent (labels only), so everyone can vote on them.
+  // Questions: options people suggested are always sent (labels only), so everyone can vote on them;
+  // everyone's answers (form_answers) with the same visibility as the availability answers.
   const qs = questionsOf(sel), added = qs.length ? await addedOptions(env, sel.id) : new Map();
-  if (qs.some((q) => q.add)) out.added = Object.fromEntries(added);
+  if (qs.length) {
+    out.form = { added: Object.fromEntries(added) };
+    if (admin || !poll.hide_results) {
+      const { results: fr } = await env.DB.prepare('SELECT f.id, f.participant_id, f.extra, f.updated_at, p.name FROM form_answers f JOIN participants p ON p.id = f.participant_id WHERE f.instance_id = ? ORDER BY f.created_at').bind(sel.id).all();
+      out.form.rows = fr.map((r) => ({ id: r.id, pid: r.participant_id, name: r.name, extra: extraFor(r.extra, qs, added, admin), updatedAt: r.updated_at }));
+    }
+  }
   if (admin || !poll.hide_results) {
-    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, extra, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
+    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
     const props = proposedIds(sel);
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
-      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}),
-      ...(qs.length ? { extra: extraFor(r.extra, qs, added, admin) } : {}) }));
+      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
@@ -1958,7 +1969,7 @@ async function deletePoll(request, env, id) {
   return json({ ok: true });
 }
 // Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
-const pollDeleteStmts = (env, id) => ['responses', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy']
+const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy']
   .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
   .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
 
@@ -1974,6 +1985,7 @@ const RETAIN_WARN_DAYS = 14; // warning email this many days before deletion
 const RETAIN_BATCH = 25;     // polls warned and polls deleted per daily run at most
 const STALE_SQL = `MAX(p.updated_at, p.created_at) < ?1
        AND NOT EXISTS (SELECT 1 FROM responses r WHERE r.poll_id = p.id AND r.updated_at >= ?1)
+       AND NOT EXISTS (SELECT 1 FROM form_answers f WHERE f.poll_id = p.id AND f.updated_at >= ?1)
        AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.poll_id = p.id AND COALESCE(m.updated_at, m.created_at) >= ?1)
        AND NOT EXISTS (SELECT 1 FROM chat_reads c WHERE c.poll_id = p.id AND c.read_at >= ?1)
        AND NOT EXISTS (SELECT 1 FROM instances i WHERE i.poll_id = p.id AND i.end_date >= ?2
@@ -2050,7 +2062,8 @@ async function updateInstance(request, env, id, iid) {
   }
   if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll, JSON.parse(inst.meetings || '[]')));
   if (has('questions')) {
-    const qs = validateQuestions(b.questions, u.meetings ? JSON.parse(u.meetings) : JSON.parse(inst.meetings || '[]'), questionsOf(inst));
+    const { results: ps } = await env.DB.prepare('SELECT id FROM participants WHERE poll_id = ?').bind(id).all();
+    const qs = validateQuestions(b.questions, u.meetings ? JSON.parse(u.meetings) : JSON.parse(inst.meetings || '[]'), questionsOf(inst), new Set(ps.map((p) => p.id)));
     u.questions = qs.length ? JSON.stringify(qs) : null;
   }
   const cols = Object.keys(u);
@@ -2755,7 +2768,6 @@ async function createResponse(request, env, id, iid) {
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
   const fill = parseFill(b.fill, poll, datesOf(inst, poll));
-  const extra = await validateExtra(env, b.extra, inst, null, { admin, needReq: true });
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
@@ -2791,7 +2803,6 @@ async function createResponse(request, env, id, iid) {
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
   if (fill) await env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid).run(); // column from migration 0015
-  if (extra) await env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, rid).run(); // column from migration 0022
   return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
@@ -2835,7 +2846,7 @@ async function getOwnResponse(request, env, id, rid) {
   const r = await loadResponse(env, id, rid);
   if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
   return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries),
-    fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))), extra: parseExtra(r.extra) });
+    fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))) });
 }
 // ---- votes on proposed meetings: responses.votes = JSON array of the meeting ids the person ticked.
 const proposedIds = (inst) => new Set(JSON.parse(inst.meetings || '[]').filter((x) => x.proposed).map((x) => x.id));
@@ -2856,28 +2867,60 @@ async function voteMeetings(request, env, id, rid) {
   await env.DB.prepare('UPDATE responses SET votes = ? WHERE id = ?').bind(votes.length ? JSON.stringify(votes) : null, r.id).run();
   return json({ ok: true, votes });
 }
-// ---- questions: extra info for a round or its meetings, and votes on options (e.g. places).
-// instances.questions = the organiser's list; responses.extra = { a: { qid: answer }, add: { qid: [{ id, label }] } }.
-// Answers: choice → [option id], text → string, yesno → { y: bool, n?: count }. `add` = options this person suggested
-// (questions with add: true); they live in the person's own answer so they go away with it.
-const MAX_QUESTIONS = 20, MAX_Q_OPTIONS = 30, MAX_ADD_OPTIONS = 5;
+// ---- questions: a small form per round (instances.questions), answered apart from the availability (form_answers).
+// Types: radio (one of), check (several), select (dropdown), rating (1..max), short / long text, yesno (+ optional count).
+// link: { to: 'poll' } or { to: 'meetings', ids, each? } (each = one answer per date of a repeating meeting: { "YYYY-MM-DD": answer }).
+// who: { mode: 'all' | 'people' (pids) | 'meeting' (people invited to the linked meetings) | 'free' (free at their time) }.
+// form_answers.extra = { a: { qid: answer }, add: { qid: [{ id, label }] } }; add = options the person suggested (radio / check
+// with add: true), kept in their own row so they go away with it.
+const MAX_QUESTIONS = 30, MAX_Q_OPTIONS = 40, MAX_ADD_OPTIONS = 5;
 const QID_RE = /^[A-Za-z0-9]{4,20}$/;
-const Q_TYPES = ['choice', 'text', 'yesno'];
-function questionsOf(inst) { try { const q = JSON.parse(inst.questions || '[]'); return Array.isArray(q) ? q : []; } catch { return []; } }
+const Q_TYPES = ['radio', 'check', 'select', 'rating', 'short', 'long', 'yesno'];
+const Q_CHOICE = new Set(['radio', 'check', 'select']);
+const Q_WHO = ['all', 'people', 'meeting', 'free'];
+// Questions saved by 0022 (type choice / text, meetings) in today's shape.
+function normQ(q) {
+  if (!q || typeof q !== 'object') return null;
+  let x = { ...q };
+  if (x.type === 'choice') x.type = x.multi ? 'check' : 'radio';
+  else if (x.type === 'text') x.type = 'long';
+  if (!x.link) x.link = Array.isArray(x.meetings) && x.meetings.length ? { to: 'meetings', ids: x.meetings } : { to: 'poll' };
+  if (!x.who) x.who = { mode: 'all' };
+  delete x.multi; delete x.meetings;
+  return Q_TYPES.includes(x.type) ? x : null;
+}
+function questionsOf(inst) { try { const q = JSON.parse(inst.questions || '[]'); return Array.isArray(q) ? q.map(normQ).filter(Boolean) : []; } catch { return []; } }
 function parseExtra(raw) { try { const x = JSON.parse(raw || 'null'); return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; } catch { return {}; } }
-function validateQuestions(list, meetings, old = []) {
+const repeatsOf = (q, meetings) => (q.link.ids || []).map((id) => meetings.find((m) => m.id === id)).filter((m) => m && m.repeat);
+// Is d one of the dates of a repeating meeting m?
+function onRepeat(m, d) {
+  if (!isDate(d) || d < m.repeat.from || (m.repeat.until && d > m.repeat.until)) return false;
+  const first = firstOnWeekday(m.repeat.from, wdOf(m.date));
+  const days = Math.round((Date.parse(d + 'T00:00:00Z') - Date.parse(first + 'T00:00:00Z')) / 86400000);
+  return days >= 0 && days % (7 * m.repeat.every) === 0;
+}
+function validateQuestions(list, meetings, old = [], pids = new Set()) {
   if (!Array.isArray(list) || list.length > MAX_QUESTIONS) throw new HttpError(400, `Up to ${MAX_QUESTIONS} questions per round`);
   const mids = new Set(meetings.map((m) => m.id)), prev = new Map(old.map((q) => [q.id, q])), seen = new Set();
-  return list.map((q) => {
-    if (!q || typeof q !== 'object' || !Q_TYPES.includes(q.type)) throw new HttpError(400, 'Invalid question');
+  return list.map((q0) => {
+    const q = normQ(q0);
+    if (!q) throw new HttpError(400, 'Invalid question');
     const id = QID_RE.test(q.id || '') && !seen.has(q.id) ? q.id : randomId(8);
     seen.add(id);
-    const out = { id, type: q.type, label: str(q.label, 120, 'Question', true), help: str(q.help, 300, 'Question note') || undefined,
+    const out = { id, type: q.type, label: str(q.label, 200, 'Question', true), help: str(q.help, 500, 'Question note') || undefined,
       req: q.req ? true : undefined, vis: q.vis === 'owner' ? 'owner' : 'all', closed: q.closed ? true : undefined,
-      at: prev.get(id)?.at || now() }; // when it was added (chat timeline)
-    const ms = Array.isArray(q.meetings) ? [...new Set(q.meetings.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
-    if (ms.length) out.meetings = ms;
-    if (q.type === 'choice') {
+      repeat: q.repeat === false ? false : undefined, at: prev.get(id)?.at || now() }; // at = when it was added
+    const ids = q.link && q.link.to === 'meetings' && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
+    out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
+    if (ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
+    const mode = Q_WHO.includes(q.who && q.who.mode) ? q.who.mode : 'all';
+    out.who = { mode };
+    if (mode === 'people') {
+      const ps = Array.isArray(q.who.pids) ? [...new Set(q.who.pids.filter((x) => typeof x === 'string' && pids.has(x)))] : [];
+      if (!ps.length) throw new HttpError(400, 'Pick who can answer');
+      out.who.pids = ps.slice(0, MAX_PARTICIPANTS);
+    }
+    if (Q_CHOICE.has(q.type)) {
       const opts = Array.isArray(q.options) ? q.options : [];
       if (opts.length > MAX_Q_OPTIONS) throw new HttpError(400, `Up to ${MAX_Q_OPTIONS} options per question`);
       const os = new Set();
@@ -2886,19 +2929,45 @@ function validateQuestions(list, meetings, old = []) {
         os.add(oid);
         return { id: oid, label: str(o?.label, 120, 'Option', true) };
       });
-      out.multi = q.multi ? true : undefined; out.add = q.add ? true : undefined; out.place = q.place ? true : undefined;
+      out.place = q.place ? true : undefined;
+      if (q.type !== 'select') out.add = q.add ? true : undefined;
       if (!out.options.length && !out.add) throw new HttpError(400, 'Add an option, or let people add their own');
     }
-    if (q.type === 'yesno' && q.count) out.count = { label: str(q.count.label, 60, 'Count label'), max: int(q.count.max ?? 10, 1, 99, 'Highest number') };
+    if (q.type === 'rating') {
+      const r = q.rating || {};
+      out.rating = { max: int(r.max ?? 5, 3, 10, 'Highest rating'), lo: str(r.lo, 40, 'Low label') || undefined, hi: str(r.hi, 40, 'High label') || undefined };
+    }
+    if (q.type === 'yesno' && q.count) out.count = { label: str(q.count.label, 60, 'Count label'), max: int(q.count.max ?? 20, 1, 99, 'Highest number') };
     return out;
   });
 }
-// Options people suggested in this round: Map question id → [{ id, label }] (from every answer's `add`).
-async function addedOptions(env, iid, skipRid) {
-  const { results } = await env.DB.prepare('SELECT id, extra FROM responses WHERE instance_id = ? AND extra IS NOT NULL').bind(iid).all();
+// May participant part (null = someone new) answer q? responses = the round's availability answers (for "free").
+function canAnswer(q, part, meetings, responses) {
+  const w = q.who || { mode: 'all' };
+  if (w.mode === 'all') return true;
+  if (!part) return false;
+  if (w.mode === 'people') return (w.pids || []).includes(part.id);
+  const ms = (q.link.ids || []).map((id) => meetings.find((m) => m.id === id)).filter(Boolean);
+  if (!ms.length) return true; // nothing linked: everyone
+  if (w.mode === 'meeting') return ms.some((m) => m.participants === 'all' || (Array.isArray(m.participants) && m.participants.some((p) => p.id === part.id)));
+  const r = responses.find((x) => x.participant_id === part.id); // free: marked available (or if needed) at the meeting's time
+  if (!r) return false;
+  let e; try { e = JSON.parse(r.entries || '{}'); } catch { e = {}; }
+  const ok = (v) => v === 'y' || v === 'i';
+  return ms.some((m) => {
+    const v = e[m.date];
+    if (typeof v === 'string') return ok(v);
+    if (!v || typeof v !== 'object') return false;
+    const hs = [...(v.y || []), ...(v.i || [])];
+    return m.allDay ? hs.length > 0 : hs.includes(m.start);
+  });
+}
+// Options people suggested in this round: Map question id → [{ id, label }] (from every form answer's `add`).
+async function addedOptions(env, iid, skipId) {
+  const { results } = await env.DB.prepare('SELECT id, extra FROM form_answers WHERE instance_id = ? AND extra IS NOT NULL').bind(iid).all();
   const out = new Map();
   for (const r of results) {
-    if (r.id === skipRid) continue;
+    if (r.id === skipId) continue;
     for (const [qid, list] of Object.entries(parseExtra(r.extra).add || {})) {
       if (!Array.isArray(list)) continue;
       if (!out.has(qid)) out.set(qid, []);
@@ -2907,76 +2976,162 @@ async function addedOptions(env, iid, skipRid) {
   }
   return out;
 }
-// Option ids valid for a choice question: the organiser's plus everyone's suggestions.
 const optionIds = (q, added) => new Set([...(q.options || []), ...(added.get(q.id) || [])].map((o) => o.id));
-// Checks a person's answers to the round's questions. old = what they had (closed questions keep it unless the organiser edits).
-// needReq: required questions must be answered (saving My answer; not for quick answers from a meeting card).
-async function validateExtra(env, raw, inst, rid, { old = {}, admin = false, needReq = false } = {}) {
+// One answer value of question q (or undefined when empty). valid = option ids it may pick.
+function qValue(q, v, valid) {
+  if (Q_CHOICE.has(q.type)) {
+    v = Array.isArray(v) ? [...new Set(v.filter((o) => typeof o === 'string' && valid.has(o)))] : [];
+    if (q.type !== 'check') v = v.slice(0, 1);
+    return v.length ? v : undefined;
+  }
+  if (q.type === 'rating') return v == null || v === '' ? undefined : int(v, 1, q.rating.max, q.label);
+  if (q.type === 'short' || q.type === 'long') return str(typeof v === 'string' ? v : '', q.type === 'short' ? 120 : 1000, q.label) || undefined;
+  if (v && typeof v === 'object' && typeof v.y === 'boolean')
+    return { y: v.y, ...(v.y && q.count && v.n != null && v.n !== '' ? { n: int(v.n, 0, q.count.max, q.count.label || 'Number') } : {}) };
+  return undefined;
+}
+// Checks a person's answers to the round's questions. part = their participant (null = new), old = their saved answers.
+// Questions they may not answer (closed, or not meant for them) keep the old value. needReq: required ones must be answered.
+async function validateExtra(env, raw, inst, { fid = null, part = null, admin = false, old = {}, needReq = true } = {}) {
   const qs = questionsOf(inst);
   if (!qs.length) return null;
   if (raw != null && (typeof raw !== 'object' || Array.isArray(raw))) throw new HttpError(400, 'Invalid answers to questions');
   const x = raw || {}, a = x.a && typeof x.a === 'object' ? x.a : {}, addIn = x.add && typeof x.add === 'object' ? x.add : {};
-  const added = await addedOptions(env, inst.id, rid);
+  const meetings = JSON.parse(inst.meetings || '[]');
+  const { results: responses } = qs.some((q) => q.who.mode === 'free')
+    ? await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(inst.id).all() : { results: [] };
+  const added = await addedOptions(env, inst.id, fid);
   const outA = {}, outAdd = {};
   for (const q of qs) {
-    if (q.closed && !admin) { // closed: keep what was there
+    if ((q.closed || !canAnswer(q, part, meetings, responses)) && !admin) {
       if (old.a && old.a[q.id] !== undefined) outA[q.id] = old.a[q.id];
       if (old.add && old.add[q.id]) outAdd[q.id] = old.add[q.id];
       continue;
     }
-    let v = a[q.id];
-    if (q.type === 'choice') {
-      const valid = optionIds(q, added);
-      if (q.add && Array.isArray(addIn[q.id])) {
-        const labels = new Set([...(q.options || []), ...(added.get(q.id) || [])].map((o) => o.label.toLowerCase()));
-        const mine = [];
-        for (const o of addIn[q.id].slice(0, MAX_ADD_OPTIONS)) {
-          const label = str(o?.label, 120, 'Option');
-          if (!label || labels.has(label.toLowerCase()) || !QID_RE.test(o.id || '') || valid.has(o.id)) continue;
-          labels.add(label.toLowerCase()); valid.add(o.id); mine.push({ id: o.id, label });
-        }
-        if (mine.length) outAdd[q.id] = mine;
+    const valid = optionIds(q, added);
+    if (q.add && Array.isArray(addIn[q.id])) {
+      const labels = new Set([...(q.options || []), ...(added.get(q.id) || [])].map((o) => o.label.toLowerCase()));
+      const mine = [];
+      for (const o of addIn[q.id].slice(0, MAX_ADD_OPTIONS)) {
+        const label = str(o?.label, 120, 'Option');
+        if (!label || labels.has(label.toLowerCase()) || !QID_RE.test(o.id || '') || valid.has(o.id)) continue;
+        labels.add(label.toLowerCase()); valid.add(o.id); mine.push({ id: o.id, label });
       }
-      v = Array.isArray(v) ? [...new Set(v.filter((o) => typeof o === 'string' && valid.has(o)))] : [];
-      if (!q.multi) v = v.slice(0, 1);
-      if (v.length) outA[q.id] = v;
-    } else if (q.type === 'text') {
-      v = str(typeof v === 'string' ? v : '', 500, q.label);
-      if (v) outA[q.id] = v;
-    } else if (v && typeof v === 'object' && typeof v.y === 'boolean') {
-      outA[q.id] = { y: v.y, ...(v.y && q.count && v.n != null && v.n !== '' ? { n: int(v.n, 0, q.count.max, q.count.label || 'Number') } : {}) };
+      if (mine.length) outAdd[q.id] = mine;
     }
-    if (needReq && q.req && !admin && outA[q.id] === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
+    let v;
+    if (q.link.each) {
+      const reps = repeatsOf(q, meetings), src = a[q.id] && typeof a[q.id] === 'object' && !Array.isArray(a[q.id]) ? a[q.id] : {}, m = {};
+      for (const [d, dv] of Object.entries(src).slice(0, 60)) {
+        if (!reps.some((r) => onRepeat(r, d))) continue;
+        const one = qValue(q, dv, valid);
+        if (one !== undefined) m[d] = one;
+      }
+      v = Object.keys(m).length ? m : undefined;
+    } else v = qValue(q, a[q.id], valid);
+    if (v !== undefined) outA[q.id] = v;
+    if (needReq && q.req && !admin && !q.link.each && v === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
   }
   const out = { ...(Object.keys(outA).length ? { a: outA } : {}), ...(Object.keys(outAdd).length ? { add: outAdd } : {}) };
   return Object.keys(out).length ? JSON.stringify(out) : null;
 }
-// What the caller may see of someone's answers: the organiser and the answer's owner everything, others only vis 'all'.
+// What the caller may see of someone's answers: the organiser everything, others only questions with vis 'all'.
 function extraFor(raw, qs, added, full) {
   const x = parseExtra(raw), a = {};
   for (const q of qs) {
     let v = x.a && x.a[q.id];
     if (v === undefined || (!full && q.vis === 'owner')) continue;
-    if (q.type === 'choice') { const ok = optionIds(q, added); v = Array.isArray(v) ? v.filter((o) => ok.has(o)) : []; if (!v.length) continue; }
+    if (Q_CHOICE.has(q.type) && !q.link.each) { const ok = optionIds(q, added); v = Array.isArray(v) ? v.filter((o) => ok.has(o)) : []; if (!v.length) continue; }
     a[q.id] = v;
   }
   return Object.keys(a).length ? a : undefined;
 }
-// PUT /api/polls/:id/responses/:rid/extra { extra } — answer questions without re-saving the availability (meeting cards).
-async function answerQuestions(request, env, id, rid) {
-  const poll = await loadPoll(env, id);
-  const r = await loadResponse(env, id, rid);
-  const inst = await loadInstance(env, id, r.instance_id);
-  const admin = await isAdmin(request, poll);
-  if (!admin && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
-  if (!admin) {
-    await checkPassword(env, request, poll);
-    if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
+// The caller's form row and participant: signed in = their account in this poll; guests by the row's key (x-form-key),
+// or by their availability answer (rid + the usual x-edit-key / x-edit-name).
+async function formIdentity(request, env, id, iid, { fid, rid }) {
+  const user = userOf(request);
+  if (user) {
+    const part = await accountParticipant(env, id, user.id);
+    const row = part ? await env.DB.prepare('SELECT * FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, part.id).first() : null;
+    return { part, row, user };
   }
+  if (fid && ID_RE.test(fid)) {
+    const row = await env.DB.prepare('SELECT * FROM form_answers WHERE id = ? AND instance_id = ?').bind(fid, iid).first();
+    const key = request.headers.get('x-form-key');
+    if (row && key && row.edit_hash && safeEqual(await sha256('edit:' + key), row.edit_hash))
+      return { part: await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(row.participant_id).first(), row };
+  }
+  if (rid && ID_RE.test(rid)) {
+    const r = await env.DB.prepare('SELECT * FROM responses WHERE id = ? AND instance_id = ?').bind(rid, iid).first();
+    if (r && r.participant_id && await canEditResponse(request, env, r)) {
+      const part = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(r.participant_id).first();
+      const row = await env.DB.prepare('SELECT * FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, r.participant_id).first();
+      return { part, row };
+    }
+  }
+  return { part: null, row: null };
+}
+// GET /api/polls/:id/instances/:iid/form?fid=&rid= — my answers to the questions and which questions I may answer.
+async function getForm(request, env, url, id, iid) {
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
+  const inst = await loadInstance(env, id, iid);
+  const { part, row } = await formIdentity(request, env, id, iid, { fid: url.searchParams.get('fid'), rid: url.searchParams.get('rid') });
+  const qs = questionsOf(inst), meetings = JSON.parse(inst.meetings || '[]');
+  const { results: responses } = qs.some((q) => q.who.mode === 'free')
+    ? await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(iid).all() : { results: [] };
+  return json({ id: row ? row.id : null, pid: part ? part.id : null, name: part ? part.name : null, extra: row ? parseExtra(row.extra) : {},
+    can: qs.filter((q) => admin || canAnswer(q, part, meetings, responses)).map((q) => q.id) });
+}
+// PUT /api/polls/:id/instances/:iid/form { fid?, rid?, name?, email?, extra } — save my answers to the questions.
+async function saveForm(request, env, url, id, iid) {
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
+  const inst = await loadInstance(env, id, iid);
+  if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
+  if (!questionsOf(inst).length) throw new HttpError(400, 'This round has no questions');
   const b = await body(request);
-  const extra = await validateExtra(env, b.extra, inst, r.id, { old: parseExtra(r.extra), admin });
-  await env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, r.id).run();
-  return json({ ok: true, extra: parseExtra(extra) });
+  const user = userOf(request);
+  await requireInvited(env, poll, user, admin);
+  let { part, row } = await formIdentity(request, env, id, iid, { fid: b.fid, rid: b.rid });
+  let editKey = null;
+  if (!part) {
+    if (user) part = await newParticipant(env, id, user.name || personName(b.name), user.email, user.id);
+    else {
+      const name = personName(b.name), mail = email(b.email);
+      if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
+      // Same name as a guest in this poll: that's this person, unless they already filled in this round's questions.
+      part = await findParticipant(env, id, nameKey(name));
+      if (part) {
+        const has = await env.DB.prepare('SELECT id FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, part.id).first('id');
+        if (has) throw new HttpError(409, `“${part.name}” has already answered these questions. If that's you, open the poll on the device you used, or answer under another name.`, { code: 'form_taken' });
+      } else part = await newParticipant(env, id, name, mail);
+      if (mail) await linkGuestToAccount(env, id, part.id, mail);
+    }
+  }
+  const extra = await validateExtra(env, b.extra, inst, { fid: row && row.id, part, admin, old: row ? parseExtra(row.extra) : {} });
+  const t = now();
+  if (row) await env.DB.prepare('UPDATE form_answers SET extra = ?, updated_at = ? WHERE id = ?').bind(extra, t, row.id).run();
+  else {
+    const fid = randomId(12);
+    if (!user) editKey = secret();
+    await env.DB.prepare('INSERT INTO form_answers (id, poll_id, instance_id, participant_id, extra, edit_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)')
+      .bind(fid, id, iid, part.id, extra, editKey ? await sha256('edit:' + editKey) : null, t, t).run();
+    row = { id: fid };
+  }
+  return json({ ok: true, id: row.id, pid: part.id, name: part.name, extra: parseExtra(extra), ...(editKey ? { editKey } : {}) });
+}
+// DELETE /api/polls/:id/instances/:iid/form?fid=&rid= — remove my answers to the questions (the organiser: ?fid= of anyone's).
+async function deleteForm(request, env, url, id, iid) {
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  let { row } = await formIdentity(request, env, id, iid, { fid: url.searchParams.get('fid'), rid: url.searchParams.get('rid') });
+  if (!row && admin && ID_RE.test(url.searchParams.get('fid') || '')) row = await env.DB.prepare('SELECT id FROM form_answers WHERE id = ? AND poll_id = ?').bind(url.searchParams.get('fid'), id).first();
+  if (!row) throw new HttpError(404, 'Answers not found');
+  await env.DB.prepare('DELETE FROM form_answers WHERE id = ?').bind(row.id).run();
+  return json({ ok: true });
 }
 async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
@@ -2995,7 +3150,6 @@ async function updateResponse(request, env, id, rid) {
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
   const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst, poll))) : r.entries;
   const fill = b.fill !== undefined ? parseFill(b.fill, poll, datesOf(inst, poll)) : undefined;
-  const extra = b.extra !== undefined ? await validateExtra(env, b.extra, inst, rid, { old: parseExtra(r.extra), admin: !own && admin, needReq: true }) : undefined;
   let partId = r.participant_id;
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
@@ -3037,7 +3191,6 @@ async function updateResponse(request, env, id, rid) {
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
   if (fill !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid));
-  if (extra !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
   return json({ ok: true, name });
@@ -3164,6 +3317,7 @@ async function deleteParticipant(request, env, url, id, pid) {
     url.searchParams.get('answers') === '1'
       ? env.DB.prepare('DELETE FROM responses WHERE participant_id = ?').bind(pid)
       : env.DB.prepare('UPDATE responses SET participant_id = NULL WHERE participant_id = ?').bind(pid),
+    env.DB.prepare('DELETE FROM form_answers WHERE participant_id = ?').bind(pid), // answers to questions need a person
     env.DB.prepare('DELETE FROM shared_busy WHERE participant_id = ?').bind(pid),
     env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(pid),
   ]);
@@ -3184,8 +3338,14 @@ async function mergeParticipant(request, env, id, pid) {
     if (!keep) { byRound[r.instance_id] = r; continue; }
     if (r.updated_at > keep.updated_at) { drop.push(keep.id); byRound[r.instance_id] = r; } else drop.push(r.id);
   }
+  // Answers to questions: the merged person's round answers move over where the other has none.
+  const { results: fa } = await env.DB.prepare('SELECT id, instance_id, participant_id, updated_at FROM form_answers WHERE participant_id IN (?, ?)').bind(src.id, dst.id).all();
+  const fBy = {}, fDrop = [];
+  for (const r of fa) { const k = fBy[r.instance_id]; if (!k) { fBy[r.instance_id] = r; continue; } if (r.updated_at > k.updated_at) { fDrop.push(k.id); fBy[r.instance_id] = r; } else fDrop.push(r.id); }
   await env.DB.batch([
     ...drop.map((rid) => env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid)),
+    ...fDrop.map((fid) => env.DB.prepare('DELETE FROM form_answers WHERE id = ?').bind(fid)),
+    env.DB.prepare('UPDATE form_answers SET participant_id = ? WHERE participant_id = ?').bind(dst.id, src.id),
     env.DB.prepare('UPDATE responses SET participant_id = ?, name = ? WHERE participant_id IN (?, ?)').bind(dst.id, dst.name, src.id, dst.id),
     env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(src.id),
     env.DB.prepare('DELETE FROM shared_busy WHERE participant_id IN (?, ?)').bind(src.id, dst.id), // re-shared on their next visit

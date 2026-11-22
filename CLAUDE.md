@@ -75,17 +75,19 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
-- **Questions** (0022): `instances.questions` = the organiser's questions for a round (`validateQuestions`): `choice` (a vote on options;
-  `multi`, `add` = people may suggest options, `place` = options are places with place search, map links and **Use as place**, which sets
-  the linked meetings' location), `text`, `yesno` (optional `count` = "how many?"). Each has `req`, `vis` (`all` | `owner` = only the organiser
-  sees the answers), `meetings` (shown as chips on those meeting cards), `closed`. A new series round copies the last round's questions.
-  `responses.extra` = `{ a: { qid: answer }, add: { qid: [{ id, label }] } }`: suggested options live in the suggester's own answer, so they
-  go with it. Sent with the answer (required ones enforced) or alone via `PUT /api/polls/:id/responses/:rid/extra` (Meetings tab).
-  `GET /api/polls/:id` sends `added` (everyone's suggestions, labels only) and each response's `extra` filtered by `extraFor`.
-  Page: own **Questions** tab (`pane-questions`, `renderQuestions`; organiser always, others when the round has questions; badge = questions /
-  my unanswered ones): cards like meeting cards (`qCard`: type tile, result bars, compact view `qfold:<poll>`), the organiser's inline editor
-  (`qEditor`, `P.qedit`; `qeRead` then `qeRerender` so re-renders don't drop edits) and empty-state templates (`Q_TPL`).
-  Under My answer `renderMineQs` (`#wsq`, sent with Send). Meeting cards link to their questions (`qMeetChips`).
+- **Questions** (0022, 0023): a small form per round. `instances.questions` = the organiser's questions (`validateQuestions`, order = list order):
+  `type` `radio` | `check` | `select` | `rating` (`rating.max/lo/hi`) | `short` | `long` | `yesno` (`count`); choice types have `options`,
+  `place` (place search, map links, **Use as place** sets the linked meetings' location), `add` (people suggest options); `req`, `vis`
+  (`all` | `owner`), `closed`, `repeat` (series: copy into new rounds, default on). `link` = `{ to: 'poll' }` or `{ to: 'meetings', ids, each? }`
+  (meetings incl. proposed options; `each` = per date of a repeating meeting, answers `{ "YYYY-MM-DD": value }`). `who` = `{ mode: all |
+  people (pids) | meeting (invited to the linked meetings) | free (marked y / if needed at their time) }`, enforced by `canAnswer`.
+  Answers live in `form_answers` (0023; one row per person per round, `extra = { a, add }`, guests have their own `edit_hash`), apart from the
+  availability: `GET|PUT|DELETE /api/polls/:id/instances/:iid/form` (`fid` + `x-form-key`, or `rid` of their availability answer; accounts by
+  session). `GET /api/polls/:id` sends `form = { added, rows }` (rows filtered by `extraFor`, same visibility as answers). Old 0022 shapes are
+  normalised by `normQ`; `responses.extra` is no longer used.
+  Page: the **Questions** tab only (`renderQuestions`): **Fill in** (own Send bar, guests give a name) and **Results** (bars, rating averages,
+  text lists, compact view), organiser editor inline (`qEditor`, popup fields `qDd` for type / applies to / who; `qeRead` then `qeRerender`),
+  ⋯ menu and drag (`data-qgrip`) to reorder. The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
