@@ -98,6 +98,10 @@
   .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
   .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.1);color:#E8EEF8;border:1px solid rgba(255,255,255,.08)}
   .chip svg{width:14px;height:14px;opacity:.8}
+  .dd.instdd{margin-top:0} .instdd>summary.chip{min-height:0;padding:4px 10px 4px 11px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.1);color:#E8EEF8;font-size:13px;font-weight:500;cursor:pointer}
+  .instdd>summary.chip:hover,.instdd[open]>summary.chip{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);color:#fff}
+  .instdd>summary.chip::after{width:5px;height:5px;border-color:#C9D5EA;border-width:0 1.5px 1.5px 0;margin-left:2px}
+  .instdd .ddp{min-width:250px} .instdd .pickm button{white-space:nowrap} .instdd .pickm button .tag{margin-left:6px;font-weight:500}
 
   /* ---------- cards ---------- */
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px 24px;margin-top:var(--s4);box-shadow:var(--shadow-sm)}
@@ -1347,7 +1351,7 @@
     .tight>.grow,.tight>.minw{min-width:0}
     .card-h{gap:8px} .card-h h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .card-h>.muted.small{display:none}
-    .chip{font-size:12px;padding:3px 9px;gap:5px} .meta{gap:6px}
+    .chip{font-size:12px;padding:3px 9px;gap:5px} .meta{gap:6px} .instdd>summary.chip{font-size:12px;padding:3px 8px 3px 9px}
     .chip .bl{display:none}
     .list li{padding:10px 8px;margin:0 -8px}
     .wknav{gap:6px}
@@ -3518,17 +3522,29 @@ document.addEventListener('focusin',e=>{ const t=e.target.closest&&e.target.clos
 document.addEventListener('pointerdown',e=>{ const m=$('moredd'); if(m&&m.open&&!m.contains(e.target)) m.open=false;
   const t=document.activeElement; if(t&&t.classList&&t.classList.contains('tip')&&!t.contains(e.target)) t.blur(); });
 document.addEventListener('click',e=>{ const m=e.target.closest('#moredd .ddp button,.pmore .ddp button'); if(m) m.closest('details').open=false; },true);
+// Header round switcher: close on a pick or a tap elsewhere; a picked round opens in the same tab.
+document.addEventListener('pointerdown',e=>{ const m=$('instdd'); if(m&&m.open&&!m.contains(e.target)) m.open=false; });
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('#instdd .ddp button'); if(!b) return; $('instdd').open=false;
+  if(b.dataset.hinst&&b.dataset.hinst!==P.iid&&b.getAttribute('aria-checked')!=='true') switchInstance(b.dataset.hinst); });
 document.addEventListener('pointerdown',e=>{ document.querySelectorAll('.pmore[open]').forEach(d=>{ if(!d.contains(e.target)) d.open=false; }); });
 // Share button: the phone's own share sheet with the whole invite message (the link is inside the text,
 // so WhatsApp doesn't show it twice).
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-nshare]'); if(!b) return;
+// The header's date chip; in a recurring poll with 2+ rounds it opens a list of the rounds to switch to (keeps the current tab).
+function roundChip(d,i){
+  const lbl=`${ICON.cal}<span>${esc(instLabel(i))}</span>`;
+  if(d.poll.kind!=='series'||!d.instances||d.instances.length<2) return `<span class="chip">${lbl}</span>`;
+  const items=[...d.instances].reverse().map(x=>pickItem('data-hinst',x.id,`${esc(instLabel(x))} <span class="tag ${x.status==='open'?'y':'x'}">${x.status==='open'?t('open'):t('closed')}</span>`,x.id===i.id)).join('');
+  const all=pollTabList().some(x=>x[0]==='rounds')?`<div class="menu-sep"></div><button type="button" role="menuitem" data-atab="rounds"><span class="grow">${t('All rounds')}</span></button>`:'';
+  return `<details class="dd pickdd instdd" id="instdd"><summary class="chip" title="${t('Switch round')}" aria-label="${t('Switch round')}: ${esc(instLabel(i))}">${lbl}</summary><div class="ddp menu pickm" role="menu">${items}${all}</div></details>`;
+}
   navigator.share({title:b.dataset.ntitle,text:b.dataset.nshare}).catch(()=>{}); });
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta"><span class="chip">${ICON.cal}${esc(instLabel(i))}</span>${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+    <div class="meta">${roundChip(d,i)}${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
@@ -7452,6 +7468,8 @@ function germanText(){ return {
 "Rescheduled to \"sometime\"": "Verschoben auf „irgendwann“",
 "Response not found": "Antwort nicht gefunden",
 "Rest maybe": "Rest vielleicht",
+"Switch round": "Runde wechseln",
+"All rounds": "Alle Runden",
 "Rounds": "Runden",
 "Save": "Speichern",
 "Save profile": "Profil speichern",
