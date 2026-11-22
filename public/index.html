@@ -5124,7 +5124,7 @@ function bestBlock(s){ // longest contiguous run of best hours
 
 // ---- shared pieces for every view (same colours, legend wording and markers everywhere) ----
 const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], maybe:['var(--maybe)','Maybe'], blank:['var(--empty)','No','gry'],
-  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','More free'], best:['var(--yes-dark)','Best hours'],
+  heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','Some free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe'],
   mstripe:['var(--maybe)','Rest maybe'],
   draft:['var(--sel-bg)','Draft','drf'], meeting:['var(--accent)','Scheduled','sym','★'], busy:['var(--busy-hatch),var(--sunken)','Busy'], obusy:['var(--obusy-hatch),var(--card)','Others busy'],
@@ -5183,7 +5183,7 @@ function renderGroup(el){
   const gTip=(d.isAdmin?t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details and to schedule a meeting.'):t('Each day shows how many are free at the best time (+ how many said “maybe”). Tap a day for details.'))+' '+t('Darker = more of them are free. The line under a day shows how many are free, free if needed or maybe.');
   let h=`<div class="asec">${secH('cal',t('Calendar'),{tip:gTip})}${vrow('',whoDropdown(),monthPager(d.dates).html)}`;
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
-  h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
+  h+=legend(d.dates.some(k=>S[k].peak===tot)?'allfree':'','heat','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
   if(!P.ovDay) P.ovShown=null;
   if(P.ovDay && S[P.ovDay]){
@@ -5388,7 +5388,7 @@ function renderPlanner(S,who){
     const pager=`<div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button>${lblLS(`${dLabel(real[0])} – ${dLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>`;
     const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
-    h+=vrow(viewSeg+pickSeg(),who,pager)+legend('heat','allfree','monly','mstripe','draft','meeting')+`
+    h+=vrow(viewSeg+pickSeg(),who,pager)+legend('allfree','heat','monly','mstripe','draft','meeting')+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const nd=k?draftsAt(k).length:0;
       h+=`<div class="hd${nd?' dr':''}${k&&P.panchor===k?' da':''}"${nd>1?` data-dn="${nd}"`:''} ${k?`data-pday="${k}" title="${hourMode()?t('Add a meeting over the poll hours on {day}. Drag across days for one per day.',{day:esc(dLabel(k))}):isWeekly()?t('Add an all-day meeting on {day}',{day:esc(dLabel(k))}):t('Add an all-day meeting on {day}. Drag across days for a trip or offsite.',{day:esc(dLabel(k))})}"`:''}>${k?WD[wdOf(k)]:'&nbsp;'}<b>${k?dNum(k)||'&nbsp;':'&nbsp;'}</b></div>`; });
@@ -7500,7 +7500,7 @@ function germanText(){ return {
 "Create {n} meetings": "{n} Termine erstellen",
 "Created": "Erstellt",
 "Danger zone": "Gefahrenzone",
-"More free": "Mehr frei",
+"Some free": "Einige frei",
 "Dates": "Daten",
 "Days": "Tage",
 "Days or hours": "Tage oder Stunden",
