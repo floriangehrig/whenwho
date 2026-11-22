@@ -274,6 +274,16 @@
   .pat-chips .em-pill.cur{box-shadow:0 0 0 2px var(--accent);font-weight:650}
   @keyframes chipIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){ .pat-chips .em-pill{animation:none} }
+  /* Quick Suggest: pick dates of the round */
+  .dtchips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;flex:1 1 280px;min-width:0}
+  .dtc{font:inherit;width:42px;height:42px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;padding:0;transition:background .12s,color .12s,border-color .12s}
+  .dtc small{font-size:10.5px;color:var(--muted);font-weight:500}
+  .dtc b{font-size:14px;font-weight:650}
+  .dtc:hover{border-color:var(--accent)}
+  .dtc.on{background:var(--accent);border-color:var(--accent);color:#fff} .dtc.on small{color:#fff;opacity:.85}
+  .dtc.dim:not(.on){opacity:.5}
+  .dtm{font-size:12px;font-weight:600;color:var(--muted);flex-basis:100%;margin-top:2px}
+  .dtm:first-child{margin-top:0}
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
   /* quick fill: tighter panel; on phones the row labels go (the controls say what they are) and the brush stays on one line */
   .qf .patp{gap:8px;padding:10px 12px}
@@ -1466,7 +1476,7 @@
   #body{container-type:inline-size}
   @container (max-width:720px){ .tbar .brush .bl{display:none} .tbar .seg.brush button{padding:0;width:30px} }
   @container (max-width:520px){ .tbar .iseg .bl{display:none} .ws-tools.tbar{flex-wrap:wrap;row-gap:6px} }
-  /* Suggest panel (planner ⚡): steppers for each setting (a number, or a toggle like All / Auto) */
+  /* Quick Suggest panel (planner ⚡): steppers for each setting (a number, or a toggle like All / Auto) */
   .sugp .pat-l{width:74px} .sugp .patp{margin-top:0}
   .sugp .check{display:inline-flex;align-items:center;gap:5px;font-size:14px}
   .sugp .check .dot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c)}
@@ -1883,8 +1893,10 @@ function patInner(id){
   const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
   const pre=(v,l,on)=>`<button type="button" data-patpre="${id}" data-v="${v}" class="${on?'on':''}" aria-pressed="${!!on}">${esc(l)}</button>`;
   const wk=[...st.wd].sort().join(''), dm=st.dom.map(x=>x===''?'':+x).join('-');
-  return `${st.title?`<div class="boxh">${st.title}</div>`:''}<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
-      <span class="pat-pre">${pre('all',t('Every day'),wk==='0123456')}${pre('wk',t('Weekdays'),wk==='01234')}${pre('we',t('Weekends'),wk==='56')}</span></div>
+  // daysRow (optional): replaces the weekday row, given a function that draws it with a label (e.g. Quick Suggest's Weekdays | Dates).
+  const wdRow=l=>`<div class="pat-row"><span class="pat-l">${l}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
+      <span class="pat-pre">${pre('all',t('Every day'),wk==='0123456')}${pre('wk',t('Weekdays'),wk==='01234')}${pre('we',t('Weekends'),wk==='56')}</span></div>`;
+  return `${st.title?`<div class="boxh">${st.title}</div>`:''}${st.daysRow?st.daysRow(wdRow):wdRow(t('Days'))}
     <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in"><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">–<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"></span>
       <span class="pat-pre">${pre('d1','1–15',dm==='1-15')}${pre('d2','16–31',dm==='16-31')}</span>${tip(t('Only these days of each month (1–31). Leave empty for every day.'))}</div>
     <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
@@ -3559,7 +3571,7 @@ const HIST={ans:null, plan:null}, HIST_MAX=50;
 const MODK=/Mac|iP(hone|ad|od)/.test(navigator.platform||'')?'⌘':'Ctrl+';
 function histSnap(kind){
   if(kind==='ans') return JSON.stringify({e:P.mine.entries, qb:P.qfBase, qo:P.qfOver, ql:P.qfLast, qa:P.qfApplied, qr:PAT.qf?PAT.qf.rules||null:null, qf:P.qfFor});
-  return JSON.stringify({d:P.drafts||[], sd:P.sugDates&&P.sugDates.poll===P.id?[...P.sugDates.set]:null});
+  return JSON.stringify({d:P.drafts||[], sd:P.sugDates&&P.sugDates.poll===P.id?[...P.sugDates.set]:null, sm:sugMode()});
 }
 function histTick(kind){
   if(!P.data||!P.mine||!P.iid) return null;
@@ -3577,7 +3589,7 @@ function histRestore(kind,s){
     P.aiUndo=null; changed();
   } else {
     P.drafts=o.d||[]; P.drafts.forEach(x=>{ if(x.key>draftSeq) draftSeq=x.key; });
-    P.sugDates=o.sd?{poll:P.id,set:new Set(o.sd)}:null; P.sugAiUndo=null;
+    P.sugDates=o.sd?{poll:P.id,set:new Set(o.sd)}:null; sugSetMode(o.sm||'wd'); P.sugAiUndo=null;
   }
 }
 function histStep(kind,dir){
@@ -5514,8 +5526,9 @@ function wirePlanner(){
     grid.querySelectorAll('.slot[data-k]').forEach(c=>c.classList.toggle('dp',cells.has(c.dataset.k+'|'+c.dataset.h)));
     grid.querySelectorAll('.hd[data-pday]').forEach(c=>c.classList.toggle('dp',full.has(c.dataset.pday))); });
 }
-// ---- Suggest (planner): ⚡ opens a settings panel like Quick fill. Settings are remembered per browser (sugopt);
-// days and hours (PAT.sug) are per poll, in memory.
+// ---- Quick Suggest (planner): ⚡ opens a settings panel like Quick fill. Settings are remembered per browser (sugopt);
+// days and hours (PAT.sug) are per poll, in memory. Days are picked by weekday or as dates of the round
+// (sugMode() 'dates': P.sugDates, also set by Suggest with AI).
 // n: how many (0 = all) per 'all' | 'week' | 'month'; len: hours per meeting (0 = auto: longest best block);
 // min: at least this many of the selected people free (0 = all of them); gap: days between meetings; ifn / maybe: count those answers as free.
 // step: hours between start times (0 = off: the best time per day; else every start, overlapping, as separate options).
@@ -5528,9 +5541,27 @@ function sugOpts(){
   return o;
 }
 const sugSet = ch => store.set('sugopt',Object.assign(sugOpts(),ch));
-const sugCustom = () => { const o=sugOpts(); return Object.keys(SUG0).filter(k=>o[k]!==SUG0[k]).length+(PAT.sug&&PAT.sug.poll===P.id&&patRule('sug')&&!patRule('sug').dflt?1:0)+(sugDates()?1:0); };
-// Only these dates (set by Suggest with AI, e.g. "next week"): {poll, set} for the open poll, else null.
-const sugDates = () => P.sugDates&&P.sugDates.poll===P.id&&P.sugDates.set.size?P.sugDates.set:null;
+const sugCustom = () => { const o=sugOpts(); return Object.keys(SUG0).filter(k=>o[k]!==SUG0[k]).length+(PAT.sug&&PAT.sug.poll===P.id&&patRule('sug')&&!patRule('sug').dflt?1:0)+(sugMode()==='dates'?1:0); };
+// Days by 'wd' (weekday chips) or 'dates' (picked dates of the round). Weekly polls only have weekdays.
+const sugMode = () => !isWeekly()&&P.sugModeFor===P.id&&P.sugMode==='dates'?'dates':'wd';
+const sugSetMode = v => { P.sugMode=v; P.sugModeFor=P.id; };
+// The picked dates (Dates mode; Suggest with AI sets them too, e.g. "next week"): a Set for the open poll, else null.
+const sugDates = () => sugMode()==='dates'&&P.sugDates&&P.sugDates.poll===P.id&&P.sugDates.set.size?P.sugDates.set:null;
+// Days row of the panel: Weekdays | Dates, then the weekday chips or a chip per date of the round.
+function sugDaysRow(wdRow){
+  if(isWeekly()) return wdRow(t('Days'));
+  const m=sugMode(), b=(v,l)=>`<button type="button" data-sugmode="${v}" class="${m===v?'on':''}" aria-pressed="${m===v}">${esc(l)}</button>`;
+  let h=`<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="seg">${b('wd',t('By weekday'))}${b('dates',t('Pick dates'))}</div>${tip(t('By weekday: every date of the round on those days. Pick dates: only the exact dates you choose. With Options on, every start time in the hours below becomes its own option on each date.'),'right')}</div>`;
+  if(m!=='dates') return h+wdRow('');
+  const ks=P.data.dates||[], on=P.sugDates&&P.sugDates.poll===P.id?P.sugDates.set:new Set(), busy=new Set(confirmedMeetings().flatMap(x=>spanDays(x.date,mEnd(x))));
+  const n=ks.filter(k=>on.has(k)).length, pre=(v,l)=>`<button type="button" data-sugdtp="${v}">${esc(l)}</button>`;
+  let c='', mo='';
+  ks.forEach(k=>{ const d=parseD(k), mk=k.slice(0,7);
+    if(mk!==mo){ mo=mk; c+=`<span class="dtm">${esc(d.toLocaleDateString(LOC,{month:'long',year:'numeric'}))}</span>`; }
+    c+=`<button type="button" class="dtc${on.has(k)?' on':''}${busy.has(k)?' dim':''}" data-sugdt="${k}" aria-pressed="${on.has(k)}" aria-label="${esc(dayLabel(k))}" title="${esc(dayLabel(k)+(busy.has(k)?' · '+t('Meeting set'):''))}"><small>${esc(WD[wdOf(k)].slice(0,2))}</small><b>${d.getDate()}</b></button>`; });
+  return h+`<div class="pat-row"><span class="pat-l"></span><div class="dtchips" role="group" aria-label="${t('Dates')}">${c}</div></div>
+    <div class="pat-row"><span class="pat-l"></span><span class="pat-pre">${pre('all',t('All'))}${pre('none',t('None'))}${pre('wk',t('Weekdays'))}${pre('we',t('Weekends'))}</span><span class="muted small">${n===1?t('{n} date picked',{n}):t('{n} dates picked',{n})}</span></div>`;
+}
 // − value + (and an optional toggle button, e.g. "All") for one setting.
 function sugStep(key,val,{min=0,max=99,ph='',tog='',togOn=false,label}){
   return `<span class="sugn" role="group" aria-label="${esc(label)}" title="${esc(label)}">
@@ -5560,32 +5591,33 @@ function sugPanel(){
     t('Only suggest times when at least this many of the selected people are free for the whole meeting.'));
   if(!ladder) h+=row(t('Gap'),`<span class="pat-in sug-al">${t('At least')}</span>`+sugStep('gap',o.gap,{min:0,max:60,label:t('Days between meetings')})+`<span class="muted small">${t('days apart')}</span>`,
     t('Keep meetings at least this many days apart, so they don’t bunch up. 0 = any day.'));
-  const only=sugDates();
-  if(only){ const ks=[...only].sort(), lab=ks.length<=4?ks.map(k=>dLabel(k)).join(', '):`${dLabel(ks[0])} – ${dLabel(ks[ks.length-1])} (${t('{n} days',{n:ks.length})})`;
-    h+=row(t('Dates'),`<span class="pat-in">${t('Only')} ${esc(lab)} ${ib('x',t('Any date'),'data-sugdates','sm ghost')}</span>`,
-      t('Set by Suggest with AI. Remove it to look at every date again.')); }
   h+=row(t('Counts'),`<label class="check m0"><input type="checkbox" data-sugck="ifn" ${o.ifn?'checked':''}> <span class="dot" style="--c:var(--ifn)"></span>${t('If needed')}</label>
       <label class="check m0"><input type="checkbox" data-sugck="maybe" ${o.maybe?'checked':''}> <span class="dot" style="--c:var(--maybe)"></span>${t('Maybe')}</label>`,
     t('Which answers count as free. Available always does.'));
-  PAT.sug.extraRow=()=>h;
+  PAT.sug.extraRow=()=>h; PAT.sug.daysRow=sugDaysRow;
   PAT.sug.sumEnd=null; PAT.sug.noSum=true;
-  PAT.sug.title=`${ICON.zap}<span>${t('Suggest')}</span>${tip(t('Pick days, hours and rules, then Suggest adds the best times for the selected people as drafts.'))}`;
+  PAT.sug.title=`${ICON.zap}<span>${t('Quick Suggest')}</span>${tip(t('Pick days or dates, hours and rules, then Suggest adds the best times for the selected people as drafts.'))}`;
   PAT.sug.actHtml=()=>`<div class="qf-draft"><button type="button" class="btn sm primary withic" data-suggest ${tot?'':'disabled'}>${ICON.zap}<span>${t('Suggest')}</span></button>${sugCustom()?`<button type="button" class="btn sm ghost" data-sugreset>${t('Reset')}</button>`:''}</div>`;
   return `<div class="qf sugp" id="sugp">${patternPicker('sug',{hs:p.hourStart,he:p.hourEnd,hmin:p.hourStart,hmax:p.hourEnd,hours:slotsOn,keep:true,noDom:true})}</div>`;
 }
 function sugRedraw(){ const el=$('sugp'); if(el) el.outerHTML=sugPanel(); const b=document.querySelector('[data-sugopen]'); if(b){ const n=sugCustom(); b.querySelector('.badge')?.remove(); b.classList.toggle('badgeb',!!n); if(n) b.insertAdjacentHTML('beforeend',`<span class="badge">${n}</span>`); } }
 function sugButton(){
   const n=sugCustom(), tot=sel().length;
-  return `<button type="button" class="btn sm withic ib${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Suggest best times…'))}" aria-label="${esc(t('Suggest best times…'))}">${ICON.zap}<span class="bl">${t('Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
+  return `<button type="button" class="btn sm withic ib${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Quick Suggest: best times…'))}" aria-label="${esc(t('Quick Suggest: best times…'))}">${ICON.zap}<span class="bl">${t('Quick Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-sugopen]')){ P.sugOpen=!P.sugOpen; renderBody(); return; }
   if(!e.target.closest('#sugp')) return;
-  const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset],[data-sugdates]'); if(!b) return;
+  const b=e.target.closest('[data-sugstep],[data-sugtog],[data-sugseg],[data-sugreset],[data-sugmode],[data-sugdt],[data-sugdtp]'); if(!b) return;
   const ds=b.dataset, o=sugOpts(), tot=sel().length, maxLen=Math.max(1,P.data.poll.hourEnd-P.data.poll.hourStart);
   const lim={n:[1,99],len:[1,maxLen],min:[1,Math.max(1,tot)],gap:[0,60],step:[1,12]};
-  if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); P.sugDates=null; if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
-  if(ds.sugdates!==undefined){ P.sugDates=null; sugRedraw(); return; }
+  if(ds.sugreset!==undefined){ store.del('sugopt'); store.set('sugn',SUG0.n); P.sugDates=null; sugSetMode('wd'); if(PAT.sug){ patResetDraft(PAT.sug); } sugRedraw(); return; }
+  if(ds.sugmode){ sugSetMode(ds.sugmode); sugRedraw(); return; }
+  if(ds.sugdt||ds.sugdtp){ if(!P.sugDates||P.sugDates.poll!==P.id) P.sugDates={poll:P.id,set:new Set()};
+    const st=P.sugDates.set, ks=P.data.dates||[];
+    if(ds.sugdt) st.has(ds.sugdt)?st.delete(ds.sugdt):st.add(ds.sugdt);
+    else { st.clear(); const v=ds.sugdtp; ks.filter(k=>v==='all'||(v==='wk'&&wdOf(k)<5)||(v==='we'&&wdOf(k)>=5)).forEach(k=>st.add(k)); }
+    sugRedraw(); return; }
   if(ds.sugseg){ sugSet({[ds.sugseg]:ds.v}); sugRedraw(); return; }
   if(ds.sugtog){ const k=ds.sugtog; sugSet({[k]:o[k]?0:(k==='n'?3:k==='len'?2:k==='step'?1:Math.max(1,tot-1))}); sugRedraw(); return; }
   if(ds.sugstep){ const k=ds.sugstep, [lo,hi]=lim[k], cur=k==='min'&&!o.min?tot:k==='len'&&o.step&&!o.len?Math.min(hi,2):(o[k]||(k==='gap'?0:lo-(+ds.d>0?1:0)));
@@ -5635,14 +5667,15 @@ const dayDiff = (a,b) => Math.round(Math.abs(parseD(a)-parseD(b))/864e5);
 function suggestDrafts(){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', rs=sel(), tot=rs.length, o=sugOpts(), wk=isWeekly(), per=wk?'all':o.per;
   if(!tot) return;
-  const pr=PAT.sug&&PAT.sug.poll===P.id?patRule('sug'):null;
-  if(PAT.sug&&PAT.sug.poll===P.id&&!pr){ const m=t('Pick at least one day'); toast(m); return m; }
-  const pat=pr?pr.pat:null, hs=pr?pr.hs:d.poll.hourStart, he=pr?pr.he:d.poll.hourEnd;
+  const ps=PAT.sug&&PAT.sug.poll===P.id?PAT.sug:null, pr=ps?patRule('sug'):null, dm=sugMode()==='dates', only=sugDates();
+  if(dm&&!only){ const m=t('Pick at least one date'); toast(m); return m; }
+  if(!dm&&ps&&!pr){ const m=t('Pick at least one day'); toast(m); return m; }
+  // Dates mode: the picked dates replace the weekday rule; the hours still come from the picker.
+  const pat=dm?null:pr?pr.pat:null, hs=pr?pr.hs:ps?ps.hs:d.poll.hourStart, he=pr?pr.he:ps?ps.he:d.poll.hourEnd;
   const need=o.min?Math.min(o.min,tot):tot;
   const used=[...P.drafts.flatMap(x=>spanDays(x.date,mEnd(x))),...confirmedMeetings().flatMap(m=>spanDays(m.date,mEnd(m)))], usedSet=new Set(used);
   const bucket=k=>per==='week'?addDaysL(k,-wdOf(k)):per==='month'?k.slice(0,7):'all', cnt={};
   used.forEach(k=>{ const b=bucket(k); cnt[b]=(cnt[b]||0)+1; });
-  const only=sugDates();
   if(slotsOn&&o.step) return suggestSlots(rs,o,pat,hs,he,need,only,per,bucket);
   const cands=d.dates.filter(k=>!usedSet.has(k)&&matchPat(k,pat)&&(!only||only.has(k))).map(k=>sugBest(k,rs,o,slotsOn,hs,he)).filter(x=>x&&x.free>=need)
     .sort((a,b)=>b.free-a.free||a.ifn-b.ifn||a.may-b.may||a.k.localeCompare(b.k));
@@ -5689,7 +5722,7 @@ function sugAi(){
   if(!P.sugAiOpen||!sugAiOk()) return '';
   const u=P.sugAiUndo&&P.sugAiUndo.poll===P.id, msg=P.sugAiMsg||'';
   return `<div class="aif sugai"><div class="patp">
-    <div class="boxh">${ICON.spark}<span>${t('Suggest with AI')}</span>${tip(t('Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Suggest, where you can change them.'))}</div>
+    <div class="boxh">${ICON.spark}<span>${t('Suggest with AI')}</span>${tip(t('Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Quick Suggest, where you can change them.'))}</div>
     <textarea id="sugAiText" rows="4" maxlength="500" placeholder="${esc(t('e.g. 2 evening meetings a week, 2 hours each, at least 4 people, not on Fridays'))}">${esc(P.sugAiText||'')}</textarea>
     <div class="aif-go"><button type="button" class="btn sm primary withic" data-sugaigo ${P.sugAiBusy?'disabled':''}>${ICON.spark}<span>${P.sugAiBusy?t('Reading…'):t('Suggest with AI')}</span></button>
       ${u?`<button type="button" class="btn sm ghost" data-sugaiundo>${t('Undo')}</button>`:''}
@@ -5703,11 +5736,11 @@ async function sugAiGo(){
   P.sugAiBusy=true; P.sugAiErr=false; P.sugAiMsg=''; renderBody();
   try{
     const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/suggest-text`,{text,people:sel().length},headers());
-    P.sugAiUndo={poll:P.id,opts:store.get('sugopt',null),pat:sugPatSnap(),dates:P.sugDates,drafts:P.drafts.slice()};
+    P.sugAiUndo={poll:P.id,opts:store.get('sugopt',null),pat:sugPatSnap(),dates:P.sugDates,mode:sugMode(),drafts:P.drafts.slice()};
     store.set('sugopt',Object.assign({},SUG0,r.s||{}));
     P.sugOpen=true; sugPanel(); // makes PAT.sug for this poll
     if(PAT.sug){ PAT.sug.wd=new Set(r.wd&&r.wd.length?r.wd:[0,1,2,3,4,5,6]); PAT.sug.hs=r.hs; PAT.sug.he=r.he; }
-    P.sugDates=r.dates&&r.dates.length?{poll:P.id,set:new Set(r.dates)}:null;
+    P.sugDates=r.dates&&r.dates.length?{poll:P.id,set:new Set(r.dates)}:null; sugSetMode(P.sugDates?'dates':'wd');
     P.sugAiMsg=suggestDrafts()||'';
   }catch(e){ P.sugAiErr=true; P.sugAiMsg=e.message; }
   P.sugAiBusy=false; renderBody();
@@ -5716,7 +5749,7 @@ function sugAiUndo(){
   const u=P.sugAiUndo; if(!u||u.poll!==P.id) return;
   if(u.opts) store.set('sugopt',u.opts); else store.del('sugopt');
   if(PAT.sug&&u.pat) Object.assign(PAT.sug,u.pat); else if(PAT.sug) patResetDraft(PAT.sug);
-  P.sugDates=u.dates; P.drafts=u.drafts; P.sugAiUndo=null; P.sugAiMsg=t('Undone'); P.sugAiErr=false; renderBody();
+  P.sugDates=u.dates; sugSetMode(u.mode||'wd'); P.drafts=u.drafts; P.sugAiUndo=null; P.sugAiMsg=t('Undone'); P.sugAiErr=false; renderBody();
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-sugai]')){ P.sugAiOpen=!P.sugAiOpen; if(!P.sugAiUndo||P.sugAiUndo.poll!==P.id){ P.sugAiMsg=''; P.sugAiErr=false; } renderBody(); if(P.sugAiOpen) $('sugAiText')?.focus(); return; }
@@ -7162,7 +7195,14 @@ function germanText(){ return {
 "Group not found": "Gruppe nicht gefunden",
 "Members must be a list": "Mitglieder müssen eine Liste sein",
 "Only these days of each month (1–31). Leave empty for every day.": "Nur diese Tage jedes Monats (1–31). Leer lassen für alle Tage.",
-"Pick days, hours and rules, then Suggest adds the best times for the selected people as drafts.": "Tage, Uhrzeiten und Regeln wählen, dann fügt Vorschlagen die besten Zeiten für die ausgewählten Personen als Entwürfe hinzu.",
+"Pick days or dates, hours and rules, then Suggest adds the best times for the selected people as drafts.": "Tage oder Daten, Uhrzeiten und Regeln wählen, dann fügt Vorschlagen die besten Zeiten für die ausgewählten Personen als Entwürfe hinzu.",
+"Quick Suggest": "Schnellvorschlag",
+"By weekday": "Nach Wochentag",
+"Pick dates": "Daten wählen",
+"By weekday: every date of the round on those days. Pick dates: only the exact dates you choose. With Options on, every start time in the hours below becomes its own option on each date.": "Nach Wochentag: jedes Datum der Runde an diesen Tagen. Daten wählen: nur die Daten, die du auswählst. Mit Optionen wird jede Startzeit in den Uhrzeiten unten an jedem Datum zu einer eigenen Option.",
+"{n} date picked": "{n} Datum gewählt",
+"{n} dates picked": "{n} Daten gewählt",
+"Pick at least one date": "Wähl mindestens ein Datum",
 "Poll sections": "Bereiche der Umfrage",
 "The organiser hasn’t scheduled any meetings yet.": "Die Organisator:in hat noch keine Termine festgelegt.",
 "{n} of {total} answered": "{n} von {total} haben geantwortet",
@@ -7205,7 +7245,7 @@ function germanText(){ return {
 "Too many tags in one message": "Zu viele Erwähnungen in einer Nachricht",
 "Fill with AI": "Mit KI ausfüllen",
 "Suggest with AI": "Mit KI vorschlagen",
-"Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Suggest, where you can change them.": "Beschreib die Termine, die du willst. Nur dieser Text geht an Cloudflare Workers AI (keine Antworten oder Namen) und wird nicht gespeichert. Die gewählten Einstellungen erscheinen unter Vorschlagen, wo du sie ändern kannst.",
+"Describe the meetings you want. Only this text is sent to Cloudflare Workers AI (no answers or names), and it isn’t stored. The settings it picks show up under Quick Suggest, where you can change them.": "Beschreib die Termine, die du willst. Nur dieser Text geht an Cloudflare Workers AI (keine Antworten oder Namen) und wird nicht gespeichert. Die gewählten Einstellungen erscheinen unter Schnellvorschlag, wo du sie ändern kannst.",
 "e.g. 2 evening meetings a week, 2 hours each, at least 4 people, not on Fridays": "z. B. 2 Abendtermine pro Woche, je 2 Stunden, mindestens 4 Leute, nicht freitags",
 "Describe the meetings first.": "Beschreib zuerst die Termine.",
 "Set by Suggest with AI. Remove it to look at every date again.": "Von „Mit KI vorschlagen“ gesetzt. Entfernen, um wieder alle Tage zu berücksichtigen.",
@@ -7293,7 +7333,7 @@ function germanText(){ return {
 "Counts": "Zählt",
 "Which answers count as free. Available always does.": "Welche Antworten als frei zählen. Verfügbar zählt immer.",
 "Reset": "Zurücksetzen",
-"Suggest best times…": "Beste Zeiten vorschlagen…",
+"Quick Suggest: best times…": "Schnellvorschlag: beste Zeiten…",
 "No more times fit these settings": "Mit diesen Einstellungen passen keine weiteren Zeiten",
 "No times match these settings": "Keine Zeiten passen zu diesen Einstellungen",
 "Clear my own marks": "Nur meine eigenen Markierungen löschen",
