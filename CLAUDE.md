@@ -88,7 +88,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   with a reason), in deletion order. Restriction / objection requests go by email (`CONTACT_EMAIL`, mailto on the card).
 - **Retention** (GDPR storage limitation): once a day (03:17 UTC cron run) `deleteStalePolls` deletes up to 25 polls with no activity
   for `RETAIN_MONTHS` (default 12, `"0"` = off): no poll change, answer, chat message or chat read since, and (single polls, or series
-  rounds with meetings) the last day has passed. Uses `pollDeleteStmts` (same as deleting a poll). Stated in `renderPrivacy`.
+  rounds with meetings) the last day has passed. 14 days before (`RETAIN_WARN_DAYS`) the owner is emailed (`retentionWarning`,
+  `polls.retention_warned_at`, 0021); only polls warned in the current quiet spell are deleted, and the owner opening the poll
+  (`getPoll`) clears the mark and keeps it. Uses `pollDeleteStmts` (same as deleting a poll). Stated in `renderPrivacy`.
 - **Place search** (location fields of meetings): the page asks `GET /api/places?q=&lang=`, which forwards the text to Photon
   (photon.komoot.io, OpenStreetMap) and caches the trimmed answer for a day. It runs before the session lookup (one call per keystroke).
   Server-side first (direct browser requests get blocked on phones: content blockers, shared mobile IPs); when `/api/places`

@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-BzWODRqQhx6DHwZ/Nj71/r+fw6zvnrYVGfquQkoiMRw=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-6kZ2cYbxZG4OxqLBwaM4t8lMRIcqBwpgXohlM0Lcrz8=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -843,7 +843,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0020';
+const USER_DATA_REVIEWED = '0021';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1844,6 +1844,8 @@ async function getPoll(request, env, ctx, url, id) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, poll);
   if (!admin) await checkPassword(env, request, poll);
+  // The owner opened a poll that was about to be deleted for being old: keep it (counts as activity).
+  if (admin && poll.retention_warned_at) await env.DB.prepare('UPDATE polls SET retention_warned_at = NULL, updated_at = ? WHERE id = ?').bind(now(), id).run();
   const created = await ensureCurrent(env, poll);
   if (created) ctx.waitUntil(notifyOpened(env, poll, created, url.origin).catch((e) => console.error(e)));
   const { results: all } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
@@ -1951,27 +1953,62 @@ const pollDeleteStmts = (env, id) => ['responses', 'participants', 'instances', 
 // Storage limitation (GDPR Art. 5(1)(e)): a poll with no activity for RETAIN_MONTHS is deleted with everything in it.
 // Activity = the poll or its settings changing, an answer given or edited, a chat message or someone reading the chat,
 // and for a single poll (or a series round with meetings) its dates: a poll isn't old before its last day has passed.
+// RETAIN_WARN_DAYS before that the owner gets an email (retention_warned_at); opening the poll as its owner keeps it
+// (getPoll clears the mark and counts as a change). A poll is deleted only with a warning newer than its last activity:
+// one older than the warn cutoff belongs to an earlier quiet spell, so the poll is warned again instead.
 // Runs once a day from the cron job, a few polls at a time so one run stays small.
 const RETAIN_MONTHS = 12;    // default for env.RETAIN_MONTHS ("0" turns the clean-up off)
-const RETAIN_BATCH = 25;     // polls deleted per daily run at most
-async function deleteStalePolls(env) {
-  const months = env.RETAIN_MONTHS != null ? Number(env.RETAIN_MONTHS) : RETAIN_MONTHS;
-  if (!(months > 0)) return 0;
-  const d = new Date(); d.setUTCMonth(d.getUTCMonth() - months);
-  const cutoff = d.toISOString();
-  const { results } = await env.DB.prepare(
-    `SELECT p.id FROM polls p WHERE MAX(p.updated_at, p.created_at) < ?1
+const RETAIN_WARN_DAYS = 14; // warning email this many days before deletion
+const RETAIN_BATCH = 25;     // polls warned and polls deleted per daily run at most
+const STALE_SQL = `MAX(p.updated_at, p.created_at) < ?1
        AND NOT EXISTS (SELECT 1 FROM responses r WHERE r.poll_id = p.id AND r.updated_at >= ?1)
        AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.poll_id = p.id AND COALESCE(m.updated_at, m.created_at) >= ?1)
        AND NOT EXISTS (SELECT 1 FROM chat_reads c WHERE c.poll_id = p.id AND c.read_at >= ?1)
        AND NOT EXISTS (SELECT 1 FROM instances i WHERE i.poll_id = p.id AND i.end_date >= ?2
-                       AND (p.kind = 'single' OR i.meetings <> '[]'))
-     LIMIT ?3`).bind(cutoff, cutoff.slice(0, 10), RETAIN_BATCH).all();
-  for (const { id } of results) {
+                       AND (p.kind = 'single' OR i.meetings <> '[]'))`;
+async function deleteStalePolls(env, at = new Date()) {
+  const months = env.RETAIN_MONTHS != null ? Number(env.RETAIN_MONTHS) : RETAIN_MONTHS;
+  if (!(months > 0)) return { warned: 0, deleted: 0 };
+  const d = new Date(at); d.setUTCMonth(d.getUTCMonth() - months);
+  const delCut = d.toISOString();
+  const warnCut = new Date(d.getTime() + RETAIN_WARN_DAYS * 86400000).toISOString();
+  const warnedBy = new Date(at.getTime() - RETAIN_WARN_DAYS * 86400000).toISOString();
+  // 1. Delete: quiet for the full period and warned (in this quiet spell) at least RETAIN_WARN_DAYS ago.
+  const { results: gone } = await env.DB.prepare(`SELECT p.id FROM polls p WHERE ${STALE_SQL}
+       AND p.retention_warned_at IS NOT NULL AND p.retention_warned_at <= ?3 AND p.retention_warned_at >= ?4 LIMIT ?5`)
+    .bind(delCut, delCut.slice(0, 10), warnedBy, warnCut, RETAIN_BATCH).all();
+  for (const { id } of gone) {
     await env.DB.batch(pollDeleteStmts(env, id));
     console.log('retention: deleted poll', id);
   }
-  return results.length;
+  // 2. Warn: quiet for the period minus RETAIN_WARN_DAYS, and no warning in this quiet spell yet.
+  const { results: due } = await env.DB.prepare(`SELECT p.* FROM polls p WHERE ${STALE_SQL}
+       AND (p.retention_warned_at IS NULL OR p.retention_warned_at < ?1) LIMIT ?3`)
+    .bind(warnCut, warnCut.slice(0, 10), RETAIN_BATCH).all();
+  for (const poll of due) {
+    try { await retentionWarning(env, poll, months, new Date(at.getTime() + RETAIN_WARN_DAYS * 86400000).toISOString().slice(0, 10)); }
+    catch (e) { console.error('retention warning', poll.id, e); continue; } // not marked: tried again tomorrow
+    await env.DB.prepare('UPDATE polls SET retention_warned_at = ? WHERE id = ?').bind(at.toISOString(), poll.id).run();
+  }
+  return { warned: due.length, deleted: gone.length };
+}
+// The owner's "will be deleted" email. Polls without an address to write to are still marked, so they go after the wait too.
+async function retentionWarning(env, poll, months, onDay) {
+  const owner = await ownerOf(env, poll);
+  const to = ((owner && owner.email) || poll.admin_email || '').toLowerCase();
+  const site = siteUrl(env, ''), link = `${site}/?p=${poll.id}`, de = poll.lang === 'de';
+  const day = fmtDay(onDay, poll.lang);
+  const subject = de ? `Deine Umfrage „${poll.title}“ wird am ${day} gelöscht` : `Your poll “${poll.title}” will be deleted on ${day}`;
+  const text = de
+    ? `In deiner Umfrage „${poll.title}“ ist seit ${months} Monaten nichts mehr passiert. Damit keine alten Daten liegen bleiben, löschen wir sie am ${day} mit allen Antworten und Nachrichten.\n\nWillst du sie behalten? Öffne sie einfach, während du angemeldet bist:\n${link}\n\nWenn du nichts tust, wird sie gelöscht.`
+    : `Nothing has happened in your poll “${poll.title}” for ${months} months. So old data doesn't pile up, we'll delete it on ${day}, with all its answers and messages.\n\nWant to keep it? Just open it while signed in:\n${link}\n\nIf you do nothing, it will be deleted.`;
+  if (!to || !EMAIL_RE.test(to)) return;
+  if (!emailEnabled(env)) { console.log(`[dev] retention warning to ${to}:\n${subject}\n${text}`); return; }
+  await sendEmail(env, {
+    fromName: 'when-who', to: [to], subject, text,
+    html: emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
+      { preheader: subject, button: { href: link, label: de ? 'Umfrage behalten' : 'Keep my poll' }, site, lang: langOf(poll.lang) }),
+  });
 }
 
 // ---------- instances ----------
