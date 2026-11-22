@@ -1971,7 +1971,6 @@ Object.assign(ICON,{
   info:svgI('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/>'),
   more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
   day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
-  span:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="6.5" y="13" width="11" height="4" rx="1.5" fill="currentColor" stroke="none"/>'),
   chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
   reply:svgI('<path d="M9.5 7.5 4.5 12l5 4.5"/><path d="M4.5 12h9a6 6 0 0 1 6 6v1"/>'),
   clip:svgI('<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/>'),
@@ -4016,7 +4015,7 @@ function renderMine(el){
   const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
-  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','brush',t('Paint: tap or drag')],['1','tap',P.mode==='slots'?t('One range: tap the first and the last hour'):t('One range: tap the first and the last day')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
+  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','tap',t('Single: tap or drag')],['1','brush',P.mode==='slots'?t('One range: tap the first and the last hour'):t('One range: tap the first and the last day')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
       return `<button type="button" class="amode${on?' on':''}" data-arange="${v}" aria-pressed="${on}" title="${lb}" aria-label="${lb}">${ICON[ic]}</button>`; }).join('')}<span class="asep" aria-hidden="true"></span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
@@ -4999,7 +4998,7 @@ function planShow(k){
 function pickSeg(){
   if(isWeekly()) return '';
   const b=(on,v,ic,l,tt)=>`<button data-prange="${v}" class="${on?'on':''}" title="${tt}" aria-label="${l}" aria-pressed="${on}"><span class="segic">${ICON[ic]}</span><span class="bl">${l}</span></button>`;
-  return `<div class="seg iseg pick">${b(!P.prange,'0','day',t('Separate days'),P.data.poll.answerMode!=='days'?t('Each tap or drag is its own meeting'):t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','span',t('One range'),P.data.poll.answerMode!=='days'?t('Tap the first and the last hour: one meeting from there to there, within the poll’s hours. Whole days in between become all-day meetings.'):t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
+  return `<div class="seg iseg pick">${b(!P.prange,'0','tap',t('Separate days'),P.data.poll.answerMode!=='days'?t('Each tap or drag is its own meeting'):t('Each tapped day is its own all-day meeting'))}${b(P.prange,'1','brush',t('One range'),P.data.poll.answerMode!=='days'?t('Tap the first and the last hour: one meeting from there to there, within the poll’s hours. Whole days in between become all-day meetings.'):t('Tap the first and the last day: one meeting over all days in between'))}</div>`;
 }
 function renderPlanner(S,who){
   const d=P.data, slotsOn=d.poll.answerMode!=='days', tot=sel().length, H=hours(), ms=inst().meetings;
@@ -7562,7 +7561,7 @@ function germanText(){ return {
 "Suggest": "Vorschlagen",
 "Off": "Aus",
 "Options": "Optionen",
-"Paint: tap or drag": "Malen: tippen oder ziehen",
+"Single: tap or drag": "Einzeln: tippen oder ziehen",
 "One range: tap the first and the last day": "Ein Bereich: ersten und letzten Tag antippen",
 "One range: tap the first and the last hour": "Ein Bereich: erste und letzte Stunde antippen",
 "Close multi-edit": "Mehrfachbearbeitung schließen",
