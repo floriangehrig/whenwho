@@ -212,6 +212,7 @@ async function route(request, env, ctx, url) {
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
     if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
+    if (b && c === 'busy' && !d && m === 'PUT') return shareBusy(request, env, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
   if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
@@ -1728,11 +1729,18 @@ async function getPoll(request, env, ctx, url, id) {
          FROM participants p WHERE p.poll_id = ? ORDER BY p.name COLLATE NOCASE`).bind(sel.id, id).all();
       out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered }));
     }
+    // Busy hours others chose to share with this poll (same visibility as answers; the caller's own is left out).
+    const caller = userOf(request);
+    const { results: sb } = await env.DB.prepare(
+      `SELECT p.id, p.name, p.user_id, s.hours, s.updated_at FROM shared_busy s JOIN participants p ON p.id = s.participant_id
+       WHERE s.instance_id = ? AND p.share_busy = 1 ORDER BY p.name COLLATE NOCASE`).bind(sel.id).all();
+    out.busy = sb.filter((r) => !caller || r.user_id !== caller.id)
+      .map((r) => ({ pid: r.id, name: r.name, hours: JSON.parse(r.hours), updatedAt: r.updated_at }));
   }
   const user = userOf(request);
   if (user) { // signed in: their answers are linked to the account
     const part = await accountParticipant(env, id, user.id);
-    out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null,
+    out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null, shareBusy: !!(part && part.share_busy),
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
     // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
@@ -1785,6 +1793,7 @@ async function deletePoll(request, env, id) {
     env.DB.prepare('DELETE FROM instances WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM messages WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM chat_reads WHERE poll_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM shared_busy WHERE poll_id = ?').bind(id),
     env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id),
   ]);
   return json({ ok: true });
@@ -1829,6 +1838,7 @@ async function deleteInstance(request, env, id, iid) {
   if (n <= 1) throw new HttpError(400, 'This is the only poll left. Delete the whole poll instead.');
   await env.DB.batch([
     env.DB.prepare('DELETE FROM responses WHERE instance_id = ?').bind(iid),
+    env.DB.prepare('DELETE FROM shared_busy WHERE instance_id = ?').bind(iid),
     env.DB.prepare('DELETE FROM instances WHERE id = ?').bind(iid),
   ]);
   return json({ ok: true });
@@ -2275,6 +2285,51 @@ async function requireInvited(env, poll, user, admin) {
   if (!g) throw new HttpError(403, 'Only invited people can answer this poll, and this account isn’t invited.', { code: 'not_invited' });
   await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(user.id, acctKey(user.id), user.email, g.id).run();
 }
+// ---------- shared busy hours ----------
+// PUT /api/polls/:id/instances/:iid/busy { share, hours? }: the caller's account participant turns sharing on / off.
+// hours = { "YYYY-MM-DD": [0..23] } for this round's dates, worked out in the sharer's browser from their own calendars.
+// Turning it off deletes everything they shared with this poll.
+const BUSY_PER_DAY = 300;
+async function shareBusy(request, env, id, iid) {
+  const user = requireUser(request);
+  const poll = await loadPoll(env, id);
+  const admin = await isAdmin(request, poll);
+  if (!admin) await checkPassword(request, poll);
+  const inst = await loadInstance(env, id, iid);
+  await requireInvited(env, poll, user, admin);
+  const part = await accountParticipant(env, id, user.id);
+  if (!part) throw new HttpError(409, 'Answer the poll first, then you can share your busy times');
+  const b = await body(request);
+  if (!b.share) {
+    await env.DB.batch([
+      env.DB.prepare('UPDATE participants SET share_busy = 0 WHERE id = ?').bind(part.id),
+      env.DB.prepare('DELETE FROM shared_busy WHERE participant_id = ?').bind(part.id),
+    ]);
+    return json({ ok: true, share: false });
+  }
+  const stmts = [env.DB.prepare('UPDATE participants SET share_busy = 1 WHERE id = ?').bind(part.id)];
+  if (b.hours !== undefined) {
+    if (!b.hours || typeof b.hours !== 'object' || Array.isArray(b.hours)) throw new HttpError(400, 'Invalid busy times');
+    const dates = new Set(datesOf(inst, poll)), keys = Object.keys(b.hours), out = {};
+    if (keys.length > 400) throw new HttpError(400, 'Invalid busy times');
+    for (const k of keys) {
+      const v = b.hours[k];
+      if (!dates.has(k) || !Array.isArray(v) || v.length > 24 || !v.every((h) => Number.isInteger(h) && h >= 0 && h <= 23)) throw new HttpError(400, 'Invalid busy times');
+      if (v.length) out[k] = [...new Set(v)].sort((x, y) => x - y);
+    }
+    const key = 'u:' + user.id, since = new Date(Date.now() - 86400000).toISOString();
+    const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, 'busy', since).first('n');
+    if (n >= BUSY_PER_DAY) throw new HttpError(429, 'Too many updates. Try again later.');
+    await recordFail(env, request, 'busy', key);
+    stmts.push(env.DB.prepare(
+      `INSERT INTO shared_busy (instance_id, participant_id, poll_id, hours, updated_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (instance_id, participant_id) DO UPDATE SET hours = excluded.hours, updated_at = excluded.updated_at`)
+      .bind(inst.id, part.id, id, JSON.stringify(out), now()));
+  }
+  await env.DB.batch(stmts);
+  return json({ ok: true, share: true });
+}
+
 const nameTaken = (name, participantId, responseId) =>
   new HttpError(409, `“${name}” has already answered this poll. If that's you, load your answer instead.`, { code: 'name_taken', participantId, responseId });
 
@@ -2753,6 +2808,7 @@ async function deleteParticipant(request, env, url, id, pid) {
     url.searchParams.get('answers') === '1'
       ? env.DB.prepare('DELETE FROM responses WHERE participant_id = ?').bind(pid)
       : env.DB.prepare('UPDATE responses SET participant_id = NULL WHERE participant_id = ?').bind(pid),
+    env.DB.prepare('DELETE FROM shared_busy WHERE participant_id = ?').bind(pid),
     env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(pid),
   ]);
   return json({ ok: true });
@@ -2776,6 +2832,7 @@ async function mergeParticipant(request, env, id, pid) {
     ...drop.map((rid) => env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid)),
     env.DB.prepare('UPDATE responses SET participant_id = ?, name = ? WHERE participant_id IN (?, ?)').bind(dst.id, dst.name, src.id, dst.id),
     env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(src.id),
+    env.DB.prepare('DELETE FROM shared_busy WHERE participant_id IN (?, ?)').bind(src.id, dst.id), // re-shared on their next visit
     // If the merged one was an account, the remaining person now belongs to that account.
     src.user_id
       ? env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(src.user_id, src.name_key, src.email, dst.id)

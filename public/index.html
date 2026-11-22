@@ -462,6 +462,16 @@
   .day.bzf{isolation:isolate}
   .day.bzf:not(.y):not(.i):not(.m):not(.part){background:var(--sunken)}
   .day .bzm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--busy-hatch),var(--sunken);border:1px solid var(--line);pointer-events:none}
+  /* Busy hours others share with the poll: stripes the other way, in the accent colour, so they read apart from mine */
+  :root{--obusy-hatch:repeating-linear-gradient(45deg,color-mix(in srgb,var(--accent) 45%,transparent) 0 1.5px,transparent 1.5px 6px)}
+  #grid .slot.obusy{background-image:var(--obusy-hatch)}
+  .day .obm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--obusy-hatch),var(--card);border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));pointer-events:none}
+  .day .bzm~.obm{right:22px} .day:has(.star) .obm{top:auto;bottom:6px}
+  .vtsplit .vtdd .ddp .ddh{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 2px 2px}
+  .vtsplit .vtdd .ddp .ddh:first-child{margin-top:0}
+  .vtsplit .vtdd .ddp label.ddsw{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:6px 0;padding-top:8px;padding-bottom:8px;align-items:flex-start}
+  .vtsplit .vtdd .ddp label.ddsw:first-child{border-top:0;margin-top:0;padding-top:2px} .vtsplit .vtdd .ddp label.ddsw:last-child{border-bottom:0;margin-bottom:0;padding-bottom:2px}
+  .vtsplit .vtdd .ddp label.ddsw.dis{opacity:.6}
   /* Account: Contacts and Calendars share one look: header with count + ＋, optional toolbar, grouped list of what you have */
   .card-h .qb.add{width:34px;height:34px;border-radius:50%;background:var(--accent);border-color:var(--accent);color:#fff}
   .card-h .qb.add:hover{filter:brightness(1.08)}
@@ -2417,7 +2427,7 @@ function renderHome(){
 // ================= PRIVACY POLICY (?privacy) =================
 // Linked from the footer and the Calendars card; also the policy URL given to Google / Microsoft for calendar sign-in.
 // Operator name and contact address come from the OPERATOR_NAME / CONTACT_EMAIL vars in wrangler.toml (via /api/config).
-const PRIVACY_UPDATED='2026-11-20';
+const PRIVACY_UPDATED='2026-11-22';
 const siteFoot = () => `<footer class="site-foot"><a href="?privacy">${t('Privacy policy')}</a></footer>`;
 function renderPrivacy(){
   document.title=t('Privacy policy')+' · when-who';
@@ -2427,7 +2437,7 @@ function renderPrivacy(){
     <section class="band"><div class="wrap"><div class="eyebrow">when-who</div><h1>${t('Privacy policy')}</h1>
       <p class="lead">${t('Last updated {date}',{date:esc(new Date(PRIVACY_UPDATED+'T12:00').toLocaleDateString(LOC,{day:'numeric',month:'long',year:'numeric'}))})}</p></div></section>
     <main class="wrap"><div class="card legal">
-      ${sec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.')}</p>`)}
+      ${sec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.')} ${t('If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.')}</p>`)}
       ${sec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op})+' ':''}${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')}</p>`)}
       ${sec(t('What we store'),ul([
         t('<b>Your account:</b> your email address, the name and avatar you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
@@ -2436,7 +2446,7 @@ function renderPrivacy(){
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.'),
       ]))}
-      ${sec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll. Calendar data is not shown to others, not shared or sold, not used for ads and not used to train AI models.')}</p>
+      ${sec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
         <p>${t('when-who’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.')}</p>
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
       ${sec(t('Services we use'),ul([
@@ -3985,13 +3995,17 @@ function renderMine(el){
   const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}"><span class="segl" title="${t('Brush')}" aria-hidden="true">${ICON.brush}</span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
-  const bzOn=showBusy();
-  const bzTog=`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide my busy times'):t('Show my busy times')}">${ICON.cal}<span>${t('Busy')}</span></button>`;
-  // ▾ next to Busy: which of the account's auto calendars grey out hours (only once the list is loaded and has 2+).
+  const bzOn=showBusy(), bzMine=!!(ME.user&&ME.user.calendarsAuto&&editable()), bzPpl=P.data.busy||[];
+  const bzTog=`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide busy times'):t('Show busy times')}">${ICON.cal}<span>${t('Busy')}</span>${bzPpl.length?`<i class="vtn">${bzPpl.length}</i>`:''}</button>`;
+  // ▾ next to Busy: which of the account's auto calendars grey out hours (2+), sharing mine with this poll, and the people who share theirs.
   if(ME.user&&ME.user.calendarsAuto&&!CALS.list&&!CALS.tried){ CALS.tried=true; loadCals().then(r=>{ if(r&&P.data&&P.tab==='mine') renderBody(); }); }
-  const bzCals=CALS.list?CALS.list.calendars.filter(c=>c.auto):[], bzOff=busyOff();
-  const bzBtn=!(ME.user&&ME.user.calendarsAuto&&editable())?'':bzCals.length<2?bzTog
-    :vtSplit(bzTog,'bdd',P.bddOpen,t('Choose calendars'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})));
+  const bzCals=CALS.list?CALS.list.calendars.filter(c=>c.auto):[], bzOff=busyOff(), bpOff=busyPplOff();
+  let bzMenu='';
+  if(bzMine&&bzCals.length>1) bzMenu+=ddList(t('My calendars'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})));
+  if(bzMine){ const me=P.data.me||{}, can=!!me.participantId;
+    bzMenu+=`<label class="ddsw${can?'':' dis'}" title="${esc(t('People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.'))}"><input type="checkbox" data-bshare ${me.shareBusy?'checked':''} ${can?'':'disabled'}> <span class="minw">${t('Share my busy hours with this poll')}<span class="muted small">${can?t('Others see when, not what'):t('Save your answer first')}</span></span></label>`; }
+  if(bzPpl.length) bzMenu+=ddList(t('Shared by others'),'bppl',bzPpl.map(x=>({id:x.pid,label:`${esc(x.name||t('Someone'))}<span class="muted small">${esc(t('updated {when}',{when:agoText(x.updatedAt)}))}</span>`,on:!bpOff.has(x.pid)})));
+  const bzBtn=!(bzMine||bzPpl.length)?'':!bzMenu?bzTog:vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
@@ -4014,9 +4028,9 @@ function renderMine(el){
   h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
   h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
   // Legend above the grid: colours, then only the markers this view can show right now.
-  const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey();
+  const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey(), obShown=othBusyPicked().length>0;
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
-  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'');
+  h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'',obShown?'obusy':'');
   if(P.mode==='days'){
     const S={}; if(on) d.dates.forEach(k=>S[k]=stats(k,oth));
     h+='<div id="dgrid" class="dgridp">'+calendar(d.dates,(k,day)=>{ const v=me[k], s=statusOf(v,k), o=S[k];
@@ -4025,11 +4039,12 @@ function renderMine(el){
         const fk=x=>fromMap(hourMap(x.v,k),k), ys=o.list.filter(x=>fk(x)==='y').map(x=>x.name), is=o.list.filter(x=>fk(x)==='i').map(x=>x.name), ps=o.list.filter(x=>{ const f=fk(x); return f&&f!=='y'&&f!=='i'&&f!=='m'; }).map(x=>t('{name} (some hours)',{name:x.name})), ms=o.list.filter(x=>fk(x)==='m').map(x=>x.name);
         tip=names([...ys,...ps],is,ms);
         hint=`<span class="ocnt${o.peak?'':' none'}" style="--a:${Math.round(12+o.peak/n*55)}%">${o.peak}/${n}</span>`; }
-      const H=hours(k), bz=H.map(hr=>busyFor(k,hr)), nb=bz.filter(x=>x.length).length, bt=nb?busyTip(bz.flat()):'';
+      const H=hours(k), bz=H.map(hr=>busyFor(k,hr)), nb=bz.filter(x=>x.length).length, bt=nb?busyTip(bz.flat()):'', ob=othBusyDay(k,H);
       if(bt) tip=tip?tip+' · '+bt:bt;
+      if(ob) tip=tip?tip+' · '+ob:ob;
       // No status word in the cell (the legend names the colours); it stays in the tooltip.
       if(s.t) tip=tip?s.t+' · '+tip:s.t;
-      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}${md.has(k)?'<span class="star">★</span>':''}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}</div>`; },{nav:false})+'</div>';
+      return `<div class="day ${s.cls}${nb&&nb===H.length?' bzf':''}" data-day="${k}"${tip?` title="${esc(tip)}"`:''}><div class="n">${day}${md.has(k)?'<span class="star">★</span>':''}</div>${s.cls==='part'?ratioBar(v,k):''}${hint}${nb&&nb<H.length?'<span class="bzm" aria-hidden="true"></span>':''}${ob?'<span class="obm" aria-hidden="true"></span>':''}</div>`; },{nav:false})+'</div>';
   } else {
     const wk=wks[P.week], H=hours();
     h+=`<div class="grid" id="grid" style="grid-template-columns:42px repeat(7,1fr)"><div></div>`;
@@ -4038,13 +4053,13 @@ function renderMine(el){
     H.forEach((hr,ri)=>{ h+=`<div class="hr">${hh(hr)}</div>`;
       wk.forEach(k=>{ const pos=(ri===0?' top':'')+(ri===H.length-1?' bot':'');
         if(!k||!hours(k).includes(hr)){ h+=`<div class="slot na${pos}"></div>`; return; }
-        const st=hourMap(me[k],k).get(hr), bt=busyTip(busyFor(k,hr));
+        const st=hourMap(me[k],k).get(hr), ob=othBusyFor(k,hr), bt=[busyTip(busyFor(k,hr)),ob.length?t('Busy in their calendar: {names}',{names:ob.join(', ')}):''].filter(Boolean).join(' · ');
         let extra='';
         if(on){ const ys=[], is=[], ms=[]; oth.forEach(r=>{ const s=hourMap((r.entries||{})[k],k).get(hr); if(s==='y') ys.push(r.name||t('Someone')); else if(s==='i') is.push(r.name||t('Someone')); else if(s==='m') ms.push(r.name||t('Someone')); });
           const fr=ys.length+is.length;
           if(fr||ms.length) extra=` oh" style="--a:${fr?Math.round(6+fr/n*30):0}%" data-n="${fr?fr:''}${ms.length?(fr?' ':'')+'+'+ms.length+'?':''}" title="${esc(hh(hr)+' · '+names(ys,is,ms)+(bt?' · '+bt:''))}`; }
         if(bt&&!extra) extra=`" title="${esc(hh(hr)+' · '+bt)}`;
-        h+=`<div class="slot${pos}${st?' s'+st:''}${bt?' busy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
+        h+=`<div class="slot${pos}${st?' s'+st:''}${busyFor(k,hr).length?' busy':''}${ob.length?' obusy':''}${extra}" data-k="${k}" data-h="${hr}"></div>`; }); });
     h+='</div>';
   }
   h+='</div></div>';
@@ -4461,24 +4476,56 @@ const busyOn=()=>!!(ME.user&&ME.user.calendarsAuto&&P.data&&editable()&&showBusy
 const busyKey=()=>[P.id,inst().id,...calWindow()].join('|');
 // Fetches the busy times once per poll round (cached for 10 minutes in this tab), then redraws.
 async function loadBusy(force){
-  if(!busyOn()) return;
-  const key=busyKey(); if(!force&&BUSY.key===key&&(BUSY.list||BUSY.loading)) return;
-  BUSY.key=key; BUSY.list=null;
-  if(!force){ try{ const c=JSON.parse(sessionStorage.getItem('busy')||'null'); if(c&&c.key===key&&Date.now()-c.at<600000){ BUSY.list=c.list; if(c.list.length) setTimeout(()=>{ if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody(); }); return; } }catch(e){} }
+  if(!busyOn()&&!shareOn()) return;
+  const key=busyKey(); if(!force&&BUSY.key===key&&(BUSY.list||BUSY.loading)){ if(BUSY.list&&BUSY.ok) busySync(); return; }
+  BUSY.key=key; BUSY.list=null; BUSY.ok=false;
+  if(!force){ try{ const c=JSON.parse(sessionStorage.getItem('busy')||'null'); if(c&&c.key===key&&Date.now()-c.at<600000){ BUSY.list=c.list; BUSY.ok=true; busySync(); if(c.list.length) setTimeout(()=>{ if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody(); }); return; } }catch(e){} }
   BUSY.loading=true;
   const [a,b]=calWindow(), errs=[];
   try{
     const r=await loadCals(); const cals=r?r.calendars.filter(c=>c.auto):[];
     const lists=await Promise.all(cals.map(c=>calendarEvents(c,a,b).catch(e=>{ errs.push(`${c.name}: ${e.message}`); return []; })));
     if(BUSY.key!==key) return;
-    BUSY.list=lists.flat();
-    if(!errs.length) try{ sessionStorage.setItem('busy',JSON.stringify({key,at:Date.now(),list:BUSY.list})); }catch(e){}
+    BUSY.list=lists.flat(); BUSY.ok=!errs.length;
+    if(!errs.length){ try{ sessionStorage.setItem('busy',JSON.stringify({key,at:Date.now(),list:BUSY.list})); }catch(e){} busySync(); }
   }finally{ if(BUSY.key===key) BUSY.loading=false; }
   if(errs.length) toast(t('Couldn’t load {what}',{what:errs.join(' · ')}));
   if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
 }
 // The busy events for one hour (or a whole day), for the hatch and its tooltip. Empty when the grey-out is off.
 function busyFor(k,h){ return busyOn()&&BUSY.list&&BUSY.key===busyKey()?busyHit(busyPicked(),k,h):[]; }
+// ---------- busy hours shared with the poll ----------
+// Mine: with sharing on, the hours I'm busy (picked calendars, every date of the round) go to the Worker, only when they changed
+// (or every 6 h, so "updated" stays fresh). Others': P.data.busy = [{pid, name, hours: {date: [h]}, updatedAt}].
+const shareOn=()=>!!(ME.user&&ME.user.calendarsAuto&&P.data&&P.data.me&&P.data.me.shareBusy&&P.data.me.participantId&&editable());
+function busyHoursMap(){ const out={}; P.data.dates.forEach(k=>{ const hs=hours(k).filter(h=>busyHit(busyPicked(),k,h).length); if(hs.length) out[k]=hs; }); return out; }
+async function busySync(force){
+  if(!shareOn()||!BUSY.list||!BUSY.ok||BUSY.key!==busyKey()) return;
+  const iid=inst().id, hrs=busyHoursMap(), h=JSON.stringify(hrs), sk='bsync:'+iid;
+  let prev=null; try{ prev=JSON.parse(localStorage.getItem(sk)||'null'); }catch(e){}
+  if(!force&&prev&&prev.h===h&&Date.now()-prev.at<6*3600000) return;
+  try{ await api('PUT',`/polls/${P.id}/instances/${iid}/busy`,{share:true,hours:hrs},headers()); try{ localStorage.setItem(sk,JSON.stringify({h,at:Date.now()})); }catch(e){} }
+  catch(e){ console.error(e); }
+}
+async function setShareBusy(on,cb){
+  if(cb) cb.disabled=true;
+  try{ await api('PUT',`/polls/${P.id}/instances/${inst().id}/busy`,{share:on},headers());
+    P.data.me.shareBusy=on; try{ localStorage.removeItem('bsync:'+inst().id); }catch(e){}
+    toast(on?t('Sharing your busy hours with this poll'):t('No longer sharing your busy hours'));
+    if(on){ BUSY.ok&&BUSY.list&&BUSY.key===busyKey()?busySync(true):loadBusy(); } }
+  catch(e){ toast(e.message); if(cb) cb.checked=!on; }
+  finally{ if(cb) cb.disabled=false; P.bddOpen=true; renderBody(); }
+}
+const busyPplOff=()=>new Set(store0('busyPplOff:'+P.id)||[]);
+function othBusyPicked(){ if(!showBusy()||!P.data||!P.data.busy) return []; const off=busyPplOff(); return P.data.busy.filter(x=>!off.has(x.pid)); }
+// Names of the picked people who are busy in hour h of day k.
+function othBusyFor(k,h){ return othBusyPicked().filter(x=>(x.hours[k]||[]).includes(h)).map(x=>x.name||t('Someone')); }
+// Tooltip text for a whole day: who is busy, all day or for how many of the poll's hours.
+function othBusyDay(k,H){ const out=othBusyPicked().map(x=>{ const n=(x.hours[k]||[]).filter(h=>H.includes(h)).length; return n?(n>=H.length?t('{name} (all day)',{name:x.name||t('Someone')}):t('{name} ({n} h)',{name:x.name||t('Someone'),n})):''; }).filter(Boolean);
+  return out.length?t('Busy in their calendar: {names}',{names:out.join(', ')}):''; }
+function agoText(iso){ const d=(Date.parse(iso)-Date.now())/1000; if(!isFinite(d)) return '';
+  const rtf=new Intl.RelativeTimeFormat(LOC,{numeric:'auto'}), a=Math.abs(d);
+  return a<3600?rtf.format(Math.round(d/60),'minute'):a<86400?rtf.format(Math.round(d/3600),'hour'):rtf.format(Math.round(d/86400),'day'); }
 // Calendars left out in the ▾ list next to Busy (ids, saved in this browser). Events cached before ids were added (no x[4]) always count.
 const busyOff=()=>new Set(store0('busyOff')||[]);
 let BUSYF={src:null,off:'',list:[]};
@@ -4602,11 +4649,18 @@ document.addEventListener('pointerdown',e=>{ const dd=$('whodd'); if(dd&&dd.open
 
 // A show/hide switch (Others, Busy) with a ▾ list on its right to pick which people / calendars it uses.
 // items: [{id, label (already escaped html), on}]; key = data attribute of the checkboxes and All / None buttons.
-function vtSplit(btn,id,open,label,key,items){
-  return `<span class="vtsplit">${btn}<details class="dd vtdd" id="${id}"${open?' open':''}><summary title="${esc(label)}" aria-label="${esc(label)}"></summary><div class="ddp">
-    <div class="ddb"><button type="button" class="btn" data-${key}all="1">${t('All')}</button><button type="button" class="btn" data-${key}all="0">${t('None')}</button></div>
-    ${items.map(x=>`<label><input type="checkbox" data-${key}="${esc(x.id)}" ${x.on?'checked':''}> <span class="minw">${x.label}</span></label>`).join('')}</div></details></span>`;
+function vtSplit(btn,id,open,label,key,items){ return vtSplitRaw(btn,id,open,label,ddList('',key,items)); }
+function vtSplitRaw(btn,id,open,label,inner){
+  return `<span class="vtsplit">${btn}<details class="dd vtdd" id="${id}"${open?' open':''}><summary title="${esc(label)}" aria-label="${esc(label)}"></summary><div class="ddp">${inner}</div></details></span>`;
 }
+// One titled block of checkboxes with All / None (title optional).
+function ddList(title,key,items){
+  return `${title?`<div class="ddh">${esc(title)}</div>`:''}<div class="ddb"><button type="button" class="btn" data-${key}all="1">${t('All')}</button><button type="button" class="btn" data-${key}all="0">${t('None')}</button></div>
+    ${items.map(x=>`<label><input type="checkbox" data-${key}="${esc(x.id)}" ${x.on?'checked':''}> <span class="minw">${x.label}</span></label>`).join('')}`;
+}
+function setBusyPplOff(off){ try{ localStorage.setItem('busyPplOff:'+P.id,JSON.stringify([...off])); }catch(e){} P.bddOpen=true;
+  if(!showBusy()&&off.size<(P.data.busy||[]).length) try{ localStorage.setItem('showBusy','true'); }catch(e){}
+  renderBody(); }
 function setHintOff(off){ P.hintOff=off; P.hddOpen=true; if(!P.hint&&off.size<others().length){ P.hint=true; store.set('showOthers',true); } renderBody(); }
 function setBusyOff(off){ try{ localStorage.setItem('busyOff',JSON.stringify([...off])); }catch(e){} P.bddOpen=true;
   const was=showBusy(); if(!was&&CALS.list&&off.size<CALS.list.calendars.filter(c=>c.auto).length) try{ localStorage.setItem('showBusy','true'); }catch(e){}
@@ -4614,9 +4668,12 @@ function setBusyOff(off){ try{ localStorage.setItem('busyOff',JSON.stringify([..
 document.addEventListener('toggle',e=>{ const x=e.target; if(x.id==='hdd') P.hddOpen=x.open; else if(x.id==='bdd'){ P.bddOpen=x.open; if(x.open) loadCals(); } },true);
 document.addEventListener('change',e=>{ const cb=e.target, ds=cb.dataset||{};
   if(ds.hwho){ const off=new Set(P.hintOff); if(cb.checked) off.delete(ds.hwho); else off.add(ds.hwho); setHintOff(off); }
-  else if(ds.bcal){ const off=busyOff(); if(cb.checked) off.delete(ds.bcal); else off.add(ds.bcal); setBusyOff(off); } });
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall]'); if(!b) return; e.preventDefault();
+  else if(ds.bcal){ const off=busyOff(); if(cb.checked) off.delete(ds.bcal); else off.add(ds.bcal); setBusyOff(off); }
+  else if(ds.bppl){ const off=busyPplOff(); if(cb.checked) off.delete(ds.bppl); else off.add(ds.bppl); setBusyPplOff(off); }
+  else if(ds.bshare!==undefined) setShareBusy(cb.checked,cb); });
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall],[data-bpplall]'); if(!b) return; e.preventDefault();
   if(b.dataset.hwhoall!==undefined) setHintOff(b.dataset.hwhoall==='1'?new Set():new Set(others().map(r=>r.id)));
+  else if(b.dataset.bpplall!==undefined) setBusyPplOff(b.dataset.bpplall==='1'?new Set():new Set((P.data.busy||[]).map(x=>x.pid)));
   else setBusyOff(b.dataset.bcalall==='1'?new Set():new Set((CALS.list?CALS.list.calendars:[]).filter(c=>c.auto).map(c=>c.id))); });
 
 // Everyone's saved answers except my own (for the "Show others" hints in My availability).
@@ -4648,7 +4705,7 @@ const LEG={ yes:['var(--yes)','Available'], ifn:['var(--ifn)','If needed'], mayb
   heat:['color-mix(in srgb,var(--yes) 45%,var(--card))','More free'], best:['var(--yes-dark)','Best hours'],
   allfree:['var(--yes-dark)','All free'], monly:['color-mix(in srgb,var(--maybe) 45%,var(--card))','Only maybe'],
   mstripe:['var(--maybe)','Rest maybe'],
-  draft:['var(--sel-bg)','Draft','drf'], meeting:['var(--accent)','Scheduled','sym','★'], busy:['var(--busy-hatch),var(--sunken)','Busy'],
+  draft:['var(--sel-bg)','Draft','drf'], meeting:['var(--accent)','Scheduled','sym','★'], busy:['var(--busy-hatch),var(--sunken)','Busy'], obusy:['var(--obusy-hatch),var(--card)','Others busy'],
   othn:['','Others','sym','<i class="lg-oc">2/5</i>'],
   line:['','Share free','ln'], myline:['','Your day','ln'] };
 // [colour, label, class, symbol]: a "sym" item shows its symbol (blue ★, the n/total badge) instead of a colour dot.
@@ -6689,7 +6746,7 @@ function germanText(){ return {
 "<b>Security:</b> your IP address, to limit failed sign-in attempts (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto und die Schlüssel der Umfragen, die du beantwortet hast. Das bleibt auf deinem Gerät.",
 "Google and Outlook calendars": "Google- und Outlook-Kalender",
-"If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll. Calendar data is not shown to others, not shared or sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen. Kalenderdaten werden anderen nicht gezeigt, nicht weitergegeben oder verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
+"If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen, und nur wenn du für eine Umfrage das Teilen einschaltest, um deren Leuten zu zeigen, in welchen Stunden du belegt bist (ohne Termindetails). Kalenderdaten werden nicht verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
 "You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.": "Du kannst die Verbindung jederzeit auf deiner Kontoseite trennen. Dabei werden die gespeicherten Tokens gelöscht und Google wird gebeten, den Zugriff zu widerrufen. Du kannst den Zugriff auch in deinen Google- oder Microsoft-Kontoeinstellungen entfernen.",
 "Services we use": "Dienste, die wir nutzen",
@@ -7697,6 +7754,26 @@ function germanText(){ return {
 "Busy times hidden": "Belegte Zeiten ausgeblendet",
 "Hide my busy times": "Meine belegten Zeiten ausblenden",
 "Show my busy times": "Meine belegten Zeiten zeigen",
+"Hide busy times": "Belegte Zeiten ausblenden",
+"Show busy times": "Belegte Zeiten zeigen",
+"My calendars": "Meine Kalender",
+"Share my busy hours with this poll": "Meine belegten Stunden mit dieser Umfrage teilen",
+"Others see when, not what": "Andere sehen wann, nicht was",
+"Save your answer first": "Speichere zuerst deine Antwort",
+"People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.": "Wer die Antworten dieser Umfrage sieht, sieht, in welchen Stunden du in deinen Kalendern (den oben gewählten) belegt bist. Keine Termintitel. Wird bei jedem Öffnen der Umfrage aktualisiert.",
+"Shared by others": "Von anderen geteilt",
+"updated {when}": "aktualisiert {when}",
+"Choose busy times": "Belegte Zeiten wählen",
+"Busy in their calendar: {names}": "Im Kalender belegt: {names}",
+"{name} (all day)": "{name} (ganztägig)",
+"{name} ({n} h)": "{name} ({n} Std.)",
+"Sharing your busy hours with this poll": "Deine belegten Stunden werden mit dieser Umfrage geteilt",
+"No longer sharing your busy hours": "Deine belegten Stunden werden nicht mehr geteilt",
+"Others busy": "Andere belegt",
+"Answer the poll first, then you can share your busy times": "Beantworte zuerst die Umfrage, dann kannst du deine belegten Zeiten teilen",
+"Invalid busy times": "Ungültige belegte Zeiten",
+"Too many updates. Try again later.": "Zu viele Aktualisierungen. Versuch es später noch einmal.",
+"If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.": "Wenn du deine belegten Zeiten mit einer Umfrage teilst, werden nur die Stunden, in denen du belegt bist (ohne Titel), für diese Umfrage gespeichert, bis du das Teilen ausschaltest.",
 "Calendars": "Kalender",
 "Add contacts": "Kontakte hinzufügen",
 "Add calendar": "Kalender hinzufügen",

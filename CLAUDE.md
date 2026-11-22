@@ -65,6 +65,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   unread messages that tag me (the dock's `@` badge). Hold (touch), right-click or ⌄ opens the message menu (react, reply, copy, delete);
   swipe right replies. Search and filters (tagged me, meetings, replies to me, person; everything / messages / events) run on the page
   over the loaded messages (`CHAT_KEEP`).
+- `shared_busy` / `participants.share_busy` (0020): opt-in per person per poll to show the poll's people when they're busy.
+  The sharer's page works out their busy hours (picked auto calendars) for the round's dates and uploads only `{ "YYYY-MM-DD": [h] }`
+  via `PUT /api/polls/:id/instances/:iid/busy` `{ share, hours }` (when changed, or every 6 h; off deletes all their rows).
+  `GET /api/polls/:id` sends `busy: [{ pid, name, hours, updatedAt }]` (same visibility as answers, caller left out) and `me.shareBusy`.
+  The Busy ▾ in My answer: my calendars, the Share switch, and people who share (picks in localStorage `busyPplOff:<poll>`); their hours
+  show with accent stripes the other way (`obusy` / `.obm`).
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
