@@ -80,6 +80,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
   (no mic button of our own). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
+- **Your data** (Account page, GDPR rights): `GET /api/me/export` = JSON copy of everything about the account (secret columns
+  like `*_hash` / tokens stripped; owned polls in full, polls answered by title); `POST /api/me/delete` emails a code (`login_codes` key
+  `delete:<user id>`, can't sign in), `POST /api/me/delete/verify` `{ code }` deletes the account, its owned polls (with everyone's answers
+  and chat), its answers / messages / reactions / shared busy hours in other polls, calendars (Google grant revoked), contacts and groups,
+  then emails a confirmation. Both are driven by **`USER_DATA`** in the Worker: every table with its export SQL and delete SQL (or `skip`
+  with a reason), in deletion order. Restriction / objection requests go by email (`CONTACT_EMAIL`, mailto on the card).
 - **Place search** (location fields of meetings): the page asks `GET /api/places?q=&lang=`, which forwards the text to Photon
   (photon.komoot.io, OpenStreetMap) and caches the trimmed answer for a day. It runs before the session lookup (one call per keystroke).
   Server-side first (direct browser requests get blocked on phones: content blockers, shared mobile IPs); when `/api/places`
@@ -101,12 +107,17 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 
 ## Rules
 - **Schema changes:** add a new migration file (`npx wrangler d1 migrations create whenwho <name>`). Never edit or delete an applied migration.
+  **Personal data stays covered:** with every new migration, add its tables to `USER_DATA` (export + delete, or `skip` with a reason),
+  check new columns are exported / deleted with their table, then set `USER_DATA_REVIEWED` to the migration's number. If it stores a new kind
+  of personal data, describe it in the privacy policy (`renderPrivacy`) and bump `PRIVACY_UPDATED`. `npm run check` fails until this is done:
+  run it before committing.
   Apply it to production (`npm run db:migrate:remote`) **before** pushing code that depends on it, and keep changes backwards compatible
   (add columns with defaults, don't rename or drop in the same release).
 - **Legal pages** (required in Germany): `?imprint` (Impressum, § 5 DDG), `?privacy` and `?rules` (DSA: content rules, how to report illegal content),
   linked in `siteFoot()` on every page and in the email footer. Their data comes from `OPERATOR_NAME` / `OPERATOR_ADDRESS` / `OPERATOR_PHONE` /
   `CONTACT_EMAIL` / `DPA_NAME` in `wrangler.toml` (via `/api/config`). When a feature sends data somewhere new or stores something new, update the
-  privacy policy (`renderPrivacy`, bump `PRIVACY_UPDATED`). Load nothing from third parties on page load (the Inter font is self-hosted in `public/fonts/`).
+  privacy policy (`renderPrivacy`, bump `PRIVACY_UPDATED`): that includes any new outside service (a `fetch` to a new host, a new CSP entry,
+  a new email or AI use). Load nothing from third parties on page load (the Inter font is self-hosted in `public/fonts/`).
 - Production config (custom domain, `MAIL_FROM`, `SITE_URL`, `TURNSTILE_SITE_KEY`) is in `wrangler.toml`; `RESEND_API_KEY` and `TURNSTILE_SECRET` are secrets.
   Calendar sign-in (optional): secrets `CAL_TOKEN_KEY` plus `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and/or `MS_CLIENT_ID`/`MS_CLIENT_SECRET`;
   redirect URI `<site>/api/oauth/{google|microsoft}/callback`. Without them the Connect buttons are hidden and only iCal links work.

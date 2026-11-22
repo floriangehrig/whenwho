@@ -143,6 +143,9 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'email' && !parts[3] && m === 'POST') return sendEmailChangeCode(request, env, url);
     if (parts[2] === 'email' && parts[3] === 'verify' && !parts[4] && m === 'POST') return verifyEmailChange(request, env, url);
     if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
+    if (parts[2] === 'export' && !parts[3] && m === 'GET') return exportMe(request, env);
+    if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
+    if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
     if (parts[2] === 'friends') {
       if (!parts[3] && m === 'GET') return listFriends(request, env);
@@ -718,6 +721,40 @@ async function updateProfile(request, env) {
 // Step 1, body { email }: emails a 6-digit code to the new address. It is kept in login_codes under
 // 'change:<user id>:<address>', so it can't be used to sign in. Step 2, body { email, code }: moves the account
 // to the new address and updates the copies of it in the account's polls (participants, answers, owned polls).
+// Stores a 6-digit code (hashed) under `key` in login_codes and emails it to `to`. Keys other than a plain address
+// ('change:…', 'delete:…') can't be used to sign in.
+async function mailCode(env, url, key, to, de, { title, intro, ignore }) {
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
+  await env.DB.prepare('INSERT OR REPLACE INTO login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)')
+    .bind(key, await codeHash(key, code), new Date(Date.now() + CODE_MINUTES * 60000).toISOString(), now()).run();
+  const text = `${intro}\n\n    ${code}\n\n${ignore}`;
+  if (!emailEnabled(env)) { console.log(`[dev] code for ${key} -> ${to}: ${code}`); return; }
+  await sendEmail(env, {
+    fromName: 'when-who', to: [to], subject: `${title}: ${code}`, text,
+    html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">${escHtml(title)}</h1>
+      <p style="margin:0 0 20px;color:#334155">${escHtml(intro)}</p>
+      <div style="margin:0 0 24px;padding:18px;background:#E8EFFF;border-radius:10px;text-align:center;font-size:32px;font-weight:700;letter-spacing:10px;color:#0B1F3A;font-family:ui-monospace,Menlo,Consolas,monospace">${code}</div>
+      <p style="margin:0;font-size:13px;color:#5B6578">${escHtml(ignore)}</p>`,
+      { preheader: de ? `Dein Code ist ${code}` : `Your code is ${code}`, site: siteUrl(env, url.origin), lang: de ? 'de' : 'en' }),
+  });
+}
+// Checks a code made by mailCode and uses it up. Throws 401 when it's wrong, expired or out of tries.
+async function takeCode(env, request, key, code) {
+  const wrong = new HttpError(401, 'That code is wrong or has expired. Check the latest email or ask for a new code.');
+  const row = await env.DB.prepare('SELECT * FROM login_codes WHERE email = ?').bind(key).first();
+  if (!row || row.expires_at < now() || row.attempts >= CODE_TRIES) {
+    if (row) await env.DB.prepare('DELETE FROM login_codes WHERE email = ?').bind(key).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  if (!safeEqual(await codeHash(key, code), row.code_hash)) {
+    await env.DB.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').bind(key).run();
+    await recordFail(env, request, 'code');
+    throw wrong;
+  }
+  const del = await env.DB.prepare('DELETE FROM login_codes WHERE email = ? AND code_hash = ?').bind(key, row.code_hash).run();
+  if (!del.meta || !del.meta.changes) throw wrong;
+}
 const changeKey = (userId, addr) => `change:${userId}:${addr}`;
 async function sendEmailChangeCode(request, env, url) {
   const user = requireUser(request);
@@ -735,29 +772,14 @@ async function sendEmailChangeCode(request, env, url) {
   await recordFail(env, request, 'code-send', 'u:' + user.id);
   // One change in progress per account.
   await env.DB.prepare('DELETE FROM login_codes WHERE substr(email, 1, ?) = ?').bind(`change:${user.id}:`.length, `change:${user.id}:`).run();
-  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
-  const key = changeKey(user.id, addr);
-  await env.DB.prepare('INSERT OR REPLACE INTO login_codes (email, code_hash, expires_at, attempts, created_at) VALUES (?, ?, ?, 0, ?)')
-    .bind(key, await codeHash(key, code), new Date(Date.now() + CODE_MINUTES * 60000).toISOString(), now()).run();
-  const site = siteUrl(env, url.origin), de = reqLang(request) === 'de', mins = CODE_MINUTES;
-  const ignore = de ? 'Falls du das nicht warst, ignoriere diese E-Mail: Ohne den Code ändert sich nichts.'
-    : "If this wasn't you, ignore this email: nothing changes without the code.";
-  const intro = de ? `Gib diesen Code auf when-who ein, um diese Adresse für dein Konto zu verwenden. Er ist ${mins} Minuten gültig.`
-    : `Enter this code on when-who to use this address for your account. It is valid for ${mins} minutes.`;
-  const text = `${intro}\n\n    ${code}\n\n${ignore}`;
-  if (emailEnabled(env)) {
-    await sendEmail(env, {
-      fromName: 'when-who', to: [addr],
-      subject: de ? `Neue E-Mail-Adresse bestätigen: ${code}` : `Confirm your new email address: ${code}`, text,
-      html: emailHtml(`<h1 style="margin:0 0 8px;font-size:22px;line-height:1.3;color:#0B1F3A">${de ? 'Neue E-Mail-Adresse bestätigen' : 'Confirm your new email address'}</h1>
-        <p style="margin:0 0 20px;color:#334155">${escHtml(intro)}</p>
-        <div style="margin:0 0 24px;padding:18px;background:#E8EFFF;border-radius:10px;text-align:center;font-size:32px;font-weight:700;letter-spacing:10px;color:#0B1F3A;font-family:ui-monospace,Menlo,Consolas,monospace">${code}</div>
-        <p style="margin:0;font-size:13px;color:#5B6578">${escHtml(ignore)}</p>`,
-        { preheader: de ? `Dein Code ist ${code}` : `Your code is ${code}`, site, lang: de ? 'de' : 'en' }),
-    });
-  } else {
-    console.log(`[dev] email change code for ${user.email} -> ${addr}: ${code}`);
-  }
+  const de = reqLang(request) === 'de', mins = CODE_MINUTES;
+  await mailCode(env, url, changeKey(user.id, addr), addr, de, {
+    title: de ? 'Neue E-Mail-Adresse bestätigen' : 'Confirm your new email address',
+    intro: de ? `Gib diesen Code auf when-who ein, um diese Adresse für dein Konto zu verwenden. Er ist ${mins} Minuten gültig.`
+      : `Enter this code on when-who to use this address for your account. It is valid for ${mins} minutes.`,
+    ignore: de ? 'Falls du das nicht warst, ignoriere diese E-Mail: Ohne den Code ändert sich nichts.'
+      : "If this wasn't you, ignore this email: nothing changes without the code.",
+  });
   return json({ ok: true, minutes: CODE_MINUTES });
 }
 async function verifyEmailChange(request, env, url) {
@@ -767,21 +789,7 @@ async function verifyEmailChange(request, env, url) {
   const addr = (email(b.email) || '').toLowerCase();
   const code = typeof b.code === 'string' ? b.code.replace(/\s+/g, '') : '';
   if (!addr || !/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code from the email');
-  const wrong = new HttpError(401, 'That code is wrong or has expired. Check the latest email or ask for a new code.');
-  const key = changeKey(user.id, addr);
-  const row = await env.DB.prepare('SELECT * FROM login_codes WHERE email = ?').bind(key).first();
-  if (!row || row.expires_at < now() || row.attempts >= CODE_TRIES) {
-    if (row) await env.DB.prepare('DELETE FROM login_codes WHERE email = ?').bind(key).run();
-    await recordFail(env, request, 'code');
-    throw wrong;
-  }
-  if (!safeEqual(await codeHash(key, code), row.code_hash)) {
-    await env.DB.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').bind(key).run();
-    await recordFail(env, request, 'code');
-    throw wrong;
-  }
-  const del = await env.DB.prepare('DELETE FROM login_codes WHERE email = ? AND code_hash = ?').bind(key, row.code_hash).run();
-  if (!del.meta || !del.meta.changes) throw wrong;
+  await takeCode(env, request, changeKey(user.id, addr), code);
   // They proved they own the address, so it's fine to say it's taken.
   if (await env.DB.prepare('SELECT 1 FROM users WHERE email = ? AND id != ?').bind(addr, user.id).first())
     throw new HttpError(409, 'That address already has its own account on when-who. Pick another address.');
@@ -805,6 +813,122 @@ async function verifyEmailChange(request, env, url) {
       html: emailHtml(`<div style="white-space:pre-wrap">${escHtml(text)}</div>`, { site, lang: de ? 'de' : 'en' }) }).catch(() => {});
   }
   return json({ ok: true, email: addr });
+}
+// ---------- your data: export and account deletion (GDPR Art. 15, 17, 20) ----------
+// USER_DATA lists EVERY table (npm run check fails otherwise). Per table: `rows` = the SQL whose rows go into the export,
+// `del` = what deleting the account removes, or `skip` = why the table holds nothing to hand out or delete.
+// Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
+// Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
+// After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
+const USER_DATA_REVIEWED = '0020';
+const MINE = 'SELECT id FROM participants WHERE user_id = ?';
+const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
+const USER_DATA = {
+  responses: { rows: `SELECT * FROM responses WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
+    del: `DELETE FROM responses WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` },
+  shared_busy: { rows: `SELECT * FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
+    del: `DELETE FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` },
+  participants: { rows: `SELECT * FROM participants WHERE user_id = ? OR poll_id IN (${OWNED})`,
+    del: `DELETE FROM participants WHERE user_id = ? OR poll_id IN (${OWNED})` },
+  messages: { rows: `SELECT * FROM messages WHERE user_id = ? OR poll_id IN (${OWNED})`,
+    del: `DELETE FROM messages WHERE user_id = ? OR poll_id IN (${OWNED})` }, // my reactions on others' messages: dropReactions()
+  chat_reads: { rows: 'SELECT * FROM chat_reads WHERE user_id = ?',
+    del: `DELETE FROM chat_reads WHERE user_id = ? OR poll_id IN (${OWNED})` },
+  instances: { rows: `SELECT * FROM instances WHERE poll_id IN (${OWNED})`,
+    del: `DELETE FROM instances WHERE poll_id IN (${OWNED})` },
+  polls: { rows: `SELECT * FROM polls WHERE owner_id = ? OR id IN (SELECT poll_id FROM participants WHERE user_id = ?)`,
+    del: 'DELETE FROM polls WHERE owner_id = ?' }, // export: polls I own in full, polls I answered for their titles
+  favourites: { rows: 'SELECT * FROM favourites WHERE user_id = ?', del: 'DELETE FROM favourites WHERE user_id = ?' },
+  contact_groups: { rows: 'SELECT * FROM contact_groups WHERE user_id = ?', del: 'DELETE FROM contact_groups WHERE user_id = ?' },
+  friends: { rows: 'SELECT * FROM friends WHERE from_id = ? OR to_id = ?', del: 'DELETE FROM friends WHERE from_id = ? OR to_id = ?' },
+  user_calendars: { rows: 'SELECT * FROM user_calendars WHERE user_id = ?', del: 'DELETE FROM user_calendars WHERE user_id = ?' },
+  calendar_accounts: { rows: 'SELECT * FROM calendar_accounts WHERE user_id = ?', del: 'DELETE FROM calendar_accounts WHERE user_id = ?' }, // tokens revoked first
+  oauth_states: { skip: 'calendar sign-ins in progress (deleted after an hour)', del: 'DELETE FROM oauth_states WHERE user_id = ?' },
+  mail_log: { rows: 'SELECT * FROM mail_log WHERE user_id = ?', del: 'DELETE FROM mail_log WHERE user_id = ?' },
+  sessions: { skip: 'sign-in tokens', del: 'DELETE FROM sessions WHERE user_id = ?' },
+  login_codes: { skip: 'one-time codes (expire after 10 minutes)',
+    del: "DELETE FROM login_codes WHERE email = (SELECT email FROM users WHERE id = ?) OR email LIKE 'change:' || ? || ':%' OR email = 'delete:' || ?" },
+  login_attempts: { skip: 'rate-limit log by IP or hashed key (deleted after 24 hours)', del: "DELETE FROM login_attempts WHERE ip = 'u:' || ?" },
+  users: { rows: 'SELECT * FROM users WHERE id = ?', del: 'DELETE FROM users WHERE id = ?' },
+};
+// Columns never handed out: secrets and hashes (the export is the person's data, not keys to it).
+const byUser = (env, sql, uid) => env.DB.prepare(sql).bind(...Array((sql.match(/\?/g) || []).length).fill(uid));
+const SECRET_COL = /hash$|token|verifier|^password/;
+const cleanRow = (r) => Object.fromEntries(Object.entries(r).filter(([k]) => !SECRET_COL.test(k)).map(([k, v]) => {
+  if (typeof v === 'string' && /^[\[{]/.test(v)) { try { return [k, JSON.parse(v)]; } catch {} }
+  return [k, v];
+}));
+async function exportMe(request, env) {
+  const user = requireUser(request);
+  const msg = `You can download your data a few times every ${FAIL_WINDOW_MIN} minutes. Try again later.`;
+  await checkThrottle(env, request, 'export', { key: 'u:' + user.id, max: 5, msg });
+  await recordFail(env, request, 'export', 'u:' + user.id);
+  const out = { exported_at: now(), site: 'when-who', note: 'All data when-who stores about your account, one list per database table. Polls you own include everyone’s answers and chat, like you see them in the app.' };
+  for (const [table, d] of Object.entries(USER_DATA)) {
+    if (!d.rows) continue;
+    const { results } = await byUser(env, d.rows, user.id).all();
+    out[table] = results.map(cleanRow);
+  }
+  // Polls I only answered: just enough to know which poll it was.
+  out.polls = out.polls.map((p) => (p.owner_id === user.id ? p : { id: p.id, title: p.title, owned: false }));
+  const day = now().slice(0, 10);
+  return new Response(JSON.stringify(out, null, 2), { headers: {
+    'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store',
+    'content-disposition': `attachment; filename="when-who-data-${day}.json"` } });
+}
+async function sendDeleteCode(request, env, url) {
+  const user = requireUser(request);
+  const tooMany = `Too many emails. Try again in ${FAIL_WINDOW_MIN} minutes.`;
+  await checkThrottle(env, request, 'code-send', { key: 'u:' + user.id, max: CODE_SENDS_EMAIL, msg: tooMany });
+  await recordFail(env, request, 'code-send', 'u:' + user.id);
+  const de = reqLang(request) === 'de', mins = CODE_MINUTES;
+  await mailCode(env, url, 'delete:' + user.id, user.email, de, {
+    title: de ? 'Konto löschen bestätigen' : 'Confirm deleting your account',
+    intro: de ? `Gib diesen Code auf when-who ein, um dein Konto und alle deine Daten endgültig zu löschen. Er ist ${mins} Minuten gültig.`
+      : `Enter this code on when-who to delete your account and all your data for good. It is valid for ${mins} minutes.`,
+    ignore: de ? 'Falls du das nicht warst, ignoriere diese E-Mail: Ohne den Code wird nichts gelöscht.'
+      : "If this wasn't you, ignore this email: nothing is deleted without the code.",
+  });
+  return json({ ok: true, minutes: CODE_MINUTES });
+}
+// My reactions on messages that stay (in other people's polls): reactions = { emoji: [user ids] }.
+async function dropReactions(env, uid) {
+  const { results } = await env.DB.prepare("SELECT id, reactions FROM messages WHERE user_id != ? AND reactions LIKE '%' || ? || '%'").bind(uid, uid).all();
+  return results.map((m) => {
+    let r = {}; try { r = JSON.parse(m.reactions || '{}'); } catch {}
+    for (const e of Object.keys(r)) { r[e] = (r[e] || []).filter((x) => x !== uid); if (!r[e].length) delete r[e]; }
+    return env.DB.prepare('UPDATE messages SET reactions = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(r), now(), m.id);
+  });
+}
+async function deleteAccount(request, env, url) {
+  const user = requireUser(request);
+  await checkThrottle(env, request, 'code');
+  const b = await body(request);
+  const code = typeof b.code === 'string' ? b.code.replace(/\s+/g, '') : '';
+  if (!/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code from the email');
+  await takeCode(env, request, 'delete:' + user.id, code);
+  const owned = await env.DB.prepare('SELECT COUNT(*) AS n FROM polls WHERE owner_id = ?').bind(user.id).first('n');
+  // Best effort: tell Google to forget calendar grants (Microsoft has no revoke endpoint).
+  const { results: accts } = await env.DB.prepare("SELECT refresh_token FROM calendar_accounts WHERE user_id = ? AND provider = 'google'").bind(user.id).all();
+  for (const a of accts) {
+    try {
+      const tok = await unseal(env, a.refresh_token);
+      await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: tok }), signal: AbortSignal.timeout(5000) });
+    } catch (e) { console.error('revoke', e); }
+  }
+  await env.DB.batch([
+    ...(await dropReactions(env, user.id)),
+    ...Object.values(USER_DATA).map((d) => byUser(env, d.del, user.id)),
+  ]);
+  if (emailEnabled(env)) {
+    const de = reqLang(request) === 'de';
+    const text = de ? `Dein when-who-Konto (${user.email}) wurde gelöscht${owned ? `, zusammen mit ${owned} Umfrage${owned === 1 ? '' : 'n'}` : ''}. Deine Antworten und Nachrichten in anderen Umfragen sind ebenfalls gelöscht.`
+      : `Your when-who account (${user.email}) has been deleted${owned ? `, along with ${owned} poll${owned === 1 ? '' : 's'}` : ''}. Your answers and messages in other polls were deleted too.`;
+    await sendEmail(env, { fromName: 'when-who', to: [user.email], replyTo: env.CONTACT_EMAIL || undefined,
+      subject: de ? 'Dein Konto wurde gelöscht' : 'Your account was deleted', text,
+      html: emailHtml(`<div style="white-space:pre-wrap">${escHtml(text)}</div>`, { site: siteUrl(env, url.origin), lang: de ? 'de' : 'en' }) }).catch(() => {});
+  }
+  return json({ ok: true, polls: owned }, 200, { 'set-cookie': sessionCookie(url, '', 0) });
 }
 // ---------- friends ----------
 // A request goes to an email address and is accepted by that person (friends.status 'pending' -> 'ok').

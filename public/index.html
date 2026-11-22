@@ -1010,7 +1010,7 @@
   .pf-mail svg{flex:none;width:14px;height:14px}
   .pf-mailed{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer}
   .pf-mailed:hover,.pf-mailed[aria-expanded="true"]{background:var(--sunken);color:var(--ink)}
-  .em-f{margin-top:12px;display:flex;flex-direction:column;gap:6px} .em-f[hidden]{display:none} .em-f label{margin:0} #em_step2{display:flex;flex-direction:column;gap:6px} #em_step2[hidden]{display:none} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .em-f{margin-top:12px;display:flex;flex-direction:column;gap:6px} .em-f[hidden]{display:none} .em-f label{margin:0} #em_step2,#del_step2{display:flex;flex-direction:column;gap:6px} #em_step2[hidden],#del_step2[hidden]{display:none} .pf-mail .ell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pf-pk{margin-top:14px} .pf-pk .pk-preview{display:none} .pf-pk .picker{padding:10px}
   @media (max-width:560px){ .pf-id{gap:10px;align-items:flex-start} .pf-av .pf-tile{width:56px;height:56px} .pf-save{min-width:40px;padding-inline:10px} }
 
@@ -1666,6 +1666,7 @@ const ERR_DE = [
   [/^(.+) is too long \(max (\d+) characters\)$/, (m,f,n)=>`${t(f)} ist zu lang (max. ${n} Zeichen)`],
   [/^(.+): that address doesn’t look right$/, (m,f)=>`${t(f)}: Diese Adresse sieht nicht richtig aus`],
   [/^Too many emails\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele E-Mails. Versuch es in ${n} Minuten noch einmal.`],
+  [/^You can download your data a few times every (\d+) minutes\. Try again later\.$/, (m,n)=>`Du kannst deine Daten nur ein paar Mal alle ${n} Minuten herunterladen. Versuch es später noch einmal.`],
   [/^Too many sign-in emails\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Anmelde-E-Mails. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many attempts\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
   [/^You can have at most (\d+) polls\. Delete an old one first\.$/, (m,n)=>`Du kannst höchstens ${n} Umfragen haben. Lösch zuerst eine alte.`],
@@ -2519,7 +2520,8 @@ function renderPrivacy(){
       ${legalSec(t('Transfers outside the EU'),`<p>${t('Cloudflare, Resend, Google and Microsoft are based in the USA, so data may be processed there. These transfers rely on the EU–U.S. Data Privacy Framework or the EU standard contractual clauses (Art. 45 and 46 GDPR). We have data processing agreements with the services that process data for us.')}</p>`)}
       ${legalSec(t('How long we keep it'),`<p>${t('Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.')}</p>`)}
       ${legalSec(t('Legal basis'),`<p>${t('We process your data to provide the service you use (Art. 6(1)(b) GDPR) and, for security limits, based on our legitimate interest in preventing abuse (Art. 6(1)(f) GDPR). Connecting a calendar and sharing your busy hours are based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time by disconnecting or switching sharing off.')}</p>`)}
-      ${legalSec(t('Your rights'),`<p>${t('You can ask to see, correct or delete your data, to get a copy of it, to restrict how it is used, or object to it being used. You also have the right to complain to a data protection authority.')}${dpa?' '+t('The authority responsible for us is: {name}.',{name:dpa}):''}</p>`)}`);
+      ${legalSec(t('Your rights'),`<p>${t('You can ask to see, correct or delete your data, to get a copy of it, to restrict how it is used, or object to it being used. You also have the right to complain to a data protection authority.')}${dpa?' '+t('The authority responsible for us is: {name}.',{name:dpa}):''}</p>
+        <p>${t('Most of this you can do yourself on your <a href="?account">Account page</a>: download a copy of your data (a JSON file), change your name, email address and answers, and delete your account. Deleting it removes your account, the polls you own with all their answers and chat, and your answers, messages and reactions in other polls, at once. Entries that other organisers made with your email address, and contacts in other people’s address books, belong to them; we remove them on request.')}</p>`)}`);
 }
 
 // ================= LANDING (signed out) =================
@@ -3227,7 +3229,7 @@ function renderAccount(){
       <main class="wrap"><div class="card"><div class="empty"><p class="help mt-0">${t('No password needed: we email you a 6-digit code.')}</p>
       <button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div></div></main>${siteFoot()}`; return;
   }
-  const u=ME.user, polls=ME.polls||[], open=polls.filter(x=>x.current&&x.current.status==='open').length;
+  const u=ME.user, polls=ME.polls||[], ownN=polls.length, open=polls.filter(x=>x.current&&x.current.status==='open').length;
   const answers=polls.reduce((n,x)=>n+(x.current?x.current.answers:0),0);
   $app.innerHTML=`${appbar()}
     <section class="band"><div class="wrap"><div class="hero-me">${avatarOf(u,'xl')}<div><div class="eyebrow">${t('Account')}</div>
@@ -3271,8 +3273,42 @@ function renderAccount(){
         <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
+      <div class="card span" id="datacard"><div class="card-h"><h2 class="grow">${t('Your data')}</h2>${tip(t('Get a copy of everything when-who stores about your account, or delete the account. You can change your name, email and answers right here. <a href="?privacy">Privacy policy</a>'),'left')}</div>
+        <div class="row">
+          <button type="button" class="btn sm withic" id="dl_btn">${ICON.download}${t('Download my data')}</button>
+          ${CONFIG.contact?`<a class="btn sm withic" href="mailto:${esc(CONFIG.contact)}?subject=${encodeURIComponent('Datenschutzanfrage / Data request')}&amp;body=${encodeURIComponent('Account: '+u.email+'\n\n')}">${ICON.mail}${t('Contact about my data')}</a>`:''}
+          <button type="button" class="btn sm danger withic" id="del_open" aria-expanded="false" aria-controls="del_f">${ICON.trash}${t('Delete account…')}</button>
+        </div>
+        <form id="del_f" class="em-f" hidden novalidate>
+          <p class="help m0">${ownN===1?t('Deletes your account, your poll with everyone’s answers and chat, and your answers and messages in other polls. This can’t be undone.'):ownN?t('Deletes your account, your {n} polls with everyone’s answers and chat, and your answers and messages in other polls. This can’t be undone.',{n:ownN}):t('Deletes your account and your answers and messages in all polls. This can’t be undone.')}</p>
+          <div class="row"><button type="submit" class="btn sm danger" id="del_send">${t('Send code')}</button></div>
+          <div id="del_step2" hidden><label for="del_code">${t('Code from the email')}</label>
+            <div class="pf-row"><input type="text" id="del_code" maxlength="7" autocomplete="one-time-code" inputmode="numeric" placeholder="123456">
+              <button type="button" class="btn sm danger" id="del_ok">${t('Delete for good')}</button></div>
+            <p class="help m0" id="del_help"></p></div>
+          <div class="err" id="del_err"></div>
+        </form></div>
     </div></main>${siteFoot()}`;
   renderCalCard(); renderContactsCard();
+  // Your data: download a copy (JSON), or delete the account after a code sent to its address.
+  $('dl_btn').onclick=async e=>{ const btn=e.currentTarget; btn.disabled=true;
+    try{ const r=await fetch('/api/me/export',{headers:{'x-lang':LANG}});
+      if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(tErr(j.error||'Something went wrong')); }
+      const a=document.createElement('a'); a.href=URL.createObjectURL(await r.blob()); a.download=`when-who-data-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+    catch(ex){ toast(ex.message); } btn.disabled=false; };
+  const delF=$('del_f'), delErr=$('del_err');
+  $('del_open').onclick=e=>{ const open=delF.hidden; delF.hidden=!open; e.currentTarget.setAttribute('aria-expanded',String(open)); };
+  delF.onsubmit=async e=>{ e.preventDefault(); const btn=$('del_send'); delErr.textContent=''; btn.disabled=true;
+    try{ const r=await api('POST','/me/delete',{}); $('del_step2').hidden=false; btn.textContent=t('Send again');
+      $('del_help').textContent=t('We sent a code to {email}. It is valid for {n} minutes.',{email:u.email,n:r.minutes||10}); $('del_code').value=''; $('del_code').focus(); }
+    catch(ex){ delErr.textContent=ex.message; } btn.disabled=false; };
+  const delOk=async()=>{ const btn=$('del_ok'); delErr.textContent=''; btn.disabled=true;
+    try{ await api('POST','/me/delete/verify',{code:$('del_code').value}); store.del('myPolls');
+      location.replace(location.pathname+'?deleted'); }
+    catch(ex){ delErr.textContent=ex.message; btn.disabled=false; } };
+  $('del_ok').onclick=delOk;
+  $('del_code').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); delOk(); } });
   // Save lights up once the name or the avatar changed; the avatar button opens the picker.
   const pfDirty=()=>{ const b=$('pf_save'); if(b) b.disabled=false; };
   $('pf_name').addEventListener('input',e=>{ pickerSetText('avatar',e.target.value||u.email); pfDirty(); });
@@ -6656,11 +6692,23 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
   else if(qs.has('privacy')) renderPrivacy();
   else if(qs.has('imprint')) renderImprint();
   else if(qs.has('rules')) renderRules();
-  else renderHome();
+  else { renderHome(); if(qs.has('deleted')){ history.replaceState(null,'',location.pathname); toast(t('Your account and its data were deleted.')); } }
 })();
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Deletes your account, your poll with everyone’s answers and chat, and your answers and messages in other polls. This can’t be undone.": "Löscht dein Konto, deine Umfrage mit allen Antworten und dem Chat sowie deine Antworten und Nachrichten in anderen Umfragen. Das lässt sich nicht rückgängig machen.",
+"Most of this you can do yourself on your <a href=\"?account\">Account page</a>: download a copy of your data (a JSON file), change your name, email address and answers, and delete your account. Deleting it removes your account, the polls you own with all their answers and chat, and your answers, messages and reactions in other polls, at once. Entries that other organisers made with your email address, and contacts in other people’s address books, belong to them; we remove them on request.": "Das meiste davon kannst du selbst auf deiner <a href=\"?account\">Kontoseite</a> erledigen: eine Kopie deiner Daten herunterladen (eine JSON-Datei), deinen Namen, deine E-Mail-Adresse und deine Antworten ändern und dein Konto löschen. Beim Löschen werden dein Konto, deine Umfragen mit allen Antworten und dem Chat sowie deine Antworten, Nachrichten und Reaktionen in anderen Umfragen sofort entfernt. Einträge, die andere Organisatoren mit deiner E-Mail-Adresse angelegt haben, und Kontakte in fremden Adressbüchern gehören diesen Personen; wir entfernen sie auf Anfrage.",
+"Your data": "Deine Daten",
+"Get a copy of everything when-who stores about your account, or delete the account. You can change your name, email and answers right here. <a href=\"?privacy\">Privacy policy</a>": "Lade eine Kopie von allem herunter, was when-who zu deinem Konto speichert, oder lösche das Konto. Namen, E-Mail-Adresse und Antworten kannst du direkt hier ändern. <a href=\"?privacy\">Datenschutzerklärung</a>",
+"Download my data": "Meine Daten herunterladen",
+"Contact about my data": "Anfrage zu meinen Daten",
+"Delete account…": "Konto löschen…",
+"Deletes your account, your {n} polls with everyone’s answers and chat, and your answers and messages in other polls. This can’t be undone.": "Löscht dein Konto, deine {n} Umfragen mit allen Antworten und dem Chat sowie deine Antworten und Nachrichten in anderen Umfragen. Das lässt sich nicht rückgängig machen.",
+"Deletes your account and your answers and messages in all polls. This can’t be undone.": "Löscht dein Konto und deine Antworten und Nachrichten in allen Umfragen. Das lässt sich nicht rückgängig machen.",
+"Delete for good": "Endgültig löschen",
+"Your account and its data were deleted.": "Dein Konto und seine Daten wurden gelöscht.",
+"Something went wrong": "Etwas ist schiefgelaufen",
 "Legal notice": "Impressum",
 "Not filled in yet: set OPERATOR_NAME, OPERATOR_ADDRESS and CONTACT_EMAIL in wrangler.toml.": "Noch nicht ausgefüllt: OPERATOR_NAME, OPERATOR_ADDRESS und CONTACT_EMAIL in wrangler.toml setzen.",
 "Information according to § 5 DDG": "Angaben gemäß § 5 DDG",
