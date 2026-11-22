@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-I3WlIT2ZA6gPIEbkoBllAwqd5AMevT73/QnKhPv/LTY=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-nAT1PJKpK0vcUQCRew8xlSrrMZUCPJ16lNrnCDF5pKE=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -225,6 +225,7 @@ async function route(request, env, ctx, url) {
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
   if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
+  if (a === 'responses' && b && c === 'extra' && !d && m === 'PUT') return answerQuestions(request, env, id, b);
   if (a === 'responses' && b) {
     if (m === 'GET') return getOwnResponse(request, env, id, b);
     if (m === 'PUT') return updateResponse(request, env, id, b);
@@ -398,6 +399,13 @@ function currentSeq(poll) {
   return n;
 }
 async function insertInstance(env, poll, seq, fields, notified) {
+  // A new round of a series asks the same questions as the last one (without meeting links; place votes for a meeting stay behind).
+  if (seq > 0 && fields.questions === undefined) {
+    const prev = await env.DB.prepare('SELECT questions FROM instances WHERE poll_id = ? AND seq < ? ORDER BY seq DESC LIMIT 1').bind(poll.id, seq).first('questions');
+    const qs = questionsOf({ questions: prev }).filter((q) => !q.meetings || q.type !== 'choice' || !q.place)
+      .map(({ meetings, closed, at, ...q }) => ({ ...q, at: now() }));
+    if (qs.length) fields = { ...fields, questions: JSON.stringify(qs) };
+  }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
   const cols = Object.keys(inst);
   const r = await env.DB.prepare(`INSERT OR IGNORE INTO instances (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => inst[c])).run();
@@ -475,7 +483,7 @@ function publicPoll(poll, admin) {
 }
 function publicInstance(inst, extra = {}) {
   return { id: inst.id, seq: inst.seq, createdAt: inst.created_at, startDate: inst.start_date, endDate: inst.end_date, deadline: inst.deadline,
-    status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), ...extra };
+    status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), questions: questionsOf(inst), ...extra };
 }
 
 function validateEntries(entries, poll, dates) {
@@ -843,7 +851,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0021';
+const USER_DATA_REVIEWED = '0022';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1869,11 +1877,15 @@ async function getPoll(request, env, ctx, url, id) {
     const n = Math.max(...all.map((i) => i.seq)) + 1;
     out.next = { startDate: periodStart(poll, n), endDate: periodEnd(poll, n), opens: openDate(poll, n) };
   }
+  // Questions: options people suggested are always sent (labels only), so everyone can vote on them.
+  const qs = questionsOf(sel), added = qs.length ? await addedOptions(env, sel.id) : new Map();
+  if (qs.some((q) => q.add)) out.added = Object.fromEntries(added);
   if (admin || !poll.hide_results) {
-    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
+    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, extra, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
     const props = proposedIds(sel);
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
-      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
+      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}),
+      ...(qs.length ? { extra: extraFor(r.extra, qs, added, admin) } : {}) }));
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
@@ -2037,6 +2049,10 @@ async function updateInstance(request, env, id, iid) {
     checkRange(s, e); u.start_date = s; u.end_date = e;
   }
   if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll, JSON.parse(inst.meetings || '[]')));
+  if (has('questions')) {
+    const qs = validateQuestions(b.questions, u.meetings ? JSON.parse(u.meetings) : JSON.parse(inst.meetings || '[]'), questionsOf(inst));
+    u.questions = qs.length ? JSON.stringify(qs) : null;
+  }
   const cols = Object.keys(u);
   if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
   return json({ ok: true, instance: publicInstance(await loadInstance(env, id, iid)) });
@@ -2739,6 +2755,7 @@ async function createResponse(request, env, id, iid) {
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
   const fill = parseFill(b.fill, poll, datesOf(inst, poll));
+  const extra = await validateExtra(env, b.extra, inst, null, { admin, needReq: true });
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
@@ -2774,6 +2791,7 @@ async function createResponse(request, env, id, iid) {
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
   if (fill) await env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid).run(); // column from migration 0015
+  if (extra) await env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, rid).run(); // column from migration 0022
   return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
@@ -2817,7 +2835,7 @@ async function getOwnResponse(request, env, id, rid) {
   const r = await loadResponse(env, id, rid);
   if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
   return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries),
-    fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))) });
+    fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))), extra: parseExtra(r.extra) });
 }
 // ---- votes on proposed meetings: responses.votes = JSON array of the meeting ids the person ticked.
 const proposedIds = (inst) => new Set(JSON.parse(inst.meetings || '[]').filter((x) => x.proposed).map((x) => x.id));
@@ -2838,6 +2856,128 @@ async function voteMeetings(request, env, id, rid) {
   await env.DB.prepare('UPDATE responses SET votes = ? WHERE id = ?').bind(votes.length ? JSON.stringify(votes) : null, r.id).run();
   return json({ ok: true, votes });
 }
+// ---- questions: extra info for a round or its meetings, and votes on options (e.g. places).
+// instances.questions = the organiser's list; responses.extra = { a: { qid: answer }, add: { qid: [{ id, label }] } }.
+// Answers: choice → [option id], text → string, yesno → { y: bool, n?: count }. `add` = options this person suggested
+// (questions with add: true); they live in the person's own answer so they go away with it.
+const MAX_QUESTIONS = 20, MAX_Q_OPTIONS = 30, MAX_ADD_OPTIONS = 5;
+const QID_RE = /^[A-Za-z0-9]{4,20}$/;
+const Q_TYPES = ['choice', 'text', 'yesno'];
+function questionsOf(inst) { try { const q = JSON.parse(inst.questions || '[]'); return Array.isArray(q) ? q : []; } catch { return []; } }
+function parseExtra(raw) { try { const x = JSON.parse(raw || 'null'); return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; } catch { return {}; } }
+function validateQuestions(list, meetings, old = []) {
+  if (!Array.isArray(list) || list.length > MAX_QUESTIONS) throw new HttpError(400, `Up to ${MAX_QUESTIONS} questions per round`);
+  const mids = new Set(meetings.map((m) => m.id)), prev = new Map(old.map((q) => [q.id, q])), seen = new Set();
+  return list.map((q) => {
+    if (!q || typeof q !== 'object' || !Q_TYPES.includes(q.type)) throw new HttpError(400, 'Invalid question');
+    const id = QID_RE.test(q.id || '') && !seen.has(q.id) ? q.id : randomId(8);
+    seen.add(id);
+    const out = { id, type: q.type, label: str(q.label, 120, 'Question', true), help: str(q.help, 300, 'Question note') || undefined,
+      req: q.req ? true : undefined, vis: q.vis === 'owner' ? 'owner' : 'all', closed: q.closed ? true : undefined,
+      at: prev.get(id)?.at || now() }; // when it was added (chat timeline)
+    const ms = Array.isArray(q.meetings) ? [...new Set(q.meetings.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
+    if (ms.length) out.meetings = ms;
+    if (q.type === 'choice') {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      if (opts.length > MAX_Q_OPTIONS) throw new HttpError(400, `Up to ${MAX_Q_OPTIONS} options per question`);
+      const os = new Set();
+      out.options = opts.map((o) => {
+        const oid = QID_RE.test(o?.id || '') && !os.has(o.id) ? o.id : randomId(8);
+        os.add(oid);
+        return { id: oid, label: str(o?.label, 120, 'Option', true) };
+      });
+      out.multi = q.multi ? true : undefined; out.add = q.add ? true : undefined; out.place = q.place ? true : undefined;
+      if (!out.options.length && !out.add) throw new HttpError(400, 'Add an option, or let people add their own');
+    }
+    if (q.type === 'yesno' && q.count) out.count = { label: str(q.count.label, 60, 'Count label'), max: int(q.count.max ?? 10, 1, 99, 'Highest number') };
+    return out;
+  });
+}
+// Options people suggested in this round: Map question id → [{ id, label }] (from every answer's `add`).
+async function addedOptions(env, iid, skipRid) {
+  const { results } = await env.DB.prepare('SELECT id, extra FROM responses WHERE instance_id = ? AND extra IS NOT NULL').bind(iid).all();
+  const out = new Map();
+  for (const r of results) {
+    if (r.id === skipRid) continue;
+    for (const [qid, list] of Object.entries(parseExtra(r.extra).add || {})) {
+      if (!Array.isArray(list)) continue;
+      if (!out.has(qid)) out.set(qid, []);
+      out.get(qid).push(...list.filter((o) => o && typeof o.id === 'string' && typeof o.label === 'string'));
+    }
+  }
+  return out;
+}
+// Option ids valid for a choice question: the organiser's plus everyone's suggestions.
+const optionIds = (q, added) => new Set([...(q.options || []), ...(added.get(q.id) || [])].map((o) => o.id));
+// Checks a person's answers to the round's questions. old = what they had (closed questions keep it unless the organiser edits).
+// needReq: required questions must be answered (saving My answer; not for quick answers from a meeting card).
+async function validateExtra(env, raw, inst, rid, { old = {}, admin = false, needReq = false } = {}) {
+  const qs = questionsOf(inst);
+  if (!qs.length) return null;
+  if (raw != null && (typeof raw !== 'object' || Array.isArray(raw))) throw new HttpError(400, 'Invalid answers to questions');
+  const x = raw || {}, a = x.a && typeof x.a === 'object' ? x.a : {}, addIn = x.add && typeof x.add === 'object' ? x.add : {};
+  const added = await addedOptions(env, inst.id, rid);
+  const outA = {}, outAdd = {};
+  for (const q of qs) {
+    if (q.closed && !admin) { // closed: keep what was there
+      if (old.a && old.a[q.id] !== undefined) outA[q.id] = old.a[q.id];
+      if (old.add && old.add[q.id]) outAdd[q.id] = old.add[q.id];
+      continue;
+    }
+    let v = a[q.id];
+    if (q.type === 'choice') {
+      const valid = optionIds(q, added);
+      if (q.add && Array.isArray(addIn[q.id])) {
+        const labels = new Set([...(q.options || []), ...(added.get(q.id) || [])].map((o) => o.label.toLowerCase()));
+        const mine = [];
+        for (const o of addIn[q.id].slice(0, MAX_ADD_OPTIONS)) {
+          const label = str(o?.label, 120, 'Option');
+          if (!label || labels.has(label.toLowerCase()) || !QID_RE.test(o.id || '') || valid.has(o.id)) continue;
+          labels.add(label.toLowerCase()); valid.add(o.id); mine.push({ id: o.id, label });
+        }
+        if (mine.length) outAdd[q.id] = mine;
+      }
+      v = Array.isArray(v) ? [...new Set(v.filter((o) => typeof o === 'string' && valid.has(o)))] : [];
+      if (!q.multi) v = v.slice(0, 1);
+      if (v.length) outA[q.id] = v;
+    } else if (q.type === 'text') {
+      v = str(typeof v === 'string' ? v : '', 500, q.label);
+      if (v) outA[q.id] = v;
+    } else if (v && typeof v === 'object' && typeof v.y === 'boolean') {
+      outA[q.id] = { y: v.y, ...(v.y && q.count && v.n != null && v.n !== '' ? { n: int(v.n, 0, q.count.max, q.count.label || 'Number') } : {}) };
+    }
+    if (needReq && q.req && !admin && outA[q.id] === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
+  }
+  const out = { ...(Object.keys(outA).length ? { a: outA } : {}), ...(Object.keys(outAdd).length ? { add: outAdd } : {}) };
+  return Object.keys(out).length ? JSON.stringify(out) : null;
+}
+// What the caller may see of someone's answers: the organiser and the answer's owner everything, others only vis 'all'.
+function extraFor(raw, qs, added, full) {
+  const x = parseExtra(raw), a = {};
+  for (const q of qs) {
+    let v = x.a && x.a[q.id];
+    if (v === undefined || (!full && q.vis === 'owner')) continue;
+    if (q.type === 'choice') { const ok = optionIds(q, added); v = Array.isArray(v) ? v.filter((o) => ok.has(o)) : []; if (!v.length) continue; }
+    a[q.id] = v;
+  }
+  return Object.keys(a).length ? a : undefined;
+}
+// PUT /api/polls/:id/responses/:rid/extra { extra } — answer questions without re-saving the availability (meeting cards).
+async function answerQuestions(request, env, id, rid) {
+  const poll = await loadPoll(env, id);
+  const r = await loadResponse(env, id, rid);
+  const inst = await loadInstance(env, id, r.instance_id);
+  const admin = await isAdmin(request, poll);
+  if (!admin && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
+  if (!admin) {
+    await checkPassword(env, request, poll);
+    if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
+  }
+  const b = await body(request);
+  const extra = await validateExtra(env, b.extra, inst, r.id, { old: parseExtra(r.extra), admin });
+  await env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, r.id).run();
+  return json({ ok: true, extra: parseExtra(extra) });
+}
 async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
@@ -2855,6 +2995,7 @@ async function updateResponse(request, env, id, rid) {
   const comment = b.comment !== undefined && poll.allow_comments ? str(b.comment, 500, 'Comment') : r.comment;
   const entries = b.entries !== undefined ? JSON.stringify(validateEntries(b.entries, poll, datesOf(inst, poll))) : r.entries;
   const fill = b.fill !== undefined ? parseFill(b.fill, poll, datesOf(inst, poll)) : undefined;
+  const extra = b.extra !== undefined ? await validateExtra(env, b.extra, inst, rid, { old: parseExtra(r.extra), admin: !own && admin, needReq: true }) : undefined;
   let partId = r.participant_id;
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
@@ -2896,6 +3037,7 @@ async function updateResponse(request, env, id, rid) {
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   stmts.push(env.DB.prepare('UPDATE responses SET name = ?, email = ?, comment = ?, entries = ?, participant_id = ?, updated_at = ? WHERE id = ?').bind(name, mail, comment, entries, partId, now(), rid));
   if (fill !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid));
+  if (extra !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET extra = ? WHERE id = ?').bind(extra, rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
   return json({ ok: true, name });

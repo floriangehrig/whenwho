@@ -75,6 +75,14 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
+- **Questions** (0022): `instances.questions` = the organiser's questions for a round (`validateQuestions`): `choice` (a vote on options;
+  `multi`, `add` = people may suggest options, `place` = options are places with place search, map links and **Use as place**, which sets
+  the linked meetings' location), `text`, `yesno` (optional `count` = "how many?"). Each has `req`, `vis` (`all` | `owner` = only the organiser
+  sees the answers), `meetings` (shown as chips on those meeting cards), `closed`. A new series round copies the last round's questions.
+  `responses.extra` = `{ a: { qid: answer }, add: { qid: [{ id, label }] } }`: suggested options live in the suggester's own answer, so they
+  go with it. Sent with the answer (required ones enforced) or alone via `PUT /api/polls/:id/responses/:rid/extra` (Meetings tab).
+  `GET /api/polls/:id` sends `added` (everyone's suggestions, labels only) and each response's `extra` filtered by `extraFor`.
+  Page: `qItem` / `qSection` (Meetings tab, with the organiser's editor `qEditor`) / `renderMineQs` (`#wsq` under My answer).
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
