@@ -97,6 +97,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **Questionnaires**: items `{ type: 'group', label, icon, help, link, who }` in the same list; a question joins one with `grp` and takes its
   `link` / `who` (resolved in `questionsOf`) unless `own: true`. `GET` sends `instance.groups`; the page saves `[...groups, ...questions]`
   (`saveQuestions(list, gs)`), shows them as collapsible cards (`qGroupCard`, collapsed ones in `qgc:<poll>`), drag or ⋯ Move to between them.
+  **Generate with AI** (✨ in the Ask ▾ menu / empty state, organiser only): `POST /api/polls/:id/instances/:iid/questions-text` `{ text }`
+  sends the text and the poll title to Workers AI and returns draft questions in the page's shape (`{ group: {label, icon} | null, questions }`,
+  no ids, nothing stored). The page (`qAiPanel`) lists them to pick, optionally as a new questionnaire, and saves with `saveQuestions` (Undo).
+  Shares the `AI_PER_DAY` cap.
   Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`

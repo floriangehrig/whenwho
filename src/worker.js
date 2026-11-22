@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-vAVktwCAnadTJIoJuy2ACiWUlV24TDrFik9O6bTlHzo=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-RC7g6OmPksdFX4Cl/YgF8Sp88yKEMybGN/scIko1fGE=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -226,6 +226,7 @@ async function route(request, env, ctx, url) {
     if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
     if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
+    if (b && c === 'questions-text' && !d && m === 'POST') return questionsFromText(request, env, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'busy' && !d && m === 'PUT') return shareBusy(request, env, id, b);
     if (b && c === 'form' && !d && m === 'GET') return getForm(request, env, url, id, b);
@@ -2731,13 +2732,13 @@ async function aiQuota(request, env, user) {
   await recordFail(env, request, 'ai', key);
 }
 // Runs the model with a JSON schema and returns the parsed object (or null).
-async function aiJson(env, system, text, schema) {
+async function aiJson(env, system, text, schema, maxTokens = 600, temperature = 0) {
   let out;
   try {
     out = await env.AI.run(env.AI_MODEL || AI_MODEL, {
       messages: [{ role: 'system', content: system }, { role: 'user', content: text }],
       response_format: { type: 'json_schema', json_schema: schema },
-      max_tokens: 600, temperature: 0,
+      max_tokens: maxTokens, temperature,
     });
   } catch (e) {
     console.log('AI failed', e && e.message);
@@ -2895,6 +2896,85 @@ async function suggestFromText(request, env, id, iid) {
   const inDates = new Set(dates);
   const only = poll.kind === 'weekly' || !Array.isArray(r.dates) ? [] : [...new Set(r.dates.slice(0, 400).map((x) => String(x).trim()).filter((x) => inDates.has(x)))].sort();
   return json({ s, wd: [...wd].sort(), hs, he, dates: only.length && only.length < dates.length ? only : null });
+}
+
+// ---------- Generate questions with AI (organiser, Questions tab) ----------
+// The organiser describes what they want to ask; the model drafts questions in the page's question shape. Nothing is
+// saved here: the page shows them for picking and saves the picked ones with the normal PATCH (validateQuestions).
+// Only the text and the poll's title are sent.
+const QGEN_MAX = 15;
+const QGEN_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' }, icon: { type: 'string' },
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['radio', 'check', 'select', 'rating', 'short', 'long', 'yesno'] }, label: { type: 'string' }, help: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          required: { type: 'boolean' }, private: { type: 'boolean' }, place: { type: 'boolean' }, add: { type: 'boolean' },
+          rating_max: { type: 'integer' }, low: { type: 'string' }, high: { type: 'string' }, count_label: { type: 'string' },
+        },
+        required: ['type', 'label', 'help', 'options', 'required', 'private', 'place', 'add', 'rating_max', 'low', 'high', 'count_label'],
+      },
+    },
+  },
+  required: ['title', 'icon', 'questions'],
+};
+function qgenPrompt(poll, lang) {
+  return [
+    'You write a short form (questions) for the people of a scheduling poll, from the organiser\'s description.',
+    `The poll is called: "${String(poll.title || '').slice(0, 120)}".`,
+    'Question types: radio = pick one option; check = pick several; select = dropdown, pick one (long lists); rating = stars 1..rating_max;',
+    'short = one line of text; long = a paragraph of text; yesno = yes / no, with an optional number asked after yes (count_label, e.g. "How many guests?").',
+    'Use them like this: voting on a place or restaurant = radio with place true and add true (options = places named in the text, else empty);',
+    'dietary or health needs = check (or long) with private true; bringing someone = yesno with count_label; feedback = rating (rating_max 5, low / high labels);',
+    'choices of food, tasks, dates the text lists = radio or check with those options. Let people add options (add true) when the list is open-ended.',
+    'Each question: label = the question, short and friendly; help = an optional short note ("" if none); options = choice labels (only for radio / check / select, else []);',
+    'required = must be answered (default false); private = only the organiser sees the answers (default false); place = options are places (default false);',
+    'rating_max = 5 unless said; low / high = rating labels ("" if none); count_label = "" unless yesno asks for a number.',
+    'Write 2 to 8 questions unless the text asks for a number. Don\'t ask about dates or times: the poll already does that.',
+    'title = a short name for the whole questionnaire (2-4 words); icon = one fitting emoji.',
+    `Write everything in the language of the text (it may be ${lang === 'de' ? 'German or English' : 'English or German'}). Answer only with the JSON object.`,
+  ].join('\n');
+}
+async function questionsFromText(request, env, id, iid) {
+  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
+  const poll = await loadPoll(env, id);
+  requireAdmin(request, poll);
+  await loadInstance(env, id, iid);
+  const b = await body(request);
+  const text = str(b.text, 500, 'Text', true);
+  await aiQuota(request, env, userOf(request));
+  const r = await aiJson(env, qgenPrompt(poll, reqLang(request)), text, QGEN_SCHEMA, 2000, 0.3);
+  const line = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n);
+  const icon = (v) => { try { return emojiIcon(line(v, 16), 'Icon') || undefined; } catch { return undefined; } };
+  const out = [];
+  for (const x of Array.isArray(r && r.questions) ? r.questions.slice(0, QGEN_MAX) : []) {
+    if (!x || typeof x !== 'object' || !Q_TYPES.includes(x.type)) continue;
+    const label = line(x.label, 200);
+    if (!label) continue;
+    const q = { type: x.type, label, help: line(x.help, 500) || undefined, req: x.required === true || undefined, vis: x.private === true ? 'owner' : 'all' };
+    if (Q_CHOICE.has(q.type)) {
+      const seen = new Set();
+      q.options = (Array.isArray(x.options) ? x.options : []).map((o) => line(o, 120))
+        .filter((o) => o && !seen.has(o.toLowerCase()) && seen.add(o.toLowerCase())).slice(0, MAX_Q_OPTIONS);
+      if (x.place === true) q.place = true;
+      if (q.type !== 'select' && (x.add === true || !q.options.length)) q.add = true;
+      if (q.type === 'select' && !q.options.length) q.type = 'radio', q.add = true;
+    }
+    if (q.type === 'rating') {
+      const n = Math.round(Number(x.rating_max));
+      q.rating = { max: Number.isFinite(n) ? Math.min(10, Math.max(3, n)) : 5, lo: line(x.low, 40) || undefined, hi: line(x.high, 40) || undefined };
+    }
+    if (q.type === 'yesno' && line(x.count_label, 60)) q.count = { label: line(x.count_label, 60), max: 20 };
+    out.push(q);
+  }
+  if (!out.length) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
+  const title = line(r.title, 120);
+  return json({ group: title ? { label: title, icon: icon(r.icon) } : null, questions: out });
 }
 
 async function createResponse(request, env, id, iid) {

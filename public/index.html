@@ -235,6 +235,12 @@
   .aif-go .btn svg{width:15px;height:15px}
   .aif-msg{font-size:13px} .aif-msg.err{color:var(--no)}
   .aif-clr{margin-left:auto} .aif-clr[hidden]{display:none}
+  .qai{margin:0 0 var(--s2)} .qai .boxh .ml-auto{margin-left:auto}
+  .qai-list{display:flex;flex-direction:column;gap:4px;max-height:360px;overflow:auto}
+  .qai-row{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:8px;cursor:pointer}
+  .qai-row:hover{background:var(--hover,rgba(127,127,127,.08))}
+  .qai-row .minw{display:flex;flex-direction:column;min-width:0} .qai-row .minw b{font-weight:600}
+  .qai-row .qtile,.qai-row>span:first-of-type{flex:none}
   .boxh{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13.5px;color:var(--ink)} .boxh>svg{width:16px;height:16px;flex:none;color:var(--accent)}
   .cal-in{flex:1 1 260px;min-width:0}
   .pat-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:500}
@@ -2715,7 +2721,7 @@ function renderPrivacy(){
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
-        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI or Suggest with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers or suggestions. It is not stored by when-who.'),
+        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations and reminders.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
@@ -4320,11 +4326,13 @@ function renderQuestions(fresh){
   if(!P.qview) P.qview=store.get('qview:'+P.id,'')||(mayFill&&!adm?'fill':'results');
   const view=mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${tip(adm?t('A short form for this round: votes (also on places, with suggestions), checkboxes, dropdowns, ratings, text and yes / no. Link a question to the whole poll or to meetings, pick who may answer, and drag to reorder. 🔒 = only you see the answers.'):t('Questions from the organiser, answered separately from your availability. 🔒 = only the organiser sees the answers.'))}${qs.length&&(mayFill||adm)?seg:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button></div></details>`:''}</div>`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${tip(adm?t('A short form for this round: votes (also on places, with suggestions), checkboxes, dropdowns, ratings, text and yes / no. Link a question to the whole poll or to meetings, pick who may answer, and drag to reorder. 🔒 = only you see the answers.'):t('Questions from the organiser, answered separately from your availability. 🔒 = only the organiser sees the answers.'))}${qs.length&&(mayFill||adm)?seg:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button>${qAiOk()?`<div class="menu-sep"></div><button type="button" data-qai>${ICON.spark}<span class="grow">${t('Generate with AI')}</span></button>`:''}</div></details>`:''}</div>`;
+  const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
+    if(aiP){ el.innerHTML=`${head}<div class="mcard">${aiP}</div>`; return; }
     el.innerHTML=`${head}<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.ask}</span><b>${t('No questions yet')}</b>${adm?`<span class="muted small">${t('Ask people for more than the date: where to meet, a plus-one, dietary needs…')}</span>
-      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}</div>`:''}</div></div>`; return; }
+      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}${qAiOk()?`<button type="button" class="btn sm withic" data-qai>${ICON.spark}<span>${t('Generate with AI')}</span></button>`:''}</div>`:''}</div></div>`; return; }
   const shown=fill&&!adm?qs.filter(q=>qMayFill(q)||(P.form&&P.form.can&&!P.form.can.has(q.id)&&qAnswers(q))):qs;
   const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.qname??(P.mine.name||''))}"></label>${d.poll.requireEmail?`<label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" placeholder="${t('Email (required)')}" aria-label="${t('Email (required, only the organiser sees it)')}" value="${esc(P.qemail??(P.mine.email||''))}"></label>`:''}</div></div>`
     :fill&&(P.form&&P.form.name||P.mine.name)?`<div class="qas muted small">${ICON.user}<span>${t('Answering as {name}',{name:esc((P.form&&P.form.name)||P.mine.name)})}</span></div>`:'';
@@ -4335,7 +4343,7 @@ function renderQuestions(fresh){
   const gs=qGroups(), inG=new Set(gs.map(g=>g.id)), E=P.qedit;
   const cards=shown.filter(q=>!q.grp||!inG.has(q.grp)).map(q=>qCardOrEd(q,fill)).join('')+gs.map(g=>qGroupCard(g,shown.filter(q=>q.grp===g.id),fill)).join('');
   const topEd=E&&E.isNew&&(E.type==='group'||!E.grp||!inG.has(E.grp))?qEditor():'';
-  el.innerHTML=`${head}<div class="mcard">${tools}${hide}${you}<div class="qlist${!fill&&P.qfold?' compact':''}">${topEd}${cards||`<div class="muted small qnone">${t('No questions for you in this round.')}</div>`}</div>${bar}</div>`;
+  el.innerHTML=`${head}<div class="mcard">${aiP}${tools}${hide}${you}<div class="qlist${!fill&&P.qfold?' compact':''}">${topEd}${cards||`<div class="muted small qnone">${t('No questions for you in this round.')}</div>`}</div>${bar}</div>`;
   qWire(el);
   if(keep){ const x=$(keep.id); if(x){ if(x.value!==undefined&&keep.v!==undefined) x.value=keep.v; x.focus({preventScroll:true}); try{ x.setSelectionRange(keep.s,keep.s); }catch(e){} } }
 }
@@ -4404,7 +4412,73 @@ async function saveQuestions(list,gs=qGroups()){
 const Q_TPL={ place:()=>({type:'radio',place:true,add:true,label:t('Where shall we meet?'),options:[]}), radio:()=>({type:'radio',label:'',options:[]}),
   rating:()=>({type:'rating',label:t('How did you like it?'),rating:{max:5}}), long:()=>({type:'long',label:''}),
   yesno:()=>({type:'yesno',label:t('Are you bringing someone?'),count:{label:t('How many guests?'),max:20}}), group:()=>({type:'group',label:''}) };
-function qOpenEditor(q){ P.qedit=JSON.parse(JSON.stringify({type:'radio',vis:'all',options:[],link:{to:'poll'},who:{mode:'all'},...(q||{}),...(q&&q.id?{}:{id:qNewId(),isNew:true})})); P.qdd=null;
+// ---- Generate with AI (organiser ✨): the Worker turns "dinner after the hike: where, diet, plus-ones" into draft questions
+// (only the text and the poll's title are sent). The page shows them to pick from and saves the picked ones as usual.
+const qAiOk=()=>!!(CONFIG.aiFill&&P.data&&P.data.isAdmin);
+function qAiPanel(){
+  const A=P.qai; if(!A||!qAiOk()) return '';
+  const r=A.res, undo=P.qaiUndo&&P.qaiUndo.iid===inst().id;
+  const prev=r?`<div class="qai-list">${r.questions.map((q,i)=>`<label class="qai-row"><input type="checkbox" data-qaipick="${i}"${A.off.has(i)?'':' checked'}>${qTile(q)}<span class="minw"><b>${esc(q.label)}</b><span class="muted small">${t((Q_KIND[q.type]||Q_KIND.radio)[1])}${q.options&&q.options.length?' · '+esc(q.options.slice(0,4).join(', '))+(q.options.length>4?'…':''):''}</span></span></label>`).join('')}</div>
+    <div class="qetog">${ICON.note}<label for="qai_grp">${t('As a questionnaire')}</label>${swc('qai_grp',A.asGroup,t('As a questionnaire'))}</div>
+    ${A.asGroup?`<input type="text" id="qai_gname" maxlength="120" value="${esc(A.gname||'')}" placeholder="${t('Questionnaire title, e.g. Travel')}" aria-label="${t('Questionnaire')}">`:''}`:'';
+  const n=r?r.questions.length-A.off.size:0;
+  return `<div class="aif qai"><div class="patp">
+    <div class="boxh">${ICON.spark}<span>${t('Generate with AI')}</span>${tip(t('Describe what you want to ask. Only this text and the poll’s title are sent to Cloudflare Workers AI, and they aren’t stored. You pick which questions to add and can edit them afterwards.'))}<button type="button" class="qb ml-auto" data-qaiclose title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
+    ${r?prev:`<textarea id="qAiText" rows="4" maxlength="500" placeholder="${esc(t('e.g. Dinner after the hike: vote on the restaurant, dietary needs (only I see them), plus-ones, and rate the hike'))}">${esc(A.text||'')}</textarea>`}
+    <div class="aif-go">${r?`<button type="button" class="btn sm primary withic" data-qaiadd${n&&!A.busy?'':' disabled'}>${ICON.plus}<span>${n===1?t('Add 1 question'):t('Add {n} questions',{n})}</span></button><button type="button" class="btn sm ghost" data-qaiback>${t('Back')}</button>`
+      :`<button type="button" class="btn sm primary withic" data-qaigo${A.busy?' disabled':''}>${ICON.spark}<span>${A.busy?t('Writing…'):t('Generate')}</span></button>`}
+      ${undo&&!r?`<button type="button" class="btn sm ghost" data-qaiundo>${t('Undo')}</button>`:''}
+      ${A.msg&&!A.busy?`<span class="aif-msg${A.err?' err':''}">${esc(A.msg)}</span>`:''}</div></div></div>`;
+}
+function qAiOpen(){ P.qai=P.qai||{text:'',off:new Set()}; P.qedit=null; if(P.atab!=='questions') setPollTab('questions'); renderQuestions(true); $('qAiText')?.focus(); }
+async function qAiGo(){
+  const A=P.qai; if(!A||A.busy) return;
+  const ta=$('qAiText'); if(ta) A.text=ta.value; const text=(A.text||'').trim();
+  if(!text){ A.err=true; A.msg=t('Describe what you want to ask first.'); renderQuestions(true); $('qAiText')?.focus(); return; }
+  A.busy=true; A.err=false; A.msg=''; renderQuestions(true);
+  try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/questions-text`,{text},headers());
+    A.res=r; A.off=new Set(); A.asGroup=!!r.group&&r.questions.length>1; A.gname=r.group?r.group.label:''; A.gicon=r.group&&r.group.icon; }
+  catch(e){ A.err=true; A.msg=e.message; }
+  A.busy=false; renderQuestions(true);
+}
+async function qAiAdd(){
+  const A=P.qai; if(!A||!A.res||A.busy) return;
+  const gn=$('qai_gname'); if(gn) A.gname=gn.value.trim();
+  const qs=qList(), gs=qGroups(), pick=A.res.questions.filter((_,i)=>!A.off.has(i));
+  if(!pick.length) return;
+  if(qs.length+pick.length>30){ toast(t('Up to {n} questions per round',{n:30})); return; }
+  const asG=A.asGroup&&!!A.gname; if(asG&&gs.length>=15){ toast(t('Up to {n} questionnaires per round',{n:15})); return; }
+  const g=asG?{id:qNewId(),type:'group',label:A.gname.slice(0,120),icon:A.gicon||undefined,link:{to:'poll'},who:{mode:'all'}}:null;
+  const add=pick.map(q=>({...JSON.parse(JSON.stringify(q)),id:qNewId(),link:{to:'poll'},who:{mode:'all'},...(g?{grp:g.id}:{}),
+    ...(q.options?{options:q.options.map(l=>({id:qNewId(),label:l}))}:{})}));
+  const undo={iid:inst().id,list:qs,gs};
+  A.busy=true; renderQuestions(true);
+  const ok=await saveQuestions([...qs,...add],g?[...gs,g]:gs);
+  A.busy=false;
+  if(ok){ P.qaiUndo=undo; A.res=null; A.text=''; A.err=false; A.msg=add.length===1?t('Added 1 question'):t('Added {n} questions',{n:add.length}); renderQuestions(true);
+    const c=$(g?'qg_'+g.id:'q_'+add[0].id); if(c) c.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  else renderQuestions(true);
+}
+async function qAiUndo(){
+  const u=P.qaiUndo; if(!u||u.iid!==inst().id) return;
+  if((P.data.form?.rows||[]).length&&!confirm(t('Remove the added questions and any answers to them?'))) return;
+  if(await saveQuestions(u.list,u.gs)){ P.qaiUndo=null; if(P.qai){ P.qai.msg=t('Undone'); P.qai.err=false; } renderQuestions(true); }
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-qai]')){ const m=e.target.closest('.qmore[open]'); if(m) m.open=false; qAiOpen(); return; }
+  if(!e.target.closest('.qai')||!P.qai) return;
+  const A=P.qai, pk=e.target.closest('[data-qaipick]');
+  if(pk){ const i=+pk.dataset.qaipick; pk.checked?A.off.delete(i):A.off.add(i); const gn=$('qai_gname'); if(gn) A.gname=gn.value; renderQuestions(true); return; }
+  if(e.target.id==='qai_grp'){ const gn=$('qai_gname'); if(gn) A.gname=gn.value; A.asGroup=e.target.checked; renderQuestions(true); return; }
+  if(e.target.closest('[data-qaigo]')) qAiGo();
+  else if(e.target.closest('[data-qaiadd]')) qAiAdd();
+  else if(e.target.closest('[data-qaiback]')){ A.res=null; A.msg=''; renderQuestions(true); $('qAiText')?.focus(); }
+  else if(e.target.closest('[data-qaiundo]')) qAiUndo();
+  else if(e.target.closest('[data-qaiclose]')){ P.qai=null; renderQuestions(true); }
+});
+document.addEventListener('input',e=>{ if(!P.qai) return; if(e.target.id==='qAiText') P.qai.text=e.target.value; else if(e.target.id==='qai_gname') P.qai.gname=e.target.value; });
+document.addEventListener('keydown',e=>{ if(e.target.id==='qAiText'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); qAiGo(); } });
+function qOpenEditor(q){ P.qai=null; P.qedit=JSON.parse(JSON.stringify({type:'radio',vis:'all',options:[],link:{to:'poll'},who:{mode:'all'},...(q||{}),...(q&&q.id?{}:{id:qNewId(),isNew:true})})); P.qdd=null;
   if(P.qedit.grp&&qgcSet().has(P.qedit.grp)){ const c=qgcSet(); c.delete(P.qedit.grp); store.set('qgc:'+P.id,[...c]); }
   if(!P.qedit.link) P.qedit.link={to:'poll'}; if(!P.qedit.who) P.qedit.who={mode:'all'};
   if(P.atab!=='questions') setPollTab('questions'); renderQuestions(true);
@@ -7528,6 +7602,21 @@ function germanText(){ return {
 "List": "Liste",
 "Yes/no": "Ja/Nein",
 "{n} options": "{n} Optionen",
+"Generate with AI": "Mit KI erstellen",
+"Generate": "Erstellen",
+"Writing…": "Schreibt…",
+"Back": "Zurück",
+"As a questionnaire": "Als Fragebogen",
+"Add 1 question": "1 Frage hinzufügen",
+"Add {n} questions": "{n} Fragen hinzufügen",
+"Added 1 question": "1 Frage hinzugefügt",
+"Added {n} questions": "{n} Fragen hinzugefügt",
+"Up to {n} questions per round": "Bis zu {n} Fragen pro Runde",
+"Up to {n} questionnaires per round": "Bis zu {n} Fragebögen pro Runde",
+"Describe what you want to ask first.": "Beschreib zuerst, was du fragen willst.",
+"Remove the added questions and any answers to them?": "Die hinzugefügten Fragen und alle Antworten darauf entfernen?",
+"Describe what you want to ask. Only this text and the poll’s title are sent to Cloudflare Workers AI, and they aren’t stored. You pick which questions to add and can edit them afterwards.": "Beschreib, was du fragen willst. Nur dieser Text und der Titel der Umfrage gehen an Cloudflare Workers AI und werden nicht gespeichert. Du wählst, welche Fragen dazukommen, und kannst sie danach bearbeiten.",
+"e.g. Dinner after the hike: vote on the restaurant, dietary needs (only I see them), plus-ones, and rate the hike": "z. B. Essen nach der Wanderung: Restaurant abstimmen, Ernährungswünsche (nur ich sehe sie), Begleitung und die Wanderung bewerten",
 "{n} answers": "{n} Antworten",
 "Show less": "Weniger zeigen",
 "Show all ({n})": "Alle zeigen ({n})",
@@ -7646,7 +7735,7 @@ function germanText(){ return {
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
-"<b>Cloudflare Workers AI</b>: only when you use Fill with AI or Suggest with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers or suggestions. It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“ oder „Mit KI vorschlagen“ nutzt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten oder Vorschläge macht. when-who speichert ihn nicht.",
+"<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“, „Mit KI vorschlagen“ oder „Fragen mit KI erstellen“ nutzt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten, Vorschläge oder Fragenentwürfe macht (bei Fragen zusammen mit dem Titel der Umfrage). when-who speichert ihn nicht.",
 "<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.": "<b>Google / Microsoft</b>: nur wenn du einen Kalender verbindest oder Kontakte importierst, wie oben beschrieben.",
 "The fonts are served by when-who itself; no third party is contacted when the page loads.": "Die Schriften liefert when-who selbst aus; beim Laden der Seite wird kein Dritter kontaktiert.",
 "Transfers outside the EU": "Übermittlung außerhalb der EU",
