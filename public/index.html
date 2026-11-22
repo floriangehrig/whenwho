@@ -508,6 +508,9 @@
   .grdlg .dlg-h{gap:10px} .grp-ic{flex:none;padding:0;border:0;background:none;border-radius:11px;cursor:pointer;line-height:0}
   .grp-ic .pf-tile{width:40px;height:40px;border-radius:11px} .grp-ic .pf-tile .tile-e{font-size:22px} .grp-ic .pf-tile .tile-i{font-size:17px}
   .grp-ic[aria-expanded=true] .pf-tile{box-shadow:0 0 0 3px var(--accent)}
+  /* Tapping the icon turns the editor into an icon picker only: emoji, no upload (groups keep an emoji), no people. */
+  .grdlg .pk-preview,.grdlg label.pk-act{display:none} .grdlg .picker{padding:10px}
+  .grdlg.pk-on .pd-q,.grdlg.pk-on #gr_err,.grdlg.pk-on #gr_list,.grdlg.pk-on .dlg-f{display:none}
   .grp-name{flex:1;min-width:0;font-size:16px;font-weight:700;border-color:transparent;background:transparent;padding:6px 8px}
   .grp-name:hover,.grp-name:focus{border-color:var(--line-strong);background:var(--card)}
   #pk_grp label.pk-act{display:none}
@@ -780,8 +783,8 @@
     .mcard:not(.selecting) .mlist:not(.compact) .mmeta>:not(.tm){font-size:13.5px;color:var(--muted)}
     .mcard:not(.selecting) .mlist:not(.compact) .mnotes{margin-top:2px;padding:9px 11px}
     .mcard:not(.selecting) .mlist:not(.compact) .mfoot{margin-top:2px;padding-top:8px}
-    /* the Scheduled header fits one row: tighter icon buttons */
-    .mcard>.card-h{gap:2px;flex-wrap:nowrap} .mcard>.card-h .mfold{margin-right:6px} .mws .mcard>.card-h .mfl{display:none} .mcard>.card-h .mfold h3{white-space:nowrap}
+    /* the Options / Scheduled headers fit one row: tighter icon buttons */
+    .mcard>.card-h{gap:2px;flex-wrap:nowrap} .mcard>.card-h .mfold{margin-right:6px} .mcard>.card-h .mfold h3{white-space:nowrap}
     .mcard>.card-h .mcal{gap:0} .mcard>.card-h :is(.btn.ib,.qb){width:32px;min-width:32px;padding:0;justify-content:center} .mcard>.card-h .btn.ib .bl{display:none} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
@@ -1088,6 +1091,7 @@
   /* organiser Meetings tab: scheduled meetings card + "Plan new meetings" in numbered steps */
   .mcard .mlist{padding:var(--s3) 0 0}
   .mcard .vpanel .mlist{padding:10px 10px 12px}
+  .mcard>.mbatch+*{margin-top:var(--s4)}
   .mcard .mbatch{margin-top:var(--s3);border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--accent) 4%,var(--card))}
   .mcard .card-h .mcal{margin-left:auto}
   .card-h h2 .count{vertical-align:2px}
@@ -2248,8 +2252,8 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account overview')}</a><a href="${esc(origin)}">${t('Your polls')}</a>
-    <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
+    <a href="?account">${t('Account Overview')}</a><a href="${esc(origin)}">${t('Your Polls')}</a>
+    <div class="menu-sep"></div><a href="#" data-logout>${t('Sign Out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign Out Everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
     <form class="codef" id="login-form" name="login" data-mode="signin" autocomplete="on"><h3>${t('Sign in to when-who')}</h3><p class="help mt-0 mb-3">${t('Create and manage polls on any device.')}</p>
@@ -2386,7 +2390,7 @@ function renderHome(){
   $app.innerHTML = `
     ${appbar()}
     <section class="band"><div class="wrap">
-      ${ME.user?`<div class="hero-me">${avatarOf(ME.user,'xl')}<div><div class="eyebrow">${t('Your polls')}</div><h1>${t('Hi, {name}',{name:esc(displayName(ME.user))})}</h1>
+      ${ME.user?`<div class="hero-me">${avatarOf(ME.user,'xl')}<div><div class="eyebrow">${t('Your Polls')}</div><h1>${t('Hi, {name}',{name:esc(displayName(ME.user))})}</h1>
         <p class="lead">${server.length?(nOpen?t('You have {polls}, {open} open right now.',{polls:plural(server.length,t('poll'),t('polls')),open:nOpen}):t('You have {polls}.',{polls:plural(server.length,t('poll'),t('polls'))})):t('Create your first poll and share the link.')}</p>
         ${newBtn(t('New poll'))}</div></div>`
       :`<div class="eyebrow">${t('Availability polls')}</div>
@@ -2395,12 +2399,12 @@ function renderHome(){
       ${newBtn(t('Create a poll'))}`}
     </div></section>
     <main class="wrap"><div class="home-grid">
-    ${ME.user?`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
+    ${ME.user?`<div class="card span"><div class="card-h"><h2>${t('Your Polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
       <div id="hp_own">${homePage('own')}</div></div>
       <div class="card span"><div class="card-h"><h2>${t('Polls you answered')}</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
       ${answered.length?`<div id="hp_ans">${homePage('ans')}</div>`
         :`<p class="help">${t('Polls you answer while signed in show up here, and your answers follow you to every device.')}</p>`}</div>`
-    :`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2></div>
+    :`<div class="card span"><div class="card-h"><h2>${t('Your Polls')}</h2></div>
       ${localOnly.length?`<p class="help mt-0">${t('These polls were created in this browser with an admin link. Sign in to move them into your account; only the account that owns a poll can manage it.')}</p>
       <ul class="list polls">${localOnly.map(p=>`<li><span class="grow"><a href="?p=${esc(p.id)}">${esc(p.title)}</a></span>
         <span class="acts"><button class="btn sm ghost" data-forget="${esc(p.id)}" title="${t('Remove from this list (doesn’t delete the poll)')}" aria-label="${t('Remove from this list')}">✕</button></span></li>`).join('')}</ul>
@@ -2690,7 +2694,7 @@ function renderCreated(id, body, kind){
       <div><div class="eyebrow">${t('Poll created')}</div><h1>${esc(body.title)}</h1><p class="lead">${t('Send people the link. They can answer straight away, no account needed.')}</p></div></div></div></section>
     <main class="wrap"><div class="card accent"><div class="card-h"><h2>${t('Share it')}</h2><span class="tag y">${t('Created')}</span></div>
       <div class="field"><label>${t('Share link')}</label><div class="linkbox"><input type="text" readonly value="${esc(shareLink(id))}">${ib('copy',t('Copy link'),`data-copy="${esc(shareLink(id))}"`,'primary',t('Copy'))}${shareBtns(info)}</div>
-      <div class="help">${t("You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.")}</div></div>
+      <div class="help">${t("You manage the poll from your account: it's listed under “Your Polls” on every device you sign in on.")}</div></div>
       <div class="section"><h3>${t('People')}</h3>${peoplePanel(id,{title:body.title,series:kind==='series',deadline:info.deadline,info})}</div>
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">${t('Open poll')}</a><a class="btn" href="?new">${t('Create another')}</a></div>
     </div></main>`;
@@ -2893,7 +2897,7 @@ async function grpOpen(id,members){
   let d=$('grdlg');
   if(!d){ d=document.createElement('dialog'); d.id='grdlg'; d.className='dlg grdlg'; d.setAttribute('aria-labelledby','gr_n'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) grpClose(); });
-    d.addEventListener('cancel',e=>{ e.preventDefault(); grpClose(); }); }
+    d.addEventListener('cancel',e=>{ e.preventDefault(); if(d.classList.contains('pk-on')) grpIcons(false); else grpClose(); }); }
   const g=GR.g;
   d.innerHTML=`<div class="dlg-h"><button type="button" class="grp-ic" data-grpic aria-expanded="false" title="${t('Change icon')}" aria-label="${t('Change icon')}"><span data-pkprev="grp">${grpTile(g,'pf-tile')}</span></button>
       <input type="text" id="gr_n" class="grp-name" maxlength="40" value="${esc(g.name)}" placeholder="${t('Group name')}" aria-label="${t('Group name')}" autocomplete="off" enterkeyhint="next">
@@ -2904,9 +2908,17 @@ async function grpOpen(id,members){
     <div id="gr_list" class="pd-list"></div>
     <div class="dlg-f">${g.id?`<button type="button" class="btn sm ghost danger withic" data-grdel>${ICON.trash}<span>${t('Delete group')}</span></button>`:''}<span class="grow"></span>
       <button type="button" class="btn primary withic" data-grsave>${ICON.check}<span>${t('Save')}</span></button></div>`;
-  if(!d.open) d.showModal();
+  d.classList.remove('pk-on'); if(!d.open) d.showModal();
   grpRender(); if(!TOUCH) $(g.name?'gr_q':'gr_n').focus(); else if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
 }
+// Icon mode: the dialog shows only the emoji picker; picking one (or the first letter) goes back to the people.
+function grpIcons(on){
+  const d=$('grdlg'), p=$('gr_pk'), b=d&&d.querySelector('[data-grpic]'); if(!p||!b) return;
+  p.hidden=!on; d.classList.toggle('pk-on',on); b.setAttribute('aria-expanded',String(on));
+  if(on){ if(!TOUCH) p.querySelector('.pk-search')?.focus(); }
+  else { if(GR.g&&PICK.grp) GR.g.icon=PICK.grp.emoji||''; grpRender(); }
+}
+document.addEventListener('click',e=>{ if(e.target.closest('[data-pk="grp"],[data-pkclear="grp"]')) grpIcons(false); });
 function grpClose(force){
   const d=$('grdlg'); if(!d) return;
   if(!force&&grpDirty()&&!confirm(t('Discard your changes to this group?'))) return;
@@ -3004,7 +3016,7 @@ document.addEventListener('click',e=>{
   else if(d.grclose!==undefined) grpClose();
   else if(d.grsave!==undefined) grpSave(b);
   else if(d.grdel!==undefined) grpDelete();
-  else if(d.grpic!==undefined){ const p=$('gr_pk'), on=p.hidden; p.hidden=!on; b.setAttribute('aria-expanded',String(on)); }
+  else if(d.grpic!==undefined) grpIcons($('gr_pk').hidden);
   else if(d.gradd!==undefined){ const f=GR.items[+d.gradd]; if(f) grpAdd(f); }
   else if(d.grrm!==undefined){ const f=GR.items[+d.grrm]; if(f&&GR.g){ GR.g.members=GR.g.members.filter(m=>m.email!==f.email); grpRender(); } }
   else if(d.gsopen!==undefined) gsOpen({name:d.gsname||nameFromEmail(d.gsopen),email:d.gsopen});
@@ -3182,7 +3194,7 @@ function renderAccount(){
           <a class="stat" href="${esc(origin)}"><b>${(ME.answered||[]).length}</b><span>${t('polls answered')}</span></a>
         </div>
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
-          <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
+          <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign Out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign Out Everywhere')}</a></div></div>
       </div>
       <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
         <div id="ctbox"></div></div>
@@ -3298,6 +3310,14 @@ function counts(v,k){ const H=hours(k), c={y:0,i:0,m:0,e:0}; const map=hourMap(v
 function ratioBar(v,k){ const c=counts(v,k), runs=[]; let cur=null;
   [...hourMap(v,k)].sort((a,b)=>a[0]-b[0]).forEach(([h,x])=>{ if(!'yim'.includes(x)) return; if(cur&&cur.s===x&&cur.e===h) cur.e=h+1; else runs.push(cur={s:x,b:h,e:h+1}); });
   return `<div class="ratio tl" title="${esc(partialText(v,k))} · ${t('{n}h available',{n:c.y})}${c.i?' · '+t('{n}h if needed',{n:c.i}):''}${c.m?' · '+t('{n}h maybe',{n:c.m}):''}">${runs.map(r=>`<i class="r${r.s}" style="left:${r.b/24*100}%;width:${(r.e-r.b)/24*100}%"></i>`).join('')}</div>`; }
+// One person's day as a row of hour cells over the poll's hours H (lines up with the day panel's bars).
+function hourStrip(v,k,H){ const map=hourMap(v,k), ok=new Set(hours(k));
+  return `<div class="hstrip" aria-hidden="true">${H.map(h=>{ const x=map.get(h); return `<i class="${!ok.has(h)?'off':x==='y'?'ry':x==='i'?'ri':x==='m'?'rm':''}"></i>`; }).join('')}</div>`; }
+// Overlaps on a day: the hours where exactly c people are free, from most people down (≤3 levels, 2+ people unless only one answered).
+function overlapLevels(s,H,tot){
+  return [...new Set(s.cy)].filter(c=>c>0&&(c>=2||tot<2)).sort((a,b)=>b-a).slice(0,3)
+    .map(c=>({c, hs:H.filter((h,i)=>s.cy[i]===c), ifn:Math.max(0,...H.map((h,i)=>s.cy[i]===c?s.ci[i]:0))}));
+}
 function hoursOf(v,s,k){ return [...hourMap(v,k)].filter(([h,x])=>x===s).map(([h])=>h).sort((a,b)=>a-b); }
 function partialText(v,k){ const y=hoursOf(v,'y',k), i=hoursOf(v,'i',k), m=hoursOf(v,'m',k); return [y.length?hoursText(y):'', i.length?t('if needed {h}',{h:hoursText(i)}):'', m.length?t('maybe {h}',{h:hoursText(m)}):''].filter(Boolean).join(' · ') || t("can't"); }
 function statusOf(v,k){
@@ -3310,14 +3330,6 @@ function statusOf(v,k){
 // availability of a person for a window [start,end) on a day: 'y' all hours available, 'i' all available or if needed,
 // 'm' none unavailable but some maybe, 'x' otherwise
 function windowStatus(v,start,end,allDay,k){
-// One person's day as a row of hour cells over the poll's hours H (lines up with the day panel's bars).
-function hourStrip(v,k,H){ const map=hourMap(v,k), ok=new Set(hours(k));
-  return `<div class="hstrip" aria-hidden="true">${H.map(h=>{ const x=map.get(h); return `<i class="${!ok.has(h)?'off':x==='y'?'ry':x==='i'?'ri':x==='m'?'rm':''}"></i>`; }).join('')}</div>`; }
-// Overlaps on a day: the hours where exactly c people are free, from most people down (≤3 levels, 2+ people unless only one answered).
-function overlapLevels(s,H,tot){
-  return [...new Set(s.cy)].filter(c=>c>0&&(c>=2||tot<2)).sort((a,b)=>b-a).slice(0,3)
-    .map(c=>({c, hs:H.filter((h,i)=>s.cy[i]===c), ifn:Math.max(0,...H.map((h,i)=>s.cy[i]===c?s.ci[i]:0))}));
-}
   if(v==null) return 'x';
   if(v==='y'||v==='i'||v==='m') return v; if(!isPartial(v)) return 'x';
   const map=hourMap(v,k), H=hours(k); const span=allDay?H:H.filter(h=>h>=start&&h<end);
@@ -3519,23 +3531,11 @@ function renderBody(){
   // (often to the top). Hold the old height until the next frame and put the scroll position back.
   const y0=window.scrollY, h0=b.offsetHeight; if(h0) b.style.minHeight=h0+'px';
   try{ renderBodyInner(b); } finally {
+    syncDSheet();
     if(Math.abs(window.scrollY-y0)>1) window.scrollTo(0,y0);
     requestAnimationFrame(()=>{ b.style.minHeight=''; });
   }
 }
-function renderBodyInner(b){
-  document.querySelectorAll('[data-tab]').forEach(x=>{ const on=x.dataset.tab===P.tab; x.classList.toggle('on',on); x.setAttribute('aria-selected',on); });
-  const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
-  // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
-  const mp=$('mplan');
-  if(mp&&P.atab==='meetings'){ b.innerHTML=''; if(msub()==='plan') renderPlan(mp); else mp.innerHTML=''; }
-  else { if(mp) mp.innerHTML=''; if(P.tab==='mine') renderMine(b); else renderGroup(b); }
-  const dn=$('msubd'); if(dn){ dn.textContent=P.drafts.length; dn.hidden=!P.drafts.length; }
-    syncDSheet();
-  saveBar();
-}
-
-// ---- series (Rounds tab; read-only for everyone but the organiser) ----
 // Phones: the day panel is a sheet pinned to the bottom; pad the page by its height so everything above stays reachable.
 function syncDSheet(){
   const p=document.querySelector('#body .dpanel'), on=!!p&&p.getClientRects().length>0&&matchMedia('(max-width:560px)').matches;
@@ -3547,6 +3547,18 @@ document.addEventListener('keydown',e=>{
   if(document.querySelector('dialog[open],.pigeon-ov,.dmenu')||(P.data&&chatState().open)) return;
   P.ovDay=null; renderBody();
 });
+function renderBodyInner(b){
+  document.querySelectorAll('[data-tab]').forEach(x=>{ const on=x.dataset.tab===P.tab; x.classList.toggle('on',on); x.setAttribute('aria-selected',on); });
+  const me=$('wsme'); if(me) me.classList.toggle('hide',P.tab!=='mine');
+  // Only one of the two is rendered at a time, so the shared ids (whodd, pgrid, drafts …) stay unique.
+  const mp=$('mplan');
+  if(mp&&P.atab==='meetings'){ b.innerHTML=''; if(msub()==='plan') renderPlan(mp); else mp.innerHTML=''; }
+  else { if(mp) mp.innerHTML=''; if(P.tab==='mine') renderMine(b); else renderGroup(b); }
+  const dn=$('msubd'); if(dn){ dn.textContent=P.drafts.length; dn.hidden=!P.drafts.length; }
+  saveBar();
+}
+
+// ---- series (Rounds tab; read-only for everyone but the organiser) ----
 function renderSeries(){
   const el=$('series'); if(!el) return;
   const d=P.data, p=d.poll, cur=inst(), adm=d.isAdmin;
@@ -3688,7 +3700,7 @@ function renderMeetings(listOnly){
   // Select and Collapse act on the whole section: vote options and scheduled meetings.
   const all=[...props,...ms];
   if(P.msel){ const ids=new Set(all.map(m=>m.id)); P.msel=new Set([...P.msel].filter(id=>ids.has(id))); }
-  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:'), sel=adm?P.msel:null, fold=!sel&&P.mfold, nSel=sel?sel.size:0;
+  const sub=icsUrl(null,false).replace(/^https?:/,'webcal:'), sel=adm?P.msel:null, fold=!!P.mfold, nSel=sel?sel.size:0;
   // Select mode: the cards show the pending batch edit (same order, so nothing jumps while typing).
   const pv=sel?batchApply(all,sel,P.mbatch):null, pvm=pv?new Map(pv.list.map(m=>[m.id,m])):null;
   const qb=(attr,id,ic,label,cls='')=>`<button type="button" class="qb${cls}" ${attr}="${id}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
@@ -3707,7 +3719,7 @@ function renderMeetings(listOnly){
       d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}<span>${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span></span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
-    if(fold) return `<div class="meet" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
+    if(fold) return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
     return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
@@ -3716,10 +3728,11 @@ function renderMeetings(listOnly){
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}</div></div>`; };
   const cal=`<span class="mcal">${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}</span>`;
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
-  const vote=props.length?votePanel(props,fold,sel?props.map(card).join(''):null):'';
+  const vote=props.length?`<div class="card-h mopt"><div class="mfold mfh">${ICON.check}<h3 class="mfl">${t('Options')}</h3><span class="count">${props.length}</span></div></div>${votePanel(props,fold,sel?props.map(card).join(''):null)}`:'';
   // Section toolbar (top right): Select (organiser) and Collapse, both for votes and scheduled meetings.
   const foldL=fold?t('Show meeting details'):t('Compact view');
-  const top=sel?'':`<div class="msec-h">${adm?`<button type="button" class="qb" data-mselect title="${t('Select several meetings to edit, move or delete them together')}" aria-label="${t('Select')}">${ICON.select}</button>`:''}<button type="button" class="qb" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div>`;
+  const selL=sel?t('Close multi-edit'):t('Select several meetings to edit, move or delete them together');
+  const top=`<div class="msec-h">${adm?`<button type="button" class="qb" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="qb" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div>`;
   const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${adm&&!sel?mailAll:''}</div>`;
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); const vl=$('vlist'); if(vl) vl.innerHTML=props.map(card).join(''); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
@@ -3746,7 +3759,7 @@ function votePanel(props,fold,selRows){
   const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
     :t('Tick every option that suits you. The organiser then confirms the ones that work.');
   return `<div class="vpanel"><div class="vpanel-h"><h3>${ICON.check}${t('Vote on a date')}${voted!=null?`<span class="count" title="${t('People who voted')}">${voted}/${total}</span>`:`<span class="count">${props.length}</span>`}</h3>${selRows!=null?'':tip(help)}${adm&&selRows==null?`<button type="button" class="btn sm ghost withic" data-vend title="${t('Remove the options that are still open; confirmed meetings stay')}" aria-label="${t('End vote')}">${ICON.x}<span class="bl">${t('End vote')}</span></button>`:''}</div>
-    ${selRows!=null?`<div class="mlist" id="vlist">${selRows}</div>`:`${canVote?'':`<div class="muted small">${t('Send your answer to vote.')}</div>`}<div class="mlist${fold?' compact':''}">${rows}</div>`}</div>`;
+    ${selRows!=null?`<div class="mlist${fold?' compact':''}" id="vlist">${selRows}</div>`:`${canVote?'':`<div class="muted small">${t('Send your answer to vote.')}</div>`}<div class="mlist${fold?' compact':''}">${rows}</div>`}</div>`;
 }
 async function toggleVote(id,btn){
   const cur=myVotes(); cur.has(id)?cur.delete(id):cur.add(id); btn.disabled=true;
@@ -3802,7 +3815,7 @@ async function sendMailAll(btn){
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 // Batch tools for the selected meetings (select mode): location, description, move, delete.
-// The cards below preview every pending change while you type; Update saves them and leaves select mode.
+// The cards below preview every pending change while you type; Update saves them and clears the fields; select mode stays until the Select icon is clicked again.
 function batchPanel(ms,n){
   const S=ms.filter(m=>P.msel.has(m.id)), same=f=>S.length&&S.every(m=>(m[f]||'')===(S[0][f]||''))?S[0][f]||'':'';
   const b=P.mbatch||{}, u=b.u==='h'?'h':'d';
@@ -3824,7 +3837,6 @@ function batchBar(ms,n){
       <button type="button" class="mb-all${all?' on':''}" data-mselall aria-pressed="${all}" aria-label="${all?t('Select none'):t('Select all')}" title="${all?t('Select none'):t('Select all')}"><input type="checkbox" tabindex="-1" aria-hidden="true"${all?' checked':''}><span>${t('All')}</span></button>
       <span class="mb-cnt" id="mb_cnt" aria-live="polite"></span>
       <span class="mb-acts"><button type="button" class="qb danger" data-mbatch="del" title="${t('Delete selected')}" aria-label="${t('Delete selected')}"${n?'':' disabled'}>${ICON.trash}</button>
-        <button type="button" class="btn sm" data-mselect>${t('Cancel')}</button>
         <button type="button" class="btn sm primary withic" id="mb_upd" data-mbatch="upd">${ICON.check}<span>${t('Update')}</span></button></span>
     </div>`;
 }
@@ -3862,20 +3874,20 @@ function shiftMeeting(m,n,unit){
 }
 async function runBatch(kind,btn){
   const ms=inst().meetings, S=P.msel, n=S.size;
-  if(!n){ if(kind==='upd'){ P.msel=null; P.mbatch={}; renderMeetings(); } return; }
+  if(!n) return;
   const pl=`${n} ${n===1?t('meeting'):t('meetings')}`;
   let list, msg;
   if(kind==='del'){ if(!confirm(t("Delete {pl}? This can't be undone.",{pl}))) return; list=ms.filter(m=>!S.has(m.id)); msg=t('Deleted {pl}',{pl}); }
-  else { const done=()=>{ P.msel=null; P.mbatch={}; renderMeetings(); }, r=batchApply(ms,S,P.mbatch);
+  else { const done=()=>{ P.mbatch={}; renderMeetings(); }, r=batchApply(ms,S,P.mbatch);
     if(r.err){ toast(r.err); return; }
     if(r.bad.size){ const bad=r.bad.size; toast(bad===1?t('{n} meeting would run past midnight. Nothing was changed.',{n:bad}):t('{n} meetings would run past midnight. Nothing was changed.',{n:bad})); return; }
-    if(!r.changed.size){ done(); return; }
+    if(!r.changed.size) return;
     const k=r.changed.size, upl=`${k} ${k===1?t('meeting'):t('meetings')}`;
     btn.disabled=true;
     if(await saveMeetings(r.list)){ done(); toast(t('Updated {pl}',{pl:upl})+(r.ad?' '+t('({n} all-day left as is)',{n:r.ad}):'')); } else btn.disabled=false;
     return; }
   btn.disabled=true;
-  if(await saveMeetings(list)){ const b=P.mbatch||{}; P.mbatch={n:b.n,u:b.u}; renderMeetings(); toast(msg); } else btn.disabled=false;
+  if(await saveMeetings(list)){ P.mbatch={}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mbstep],[data-mbu],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend],[data-mshare]'); if(!t||!P.data) return;
@@ -4694,6 +4706,7 @@ function renderGroup(el){
   if(!tot){ el.innerHTML=h+`<p class="help">${t('Pick at least one person to see when they’re free.')}</p></div>`; wireWho(); return; }
   h+=legend('heat',d.dates.some(k=>S[k].peak===tot)?'allfree':'','ifn','maybe','line',d.isAdmin||meetingDays().size?'meeting':'');
   h+=calendar(d.dates,(k,day)=>heatCell(k,day,S[k],tot,`data-ov="${k}"`,P.ovDay===k?' sel':''),{nav:false});
+  if(!P.ovDay) P.ovShown=null;
   if(P.ovDay && S[P.ovDay]){
     // The day panel: icon row · summary (counts, overlaps, everyone's bars) · one line per person. A bottom sheet on phones.
     const k=P.ovDay, s=S[k], pick=d.isAdmin&&slotsOn, sr=pickRange(), rg=sr?`${hh(sr[0])}–${hh(sr[1])}`:'';
@@ -4715,7 +4728,6 @@ function renderGroup(el){
       <div class="dp-sum"><div class="schips">${chips}</div>${ovl?`<div class="schips ovl" title="${t('Hours when most people are free')}">${ovl}</div>`:''}</div>
       <div class="dp-rows${slotsOn?'':' days'}">${bars}${rows}</div>${slotsOn?`<div class="dp-leg">${legend('yes','best','ifn','maybe')}</div>`:''}</div>`;
   }
-  if(!P.ovDay) P.ovShown=null;
   h+='</div>';
   const md=meetingDays(), ranked=d.dates.map(k=>({k,s:S[k]})).filter(o=>o.s.peak>0).sort(rankCmp).slice(0,8);
   h+=`<div class="asec">${secH('star',t('Best days'))}<ul class="list best">${ranked.map(o=>bestLi(o.s,tot,
@@ -5770,7 +5782,7 @@ function adminPanes(){
   const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
   const ms=msub();
   return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
-      <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Scheduled')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
+      <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Overview')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
@@ -6726,6 +6738,9 @@ function germanText(){ return {
 "Pick dates": "Daten wählen",
 "Previous month": "Vorheriger Monat",
 "Next month": "Nächster Monat",
+"Previous day": "Vorheriger Tag",
+"Next day": "Nächster Tag",
+"Hours when most people are free": "Stunden, in denen die meisten Zeit haben",
 "Now click the last day": "Jetzt den letzten Tag anklicken",
 "Click the first day, then the last": "Ersten Tag anklicken, dann den letzten",
 "Pick a colour, then tap days, or press and hold and drag to paint several.": "Wähl eine Farbe, dann tippe auf Tage oder halte gedrückt und zieh, um mehrere zu färben.",
@@ -6738,9 +6753,6 @@ function germanText(){ return {
 "(viewing)": "(angezeigt)",
 "({n} all-day left as is)": "({n} ganztägige unverändert)",
 "+1 crumb": "+1 Krümel",
-"Previous day": "Vorheriger Tag",
-"Next day": "Nächster Tag",
-"Hours when most people are free": "Stunden, in denen die meisten Zeit haben",
 "+5 everyone came!": "+5 alle sind gekommen!",
 "+{n} maybe": "+{n} vielleicht",
 "1 match": "1 Treffer",
@@ -6757,7 +6769,7 @@ function germanText(){ return {
 "A weekly meeting needs a start date": "Ein wöchentlicher Termin braucht ein Startdatum",
 "Access": "Zugang",
 "Account": "Konto",
-"Account overview": "Kontoübersicht",
+"Account Overview": "Kontoübersicht",
 "Account menu": "Kontomenü",
 "Account name": "Kontoname",
 "Add": "Hinzufügen",
@@ -7401,8 +7413,8 @@ function germanText(){ return {
 "Sign in with your email to create polls and see the ones you created and answered, on every device. No password needed, just a code we email you.": "Melde dich mit deiner E-Mail an, um Umfragen zu erstellen und deine erstellten und beantworteten Umfragen auf jedem Gerät zu sehen. Kein Passwort nötig, nur ein Code per E-Mail.",
 "Sign in with your email to create polls. No password needed, just a code we email you.": "Melde dich mit deiner E-Mail an, um Umfragen zu erstellen. Kein Passwort nötig, nur ein Code per E-Mail.",
 "Sign in with your email to see your profile and polls.": "Melde dich mit deiner E-Mail an, um dein Profil und deine Umfragen zu sehen.",
-"Sign out": "Abmelden",
-"Sign out everywhere": "Überall abmelden",
+"Sign Out": "Abmelden",
+"Sign Out Everywhere": "Überall abmelden",
 "Change email": "E-Mail-Adresse ändern",
 "You sign in with this address. Polls you answer while signed in are linked to it, not to your name. Changing it moves your account and all its polls to the new address.": "Mit dieser Adresse meldest du dich an. Umfragen, die du angemeldet beantwortest, sind mit ihr verknüpft, nicht mit deinem Namen. Wenn du sie änderst, ziehen dein Konto und alle seine Umfragen auf die neue Adresse um.",
 "New email address": "Neue E-Mail-Adresse",
@@ -7435,6 +7447,7 @@ function germanText(){ return {
 "Suggest": "Vorschlagen",
 "Off": "Aus",
 "Options": "Optionen",
+"Close multi-edit": "Mehrfachbearbeitung schließen",
 "hours apart": "Std. Abstand",
 "Hours between start times": "Stunden zwischen den Startzeiten",
 "Add every start time in the picked hours, this many hours apart, as separate options (they may overlap), e.g. 2-hour meetings every hour. Off = only the best time per day.": "Jede Startzeit in den gewählten Stunden, so viele Stunden auseinander, als eigene Option hinzufügen (sie dürfen sich überschneiden), z. B. 2-stündige Termine zu jeder vollen Stunde. Aus = nur die beste Zeit pro Tag.",
@@ -7566,7 +7579,7 @@ function germanText(){ return {
 "You have changes that aren’t sent yet": "Du hast Änderungen, die noch nicht gesendet sind",
 "You have {polls}, {open} open right now.": "Du hast {polls}, {open} gerade offen.",
 "You have {polls}.": "Du hast {polls}.",
-"You manage the poll from your account: it's listed under “Your polls” on every device you sign in on.": "Du verwaltest die Umfrage über dein Konto: Sie steht unter „Deine Umfragen“ auf jedem Gerät, auf dem du angemeldet bist.",
+"You manage the poll from your account: it's listed under “Your Polls” on every device you sign in on.": "Du verwaltest die Umfrage über dein Konto: Sie steht unter „Deine Umfragen“ auf jedem Gerät, auf dem du angemeldet bist.",
 "You sign in with this address. Polls you answer while signed in are linked to it, not to your name.": "Mit dieser Adresse meldest du dich an. Umfragen, die du angemeldet beantwortest, sind mit ihr verknüpft, nicht mit deinem Namen.",
 "Your account": "Dein Konto",
 "Your answer is loaded": "Deine Antwort ist geladen",
@@ -7576,7 +7589,7 @@ function germanText(){ return {
 "Your name": "Dein Name",
 "Your name (unique in this poll)": "Dein Name (eindeutig in dieser Umfrage)",
 "Your next meeting is one link away": "Dein nächster Termin ist nur einen Link entfernt",
-"Your polls": "Deine Umfragen",
+"Your Polls": "Deine Umfragen",
 "all day": "ganztägig",
 "already in the list: {names}": "schon in der Liste: {names}",
 "answer": "Antwort",
