@@ -146,6 +146,24 @@
       ],
       "port": 8797,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-groups",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8798",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8798",
+        "--persist-to",
+        ".wrangler/groups-state"
+      ],
+      "port": 8798,
+      "autoPort": false
     }
   ]
 }

@@ -187,6 +187,9 @@
   .pplist li{flex-wrap:nowrap;align-items:center;gap:10px}
   .pplist li>input[type=checkbox]{flex:none;width:18px;height:18px;margin:0}
   .pplist li.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+  .pplist li.pg-h{padding-top:9px;padding-bottom:9px} .pplist li.pg-h .pmain b{font-weight:700}
+  .pplist li.pg-w{display:block;padding:0 0 4px 26px;border-top:0} .pplist li.pg-w:hover{background:none}
+  .pplist .pg-w>ul{margin:0;border-left:2px solid var(--line);padding-left:8px}
   .pplist .pmain{display:flex;flex-direction:column;min-width:0}
   .pplist .pname{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0} .pplist .pname b{overflow-wrap:anywhere}
   .pplist .pmain>.small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1063,6 +1066,9 @@
   .appbar .tile.has-e{background:#fff}
   .hero-me{display:flex;gap:20px;align-items:center}
   .hero-me h1{margin-top:4px}
+  .bio{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:6px 0 0;padding:3px 8px 3px 0;border:0;background:none;color:inherit;opacity:.85;font:inherit;font-size:14.5px;text-align:left;cursor:pointer;border-radius:8px;overflow-wrap:anywhere}
+  .bio svg{width:14px;height:14px;flex:none;opacity:.6} .bio:hover{opacity:1} .bio:hover svg{opacity:1} .bio.empty{opacity:.6;font-style:italic}
+  .bio-in{margin-top:6px;width:min(520px,100%);font-size:14.5px}
 
   /* ---------- landing (signed out) ---------- */
   .btn.lg{min-height:46px;padding:11px 20px;font-size:15px;border-radius:10px}
@@ -1629,7 +1635,7 @@
   .wknav.pill .lbl{font-size:13px;padding:0 8px;white-space:nowrap}
   .wknav.mnav{margin:0 auto var(--s3)} .mnav .lbl{min-width:120px;text-align:center;font-weight:600}
   /* compact legend chips */
-  .legend{gap:6px;font-size:11.5px;margin:8px 0 10px;padding-top:0;border-top:0}
+  .legend{gap:6px;font-size:11.5px;margin:12px 0 10px;padding-top:0;border-top:0}
   .legend span{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sunken);white-space:nowrap}
   .legend span::before{width:9px;height:9px;border-radius:999px;margin-right:5px;vertical-align:0}
   .legend span.ln::before{width:16px;height:5px;border-radius:999px;box-shadow:0 0 0 1.5px var(--card);background:linear-gradient(90deg,var(--yes) 0 55%,var(--ifn) 55% 75%,var(--maybe) 75%)}
@@ -2694,11 +2700,11 @@ function renderPrivacy(){
       ${legalSec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op}):''}${addr?'<br>'+addr:''}</p>
         <p>${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')} ${t('See also the <a href="?imprint">legal notice</a>.')}</p>`)}
       ${legalSec(t('What we store'),legalUl([
-        t('<b>Your account:</b> your email address, the name and avatar you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
+        t('<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
-        t('<b>Contacts:</b> your favourite contacts and the groups you make. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group.'),
+        t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
@@ -2988,16 +2994,18 @@ async function loadFriends(force){
 }
 // The contacts engine, shared by the Account page's Contacts card and the Add-people popup.
 // contactKeep(q,skip): filter for search text, duplicates (first group wins) and skip(f,key) (e.g. already in the poll).
+// You are never your own contact (isMe).
+const isMe=e=>!!(ME.user&&e&&String(e).trim().toLowerCase()===String(ME.user.email||'').toLowerCase());
 function contactKeep(q,skip){
   const seen=new Set(); q=String(q||'').trim().toLowerCase();
   return f=>{ const k=f.email?f.email.toLowerCase():'n:'+f.name.toLowerCase();
-    if(seen.has(k)||(skip&&skip(f,k))) return false;
+    if(seen.has(k)||isMe(f.email)||(skip&&skip(f,k))) return false;
     if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
 }
 // [{ic,title,list,imp}]: Favourites, From your polls, Imported (imported = this page's list).
 function contactGroups(imported,keep){
   const F=FRIENDS||{};
-  return [{ic:'star',title:t('Favourites'),list:(F.favourites||[]).map(f=>({name:f.name,email:f.email}))},
+  return [{ic:'star',title:t('Favourites'),list:(F.favourites||[]).map(f=>({name:f.name,email:f.email,avatar:f.avatar,avatarImg:f.avatarImg}))},
     {ic:'users',title:t('From your polls'),list:[...(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true})),...(F.contacts||[])]},
     {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)}));
 }
@@ -3025,10 +3033,18 @@ function contactImportButtons(attr){
 function addImported(st,list,src,render){
   const have=new Set(st.imported.map(x=>x.email||'n:'+x.name.toLowerCase())); let n=0;
   for(const c of list){ const email=String(c.email||'').trim().toLowerCase(), name=String(c.name||'').trim().slice(0,60)||(email&&EMAIL_RE.test(email)?nameFromEmail(email):'');
-    if(!name||(email&&!EMAIL_RE.test(email))) continue; const k=email||'n:'+name.toLowerCase(); if(have.has(k)) continue; have.add(k); st.imported.push({name,email}); n++; }
+    if(!name||(email&&!EMAIL_RE.test(email))||isMe(email)) continue; const k=email||'n:'+name.toLowerCase(); if(have.has(k)) continue; have.add(k); st.imported.push({name,email}); n++; }
   st.imported.sort((a,b)=>a.name.localeCompare(b.name,LOC));
   toast(n?t('{n} contacts imported from {src}',{n,src}):t('No new contacts found in {src}',{src}));
-  render(); return n;
+  render(); if(n) importedAvatars(st,render); return n;
+}
+// Contacts that have an account show its avatar (asked for once per import; nothing is stored).
+async function importedAvatars(st,render){
+  if(!ME.user) return;
+  const want=st.imported.filter(x=>x.email&&x.avatar===undefined).map(x=>x.email).slice(0,500); if(!want.length) return;
+  try{ const r=await api('POST','/me/contacts/lookup',{emails:want}), a=r.accounts||{};
+    for(const x of st.imported) if(x.email&&want.includes(x.email)) Object.assign(x,a[x.email]||{avatar:''});
+    if(Object.keys(a).length) render(); }catch(e){}
 }
 // One import source into st (PD or CT). fileId = that view's hidden file input; ret = poll id to come back to after
 // a Google / Outlook sign-in (none = back to the Account page, which picks the import up again via sessionStorage).
@@ -3164,7 +3180,7 @@ async function grpOpen(id,members){
   const src=id?grpList().find(g=>g.id===id):null; if(id&&!src) return;
   GR.g=src?{id:src.id,name:src.name,icon:src.icon,members:src.members.map(m=>({...m}))}:{id:'',name:'',icon:'',members:[]};
   GR.orig=src?grpState():JSON.stringify({n:'',i:'',m:[]}); GR.q='';
-  if(members) for(const m of members) if(m.email&&!GR.g.members.some(x=>x.email===m.email.toLowerCase())) GR.g.members.push({name:m.name,email:m.email.toLowerCase()});
+  if(members) for(const m of members) if(m.email&&!isMe(m.email)&&!GR.g.members.some(x=>x.email===m.email.toLowerCase())) GR.g.members.push({name:m.name,email:m.email.toLowerCase()});
   let d=$('grdlg');
   if(!d){ d=document.createElement('dialog'); d.id='grdlg'; d.className='dlg grdlg'; d.setAttribute('aria-labelledby','gr_n'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) grpClose(); });
@@ -3201,7 +3217,7 @@ function grpRender(){
   GR.items=[];
   let h='';
   // A typed address that isn't anyone yet: offer it as a new person.
-  if(EMAIL_RE.test(q)&&!inG.has(q)&&!contactGroups([],contactKeep('')).some(x=>x.list.some(f=>(f.email||'').toLowerCase()===q)))
+  if(EMAIL_RE.test(q)&&!inG.has(q)&&!isMe(q)&&!contactGroups([],contactKeep('')).some(x=>x.list.some(f=>(f.email||'').toLowerCase()===q)))
     h+=contactListHtml([{ic:'plus',title:t('New person'),list:[{name:nameFromEmail(q),email:q}]}],GR.items,(f,i)=>pqb('plus',t('Add {name}',{name:f.name}),`data-gradd="${i}"`,' ok'));
   if(q){ const found=contactGroups([],contactKeep(q,(f,k)=>!f.email||inG.has(k))).slice(0,2);
     h+=contactListHtml(found,GR.items,(f,i)=>pqb('plus',t('Add {name}',{name:f.name}),`data-gradd="${i}"`,' ok')); }
@@ -3214,9 +3230,9 @@ function grpRender(){
   const s=document.querySelector('#grdlg [data-grsave]'); if(s) s.disabled=GR.busy||!g.name.trim()||!g.members.length||(!!g.id&&!grpDirty());
 }
 function grpAdd(f){
-  const g=GR.g, mail=String(f.email||'').toLowerCase(); if(!g||!EMAIL_RE.test(mail)||g.members.some(m=>m.email===mail)) return;
+  const g=GR.g, mail=String(f.email||'').toLowerCase(); if(!g||!EMAIL_RE.test(mail)||isMe(mail)||g.members.some(m=>m.email===mail)) return;
   if(g.members.length>=100){ $('gr_err').textContent=t('A group can have at most {n} people',{n:100}); return; }
-  g.members.push({name:String(f.name||'').slice(0,60)||nameFromEmail(mail),email:mail}); g.members.sort((a,b)=>a.name.localeCompare(b.name,LOC));
+  g.members.push({name:String(f.name||'').slice(0,60)||nameFromEmail(mail),email:mail,avatar:f.avatar,avatarImg:f.avatarImg}); g.members.sort((a,b)=>a.name.localeCompare(b.name,LOC));
   const qi=$('gr_q'); if(qi&&EMAIL_RE.test(GR.q.trim())){ qi.value=''; GR.q=''; }
   grpRender();
 }
@@ -3226,9 +3242,9 @@ async function grpSave(btn){
   if(!g.name){ err.textContent=t('Give the group a name.'); $('gr_n').focus(); return; }
   if(!g.members.length){ err.textContent=t('Add at least one person.'); $('gr_q').focus(); return; }
   GR.busy=true; btn.disabled=true;
-  try{ const b={name:g.name,icon:g.icon,members:g.members};
-    if(g.id) await api('PATCH','/me/groups/'+encodeURIComponent(g.id),b); else await api('POST','/me/groups',b);
-    await loadFriends(true); grpClose(true); grpChanged(); toast(t('Group saved')); }
+  try{ const b={name:g.name,icon:g.icon,members:g.members.map(m=>({name:m.name,email:m.email}))};
+    const r=g.id?await api('PATCH','/me/groups/'+encodeURIComponent(g.id),b):await api('POST','/me/groups',b);
+    await loadFriends(true); grpClose(true); grpChanged(); toast(r&&r.syncErrors?t('Group saved, but not every linked poll could be updated'):t('Group saved')); }
   catch(ex){ err.textContent=ex.message; }
   finally{ GR.busy=false; if(btn.isConnected) grpRender(); }
 }
@@ -3239,7 +3255,9 @@ async function grpDelete(){
   catch(ex){ toast(ex.message); }
 }
 // Redraw what shows groups: the Contacts card, the Add-people popup and the per-contact Groups sheet.
-function grpChanged(){ renderContactsCard(); if($('pd_list')) pdRender(); if($('gsdlg')&&$('gsdlg').open) gsRender(); }
+// Linked polls change on the server too (their people follow the group), so an open People list reloads.
+function grpChanged(){ renderContactsCard(); if($('pd_list')) pdRender(); if($('gsdlg')&&$('gsdlg').open) gsRender();
+  if(typeof PEOPLE!=='undefined'&&PEOPLE&&PEOPLE.groups&&PEOPLE.groups.length&&document.querySelector('.pplist')) loadParts(); }
 // The Groups sheet of one contact (👥 on a row): tick the groups they are in; changes save at once.
 const GS={f:null};
 function gsOpen(f){
@@ -3272,17 +3290,19 @@ function pdGroupsHtml(q,inPoll){
   const ql=q.toLowerCase(), gs=grpList().map(g=>({g,how:grpMatch(g,q)})).filter(x=>x.how);
   if(!gs.length) return '';
   return `<div class="cgrp">${ICON.users}<span class="grow">${t('Groups')} <span class="muted">(${gs.length})</span></span></div><ul class="list grp-list">`+gs.map(({g,how})=>{
+    const linked=!!(PEOPLE&&(PEOPLE.groups||[]).some(x=>x.id===g.id));
     const miss=g.members.filter(m=>!inPoll.has(m.email)), have=g.members.length-miss.length, open=PD.gopen.has(g.id)||(how==='member'&&!PD.gshut.has(g.id));
     const names=g.members.slice(0,3).map(m=>m.name.split(' ')[0]).join(', ')+(g.members.length>3?` +${g.members.length-3}`:'');
     const sub=open?`<ul class="list grp-sub">${g.members.map(m=>{ const i=PD.items.push(m)-1, inn=inPoll.has(m.email);
         return `<li class="${grpHit(m,ql)?'hit':''}">${avatarOf(m)}<span class="grow pmain"><b class="ell">${esc(m.name)}</b><span class="muted small ell">${esc(m.email)}</span></span>
           <span class="acts">${inn?`<span class="gin" title="${t('Already in the poll')}">${ICON.check}</span>`:pqb('plus',t('Add {name}',{name:m.name}),`data-pdi="${i}"`,' ok')}</span></li>`; }).join('')}</ul>`:'';
     return `<li class="grp-row${miss.length?'':' done'}">${grpTile(g)}<span class="grow pmain"><b class="ell">${esc(g.name)}</b><span class="muted small ell">${esc(names)}${have&&miss.length?` · ${t('{n} already in',{n:have})}`:''}</span></span>
-      <span class="acts">${miss.length?`<button type="button" class="btn sm primary" data-pdgrp="${esc(g.id)}">${t('Add {n}',{n:miss.length})}</button>`:`<span class="gin all">${ICON.check}<span>${t('all in')}</span></span>`}
+      <span class="acts">${linked&&!miss.length?`<span class="gin all" title="${t('Linked: its people follow changes to the group')}">${ICON.check}<span>${t('linked')}</span></span>`
+        :`<button type="button" class="btn sm primary" data-pdgrp="${esc(g.id)}" title="${t('Adds the group to the poll. Its people follow later changes to the group.')}">${miss.length?t('Add {n}',{n:miss.length}):t('Link')}</button>`}
         <button type="button" class="qb grp-x" data-pdgx="${esc(g.id)}" aria-expanded="${open}" title="${open?t('Hide people'):t('Show people')}" aria-label="${esc((open?t('Hide people'):t('Show people'))+': '+g.name)}">${ICON.chevd}</button></span></li>${sub?`<li class="grp-subw">${sub}</li>`:''}`; }).join('')+'</ul>';
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-grpopen],[data-grclose],[data-grsave],[data-grdel],[data-grpic],[data-gradd],[data-grrm],[data-gsopen],[data-gsclose],[data-gsnew],[data-pdgrp],[data-pdgx],[data-psavegrp]'); if(!b) return; const d=b.dataset;
+  const b=e.target.closest('[data-grpopen],[data-grclose],[data-grsave],[data-grdel],[data-grpic],[data-gradd],[data-grrm],[data-gsopen],[data-gsclose],[data-gsnew],[data-pdgrp],[data-pdgx],[data-psavegrp],[data-pgrpx],[data-pgunlink]'); if(!b) return; const d=b.dataset;
   if(d.grpopen!==undefined) grpOpen(d.grpopen||null);
   else if(d.grclose!==undefined) grpClose();
   else if(d.grsave!==undefined) grpSave(b);
@@ -3294,9 +3314,9 @@ document.addEventListener('click',e=>{
   else if(d.gsclose!==undefined) $('gsdlg').close();
   else if(d.gsnew!==undefined){ const f=GS.f; $('gsdlg').close(); grpOpen(null,[f]); }
   else if(d.pdgx!==undefined){ const id=d.pdgx; if(b.getAttribute('aria-expanded')==='true'){ PD.gopen.delete(id); PD.gshut.add(id); } else { PD.gopen.add(id); PD.gshut.delete(id); } pdRender(); }
-  else if(d.pdgrp!==undefined){ const g=grpList().find(x=>x.id===d.pdgrp); if(!g||!PEOPLE) return;
-    const inPoll=new Set(PEOPLE.parts.map(p=>(p.email||'').toLowerCase()).filter(Boolean));
-    const rows=g.members.filter(m=>!inPoll.has(m.email)).map(m=>({name:m.name.slice(0,60),email:m.email})); if(rows.length) addPeople(rows,b); }
+  else if(d.pdgrp!==undefined){ if(PEOPLE) pgLink(d.pdgrp,b); }
+  else if(d.pgrpx!==undefined){ if(PEOPLE) pgToggle(d.pgrpx); }
+  else if(d.pgunlink!==undefined){ if(PEOPLE){ const dd=b.closest('details'); if(dd) dd.open=false; pgUnlink(d.pgunlink,d.pgpeople!==undefined); } }
   else if(d.psavegrp!==undefined){ const ps=PEOPLE.parts.filter(p=>PEOPLE.sel.has(p.id)&&p.email);
     if(!ps.length){ toast(t('None of them has an email address.')); return; } grpOpen(null,ps.map(p=>({name:p.name,email:p.email}))); }
 });
@@ -3419,6 +3439,18 @@ function calReturn(qs){
   qs.delete('cal'); qs.delete('addcal');
   history.replaceState(null,'',location.pathname+(String(qs)?'?'+String(qs).replace(/=(&|$)/g,'$1'):'')+location.hash);
 }
+// Profile description under the name in the Account banner (only shown to you). Click to edit, Enter / leaving saves, Esc cancels.
+const bioView=()=>{ const b=(ME.user&&ME.user.bio)||'';
+  return `<button type="button" class="bio${b?'':' empty'}" data-bioedit title="${t('Edit description')}">${b?esc(b):t('Add a description')}${ICON.edit}</button>`; };
+function bioEdit(){ const w=$('bio_w'); if(!w) return;
+  w.innerHTML=`<input type="text" id="bio_in" class="bio-in" maxlength="160" value="${esc(ME.user.bio||'')}" placeholder="${t('A few words about you')}" aria-label="${t('Description')}" autocomplete="off" enterkeyhint="done">`;
+  const i=$('bio_in'); i.focus(); i.select();
+  let done=false; const end=async save=>{ if(done) return; done=true; const v=i.value.replace(/\s+/g,' ').trim();
+    if(save&&v!==(ME.user.bio||'')){ try{ await api('PATCH','/me',{bio:v}); ME.user.bio=v; }catch(ex){ toast(ex.message); } }
+    if($('bio_w')) $('bio_w').innerHTML=bioView(); };
+  i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); end(true); } else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); end(false); } });
+  i.addEventListener('blur',()=>end(true)); }
+document.addEventListener('click',e=>{ if(e.target.closest('[data-bioedit]')) bioEdit(); });
 function renderAccount(){
   document.title=t('Account')+' · when-who';
   if(!ME.user){
@@ -3431,7 +3463,7 @@ function renderAccount(){
   const answers=polls.reduce((n,x)=>n+(x.current?x.current.answers:0),0);
   $app.innerHTML=`${appbar()}
     <section class="band"><div class="wrap"><div class="hero-me">${avatarOf(u,'xl')}<div><div class="eyebrow">${t('Account')}</div>
-      <h1>${esc(displayName(u))}</h1><p class="lead">${esc(u.email)}</p></div></div></div></section>
+      <h1>${esc(displayName(u))}</h1><p class="lead">${esc(u.email)}</p><div id="bio_w">${bioView()}</div></div></div></div></section>
     <main class="wrap"><div class="home-grid">
       <div class="card"><div class="card-h"><h2>${t('Profile')}</h2></div>
         <form id="pf">
@@ -6797,14 +6829,14 @@ function datesSection(){
 let PEOPLE=null;
 function peoplePanel(id,o){
   const keep=PEOPLE&&PEOPLE.id===id?PEOPLE:null;
-  PEOPLE={ id, title:o.title, deadline:o.deadline||null, info:o.info||null, series:!!o.series, parts:keep?keep.parts:null, sel:keep?keep.sel:new Set(), edit:keep?keep.edit:null, focus:keep?keep.focus:false };
+  PEOPLE={ id, title:o.title, deadline:o.deadline||null, info:o.info||null, series:!!o.series, parts:keep?keep.parts:null, groups:keep?keep.groups:[], sel:keep?keep.sel:new Set(), edit:keep?keep.edit:null, focus:keep?keep.focus:false };
   return `<div id="parts"><p class="help">${t('Loading…')}</p></div>`;
 }
 async function loadParts(){
   const el=$('parts'); if(!el||!PEOPLE) return; const id=PEOPLE.id;
   loadFriends();
   if(PEOPLE.parts) renderParts();
-  try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants; }
+  try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants; PEOPLE.groups=r.groups||[]; }
   catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
   renderParts();
 }
@@ -6846,11 +6878,40 @@ function renderParts(){
           :`<button type="button" class="btn sm withic" data-pmailapp ${selMail.length?'':'disabled'} title="${t('Opens your email app with their addresses in BCC')}">${ICON.mail}<span>${t('Email {n}',{n:selMail.length})}</span></button>`}
         ${ME.user?ib('users',t('Save as group'),'data-psavegrp','sm ghost'):''}${ib('x',t('Clear selection'),'data-pselnone','sm ghost')}`
       :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>${t(`Email {n}<span class="bl"> who haven't answered</span>`,{n:waiting.length})}</span></button>`:''}${addBtn}</div>`;
+  // Linked groups first (header row + their people, collapsible), then everyone else.
+  const row=p=>PEOPLE.edit===p.id?edit(p):view(p), shut=pgShut();
+  const gh=(PEOPLE.groups||[]).map(g=>{ const ms=ps.filter(p=>p.groupId===g.id), open=!shut.has(g.id), all=ms.length&&ms.every(p=>sel.has(p.id));
+    const lbl=t('{people} · {n} answered',{people:plural(ms.length,t('person'),t('people')),n:ms.filter(p=>p.answeredNow).length});
+    return `<li class="pg-h${all?' on':''}"><input type="checkbox" data-pselgrp="${esc(g.id)}" ${all?'checked':''} ${ms.length?'':'disabled'} aria-label="${esc(t('Select {name}',{name:g.name}))}">
+      ${grpTile(g)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(g.name)}</b>${tip(esc(t('Linked group: when you change the group on your Account page, its people here change too.')))}</span><span class="muted small ell">${esc(lbl)}</span></span>
+      <span class="acts"><button type="button" class="qb grp-x" data-pgrpx="${esc(g.id)}" aria-expanded="${open}" title="${open?t('Hide people'):t('Show people')}" aria-label="${esc((open?t('Hide people'):t('Show people'))+': '+g.name)}">${ICON.chevd}</button>
+        <details class="dd more"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+g.name)}">${ICON.more}</summary><div class="ddp menu">
+          <button type="button" data-pgunlink="${esc(g.id)}">${ICON.x}<span>${t('Unlink group (keep people)')}</span></button>
+          <button type="button" class="danger" data-pgunlink="${esc(g.id)}" data-pgpeople>${ICON.trash}<span>${t('Unlink and remove who hasn’t answered')}</span></button></div></details></span></li>
+      ${open&&ms.length?`<li class="pg-w"><ul class="list">${ms.map(row).join('')}</ul></li>`:''}`; }).join('');
+  const gids=new Set((PEOPLE.groups||[]).map(g=>g.id)), rest=ps.filter(p=>!p.groupId||!gids.has(p.groupId));
   el.innerHTML=`${tools}
-    ${ps.length?`<ul class="list pplist">${ps.map(p=>PEOPLE.edit===p.id?edit(p):view(p)).join('')}</ul>`:''}`;
+    ${ps.length||gh?`<ul class="list pplist">${gh}${rest.map(row).join('')}</ul>`:''}`;
   if(PEOPLE.edit){ const n=$('pe_n'); if(n&&active!=='pe_e'){ n.focus(); n.select(); } else if(active==='pe_e') $('pe_e').focus(); }
   PEOPLE.focus=false;
   pdRender();
+}
+// Collapsed linked groups in the People list, per poll (localStorage pgrp:<poll>).
+function pgShut(){ try{ return new Set(JSON.parse(localStorage.getItem('pgrp:'+PEOPLE.id)||'[]')); }catch(e){ return new Set(); } }
+function pgToggle(gid){ const s=pgShut(); s.has(gid)?s.delete(gid):s.add(gid); try{ localStorage.setItem('pgrp:'+PEOPLE.id,JSON.stringify([...s])); }catch(e){} renderParts(); }
+async function pgUnlink(gid,people){
+  const g=(PEOPLE.groups||[]).find(x=>x.id===gid); if(!g) return;
+  if(!confirm(people?t('Unlink “{name}” and remove its people who haven’t answered yet?',{name:g.name}):t('Unlink “{name}”? Its people stay in the poll, but no longer follow the group.',{name:g.name}))) return;
+  try{ await api('DELETE',`/polls/${PEOPLE.id}/groups/${encodeURIComponent(gid)}${people?'?people=1':''}`,null,pollHeaders(PEOPLE.id)); await peopleChanged(t('Group unlinked')); }
+  catch(ex){ toast(ex.message); }
+}
+// Adds one of my groups to the poll as a linked group (its people follow later changes to the group).
+async function pgLink(gid,btn){
+  if(btn) btn.disabled=true;
+  try{ const r=await api('POST',`/polls/${PEOPLE.id}/groups`,{groupId:gid},pollHeaders(PEOPLE.id));
+    await peopleChanged(r.added.length?t('Added {n}',{n:r.added.length}):t('Group linked')); }
+  catch(ex){ const err=$('pd_err'); if(err) err.textContent=ex.message; else toast(ex.message); }
+  finally{ if(btn) btn.disabled=false; }
 }
 // After a change: on the poll page reload the poll (Answers and Meetings use the list too), else just the list.
 async function peopleChanged(msg){ if(msg) toast(msg); if(PEOPLE.id===P.id&&P.data) await loadPoll(false); else await loadParts(); }
@@ -7012,8 +7073,9 @@ async function partsInvite(btn,body,what){
 // Without email sending: open the organiser's email app with these addresses in BCC.
 const peopleMailApp = ps => { location.href=pollInviteMail(PEOPLE.id,PEOPLE.title,PEOPLE.deadline,ps.filter(p=>p.canMail&&p.email).map(p=>p.email).join('\n'),PEOPLE.info).href; };
 document.addEventListener('change',e=>{
-  const c=e.target.closest('[data-psel],[data-pselall]'); if(!c||!PEOPLE||!PEOPLE.parts) return;
+  const c=e.target.closest('[data-psel],[data-pselall],[data-pselgrp]'); if(!c||!PEOPLE||!PEOPLE.parts) return;
   if(c.dataset.psel!==undefined){ c.checked?PEOPLE.sel.add(c.dataset.psel):PEOPLE.sel.delete(c.dataset.psel); }
+  else if(c.dataset.pselgrp!==undefined){ for(const p of PEOPLE.parts) if(p.groupId===c.dataset.pselgrp) c.checked?PEOPLE.sel.add(p.id):PEOPLE.sel.delete(p.id); }
   else PEOPLE.sel=new Set(c.checked?PEOPLE.parts.map(p=>p.id):[]);
   renderParts();
 });
@@ -7580,7 +7642,7 @@ function germanText(){ return {
 "Authorities, the European Commission and users can reach us at {email}, in German or English.": "Behörden, die Europäische Kommission und Nutzer erreichen uns unter {email}, auf Deutsch oder Englisch.",
 "See also the <a href=\"?imprint\">legal notice</a>.": "Siehe auch das <a href=\"?imprint\">Impressum</a>.",
 "<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.": "<b>Chat:</b> Nachrichten, Reaktionen und Antworten im Chat einer Umfrage und wann du ihn zuletzt gelesen hast (für die Zahl ungelesener Nachrichten). Nachrichten sehen die Mitglieder des Chats.",
-"<b>Contacts:</b> your favourite contacts and the groups you make. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group.": "<b>Kontakte:</b> deine Favoriten und die Gruppen, die du anlegst. Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du markierst sie mit einem Stern oder fügst sie einer Umfrage oder Gruppe hinzu.",
+"<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.": "<b>Kontakte:</b> deine Favoriten und die Gruppen, die du anlegst, und welche deiner Gruppen mit deinen Umfragen verknüpft sind (deren Personen folgen dann Änderungen an der Gruppe). Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du markierst sie mit einem Stern oder fügst sie einer Umfrage oder Gruppe hinzu; ihre E-Mail-Adressen werden einmal mit when-who-Konten abgeglichen, um die Profilbilder dieser Personen zu zeigen.",
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
@@ -7791,7 +7853,7 @@ function germanText(){ return {
 "For questions about your data or to have it deleted, write to {email}.": "Bei Fragen zu deinen Daten oder um sie löschen zu lassen, schreib an {email}.",
 "For questions about your data or to have it deleted, reply to any email from when-who.": "Bei Fragen zu deinen Daten oder um sie löschen zu lassen, antworte auf eine beliebige E-Mail von when-who.",
 "What we store": "Was wir speichern",
-"<b>Your account:</b> your email address, the name and avatar you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name und das Profilbild, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
+"<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name, das Profilbild und die Beschreibung, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Deine Beschreibung siehst nur du. Dein Profilbild sehen angemeldete Personen, die deine E-Mail-Adresse in ihren Kontakten haben. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
 "<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.": "<b>Umfragen und Antworten:</b> was du in einer Umfrage eingibst: Titel, Termine, Namen und E-Mail-Adressen der Personen, die du hinzufügst, Verfügbarkeiten, Kommentare und Chatnachrichten.",
 "<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
 "<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto und die Schlüssel der Umfragen, die du beantwortet hast. Das bleibt auf deinem Gerät.",
@@ -8919,6 +8981,20 @@ function germanText(){ return {
 "This chat is full. Delete old messages first.": "Dieser Chat ist voll. Lösch zuerst alte Nachrichten.",
 "Message not found": "Nachricht nicht gefunden",
 "You can only delete your own messages": "Du kannst nur deine eigenen Nachrichten löschen",
+"Add a description": "Beschreibung hinzufügen",
+"A few words about you": "Ein paar Worte über dich",
+"Linked group: when you change the group on your Account page, its people here change too.": "Verknüpfte Gruppe: Wenn du die Gruppe auf deiner Kontoseite änderst, ändern sich auch ihre Personen hier.",
+"Unlink group (keep people)": "Gruppe lösen (Personen bleiben)",
+"Unlink and remove who hasn’t answered": "Lösen und alle ohne Antwort entfernen",
+"Unlink “{name}” and remove its people who haven’t answered yet?": "„{name}“ lösen und die Personen entfernen, die noch nicht geantwortet haben?",
+"Unlink “{name}”? Its people stay in the poll, but no longer follow the group.": "„{name}“ lösen? Die Personen bleiben in der Umfrage, folgen aber nicht mehr der Gruppe.",
+"Group unlinked": "Gruppe gelöst",
+"Group linked": "Gruppe verknüpft",
+"Linked: its people follow changes to the group": "Verknüpft: die Personen folgen Änderungen an der Gruppe",
+"linked": "verknüpft",
+"Link": "Verknüpfen",
+"Adds the group to the poll. Its people follow later changes to the group.": "Fügt die Gruppe der Umfrage hinzu. Ihre Personen folgen späteren Änderungen an der Gruppe.",
+"Group saved, but not every linked poll could be updated": "Gruppe gespeichert, aber nicht jede verknüpfte Umfrage konnte aktualisiert werden",
 "Invalid time": "Ungültige Zeit"}; }
 })();
 </script>

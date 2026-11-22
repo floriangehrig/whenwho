@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-1yDczkQe+w+p61tiUmQ95808nDcV3LChF2ZSir2rUCM=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-vAVktwCAnadTJIoJuy2ACiWUlV24TDrFik9O6bTlHzo=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -143,6 +143,7 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'logout' && m === 'POST') return logout(request, env, cookies, url);
     throw new HttpError(404, 'Not found');
   }
+  if (parts[1] === 'users' && parts[2] && parts[3] === 'avatar' && !parts[4] && m === 'GET') return userAvatar(request, env, parts[2]);
   if (parts[1] === 'me') {
     if (!parts[2] && m === 'GET') return me(request, env);
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
@@ -165,9 +166,10 @@ async function route(request, env, ctx, url) {
     }
     if (parts[2] === 'groups') {
       if (!parts[3] && m === 'POST') return addGroup(request, env);
-      if (parts[3] && !parts[4] && m === 'PATCH') return updateGroup(request, env, parts[3]);
+      if (parts[3] && !parts[4] && m === 'PATCH') return updateGroup(request, env, url, parts[3]);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteGroup(request, env, parts[3]);
     }
+    if (parts[2] === 'contacts' && parts[3] === 'lookup' && !parts[4] && m === 'POST') return lookupContacts(request, env);
     if (parts[2] === 'contacts' && parts[3] && !parts[4] && m === 'GET') return accountContacts(request, env, parts[3]);
     if (parts[2] === 'calendars') {
       if (!parts[3] && m === 'GET') return listCalendars(request, env);
@@ -212,6 +214,10 @@ async function route(request, env, ctx, url) {
     if (b && !c && m === 'PATCH') return updateParticipant(request, env, id, b);
     if (b && !c && m === 'DELETE') return deleteParticipant(request, env, url, id, b);
     if (b && c === 'merge' && m === 'POST') return mergeParticipant(request, env, id, b);
+  }
+  if (a === 'groups') {
+    if (!b && m === 'POST') return linkGroup(request, env, url, id);
+    if (b && !c && m === 'DELETE') return unlinkGroup(request, env, url, id, b);
   }
   if (a === 'instances') {
     if (!b && m === 'POST') return createNextInstance(request, env, ctx, url, id);
@@ -603,10 +609,10 @@ async function getUser(env, cookies) {
   const token = cookies.ww_session;
   if (!token || token.length > 100) return null;
   const s = await env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.avatar, u.created_at, u.avatar_img IS NOT NULL AS has_img
+    `SELECT u.id, u.email, u.name, u.avatar, u.bio, u.created_at, u.avatar_img IS NOT NULL AS has_img
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`)
     .bind(await sha256('session:' + token), now()).first();
-  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', hasImg: !!s.has_img, created: s.created_at } : null;
+  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', bio: s.bio || '', hasImg: !!s.has_img, created: s.created_at } : null;
 }
 const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
 // login_attempts doubles as a rate-limit log; `key` is an IP or 'e:' + hash of an email address.
@@ -732,15 +738,16 @@ async function me(request, env) {
   const img = u.hasImg ? await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(u.id).first('avatar_img') : '';
   const cal = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(auto) AS auto, (SELECT url FROM user_calendars WHERE user_id = ?1 AND url IS NOT NULL ORDER BY position, created_at LIMIT 1) AS url FROM user_calendars WHERE user_id = ?1').bind(u.id).first();
   // Feed URLs are secrets: the page only learns which host the first one points at.
-  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', since: u.created,
+  return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', bio: u.bio, since: u.created,
     calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0,
     friendRequests: (await friendRequestCount(env, u)) || 0 } });
 }
-// Body: { name?, avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
+// Body: { name?, bio? (one line, shown only to the person), avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
   const user = requireUser(request);
   const b = await body(request), u = {};
   if (b.name !== undefined) u.name = b.name === '' ? '' : personName(b.name);
+  if (b.bio !== undefined) u.bio = str(b.bio, 160, 'Description').replace(/\s+/g, ' ').trim();
   if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
   if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
   if (b.icalUrl !== undefined) u.ical_url = b.icalUrl === '' || b.icalUrl === null ? null : icalUrl(b.icalUrl);
@@ -858,7 +865,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0023';
+const USER_DATA_REVIEWED = '0024';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -868,6 +875,8 @@ const USER_DATA = {
     del: `DELETE FROM form_answers WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` }, // answers to questions
   shared_busy: { rows: `SELECT * FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})`,
     del: `DELETE FROM shared_busy WHERE participant_id IN (${MINE}) OR poll_id IN (${OWNED})` },
+  poll_groups: { rows: `SELECT * FROM poll_groups WHERE poll_id IN (${OWNED})`,
+    del: `DELETE FROM poll_groups WHERE poll_id IN (${OWNED})` }, // my contact groups linked to my polls (name + icon copy)
   participants: { rows: `SELECT * FROM participants WHERE user_id = ? OR poll_id IN (${OWNED})`,
     del: `DELETE FROM participants WHERE user_id = ? OR poll_id IN (${OWNED})` },
   messages: { rows: `SELECT * FROM messages WHERE user_id = ? OR poll_id IN (${OWNED})`,
@@ -1002,6 +1011,36 @@ async function friendSuggestions(env, user) {
      ORDER BY COALESCE(NULLIF(u.name, ''), u.email) COLLATE NOCASE LIMIT 20`).bind(user.id, user.email.toLowerCase()).all();
   return results;
 }
+// Accounts behind contact addresses, so contacts show the person's own avatar: Map email -> { account, avatar, avatarImg }.
+// The picture goes as a URL (GET /api/users/:uid/avatar, signed-in only), not inline: hundreds of contacts would be megabytes.
+async function accountsByEmail(env, emails) {
+  const list = [...new Set(emails.filter((e) => typeof e === 'string' && e).map((e) => e.toLowerCase()))], out = new Map();
+  for (let i = 0; i < list.length; i += 90) {
+    const part = list.slice(i, i + 90);
+    const { results } = await env.DB.prepare(
+      `SELECT id, LOWER(email) AS email, avatar, LENGTH(avatar_img) AS img FROM users WHERE LOWER(email) IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    for (const u of results) out.set(u.email, { account: true, avatar: u.avatar || '', avatarImg: u.img ? `/api/users/${u.id}/avatar?v=${u.img}` : '' });
+  }
+  return out;
+}
+const withAccount = (accts, x) => { const a = x && x.email && accts.get(x.email.toLowerCase()); return a ? { ...x, ...a } : x; };
+async function userAvatar(request, env, uid) {
+  requireUser(request);
+  if (!UID_RE.test(uid)) throw new HttpError(404, 'No picture');
+  const img = await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(uid).first('avatar_img');
+  const m = (img || '').match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/);
+  if (!m) throw new HttpError(404, 'No picture');
+  const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+  return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=3600' } });
+}
+// Body: { emails: [...] } (contacts imported in the browser, which the server never stores). Returns { accounts: { email: { account, avatar, avatarImg } } }.
+async function lookupContacts(request, env) {
+  requireUser(request);
+  const b = await body(request);
+  if (!Array.isArray(b.emails) || b.emails.length > 500) throw new HttpError(400, 'At most 500 addresses at once');
+  const accts = await accountsByEmail(env, b.emails.filter((e) => typeof e === 'string' && e.length <= 200 && EMAIL_RE.test(e)));
+  return json({ accounts: Object.fromEntries(accts) });
+}
 async function listFriends(request, env) {
   const user = requireUser(request);
   await claimFriendRequests(env, user);
@@ -1021,10 +1060,13 @@ async function listFriends(request, env) {
   const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
   const { results: favs } = await env.DB.prepare('SELECT id, name, email FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
   const { results: grps } = await env.DB.prepare('SELECT id, name, icon, members FROM contact_groups WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
+  const groups = grps.map((g) => ({ id: g.id, name: g.name, icon: g.icon, members: jsonList(g.members) }));
+  const contacts = guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email }));
+  const accts = await accountsByEmail(env, [...favs, ...contacts, ...groups.flatMap((g) => g.members)].map((x) => x && x.email));
   return json({
-    favourites: favs.map((f) => ({ id: f.id, name: f.name, email: f.email })),
-    groups: grps.map((g) => ({ id: g.id, name: g.name, icon: g.icon, members: jsonList(g.members) })),
-    contacts: guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email })),
+    favourites: favs.map((f) => withAccount(accts, { id: f.id, name: f.name, email: f.email })),
+    groups: groups.map((g) => ({ ...g, members: g.members.map((x) => withAccount(accts, x)) })),
+    contacts: contacts.map((x) => withAccount(accts, x)),
     friends: friends.map((u) => ({ id: u.fid, ...personOut(u) })),
     incoming: incoming.map((u) => ({ id: u.fid, ...personOut(u) })),
     outgoing: outgoing.map((r) => ({ id: r.id, email: r.to_email, at: r.created_at })),
@@ -1104,6 +1146,7 @@ async function addFavourite(request, env) {
   const b = await body(request);
   const addr = email(b.email || '').toLowerCase();
   if (!addr) throw new HttpError(400, 'Enter an email address');
+  if (addr === user.email.toLowerCase()) throw new HttpError(400, 'That’s your own address');
   const name = String(b.name || '').trim().slice(0, 60) || addr.split('@')[0];
   const had = await env.DB.prepare('SELECT id FROM favourites WHERE user_id = ? AND email = ?').bind(user.id, addr).first('id');
   if (had) { await env.DB.prepare('UPDATE favourites SET name = ? WHERE id = ?').bind(name, had).run(); return json({ id: had }); }
@@ -1124,7 +1167,8 @@ async function deleteFavourite(request, env, fid) {
 const MAX_GROUPS = 50, MAX_GROUP_MEMBERS = 100;
 const jsonList = (v) => { try { const a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } };
 // Body: { name, icon, members: [{ name, email }] }; partial = PATCH (only the fields sent).
-function groupInput(b, partial) {
+// The caller's own address is dropped (you can't be your own contact).
+function groupInput(b, partial, user) {
   const out = {}, has = (k) => Object.prototype.hasOwnProperty.call(b, k);
   if (!partial || has('name')) out.name = str(b.name, 40, 'Group name', true);
   if (!partial || has('icon')) out.icon = emojiIcon(b.icon, 'Icon');
@@ -1135,7 +1179,7 @@ function groupInput(b, partial) {
       if (!x || typeof x !== 'object') throw new HttpError(400, 'Members must be a list');
       const addr = email(x.email || '').toLowerCase();
       if (!addr) throw new HttpError(400, 'Every person needs an email address.');
-      if (seen.has(addr)) continue; seen.add(addr);
+      if (seen.has(addr) || addr === user.email.toLowerCase()) continue; seen.add(addr);
       list.push({ name: x.name ? personName(x.name) : addr.split('@')[0], email: addr });
     }
     if (list.length > MAX_GROUP_MEMBERS) throw new HttpError(409, `A group can have at most ${MAX_GROUP_MEMBERS} people`);
@@ -1145,7 +1189,7 @@ function groupInput(b, partial) {
 }
 async function addGroup(request, env) {
   const user = requireUser(request);
-  const g = groupInput(await body(request), false);
+  const g = groupInput(await body(request), false, user);
   const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM contact_groups WHERE user_id = ?').bind(user.id).first('n');
   if (n >= MAX_GROUPS) throw new HttpError(409, `You can have at most ${MAX_GROUPS} groups`);
   const id = randomId(12), at = now();
@@ -1153,22 +1197,107 @@ async function addGroup(request, env) {
     .bind(id, user.id, g.name, g.icon, JSON.stringify(g.members), at, at).run();
   return json({ id });
 }
-async function updateGroup(request, env, gid) {
+async function updateGroup(request, env, url, gid) {
   const user = requireUser(request);
   if (!ID_RE.test(gid)) throw new HttpError(404, 'Group not found');
-  const g = groupInput(await body(request), true), sets = [], vals = [];
+  const g = groupInput(await body(request), true, user), sets = [], vals = [];
+  const old = await env.DB.prepare('SELECT name, icon, members FROM contact_groups WHERE id = ? AND user_id = ?').bind(gid, user.id).first();
+  if (!old) throw new HttpError(404, 'Group not found');
   if ('name' in g) { sets.push('name = ?'); vals.push(g.name); }
   if ('icon' in g) { sets.push('icon = ?'); vals.push(g.icon); }
   if ('members' in g) { sets.push('members = ?'); vals.push(JSON.stringify(g.members)); }
   sets.push('updated_at = ?'); vals.push(now());
   const r = await env.DB.prepare(`UPDATE contact_groups SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).bind(...vals, gid, user.id).run();
   if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Group not found');
-  return json({ ok: true });
+  const sync = await syncGroup(env, url, user, gid, jsonList(old.members), g.members || jsonList(old.members), g.name ?? old.name, g.icon ?? old.icon);
+  return json({ ok: true, ...sync });
 }
 async function deleteGroup(request, env, gid) {
   const user = requireUser(request);
   if (!ID_RE.test(gid)) throw new HttpError(404, 'Group not found');
-  await env.DB.prepare('DELETE FROM contact_groups WHERE id = ? AND user_id = ?').bind(gid, user.id).run();
+  const r = await env.DB.prepare('DELETE FROM contact_groups WHERE id = ? AND user_id = ?').bind(gid, user.id).run();
+  // Polls it was linked to keep its people, now ungrouped.
+  if (r.meta && r.meta.changes) await env.DB.batch([
+    env.DB.prepare(`UPDATE participants SET group_id = NULL WHERE group_id = ? AND poll_id IN (SELECT id FROM polls WHERE owner_id = ?)`).bind(gid, user.id),
+    env.DB.prepare(`DELETE FROM poll_groups WHERE group_id = ? AND poll_id IN (SELECT id FROM polls WHERE owner_id = ?)`).bind(gid, user.id)]);
+  return json({ ok: true });
+}
+// Group linked to a poll: the group's members are added as people (group_id = the group) and kept in sync with it:
+// new members are added (and invited when the poll's group members were), removed ones leave the poll unless they answered
+// (then they stay, ungrouped). The poll keeps a copy of the group's name and icon.
+async function groupPollPeople(env, pollId, gid) {
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.invited_at, LOWER(COALESCE(u.email, p.email)) AS mail, LOWER(p.email) AS pmail,
+       EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id) AS answered
+     FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? AND p.group_id = ?`).bind(pollId, gid).all();
+  return results;
+}
+// Adds `members` to the poll and marks the rows (not already in another group) as the group's. Returns the upsert result.
+async function addGroupPeople(env, pollId, gid, members, user) {
+  if (!members.length) return { added: [], updated: [], skipped: [], ids: [] };
+  const r = { added: [], updated: [], skipped: [], ids: [] };
+  for (let i = 0; i < members.length; i += 200) {
+    const part = await upsertPeople(env, pollId, members.slice(i, i + 200).map((m) => ({ name: m.name, email: m.email })), user);
+    for (const k of Object.keys(r)) r[k].push(...part[k]);
+  }
+  const ids = r.ids.filter(Boolean);
+  if (ids.length) await env.DB.batch(ids.map((pid) => env.DB.prepare('UPDATE participants SET group_id = ? WHERE id = ? AND group_id IS NULL').bind(gid, pid)));
+  return r;
+}
+async function syncGroup(env, url, user, gid, oldMembers, newMembers, name, icon) {
+  const { results: links } = await env.DB.prepare(
+    'SELECT pg.poll_id FROM poll_groups pg JOIN polls p ON p.id = pg.poll_id WHERE pg.group_id = ? AND p.owner_id = ?').bind(gid, user.id).all();
+  if (!links.length) return {};
+  const had = new Set(oldMembers.map((m) => m.email)), keep = new Set(newMembers.map((m) => m.email));
+  const gone = new Set([...had].filter((e) => !keep.has(e)));
+  const syncErrors = [];
+  for (const { poll_id: pid } of links) {
+    try {
+      await env.DB.prepare('UPDATE poll_groups SET name = ?, icon = ? WHERE poll_id = ? AND group_id = ?').bind(name, icon, pid, gid).run();
+      const rows = await groupPollPeople(env, pid, gid);
+      const inPoll = new Set(rows.flatMap((p) => [p.mail, p.pmail]).filter(Boolean));
+      // Leaving: gone from the group (and not someone who is still a member under their account's address).
+      const out = rows.filter((p) => (gone.has(p.mail) || gone.has(p.pmail)) && !keep.has(p.mail) && !keep.has(p.pmail));
+      const stmts = [];
+      for (const p of out) stmts.push(...(p.answered
+        ? [env.DB.prepare('UPDATE participants SET group_id = NULL WHERE id = ?').bind(p.id)]
+        : removeParticipantStmts(env, p.id, false)));
+      if (stmts.length) await env.DB.batch(stmts);
+      const fresh = newMembers.filter((m) => !inPoll.has(m.email));
+      if (!fresh.length) continue;
+      const r = await addGroupPeople(env, pid, gid, fresh, user);
+      // Invite the new ones when the group's people in this poll were invited already.
+      const newIds = r.ids.filter(Boolean).filter((x) => !rows.some((p) => p.id === x));
+      if (newIds.length && emailEnabled(env) && rows.some((p) => p.invited_at)) {
+        const poll = await loadPoll(env, pid);
+        await inviteIds(env, url, poll, user, newIds, { again: false }).catch((e) => syncErrors.push(String(e.message || e)));
+      }
+    } catch (e) { syncErrors.push(String(e.message || e)); }
+  }
+  return syncErrors.length ? { syncErrors } : {};
+}
+// Body: { groupId }. Links one of my groups to my poll and adds its members.
+async function linkGroup(request, env, url, id) {
+  await adminPoll(request, env, id);
+  const user = requireUser(request);
+  const b = await body(request);
+  if (typeof b.groupId !== 'string' || !ID_RE.test(b.groupId)) throw new HttpError(404, 'Group not found');
+  const g = await env.DB.prepare('SELECT id, name, icon, members FROM contact_groups WHERE id = ? AND user_id = ?').bind(b.groupId, user.id).first();
+  if (!g) throw new HttpError(404, 'Group not found');
+  await env.DB.prepare('INSERT OR IGNORE INTO poll_groups (poll_id, group_id, name, icon, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(id, g.id, g.name, g.icon, now()).run();
+  const members = jsonList(g.members).filter((m) => m && EMAIL_RE.test(m.email || '') && m.email !== user.email.toLowerCase());
+  return json(await addGroupPeople(env, id, g.id, members, user));
+}
+// Unlinks a group from the poll; its people stay, ungrouped. ?people=1 also removes the ones who haven't answered.
+async function unlinkGroup(request, env, url, id, gid) {
+  await adminPoll(request, env, id);
+  if (!ID_RE.test(gid)) throw new HttpError(404, 'Group not found');
+  const rows = await groupPollPeople(env, id, gid);
+  const stmts = [env.DB.prepare('DELETE FROM poll_groups WHERE poll_id = ? AND group_id = ?').bind(id, gid),
+    env.DB.prepare('UPDATE participants SET group_id = NULL WHERE poll_id = ? AND group_id = ?').bind(id, gid)];
+  if (url.searchParams.get('people') === '1') for (const p of rows) if (!p.answered) stmts.push(...removeParticipantStmts(env, p.id, false));
+  await env.DB.batch(stmts);
   return json({ ok: true });
 }
 
@@ -1973,7 +2102,7 @@ async function deletePoll(request, env, id) {
   return json({ ok: true });
 }
 // Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
-const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy']
+const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups']
   .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
   .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
 
@@ -2396,7 +2525,19 @@ async function invitePoll(request, env, url, id) {
   }
   emails = [...new Set(emails)];
   if (emails.length > 200) throw new HttpError(400, 'At most 200 addresses at once');
-  const user = userOf(request) || {};
+  const sent = await sendPollInvite(env, url, poll, userOf(request) || {}, emails, pids, { again, message });
+  return json({ ok: true, sent, missing, ...(added || {}) });
+}
+// Invites participants `ids` of `poll` that have an email address (used when a linked group gains members).
+async function inviteIds(env, url, poll, user, ids, opts) {
+  const inst = await latestInstance(env, poll.id), want = new Set(ids);
+  const rows = (await participantRows(env, poll.id, inst && inst.id)).filter((p) => want.has(p.id) && EMAIL_RE.test(p.mail_to));
+  if (!rows.length) return 0;
+  return sendPollInvite(env, url, poll, user, [...new Set(rows.map((p) => p.mail_to.toLowerCase()))], rows.map((p) => p.id), opts);
+}
+// Sends the invite (or reminder) email to `emails` and marks participants `pids` as invited.
+async function sendPollInvite(env, url, poll, user, emails, pids, { again, message = '' }) {
+  const inst = await latestInstance(env, poll.id);
   const deadline = inst && inst.status === 'open' && inst.deadline ? inst.deadline.slice(0, 10) : null;
   const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
   let text, subject;
@@ -2422,7 +2563,7 @@ async function invitePoll(request, env, url, id) {
     const at = now();
     await env.DB.batch(pids.map((pid) => env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ?').bind(at, pid)));
   }
-  return json({ ok: true, sent, missing, ...(added || {}) });
+  return sent;
 }
 
 
@@ -3256,7 +3397,7 @@ const latestInstance = (env, pollId) => env.DB.prepare('SELECT * FROM instances 
 // and whether they answered `instId` (`here`).
 async function participantRows(env, pollId, instId) {
   const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
        (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email,
        (SELECT r3.email FROM responses r3 WHERE r3.participant_id = p.id ORDER BY r3.updated_at DESC LIMIT 1) AS re,
        EXISTS (SELECT 1 FROM responses r4 WHERE r4.participant_id = p.id AND r4.instance_id = ?) AS here
@@ -3268,8 +3409,9 @@ async function listParticipants(request, env, id) {
   await adminPoll(request, env, id);
   const inst = await latestInstance(env, id);
   const rows = await participantRows(env, id, inst && inst.id);
-  return json({ participants: rows.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id,
-    rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to })) });
+  const { results: groups } = await env.DB.prepare('SELECT group_id AS id, name, icon FROM poll_groups WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
+  return json({ groups, participants: rows.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id,
+    rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to, groupId: p.group_id || null })) });
 }
 // People from the page: [{ name, email }] (email required, except friends picked by { uid }). Legacy: "Anna\nBen, ben@example.com".
 function peopleInput(b) {
@@ -3349,16 +3491,17 @@ async function updateParticipant(request, env, id, pid) {
 async function deleteParticipant(request, env, url, id, pid) {
   await adminPoll(request, env, id);
   await loadParticipant(env, id, pid);
-  await env.DB.batch([
-    url.searchParams.get('answers') === '1'
-      ? env.DB.prepare('DELETE FROM responses WHERE participant_id = ?').bind(pid)
-      : env.DB.prepare('UPDATE responses SET participant_id = NULL WHERE participant_id = ?').bind(pid),
-    env.DB.prepare('DELETE FROM form_answers WHERE participant_id = ?').bind(pid), // answers to questions need a person
-    env.DB.prepare('DELETE FROM shared_busy WHERE participant_id = ?').bind(pid),
-    env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(pid),
-  ]);
+  await env.DB.batch(removeParticipantStmts(env, pid, url.searchParams.get('answers') === '1'));
   return json({ ok: true });
 }
+const removeParticipantStmts = (env, pid, answers) => [
+  answers
+    ? env.DB.prepare('DELETE FROM responses WHERE participant_id = ?').bind(pid)
+    : env.DB.prepare('UPDATE responses SET participant_id = NULL WHERE participant_id = ?').bind(pid),
+  env.DB.prepare('DELETE FROM form_answers WHERE participant_id = ?').bind(pid), // answers to questions need a person
+  env.DB.prepare('DELETE FROM shared_busy WHERE participant_id = ?').bind(pid),
+  env.DB.prepare('DELETE FROM participants WHERE id = ?').bind(pid),
+];
 // Body: { into: participantId }. Moves all answers of :pid to `into`; where both answered the same round, the newer answer wins.
 async function mergeParticipant(request, env, id, pid) {
   await adminPoll(request, env, id);

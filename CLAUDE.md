@@ -15,7 +15,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `instances`: one row per round of a poll (a series gets a new one each period). Holds dates, deadline, status and meetings (JSON).
 - `participants`: one per person per poll, shared across all instances of a series. `responses.participant_id` links to it.
   Guests are unique by name (`name_key` = lower-cased name). Signed-in people are unique by account (`user_id`; `name_key` = "\u0001" + user id), so names may repeat.
-- `users`: accounts, one per (lower-cased) email, with profile `name` and `avatar` (emoji) / `avatar_img` (data URL).
+- `users`: accounts, one per (lower-cased) email, with profile `name`, `bio` (0024, one line, shown only to the person in the Account banner) and `avatar` (emoji) / `avatar_img` (data URL).
   `ical_url` (optional) is the person's secret iCal feed: the page never gets it back (`GET /api/me` returns only its host);
   `POST /api/me/calendar` fetches it (or a pasted link) and the page parses it to pre-fill free hours.
 - `user_calendars` / `calendar_accounts` (0009): an account's calendars. Each is an iCal link (`url`, secret, never sent to the page)
@@ -46,7 +46,13 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   100 people each), sent as `groups` in `GET /api/me/friends`, managed via `POST /api/me/groups`, `PATCH|DELETE /api/me/groups/:id`.
   The Contacts card shows them as a rail of tiles (editor dialog `grpOpen`; 👥 on a contact row = its Groups sheet); the Add-people popup
   lists them first (`pdGroupsHtml`: "Add N" = members not in the poll, ⌄ = one by one; search matches group and member names).
-  People tab: select people → Save as group. Adding a group uses the normal `POST .../participants`.
+  People tab: select people → Save as group. A group added from the Add-people popup is **linked** (0024): `POST /api/polls/:id/groups { groupId }`
+  stores `poll_groups` (copy of name + icon) and marks its people `participants.group_id`; `updateGroup` runs `syncGroup` for every linked poll
+  (new members added, and invited when the group's people there were; removed ones deleted unless they answered, then just ungrouped).
+  `DELETE /api/polls/:id/groups/:gid[?people=1]` unlinks; deleting the group ungroups. The People tab shows linked groups as collapsible
+  headers (`pgShut`, localStorage `pgrp:<poll>`); `GET .../participants` sends `groups` and each person's `groupId`.
+  Contacts whose address has an account carry that account's `avatar` / `avatarImg` (`accountsByEmail`; pictures via `GET /api/users/:uid/avatar`,
+  signed-in only); imported ones are looked up with `POST /api/me/contacts/lookup`. Your own address is never a contact (`isMe`, server checks).
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
   Everyone signed in may read and write (invited-only polls: the owner and invited people); guests can't.
   `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls
