@@ -2127,6 +2127,7 @@ Object.assign(ICON,{
   more:svgI('<circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/>'),
   day:svgI('<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><rect x="7.5" y="13" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
   chat:svgI('<path d="M4.5 5.5h15v10h-8l-4.5 4v-4h-2.5z"/>'),
+  filter:svgI('<path d="M3.5 5h17l-6.5 7.5v5.5l-4 2v-7.5z"/>'),
   reply:svgI('<path d="M9.5 7.5 4.5 12l5 4.5"/><path d="M4.5 12h9a6 6 0 0 1 6 6v1"/>'),
   clip:svgI('<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/>'),
   smile:svgI('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0M9.5 9.5v.1M14.5 9.5v.1"/>'),
@@ -5550,7 +5551,7 @@ function renderPlanner(S,who){
     // One view row: free days / weeks + separate days / one range · ‹ dates › · who.
     const pager=`<div class="wknav pill"><button class="btn" data-pwk="-1" ${P[pk]===0?'disabled':''} aria-label="${t('Previous')}">‹</button>${lblLS(`${dLabel(real[0])} – ${dLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-pwk="1" ${P[pk]===pages.length-1?'disabled':''} aria-label="${t('Next')}">›</button></div>`;
-    const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.users}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
+    const viewSeg=`<div class="seg iseg"><button data-pview="avail" class="${P.pavail?'on':''}" title="${t('Only days when someone is free ({n})',{n:avail.length})}" aria-label="${t('Free days ({n})',{n:avail.length})}"><span class="segic">${ICON.filter}</span><span class="bl">${t('Free days')}</span></button><button data-pview="week" class="${P.pavail?'':'on'}" title="${t('Whole weeks')}" aria-label="${t('Weeks')}"><span class="segic">${ICON.cal}</span><span class="bl">${t('Weeks')}</span></button></div>`;
     h+=vrow(viewSeg+pickSeg(),who,pager)+legend('allfree','heat','monly','mstripe','draft','meeting')+`
       <div class="grid pgrid" id="pgrid" style="grid-template-columns:42px repeat(${wk.length},1fr)"><div></div>`;
     wk.forEach((k,i)=>{ const nd=k?draftsAt(k).length:0;
