@@ -110,6 +110,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   turns "2 evening meetings a week, not Fridays" into the planner's Suggest settings (`{ s, wd, hs, he, dates }`); the page runs the
   normal Suggest with them (Undo restores settings and drafts). Only the text and the number of selected people are sent, no answers.
   Shares the `AI_PER_DAY` cap with Fill with AI.
+- **Undo / redo** (page only): two histories in `HIST`, `ans` (My answer: marks + Quick fill layers) and `plan` (planner drafts + Suggest dates).
+  `histTick()` runs at the start of every `renderBody()` and pushes the last snapshot when the state changed, so any edit path is covered
+  without hooks (one drag = one step; name/comment typing isn't tracked). ↶ / ↷ buttons (`histBtns`) and ⌘Z / ⌘⇧Z / Ctrl+Y
+  (not in text fields, dialogs or the chat). Reset when the round or the loaded answer changes (`histReset`). Max 50 steps.
 
 ## Commands
 - `npm install` once.

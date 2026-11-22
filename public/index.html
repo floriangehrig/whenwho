@@ -3562,7 +3562,7 @@ function histStep(kind,dir){
   if(kind==='ans'&&!editable()) return false;
   const from=dir<0?h.un:h.re, to=dir<0?h.re:h.un;
   if(!from.length){ toast(dir<0?t('Nothing to undo'):t('Nothing to redo')); return true; }
-  to.push(h.cur); h.cur=from.pop(); histRestore(kind,h.cur); renderBody();
+  to.push(h.cur); histRestore(kind,from.pop()); h.cur=histSnap(kind); renderBody(); // re-snapshot: the restore may normalise (null → [])
   toast(dir<0?t('Undone'):t('Redone')); return true;
 }
 function histReset(){ HIST.ans=HIST.plan=null; }
