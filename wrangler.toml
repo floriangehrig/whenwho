@@ -35,8 +35,12 @@ crons = ["17 * * * *"]
 MAIL_FROM = "noreply@mail.when-who.app"     # on the domain verified in Resend
 SITE_URL = "https://when-who.app"
 TURNSTILE_SITE_KEY = "0x4AAAAAAGEFcq5D-SUTLIt7"   # public site key of the Turnstile widget
-# Shown on the privacy policy page (?privacy). Fill in before submitting the Google / Microsoft app for review.
-# OPERATOR_NAME = ""                        # who runs the site (your name or company)
-# CONTACT_EMAIL = ""                        # where people can ask about or delete their data
+# Legal pages: Impressum (?imprint, required in Germany by § 5 DDG), privacy policy (?privacy) and rules (?rules).
+# All of this is shown publicly. Fill in before the site goes public (and before the Google / Microsoft app review).
+# OPERATOR_NAME = ""                        # who runs the site: your full name (or company name + who represents it)
+# OPERATOR_ADDRESS = ""                     # postal address that can receive legal mail (no P.O. box), lines separated by ", "
+# OPERATOR_PHONE = ""                       # optional second quick contact next to the email (or leave out and reply fast by email)
+# CONTACT_EMAIL = ""                        # contact for data questions and reports of illegal content (DSA contact point)
+# DPA_NAME = ""                             # data protection authority of your Land, e.g. "Berliner Beauftragte für Datenschutz und Informationsfreiheit"
 MAIL_PER_DAY = "50"                         # invite/test-email recipients per account per day
 AI_PER_DAY = "20"                           # text fills per account (or IP) per day

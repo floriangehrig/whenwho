@@ -63,8 +63,8 @@ function servePage(request, env) {
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data:",
   "connect-src 'self' https://photon.komoot.io", // place search falls back to Photon from the browser when /api/places fails
   'frame-src https://challenges.cloudflare.com',
@@ -125,7 +125,7 @@ async function route(request, env, ctx, url) {
     throw new HttpError(403, 'Request from another site was blocked');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -1965,7 +1965,8 @@ function emailHtml(bodyHtml, { preheader = '', button = null, site = '', lang = 
     <tr><td style="background:#ffffff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 14px 14px;padding:32px 28px;font-family:${font};font-size:15px;line-height:1.6;color:#0F172A">
       ${btn}${bodyHtml}</td></tr>
     <tr><td style="padding:16px 28px;font-family:${font};font-size:12px;line-height:1.5;color:#5B6578;text-align:center">
-      ${lang === 'de' ? 'Gesendet von' : 'Sent by'} when-who${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>` : ''}</td></tr>
+      ${lang === 'de' ? 'Gesendet von' : 'Sent by'} when-who${site ? ` · <a href="${escHtml(site)}" style="color:#5B6578">${escHtml(site.replace(/^https?:\/\//, ''))}</a>`
+        + ` · <a href="${escHtml(site)}/?imprint" style="color:#5B6578">Impressum</a> · <a href="${escHtml(site)}/?privacy" style="color:#5B6578">${lang === 'de' ? 'Datenschutz' : 'Privacy'}</a>` : ''}</td></tr>
   </table></td></tr></table></body></html>`;
 }
 const linkify = (escaped) => escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1F5EFF;word-break:break-all">$1</a>');

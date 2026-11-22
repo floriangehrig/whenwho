@@ -1,9 +1,12 @@
 # Security headers for the static page (assets are served without running the Worker).
 # Keep in sync with CSP in src/worker.js.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://photon.komoot.io; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://photon.komoot.io; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: same-origin
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(self), geolocation=()
   Strict-Transport-Security: max-age=31536000
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -17,8 +17,13 @@
     if(s==='system'){ d.dataset.theme=e.matches?'dark':'light'; document.dispatchEvent(new Event('themechange')); } });
 })();
 </script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Inter is served from this site (no Google Fonts: that would send visitors' IP addresses to Google). */
+  @font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-latin-ext.woff2) format('woff2');
+    unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+  @font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-latin.woff2) format('woff2');
+    unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
   /* ---------- design tokens: navy + blue corporate palette ---------- */
   :root{
     color-scheme:light;
@@ -2435,41 +2440,86 @@ function renderHome(){
     </div></main>${siteFoot()}`;
 }
 
+const PRIVACY_UPDATED='2026-11-22';
+const siteFoot = () => `<footer class="site-foot"><a href="?imprint">${t('Legal notice')}</a><a href="?privacy">${t('Privacy policy')}</a><a href="?rules">${t('Rules')}</a></footer>`;
+// Shared pieces of the legal pages. Values come from OPERATOR_NAME / OPERATOR_ADDRESS / OPERATOR_PHONE / CONTACT_EMAIL / DPA_NAME (wrangler.toml, via /api/config).
+const legalMail = () => CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
+const legalAddr = () => (CONFIG.address||'').split(/\s*,\s*/).filter(Boolean).map(esc).join('<br>');
+function legalPage(title, updated, body){
+  document.title=title+' · when-who';
+  $app.innerHTML=`${appbar()}
+    <section class="band"><div class="wrap"><div class="eyebrow">when-who</div><h1>${title}</h1>
+      ${updated?`<p class="lead">${t('Last updated {date}',{date:esc(new Date(updated+'T12:00').toLocaleDateString(LOC,{day:'numeric',month:'long',year:'numeric'}))})}</p>`:''}</div></section>
+    <main class="wrap"><div class="card legal">${body}</div></main>${siteFoot()}`;
+}
+const legalSec=(h,body)=>`<h2>${h}</h2>${body}`, legalUl=items=>`<ul>${items.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+
+// ================= LEGAL NOTICE / IMPRESSUM (?imprint) =================
+// Required in Germany (§ 5 DDG): name, postal address, email plus a second quick way to get in touch.
+function renderImprint(){
+  const mail=legalMail(), addr=legalAddr(), phone=CONFIG.phone?esc(CONFIG.phone):'';
+  const missing=!CONFIG.operator||!addr||!mail;
+  legalPage(t('Legal notice'),'',`
+    ${missing?`<p class="err">${t('Not filled in yet: set OPERATOR_NAME, OPERATOR_ADDRESS and CONTACT_EMAIL in wrangler.toml.')}</p>`:''}
+    ${legalSec(t('Information according to § 5 DDG'),`<p>${esc(CONFIG.operator||'')}${addr?'<br>'+addr:''}</p>`)}
+    ${legalSec(t('Contact'),`<p>${mail?t('Email: {email}',{email:mail}):''}${phone?'<br>'+t('Phone: {phone}',{phone}):''}</p>`)}
+    ${legalSec(t('Consumer dispute resolution'),`<p>${t('We are neither willing nor obliged to take part in dispute resolution proceedings before a consumer arbitration board.')}</p>`)}
+    ${legalSec(t('Content posted by users'),`<p>${t('Polls, answers and chat messages are written by their users. To report illegal content, see the <a href="?rules">rules</a>.')}</p>`)}`);
+}
+
+// ================= RULES (?rules) =================
+// What the Digital Services Act asks of every hosting service: contact point (Art. 11/12), content rules (Art. 14),
+// a way to report illegal content (Art. 16) and telling people why something was removed (Art. 17).
+function renderRules(){
+  const mail=legalMail()||t('the email address in the <a href="?imprint">legal notice</a>');
+  legalPage(t('Rules'),PRIVACY_UPDATED,`
+    ${legalSec(t('Using when-who'),`<p>${t('when-who is a free service for finding times that work for a group. It is offered as it is, without a guarantee that it is always available, and it may change or end.')}</p>`)}
+    ${legalSec(t('What is not allowed'),legalUl([
+      t('Illegal content, such as threats, insults, hate speech or content that infringes someone’s rights.'),
+      t('Other people’s personal data without their permission, beyond what a poll needs (names and email addresses of the people you invite).'),
+      t('Spam: inviting people who don’t expect it, or using polls and emails for advertising.'),
+      t('Attacks on the service, or getting around its limits.'),
+    ]))}
+    ${legalSec(t('Who looks after a poll'),`<p>${t('The organiser of a poll can delete any message in its chat and delete the whole poll. Everyone can delete their own messages and answers.')}</p>`)}
+    ${legalSec(t('Report content'),`<p>${t('If you find illegal content, write to {email}. Please include the poll link, which content you mean and why it is illegal. You can stay anonymous unless the report concerns your own rights.',{email:mail})}</p>
+      <p>${t('We check every report promptly. If content is illegal or breaks these rules, we remove it or block access to it, and can close accounts that misuse the service. We tell the person who posted it and the person who reported it what we decided and why. You can reply to that email to object to the decision.')}</p>`)}
+    ${legalSec(t('Contact point'),`<p>${t('Authorities, the European Commission and users can reach us at {email}, in German or English.',{email:mail})}</p>`)}`);
+}
+
 // ================= PRIVACY POLICY (?privacy) =================
 // Linked from the footer and the Calendars card; also the policy URL given to Google / Microsoft for calendar sign-in.
-// Operator name and contact address come from the OPERATOR_NAME / CONTACT_EMAIL vars in wrangler.toml (via /api/config).
-const PRIVACY_UPDATED='2026-11-22';
-const siteFoot = () => `<footer class="site-foot"><a href="?privacy">${t('Privacy policy')}</a></footer>`;
 function renderPrivacy(){
-  document.title=t('Privacy policy')+' · when-who';
-  const op=esc(CONFIG.operator||''), mail=CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
-  const sec=(h,body)=>`<h2>${h}</h2>${body}`, ul=items=>`<ul>${items.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-  $app.innerHTML=`${appbar()}
-    <section class="band"><div class="wrap"><div class="eyebrow">when-who</div><h1>${t('Privacy policy')}</h1>
-      <p class="lead">${t('Last updated {date}',{date:esc(new Date(PRIVACY_UPDATED+'T12:00').toLocaleDateString(LOC,{day:'numeric',month:'long',year:'numeric'}))})}</p></div></section>
-    <main class="wrap"><div class="card legal">
-      ${sec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.')} ${t('If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.')}</p>`)}
-      ${sec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op})+' ':''}${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')}</p>`)}
-      ${sec(t('What we store'),ul([
+  const op=esc(CONFIG.operator||''), mail=legalMail(), addr=legalAddr();
+  const dpa=CONFIG.dpa?esc(CONFIG.dpa):'';
+  legalPage(t('Privacy policy'),PRIVACY_UPDATED,`
+      ${legalSec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.')} ${t('If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.')}</p>`)}
+      ${legalSec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op}):''}${addr?'<br>'+addr:''}</p>
+        <p>${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')} ${t('See also the <a href="?imprint">legal notice</a>.')}</p>`)}
+      ${legalSec(t('What we store'),legalUl([
         t('<b>Your account:</b> your email address, the name and avatar you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
+        t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
+        t('<b>Contacts:</b> your favourite contacts and the groups you make. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
-        t('<b>Security:</b> your IP address, to limit failed sign-in attempts (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
+        t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
+        t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.'),
       ]))}
-      ${sec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
+      ${legalSec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
         <p>${t('when-who’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.')}</p>
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
-      ${sec(t('Services we use'),ul([
-        t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in.'),
+      ${legalSec(t('Services we use'),legalUl([
+        t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
+        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI or Suggest with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers or suggestions. It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations and reminders.'),
-        t('<b>Google Fonts</b>: the page loads its fonts from Google, which sees your IP address.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
-        t('<b>Google / Microsoft</b>: only if you connect a calendar, as described above.'),
+        t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
       ]))}
-      ${sec(t('How long we keep it'),`<p>${t('Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.')}</p>`)}
-      ${sec(t('Your rights'),`<p>${t('You can ask to see, correct or delete your data, to get a copy of it, or object to how it is used. You also have the right to complain to a data protection authority. We process your data to provide the service you use (Art. 6(1)(b) GDPR) and, for security limits, based on our legitimate interest in preventing abuse (Art. 6(1)(f) GDPR).')}</p>`)}
-    </div></main>${siteFoot()}`;
+      <p>${t('The fonts are served by when-who itself; no third party is contacted when the page loads.')}</p>
+      ${legalSec(t('Transfers outside the EU'),`<p>${t('Cloudflare, Resend, Google and Microsoft are based in the USA, so data may be processed there. These transfers rely on the EU–U.S. Data Privacy Framework or the EU standard contractual clauses (Art. 45 and 46 GDPR). We have data processing agreements with the services that process data for us.')}</p>`)}
+      ${legalSec(t('How long we keep it'),`<p>${t('Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.')}</p>`)}
+      ${legalSec(t('Legal basis'),`<p>${t('We process your data to provide the service you use (Art. 6(1)(b) GDPR) and, for security limits, based on our legitimate interest in preventing abuse (Art. 6(1)(f) GDPR). Connecting a calendar and sharing your busy hours are based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time by disconnecting or switching sharing off.')}</p>`)}
+      ${legalSec(t('Your rights'),`<p>${t('You can ask to see, correct or delete your data, to get a copy of it, to restrict how it is used, or object to it being used. You also have the right to complain to a data protection authority.')}${dpa?' '+t('The authority responsible for us is: {name}.',{name:dpa}):''}</p>`)}`);
 }
 
 // ================= LANDING (signed out) =================
@@ -2573,7 +2623,7 @@ function renderNew(){
   if(!ME.user){
     $app.innerHTML=`${appbar()}${band}<main class="wrap"><div class="card"><div class="empty">
       <p class="help mt-0">${t('Sign in with your email to create polls. No password needed, just a code we email you.')}</p>
-      <button type="button" class="btn primary" data-opensignin>${t('Sign in to get started')}</button></div></div></main>`; return;
+      <button type="button" class="btn primary" data-opensignin>${t('Sign in to get started')}</button></div></div></main>${siteFoot()}`; return;
   }
   const mail=CONFIG.emailEnabled, NOPEN={details:1,when:1,answering:1,privacy:1,email:1};
   $app.innerHTML=`${appbar()}${band}
@@ -2611,7 +2661,7 @@ function renderNew(){
       <p class="help small">${t('Only you can manage the poll. Anyone with the link can answer.')}</p>
     </aside>
     <div class="new-bar"><span class="grow small" id="barTitle"></span><button class="btn primary" type="submit">${t('Create poll')}</button></div>
-    </form></main>`;
+    </form></main>${siteFoot()}`;
 
   const today=new Date(), iso=isoL;
   const getR = n => n==='kind'?(document.querySelector('input[name="kind"]:checked')||{}).value:$(n).value; // ans: hidden input behind the segmented control
@@ -2718,7 +2768,7 @@ function renderCreated(id, body, kind){
       <div class="help">${t("You manage the poll from your account: it's listed under “Your Polls” on every device you sign in on.")}</div></div>
       <div class="section"><h3>${t('People')}</h3>${peoplePanel(id,{title:body.title,series:kind==='series',deadline:info.deadline,info})}</div>
       <div class="row mt-5"><a class="btn primary" href="?p=${esc(id)}">${t('Open poll')}</a><a class="btn" href="?new">${t('Create another')}</a></div>
-    </div></main>`;
+    </div></main>${siteFoot()}`;
   window.scrollTo({top:0}); loadParts();
 }
 
@@ -3175,7 +3225,7 @@ function renderAccount(){
     $app.innerHTML=`${appbar()}<section class="band"><div class="wrap"><div class="eyebrow">${t('Account')}</div><h1>${t('Your account')}</h1>
       <p class="lead">${t('Sign in with your email to see your profile and polls.')}</p></div></section>
       <main class="wrap"><div class="card"><div class="empty"><p class="help mt-0">${t('No password needed: we email you a 6-digit code.')}</p>
-      <button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div></div></main>`; return;
+      <button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div></div></main>${siteFoot()}`; return;
   }
   const u=ME.user, polls=ME.polls||[], open=polls.filter(x=>x.current&&x.current.status==='open').length;
   const answers=polls.reduce((n,x)=>n+(x.current?x.current.answers:0),0);
@@ -3273,7 +3323,7 @@ async function loadPoll(first){
   catch(e){
     if(e.status===401 && e.data && e.data.needPassword) return renderPassword(e.data.title, e.data.error);
     $app.innerHTML=`${appbar()}<section class="band"><div class="wrap"><div class="eyebrow">${t('Poll')}</div><h1>${t('Poll not available')}</h1><p class="lead">${esc(e.message)}</p></div></section>
-      <main class="wrap"><div class="card"><p class="m0">${t('The link may be wrong, or the poll was deleted. Ask the organiser for a new link.')}</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">${t('Go to when-who')}</a></div></div></main>`; return;
+      <main class="wrap"><div class="card"><p class="m0">${t('The link may be wrong, or the poll was deleted. Ask the organiser for a new link.')}</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">${t('Go to when-who')}</a></div></div></main>${siteFoot()}`; return;
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
@@ -3296,7 +3346,7 @@ function renderPassword(title,msg){
   $app.innerHTML=`${appbar()}<section class="band"><div class="wrap"><div class="eyebrow">${ICON.lock.replace('<svg','<svg width="14" height="14"')} ${t('Protected poll')}</div><h1>${esc(title||t('Poll'))}</h1></div></section>
     <main class="wrap"><div class="card"><form id="pwf"><label for="pwi">${t('This poll is password-protected. Enter the password to open it.')}</label>
     <div class="row"><input type="password" id="pwi" class="grow" autofocus><button class="btn primary">${t('Open poll')}</button></div>
-    ${msg==='Wrong password'?'<div class="err">'+t('Wrong password.')+'</div>':''}</form></div></main>`;
+    ${msg==='Wrong password'?'<div class="err">'+t('Wrong password.')+'</div>':''}</form></div></main>${siteFoot()}`;
   $('pwf').onsubmit=e=>{ e.preventDefault(); P.password=$('pwi').value; store.set('pw:'+P.id,P.password); loadPoll(true); };
 }
 
@@ -3481,7 +3531,7 @@ function render(){
       <div id="body"></div>
       ${editable()?`<div class="savebar wsfoot" id="savebar"><span class="sstat" id="status"></span>${ib('trash',t('Remove my answer'),'id="delMine"','ghost danger hide')}<button type="button" class="btn primary withic sendbtn" id="saveBtn"></button></div>`:''}
     </div></div>
-    ${d.isAdmin?adminPanes():viewerPanes()}</main>${chatDock()}`;
+    ${d.isAdmin?adminPanes():viewerPanes()}</main>${siteFoot()}${chatDock()}`;
   renderHeader(); renderSeries();
   const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
   const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
@@ -6604,11 +6654,53 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
   } else if(qs.has('account')){ renderAccount(); calReturn(qs); }
   else if(qs.has('new')) renderNew();
   else if(qs.has('privacy')) renderPrivacy();
+  else if(qs.has('imprint')) renderImprint();
+  else if(qs.has('rules')) renderRules();
   else renderHome();
 })();
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Legal notice": "Impressum",
+"Not filled in yet: set OPERATOR_NAME, OPERATOR_ADDRESS and CONTACT_EMAIL in wrangler.toml.": "Noch nicht ausgefüllt: OPERATOR_NAME, OPERATOR_ADDRESS und CONTACT_EMAIL in wrangler.toml setzen.",
+"Information according to § 5 DDG": "Angaben gemäß § 5 DDG",
+"Contact": "Kontakt",
+"Email: {email}": "E-Mail: {email}",
+"Phone: {phone}": "Telefon: {phone}",
+"Consumer dispute resolution": "Verbraucherstreitbeilegung",
+"We are neither willing nor obliged to take part in dispute resolution proceedings before a consumer arbitration board.": "Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+"Content posted by users": "Inhalte von Nutzern",
+"Polls, answers and chat messages are written by their users. To report illegal content, see the <a href=\"?rules\">rules</a>.": "Umfragen, Antworten und Chatnachrichten stammen von ihren Nutzern. Wie du rechtswidrige Inhalte meldest, steht in den <a href=\"?rules\">Regeln</a>.",
+"the email address in the <a href=\"?imprint\">legal notice</a>": "die E-Mail-Adresse im <a href=\"?imprint\">Impressum</a>",
+"Using when-who": "when-who nutzen",
+"when-who is a free service for finding times that work for a group. It is offered as it is, without a guarantee that it is always available, and it may change or end.": "when-who ist ein kostenloser Dienst, um Termine zu finden, die für eine Gruppe passen. Er wird so angeboten, wie er ist, ohne Garantie, dass er immer verfügbar ist, und kann sich ändern oder eingestellt werden.",
+"What is not allowed": "Was nicht erlaubt ist",
+"Illegal content, such as threats, insults, hate speech or content that infringes someone’s rights.": "Rechtswidrige Inhalte, etwa Drohungen, Beleidigungen, Hassrede oder Inhalte, die Rechte anderer verletzen.",
+"Other people’s personal data without their permission, beyond what a poll needs (names and email addresses of the people you invite).": "Personenbezogene Daten anderer ohne deren Erlaubnis, über das hinaus, was eine Umfrage braucht (Namen und E-Mail-Adressen der Eingeladenen).",
+"Spam: inviting people who don’t expect it, or using polls and emails for advertising.": "Spam: Leute einladen, die nicht damit rechnen, oder Umfragen und E-Mails für Werbung nutzen.",
+"Attacks on the service, or getting around its limits.": "Angriffe auf den Dienst oder das Umgehen seiner Limits.",
+"Who looks after a poll": "Wer sich um eine Umfrage kümmert",
+"The organiser of a poll can delete any message in its chat and delete the whole poll. Everyone can delete their own messages and answers.": "Wer eine Umfrage organisiert, kann jede Nachricht in ihrem Chat und die ganze Umfrage löschen. Alle können ihre eigenen Nachrichten und Antworten löschen.",
+"Report content": "Inhalte melden",
+"If you find illegal content, write to {email}. Please include the poll link, which content you mean and why it is illegal. You can stay anonymous unless the report concerns your own rights.": "Wenn du rechtswidrige Inhalte findest, schreib an {email}. Gib bitte den Link zur Umfrage an, welchen Inhalt du meinst und warum er rechtswidrig ist. Du kannst anonym bleiben, außer die Meldung betrifft deine eigenen Rechte.",
+"We check every report promptly. If content is illegal or breaks these rules, we remove it or block access to it, and can close accounts that misuse the service. We tell the person who posted it and the person who reported it what we decided and why. You can reply to that email to object to the decision.": "Wir prüfen jede Meldung zügig. Ist ein Inhalt rechtswidrig oder verstößt er gegen diese Regeln, entfernen oder sperren wir ihn und können Konten schließen, die den Dienst missbrauchen. Wer den Inhalt gepostet und wer ihn gemeldet hat, erfährt von uns, wie wir entschieden haben und warum. Auf diese E-Mail kannst du antworten, um der Entscheidung zu widersprechen.",
+"Contact point": "Kontaktstelle",
+"Authorities, the European Commission and users can reach us at {email}, in German or English.": "Behörden, die Europäische Kommission und Nutzer erreichen uns unter {email}, auf Deutsch oder Englisch.",
+"See also the <a href=\"?imprint\">legal notice</a>.": "Siehe auch das <a href=\"?imprint\">Impressum</a>.",
+"<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.": "<b>Chat:</b> Nachrichten, Reaktionen und Antworten im Chat einer Umfrage und wann du ihn zuletzt gelesen hast (für die Zahl ungelesener Nachrichten). Nachrichten sehen die Mitglieder des Chats.",
+"<b>Contacts:</b> your favourite contacts and the groups you make. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group.": "<b>Kontakte:</b> deine Favoriten und die Gruppen, die du anlegst. Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du markierst sie mit einem Stern oder fügst sie einer Umfrage oder Gruppe hinzu.",
+"<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
+"<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
+"<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
+"<b>Cloudflare Workers AI</b>: only when you use Fill with AI or Suggest with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers or suggestions. It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“ oder „Mit KI vorschlagen“ nutzt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten oder Vorschläge macht. when-who speichert ihn nicht.",
+"<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.": "<b>Google / Microsoft</b>: nur wenn du einen Kalender verbindest oder Kontakte importierst, wie oben beschrieben.",
+"The fonts are served by when-who itself; no third party is contacted when the page loads.": "Die Schriften liefert when-who selbst aus; beim Laden der Seite wird kein Dritter kontaktiert.",
+"Transfers outside the EU": "Übermittlung außerhalb der EU",
+"Cloudflare, Resend, Google and Microsoft are based in the USA, so data may be processed there. These transfers rely on the EU–U.S. Data Privacy Framework or the EU standard contractual clauses (Art. 45 and 46 GDPR). We have data processing agreements with the services that process data for us.": "Cloudflare, Resend, Google und Microsoft haben ihren Sitz in den USA, daher können Daten dort verarbeitet werden. Grundlage dafür ist das EU-US Data Privacy Framework oder die EU-Standardvertragsklauseln (Art. 45 und 46 DSGVO). Mit den Diensten, die Daten in unserem Auftrag verarbeiten, haben wir Auftragsverarbeitungsverträge geschlossen.",
+"Legal basis": "Rechtsgrundlage",
+"We process your data to provide the service you use (Art. 6(1)(b) GDPR) and, for security limits, based on our legitimate interest in preventing abuse (Art. 6(1)(f) GDPR). Connecting a calendar and sharing your busy hours are based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time by disconnecting or switching sharing off.": "Wir verarbeiten deine Daten, um den Dienst bereitzustellen, den du nutzt (Art. 6 Abs. 1 lit. b DSGVO), und für Sicherheitslimits auf Grundlage unseres berechtigten Interesses, Missbrauch zu verhindern (Art. 6 Abs. 1 lit. f DSGVO). Das Verbinden eines Kalenders und das Teilen deiner belegten Zeiten beruhen auf deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst, indem du die Verbindung trennst oder das Teilen ausschaltest.",
+"You can ask to see, correct or delete your data, to get a copy of it, to restrict how it is used, or object to it being used. You also have the right to complain to a data protection authority.": "Du kannst Auskunft über deine Daten verlangen, sie berichtigen oder löschen lassen, eine Kopie erhalten, ihre Verarbeitung einschränken lassen oder ihr widersprechen. Außerdem kannst du dich bei einer Datenschutzaufsichtsbehörde beschweren.",
+"The authority responsible for us is: {name}.": "Für uns zuständig ist: {name}.",
 "Groups": "Gruppen",
 "New group": "Neue Gruppe",
 "1 person": "1 Person",
@@ -6798,22 +6890,17 @@ function germanText(){ return {
 "<b>Your account:</b> your email address, the name and avatar you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name und das Profilbild, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
 "<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.": "<b>Umfragen und Antworten:</b> was du in einer Umfrage eingibst: Titel, Termine, Namen und E-Mail-Adressen der Personen, die du hinzufügst, Verfügbarkeiten, Kommentare und Chatnachrichten.",
 "<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
-"<b>Security:</b> your IP address, to limit failed sign-in attempts (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto und die Schlüssel der Umfragen, die du beantwortet hast. Das bleibt auf deinem Gerät.",
 "Google and Outlook calendars": "Google- und Outlook-Kalender",
 "If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen, und nur wenn du für eine Umfrage das Teilen einschaltest, um deren Leuten zu zeigen, in welchen Stunden du belegt bist (ohne Termindetails). Kalenderdaten werden nicht verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
 "You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.": "Du kannst die Verbindung jederzeit auf deiner Kontoseite trennen. Dabei werden die gespeicherten Tokens gelöscht und Google wird gebeten, den Zugriff zu widerrufen. Du kannst den Zugriff auch in deinen Google- oder Microsoft-Kontoeinstellungen entfernen.",
 "Services we use": "Dienste, die wir nutzen",
-"<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält.",
 "<b>Resend</b>: sends sign-in codes, invitations and reminders.": "<b>Resend</b>: verschickt Anmeldecodes, Einladungen und Erinnerungen.",
-"<b>Google Fonts</b>: the page loads its fonts from Google, which sees your IP address.": "<b>Google Fonts</b>: Die Seite lädt ihre Schriften von Google, das dabei deine IP-Adresse sieht.",
 "<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.": "<b>Photon (komoot)</b>: schlägt Orte vor, wenn du einen Ort eintippst. Gesendet wird nur, was du in dieses Feld tippst.",
-"<b>Google / Microsoft</b>: only if you connect a calendar, as described above.": "<b>Google / Microsoft</b>: nur wenn du einen Kalender verbindest, wie oben beschrieben.",
 "How long we keep it": "Wie lange wir Daten aufbewahren",
 "Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.": "Umfragen und Antworten bleiben gespeichert, bis die Person, der die Umfrage gehört, sie löscht. Dabei werden auch alle Antworten und Nachrichten gelöscht. Kalender bleiben, bis du sie entfernst oder trennst. Dein Konto bleibt, bis du uns bittest, es zu löschen.",
 "Your rights": "Deine Rechte",
-"You can ask to see, correct or delete your data, to get a copy of it, or object to how it is used. You also have the right to complain to a data protection authority. We process your data to provide the service you use (Art. 6(1)(b) GDPR) and, for security limits, based on our legitimate interest in preventing abuse (Art. 6(1)(f) GDPR).": "Du kannst Auskunft über deine Daten verlangen, sie berichtigen oder löschen lassen, eine Kopie erhalten oder der Verarbeitung widersprechen. Außerdem kannst du dich bei einer Datenschutzaufsichtsbehörde beschweren. Wir verarbeiten deine Daten, um den Dienst bereitzustellen, den du nutzt (Art. 6 Abs. 1 lit. b DSGVO), und für Sicherheitslimits auf Grundlage unseres berechtigten Interesses, Missbrauch zu verhindern (Art. 6 Abs. 1 lit. f DSGVO).",
 "when-who only reads when you’re busy and never stores your events. <a href=\"?privacy\">Privacy policy</a>": "when-who liest nur, wann du belegt bist, und speichert deine Termine nie. <a href=\"?privacy\">Datenschutzerklärung</a>",
 "Add people": "Personen hinzufügen",
 "Remove from favourites": "Aus Favoriten entfernen",

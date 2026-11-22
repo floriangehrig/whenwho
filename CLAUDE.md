@@ -103,6 +103,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - **Schema changes:** add a new migration file (`npx wrangler d1 migrations create whenwho <name>`). Never edit or delete an applied migration.
   Apply it to production (`npm run db:migrate:remote`) **before** pushing code that depends on it, and keep changes backwards compatible
   (add columns with defaults, don't rename or drop in the same release).
+- **Legal pages** (required in Germany): `?imprint` (Impressum, § 5 DDG), `?privacy` and `?rules` (DSA: content rules, how to report illegal content),
+  linked in `siteFoot()` on every page and in the email footer. Their data comes from `OPERATOR_NAME` / `OPERATOR_ADDRESS` / `OPERATOR_PHONE` /
+  `CONTACT_EMAIL` / `DPA_NAME` in `wrangler.toml` (via `/api/config`). When a feature sends data somewhere new or stores something new, update the
+  privacy policy (`renderPrivacy`, bump `PRIVACY_UPDATED`). Load nothing from third parties on page load (the Inter font is self-hosted in `public/fonts/`).
 - Production config (custom domain, `MAIL_FROM`, `SITE_URL`, `TURNSTILE_SITE_KEY`) is in `wrangler.toml`; `RESEND_API_KEY` and `TURNSTILE_SECRET` are secrets.
   Calendar sign-in (optional): secrets `CAL_TOKEN_KEY` plus `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and/or `MS_CLIENT_ID`/`MS_CLIENT_SECRET`;
   redirect URI `<site>/api/oauth/{google|microsoft}/callback`. Without them the Connect buttons are hidden and only iCal links work.
