@@ -11,6 +11,7 @@
 //   CAL_TOKEN_KEY (optional secret) encrypts stored calendar tokens; needed for Google / Outlook calendar sign-in, plus
 //   GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET and / or MS_CLIENT_ID + MS_CLIENT_SECRET (secrets). Each provider shows up only when set.
 //   AI        (optional) Workers AI binding: "fill my answer from text" (typed or spoken). Without it the ✨ button is hidden.
+//   RETAIN_MONTHS (optional) delete polls with no activity for this many months, default 12; "0" turns it off
 //   AI_MODEL  (optional) Workers AI text model, default AI_MODEL below. AI_PER_DAY (optional) text fills per person per day, default 20
 //
 // Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
@@ -62,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ACRVVG+LPdAGTFWWAYeVMaw/OW2deAyH4fD/QVWhd0Y=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-BzWODRqQhx6DHwZ/Nj71/r+fw6zvnrYVGfquQkoiMRw=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1939,16 +1940,38 @@ async function pollImage(request, env, url, id) {
 async function deletePoll(request, env, id) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, poll);
-  await env.DB.batch([
-    env.DB.prepare('DELETE FROM responses WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM participants WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM instances WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM messages WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM chat_reads WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM shared_busy WHERE poll_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id),
-  ]);
+  await env.DB.batch(pollDeleteStmts(env, id));
   return json({ ok: true });
+}
+// Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
+const pollDeleteStmts = (env, id) => ['responses', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy']
+  .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
+  .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
+
+// Storage limitation (GDPR Art. 5(1)(e)): a poll with no activity for RETAIN_MONTHS is deleted with everything in it.
+// Activity = the poll or its settings changing, an answer given or edited, a chat message or someone reading the chat,
+// and for a single poll (or a series round with meetings) its dates: a poll isn't old before its last day has passed.
+// Runs once a day from the cron job, a few polls at a time so one run stays small.
+const RETAIN_MONTHS = 12;    // default for env.RETAIN_MONTHS ("0" turns the clean-up off)
+const RETAIN_BATCH = 25;     // polls deleted per daily run at most
+async function deleteStalePolls(env) {
+  const months = env.RETAIN_MONTHS != null ? Number(env.RETAIN_MONTHS) : RETAIN_MONTHS;
+  if (!(months > 0)) return 0;
+  const d = new Date(); d.setUTCMonth(d.getUTCMonth() - months);
+  const cutoff = d.toISOString();
+  const { results } = await env.DB.prepare(
+    `SELECT p.id FROM polls p WHERE MAX(p.updated_at, p.created_at) < ?1
+       AND NOT EXISTS (SELECT 1 FROM responses r WHERE r.poll_id = p.id AND r.updated_at >= ?1)
+       AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.poll_id = p.id AND COALESCE(m.updated_at, m.created_at) >= ?1)
+       AND NOT EXISTS (SELECT 1 FROM chat_reads c WHERE c.poll_id = p.id AND c.read_at >= ?1)
+       AND NOT EXISTS (SELECT 1 FROM instances i WHERE i.poll_id = p.id AND i.end_date >= ?2
+                       AND (p.kind = 'single' OR i.meetings <> '[]'))
+     LIMIT ?3`).bind(cutoff, cutoff.slice(0, 10), RETAIN_BATCH).all();
+  for (const { id } of results) {
+    await env.DB.batch(pollDeleteStmts(env, id));
+    console.log('retention: deleted poll', id);
+  }
+  return results.length;
 }
 
 // ---------- instances ----------
@@ -2384,6 +2407,7 @@ async function runScheduled(env) {
       env.DB.prepare('DELETE FROM oauth_states WHERE created_at < ?').bind(new Date(Date.now() - 3600000).toISOString()),
     ]);
   } catch (e) { console.error('cleanup', e); }
+  if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
   for (const poll of polls) {
