@@ -683,35 +683,95 @@
   .mm-p.off{opacity:.5;cursor:default}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfh{cursor:default} .mfh:hover h3{text-decoration:none}
-  /* questions (extra info + votes on options) */
-  .qpanel .qlist{display:flex;flex-direction:column;gap:10px;padding:10px 12px 12px 16px}
-  .asec .qlist{display:flex;flex-direction:column;gap:12px;margin-top:var(--s2)}
-  .qitem{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);transition:box-shadow .3s}
-  .qitem.closed{opacity:.75} .qitem.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}
-  .qhead{display:flex;align-items:flex-start;gap:8px} .qhead .macts{display:flex;gap:2px;flex:none}
-  .qlabel{font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .qreq{color:var(--danger,#c0392b);font-weight:800} .qbadge svg{width:14px;height:14px;color:var(--muted);vertical-align:-2px}
-  .qlinks{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px} .qmt{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)} .qmt svg{width:13px;height:13px}
-  .qopts{display:flex;flex-direction:column;gap:6px}
-  .qopt{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 6px 0 4px;border:1px solid var(--line);border-radius:10px;background:var(--sunken)}
-  .qopt.on{border-color:color-mix(in srgb,var(--yes) 55%,var(--line));background:color-mix(in srgb,var(--yes) 12%,var(--card))}
-  .qpick{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;padding:8px 4px;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
-  .qpick:disabled{cursor:default}
-  .qmark{flex:none;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--line-strong);background:var(--card)}
-  .qmark.dot{border-radius:50%} .qmark.box{border-radius:5px} .qopt.on .qmark{border-color:var(--yes);background:var(--yes);color:#fff} .qmark svg{width:12px;height:12px}
-  .qadd{position:relative;display:flex;align-items:center;gap:6px} .qadd>svg{width:16px;height:16px;flex:none;color:var(--muted)} .qadd input{flex:1 1 auto;min-width:0}
-  .qtext{width:100%;resize:vertical}
-  .qans{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px} .qans b{margin-right:4px}
-  .qyn{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .qseg{display:inline-flex;gap:6px}
-  .qcnt{display:inline-flex;align-items:center;gap:6px;font-size:14px} .qcnt input{width:72px}
-  .qhint{padding:6px 16px 0}
-  .qedit{display:flex;flex-direction:column;gap:8px;margin:10px 12px 0 16px;padding:12px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card)}
-  .qedit .iseg button{display:inline-flex;align-items:center;gap:6px} .qedit .iseg svg{width:15px;height:15px}
-  .qchks{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px} .qchk{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer} .qchk .tip{position:static}
-  .qmts{flex-direction:column;align-items:flex-start}
+  /* questions tab: cards like meetings (type tile | title + icon buttons, meta, body) */
+  .ws-h .qws-add{margin-left:auto} .ws-h>.tip{position:static}
+  .qlist{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+  .qlist.compact{gap:6px}
+  .qcard{position:relative;transition:box-shadow .3s} .qcard.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}
+  .qcard.closed .qopts,.qcard.closed .qyn{opacity:.7}
+  .qtile{position:relative;gap:3px;padding:9px 0 7px} .qtile>svg{width:22px;height:22px} .qtile .wd{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
+  .qcorner{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--card);box-shadow:0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)} .qcorner svg{width:11px;height:11px}
+  .qreq{margin-left:3px;color:var(--no,#d64545);font-weight:800}
+  .qcard .mtitle .tag{vertical-align:2px;font-size:11px}
+  .qcard .mmeta a{color:var(--muted)} .qcard .mmeta a:hover{color:var(--accent-ink)}
+  .qhelp{font-size:13.5px;color:var(--ink-2)}
+  .qcard.fold{align-items:center;gap:10px;padding:7px 8px} .qcard.fold .qtile{width:42px;padding:5px 0 4px} .qcard.fold .qtile .wd{display:none} .qcard.fold .qtile>svg{width:18px;height:18px}
+  .qcard.fold .mhead{align-items:center} .qfoldb{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:10px;padding:4px 0;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+  .qfoldb .mtitle{flex:0 1 auto;padding:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qsum{flex:1 1 auto;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* vote rows with a result bar behind */
+  .qopts{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .qopt{position:relative;display:flex;align-items:center;gap:2px;min-height:42px;padding:0 6px 0 2px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);overflow:hidden}
+  .qopt::before{content:'';position:absolute;inset:0 auto 0 0;width:var(--p,0%);background:color-mix(in srgb,var(--accent) 11%,transparent);transition:width .3s}
+  .qopt.lead::before{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+  .qopt>*{position:relative}
+  .qopt.on{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+  .qpick{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:9px;padding:9px 6px;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer} .qpick:disabled{cursor:default}
+  .ql{min-width:0;overflow-wrap:anywhere;font-weight:550}
+  .qmark{flex:none;width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--line-strong);background:var(--card)}
+  .qmark.dot{border-radius:50%} .qmark.box{border-radius:5px} .qopt.on .qmark{border-color:var(--accent);background:var(--accent);color:#fff} .qmark svg{width:12px;height:12px}
+  .qopt .qb{width:30px;height:30px} .qopt .qb svg{width:15px;height:15px}
+  .qn{flex:none;min-width:28px;height:24px;margin-left:2px;padding:0 7px;border:0;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums;cursor:pointer}
+  .qn.lead{background:var(--accent);color:#fff;box-shadow:none}
+  .qwho{margin:-2px 4px 2px 34px;font-size:12.5px;color:var(--muted)}
+  .qcard .mfoot{margin-top:6px;padding-top:8px}
+  .qadd{position:relative;flex:1 1 auto;display:flex;align-items:center;gap:6px;min-width:0} .qadd>svg{width:16px;height:16px;flex:none;color:var(--muted)} .qadd input{flex:1 1 auto;min-width:0;height:36px}
+  .qadd .qb{flex:none}
+  .qtext{width:100%;min-height:38px;resize:none;margin:0}
+  .qans{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:14px}
+  .qans li{display:flex;gap:8px;padding:6px 10px;border-radius:8px;background:var(--sunken)} .qans li.me{box-shadow:inset 2px 0 0 var(--accent)} .qans b{flex:none;font-weight:650} .qans span{min-width:0;overflow-wrap:anywhere;color:var(--ink-2)}
+  .qyn{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap}
+  .qseg button{min-width:64px;justify-content:center}
+  .qstep{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;color:var(--ink-2)} .qstep-l{margin-right:4px} .qstep b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .qstep .qb{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;font-size:16px;font-weight:700}
+  .qyn .vtally .tag svg{width:12px;height:12px;vertical-align:-1px;margin-right:2px}
+  .qnote{margin:0 0 10px;align-items:center} .qtpls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  /* inline editor */
+  .qedit{background:var(--sunken);box-shadow:none;border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+  .qedit .mbody{gap:8px} .qedit input[type=text]{margin:0;background:var(--card)} .qe-label{font-weight:650}
+  .qetype{align-self:flex-start} .qetype button{display:inline-flex;align-items:center;gap:6px}
+  .qeopts{display:flex;flex-direction:column;gap:6px}
+  .qeopt{position:relative;display:flex;align-items:center;gap:6px} .qeopt>svg{width:15px;height:15px;flex:none;color:var(--muted)} .qeopt input{flex:1 1 auto;min-width:0;height:36px}
+  .qeadd{align-self:flex-start}
+  .qegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  .qetog{display:flex;align-items:center;gap:8px;min-height:34px;font-size:14px} .qetog>svg{width:16px;height:16px;flex:none;color:var(--accent)} .qetog>label{margin:0;cursor:pointer} .qetog>.tip{position:static} .qetog>.sw{margin-left:auto}
+  .qe-cntl{grid-column:1/-1;height:34px}
+  .qemts{display:flex;flex-wrap:wrap;align-items:center;gap:6px} .qe-sub{flex-basis:100%;font-size:12.5px;font-weight:600;color:var(--muted)}
+  .qemt{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .qemt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .qemt svg{width:13px;height:13px;flex:none;color:var(--muted)}
+  .qemt.on{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-ink)} .qemt.on svg{color:var(--accent)}
+  .qe-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
+  /* under My answer: compact rows, options as chips */
+  .qmine{display:flex;flex-direction:column;margin-top:var(--s2);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card)}
+  .qm{display:flex;flex-direction:column;gap:8px;padding:12px 14px;transition:box-shadow .3s} .qm+.qm{border-top:1px solid var(--line)} .qm.flash{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 50%,transparent)} .qm.closed{opacity:.7}
+  .qm-l{font-weight:650;font-size:14.5px;display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px} .qm-h{flex-basis:100%;font-weight:400;font-size:13px;color:var(--muted)}
+  .qlock svg{width:13px;height:13px;color:var(--muted);vertical-align:-1px}
+  .qchips{display:flex;flex-wrap:wrap;gap:6px}
+  .qchipo{display:inline-flex;align-items:center;border:1px solid var(--line-strong);border-radius:999px;background:var(--card);max-width:100%}
+  .qchipo>button:first-child{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 13px;background:none;border:0;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;min-width:0}
+  .qchipo>button:first-child span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qchipo.on{background:var(--accent);border-color:var(--accent)} .qchipo.on>button{color:#fff} .qchipo svg{width:13px;height:13px} .qchipo .qb{width:28px;height:28px;color:inherit} .qchipo.on .qb{color:#fff}
+  .qm .qadd input{height:34px}
   .mqs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .qchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--sunken);color:var(--ink);font-size:12.5px;font-weight:500}
   .qchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .qchip svg{width:13px;height:13px;flex:none;color:var(--accent)} .qchip:hover{border-color:var(--line-strong)}
+  @media (max-width:560px){
+    .qlist{padding-bottom:8px}
+    /* expanded card: the tile sits beside the title and meta only; options and answers use the full width */
+    .qcard:not(.fold){display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start;padding:12px 10px 12px 10px}
+    .qcard:not(.fold) .mbody{display:contents} .qcard:not(.fold) .mbody>*{grid-column:1/-1}
+    .qcard:not(.fold) .qtile{grid-column:1;grid-row:1/3;width:44px;padding:6px 0 5px} .qcard:not(.fold) .qtile .wd{font-size:9.5px} .qcard:not(.fold) .qtile>svg{width:18px;height:18px}
+    .qcard:not(.fold) .mbody>.mhead{grid-column:2;grid-row:1} .qcard:not(.fold) .mbody>.mmeta{grid-column:2;grid-row:2}
+    .qcard .mmeta{flex-direction:column;gap:3px;font-size:13px}
+    .qcard .mtitle{font-size:15px;padding-top:2px}
+    .qopt{min-height:44px} .qopt .vtop{display:none} .qwho{margin-left:30px}
+    .qegrid{grid-template-columns:minmax(0,1fr);padding:8px 10px}
+    .qedit:not(.fold) .mbody>.qetype{grid-column:2;grid-row:1}
+    .qedit .qtile{grid-row:1!important}
+    .qetype button{padding:6px 9px;font-size:13px;white-space:nowrap} .qetype .segic svg{width:14px;height:14px}
+    .qe-acts .btn{flex:1 1 0;justify-content:center}
+    .qm{padding:12px} .ws-h .qws-add .bl{display:none}
+  }
   /* Section toolbar above votes + scheduled: Select and Collapse act on both */
   .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)} .msec-h .qb{color:var(--accent-ink)}
   .msec-h .qb[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 12%,var(--card))}
@@ -3776,13 +3836,13 @@ function renderHeader(){
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
     <h1>${esc(p.title)}</h1></div></div>
     <div class="meta">${roundChip(d,i)}${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
-      return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
+      return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${p.invitedOnly&&!d.isAdmin?'':shareRow(p,i)}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!d.isAdmin?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
-  renderMeetings();
+  renderMeetings(); renderQuestions();
 }
 // The share link with Copy and Share / WhatsApp / email buttons, under the poll header.
 function shareRow(p,i){
@@ -3960,8 +4020,8 @@ function renderMeetings(listOnly){
   const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
   ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
   if(!ms.length&&!props.length){ P.msel=null;
-    el.innerHTML=`<div class="mcard">${qSection()}<div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Overview.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
-    qWire(el); return; }
+    el.innerHTML=`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Overview.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
+    return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   // Select and Collapse act on the whole section: vote options and scheduled meetings.
   const all=[...props,...ms];
@@ -4002,8 +4062,7 @@ function renderMeetings(listOnly){
   const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${adm&&!sel?mailAll:''}</div>`;
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); const vl=$('vlist'); if(vl) vl.innerHTML=props.map(card).join(''); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
-  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&adm&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):qSection()}</div>`;
-  qWire(el);
+  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&adm&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
   if(sel){ syncBatchBar(pv,nSel,all.length); const ta=$('mb_desc'); if(ta&&ta.value) growTa(ta); }
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; batchPreview(0); });
 }
@@ -4052,7 +4111,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[da
   confirmProposal(b.dataset.mconfirm,b); });
 // ---- questions (instance.questions): extra info for the round or its meetings, and votes on options such as places.
 // My answers are P.mine.extra = { a: { qid: answer }, add: { qid: [{ id, label }] } } (add = options I suggested).
-// Under My answer they go with Send; in the Meetings tab they're saved at once (PUT …/responses/:rid/extra).
+// Under My answer (#wsq) they go with Send; in the Questions tab they're saved at once (PUT …/responses/:rid/extra).
 const qList=()=>inst().questions||[];
 function qNewId(){ const c='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789', a=crypto.getRandomValues(new Uint8Array(10)); return [...a].map(x=>c[x%c.length]).join(''); }
 function myExtra(){ const x=P.mine.extra||(P.mine.extra={}); x.a=x.a||{}; x.add=x.add||{}; return x; }
@@ -4065,100 +4124,146 @@ function qOpts(q){
 }
 function qAnswered(q,a){ const v=a[q.id]; return q.type==='choice'?Array.isArray(v)&&v.length>0:q.type==='text'?!!(v&&String(v).trim()):!!(v&&typeof v.y==='boolean'); }
 const qMissing=()=>qList().find(q=>q.req&&!q.closed&&!qAnswered(q,myExtra().a));
+const qOpenN=()=>editable()?qList().filter(q=>!q.closed&&!qAnswered(q,myExtra().a)).length:0; // questions I still could answer
 // Answers of the others (null when this person can't see them): the server leaves out "only the organiser" questions.
-function qAnswers(q){ const rs=P.data.responses; if(!rs) return null; return rs.map(r=>({name:r.name||t('Someone'),v:(r.extra||{})[q.id],me:!!(P.myResp&&r.id===P.myResp.id)})).filter(x=>x.v!==undefined); }
+function qAnswers(q){ const rs=P.data.responses; if(!rs||(q.vis==='owner'&&!P.data.isAdmin)) return null; return rs.map(r=>({name:r.name||t('Someone'),v:(r.extra||{})[q.id],me:!!(P.myResp&&r.id===P.myResp.id)})).filter(x=>x.v!==undefined); }
 function qTally(q){ const as=qAnswers(q); if(!as) return null; const m=new Map(); for(const o of qOpts(q)) m.set(o.id,[]); as.forEach(x=>(Array.isArray(x.v)?x.v:[]).forEach(id=>m.has(id)&&m.get(id).push(x.name))); return m; }
 const qLinked=mid=>qList().filter(q=>(q.meetings||[]).includes(mid));
 function qTop(q){ const tl=q.type==='choice'&&qTally(q); if(!tl) return null; let best=null,n=0; for(const o of qOpts(q)){ const k=tl.get(o.id).length; if(k>n){ n=k; best=o; } } return best?{o:best,n}:null; }
-// One question. mode 'mine' = answer under My answer (sent with Send); 'meet' = results + quick answer in the Meetings tab.
-function qItem(q,mode){
-  const d=P.data, adm=d.isAdmin, a=myExtra().a, v=a[q.id], meet=mode==='meet';
-  const can=editable()&&(!q.closed||adm)&&(!meet||!!P.myResp), dis=can?'':' disabled', at=`data-q="${q.id}" data-qm="${mode}"`;
-  const badges=`${q.req?`<span class="qreq" title="${t('Required')}">*</span>`:''}${q.vis==='owner'?`<span class="qbadge" title="${t('Only the organiser sees the answers')}">${ICON.lock}</span>`:''}${q.closed?`<span class="tag x">${t('closed')}</span>`:''}`;
-  const links=(q.meetings||[]).map(id=>inst().meetings.find(m=>m.id===id)).filter(Boolean).map(m=>`<span class="qmt">${ICON[m.proposed?'check':'star']}<span>${esc(meetTitle(m))} · ${esc(meetWhen(m))}</span></span>`).join('');
-  const qbt=(attr,ic,l,cls='')=>`<button type="button" class="qb${cls}" ${attr}="${q.id}" title="${l}" aria-label="${l}">${ICON[ic]}</button>`;
-  const acts=meet&&adm?`<span class="macts">${qbt('data-qedit','edit',t('Edit question'))}${qbt('data-qclose',q.closed?'unlock':'lock',q.closed?t('Reopen question: people can change their answers again'):t('Close question: answers can’t be changed any more'))}${qbt('data-qrm','trash',t('Delete question'),' danger')}</span>`:'';
-  let body='';
-  if(q.type==='choice'){
-    const tl=meet?qTally(q):null, top=tl?Math.max(0,...[...tl.values()].map(x=>x.length)):0, mine=new Set(Array.isArray(v)?v:[]);
-    body=`<div class="qopts">${qOpts(q).map(o=>{ const on=mine.has(o.id), vs=tl?tl.get(o.id):null, n=vs?vs.length:0;
-      const tally=vs?`<span class="tag ${n&&n===top?'y':''}" title="${esc(n?vs.join(', '):t('No votes yet'))}">${ICON.check}${n}</span>${n&&n===top?`<span class="vtop">${t('Most votes')}</span>`:''}`:'';
-      const use=meet&&adm&&q.place&&(q.meetings||[]).length&&n&&n===top?`<button type="button" class="btn sm ghost withic" data-quse="${q.id}" data-o="${o.id}" title="${t('Set this as the place of the linked meetings')}">${ICON.pin}<span class="bl">${t('Use as place')}</span></button>`:'';
-      const map=q.place?`<a class="qb" href="${esc(mapUrl(o.label))}" target="_blank" rel="noopener" title="${t('Open in Google Maps')}" aria-label="${t('Open in Google Maps')}">${ICON.pin}</a>`:'';
-      const rm=o.mine&&can?`<button type="button" class="qb" data-qunadd="${q.id}" data-o="${o.id}" data-qm="${mode}" title="${t('Remove my suggestion')}" aria-label="${t('Remove my suggestion')}">${ICON.x}</button>`:'';
-      return `<div class="qopt${on?' on':''}"><button type="button" class="qpick" data-qpick="${q.id}" data-o="${o.id}" data-qm="${mode}" role="${q.multi?'checkbox':'radio'}" aria-checked="${on}"${dis}><span class="qmark ${q.multi?'box':'dot'}">${on?ICON.check:''}</span><span class="grow minw">${esc(o.label)}</span></button>${map}${rm}<span class="vtally">${tally}</span>${use}</div>`; }).join('')}</div>
-      ${q.add&&can?`<div class="qadd${q.place?' locbox':''}">${q.place?ICON.pin:ICON.plus}<input type="text" id="qadd_${mode}_${q.id}" data-qaddin="${q.id}" data-qm="${mode}" maxlength="120" autocomplete="off" placeholder="${q.place?t('Suggest a place'):t('Suggest an option')}" aria-label="${q.place?t('Suggest a place'):t('Suggest an option')}"${q.place?` role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="qadd_${mode}_${q.id}_sug"`:''}>${q.place?`<div class="locsug" id="qadd_${mode}_${q.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="btn sm" data-qaddbtn="${q.id}" data-qm="${mode}">${t('Add')}</button></div>`:''}`;
-  } else if(q.type==='text'){
-    const as=meet?qAnswers(q):null;
-    body=`${meet&&!can?'':`<textarea class="qtext" data-qtext="${q.id}" data-qm="${mode}" maxlength="500" rows="2" placeholder="${t('Your answer')}"${dis}>${esc(v||'')}</textarea>`}
-      ${as?(as.length?`<ul class="qans">${as.map(x=>`<li><b>${esc(x.name)}</b> ${esc(x.v)}</li>`).join('')}</ul>`:`<div class="muted small">${t('No answers yet')}</div>`):''}`;
-  } else {
-    const y=v&&v.y, as=meet?qAnswers(q):null;
-    const btn=(val,lbl)=>`<button type="button" class="btn sm${v&&v.y===val?' on':''}" data-qyn="${q.id}" data-v="${val?1:0}" data-qm="${mode}" aria-pressed="${!!(v&&v.y===val)}"${dis}>${lbl}</button>`;
-    const sum=as?(()=>{ const ys=as.filter(x=>x.v&&x.v.y), ns=as.filter(x=>x.v&&x.v.y===false), tot=ys.reduce((s,x)=>s+(x.v.n||0),0);
-      return `<span class="vtally"><span class="tag y" title="${esc(ys.map(x=>x.name+(x.v.n?` (${x.v.n})`:'')).join(', ')||t('Nobody yet'))}">${t('Yes')} ${ys.length}</span><span class="tag" title="${esc(ns.map(x=>x.name).join(', ')||t('Nobody yet'))}">${t('No')} ${ns.length}</span>${q.count&&tot?`<span class="vtop">${esc(q.count.label||t('Total'))}: ${tot}</span>`:''}</span>`; })():'';
-    body=`<div class="qyn"><div class="seg qseg">${btn(true,t('Yes'))}${btn(false,t('No'))}</div>${q.count&&y?`<label class="qcnt"><span>${esc(q.count.label||t('How many?'))}</span><input type="number" inputmode="numeric" min="0" max="${q.count.max}" data-qn="${q.id}" data-qm="${mode}" value="${v.n??''}"${dis}></label>`:''}${sum}</div>`;
-  }
-  return `<div class="qitem${q.closed?' closed':''}" id="q_${mode}_${q.id}"><div class="qhead"><div class="grow minw"><div class="qlabel">${esc(q.label)}${badges}</div>${q.help?`<div class="muted small">${linkText(q.help)}</div>`:''}${links?`<div class="qlinks">${links}</div>`:''}</div>${acts}</div>${body}</div>`;
+const Q_KIND={choice:['check','Vote'],text:['note','Text'],yesno:['users','Yes / no']};
+// Type tile on the left of a card, like the date tile of a meeting.
+function qTile(q){ const [ic,l]=q.place?['pin','Place']:Q_KIND[q.type];
+  return `<div class="mtile qtile" aria-hidden="true">${ICON[ic]}<span class="wd">${t(l)}</span>${q.vis==='owner'?`<span class="qcorner">${ICON.lock}</span>`:''}</div>`; }
+// One-line summary (compact view): the leading option, yes / no counts, or the number of answers; else my own answer.
+function qSummary(q){
+  const as=qAnswers(q), v=myExtra().a[q.id];
+  if(q.type==='choice'){ const tp=qTop(q); if(tp) return `${esc(tp.o.label)} · ${tp.n}`;
+    const mine=qOpts(q).filter(o=>(v||[]).includes(o.id)).map(o=>o.label); return mine.length?esc(mine.join(', ')):t('{n} options',{n:qOpts(q).length}); }
+  if(q.type==='yesno'){ if(as){ const y=as.filter(x=>x.v&&x.v.y).length; return `${t('Yes')} ${y} · ${t('No')} ${as.length-y}`; } return v?(v.y?t('Yes'):t('No')):t('Not answered'); }
+  return as?t('{n} answers',{n:as.length}):v?esc(v):t('Not answered');
 }
-// Questions card under My answer (inputs only; sent with the answer).
+const qCan=q=>editable()&&!!P.myResp&&(!q.closed||P.data.isAdmin);
+// Yes / no number stepper (− n +); clicks are collected and saved once.
+const qStep=(q,v,mode,dis)=>`<span class="qstep"><span class="qstep-l">${esc(q.count.label||t('How many?'))}</span><button type="button" class="qb" data-qstep="${q.id}" data-d="-1" data-qm="${mode}" aria-label="−"${dis}>−</button><b id="qn_${mode}_${q.id}">${v.n??0}</b><button type="button" class="qb" data-qstep="${q.id}" data-d="1" data-qm="${mode}" aria-label="+"${dis}>+</button></span>`;
+// The answer controls + results of one question. mode 'tab' (Questions tab: results, saved at once) or 'mine' (My answer: sent with Send).
+function qBody(q,mode){
+  const adm=P.data.isAdmin, a=myExtra().a, v=a[q.id], tab=mode==='tab', can=tab?qCan(q):editable()&&(!q.closed||adm), dis=can?'':' disabled';
+  if(q.type==='choice'){
+    const tl=tab?qTally(q):null, opts=qOpts(q), total=tl?Math.max(1,...[...tl.values()].map(x=>x.length)):1, top=tl?Math.max(0,...[...tl.values()].map(x=>x.length)):0, mine=new Set(Array.isArray(v)?v:[]);
+    const rows=opts.map(o=>{ const on=mine.has(o.id), vs=tl?tl.get(o.id):null, n=vs?vs.length:0, lead=n>0&&n===top, key=q.id+':'+o.id, open=P.qwho===key;
+      const rm=o.mine&&can?`<button type="button" class="qb" data-qunadd="${q.id}" data-o="${o.id}" data-qm="${mode}" title="${t('Remove my suggestion')}" aria-label="${t('Remove my suggestion')}">${ICON.x}</button>`:'';
+      if(!tab) return `<span class="qchipo${on?' on':''}"><button type="button" data-qpick="${q.id}" data-o="${o.id}" data-qm="${mode}" role="${q.multi?'checkbox':'radio'}" aria-checked="${on}"${dis}>${on?ICON.check:''}<span>${esc(o.label)}</span></button>${rm}</span>`;
+      const map=q.place?`<a class="qb" href="${esc(mapUrl(o.label))}" target="_blank" rel="noopener" title="${t('Open in Google Maps')}" aria-label="${t('Open in Google Maps')}">${ICON.pin}</a>`:'';
+      const use=adm&&q.place&&(q.meetings||[]).length&&lead?`<button type="button" class="qb" data-quse="${q.id}" data-o="${o.id}" title="${t('Set this as the place of the linked meetings')}" aria-label="${t('Use as place')}">${ICON.star}</button>`:'';
+      const cnt=vs?`<button type="button" class="qn${lead?' lead':''}" data-qwho="${key}" aria-expanded="${open}" title="${esc(n?vs.join(', '):t('No votes yet'))}">${n}</button>`:'';
+      return `<div class="qopt${on?' on':''}${lead?' lead':''}" style="--p:${tl?Math.round(n/total*100):0}%"><button type="button" class="qpick" data-qpick="${q.id}" data-o="${o.id}" data-qm="${mode}" role="${q.multi?'checkbox':'radio'}" aria-checked="${on}"${dis}><span class="qmark ${q.multi?'box':'dot'}">${on?ICON.check:''}</span><span class="ql">${esc(o.label)}</span>${lead?`<span class="vtop">${t('Most votes')}</span>`:''}</button>${map}${use}${rm}${cnt}</div>${open&&n?`<div class="qwho">${esc(vs.join(', '))}</div>`:''}`; }).join('');
+    const sug=q.add&&can?`<div class="qadd${q.place?' locbox':''}">${ICON[q.place?'pin':'plus']}<input type="text" id="qadd_${mode}_${q.id}" data-qaddin="${q.id}" data-qm="${mode}" maxlength="120" autocomplete="off" placeholder="${q.place?t('Suggest a place'):t('Suggest an option')}" aria-label="${q.place?t('Suggest a place'):t('Suggest an option')}"${q.place?` role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="qadd_${mode}_${q.id}_sug"`:''}>${q.place?`<div class="locsug" id="qadd_${mode}_${q.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-qaddbtn="${q.id}" data-qm="${mode}" title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>`:'';
+    return tab?`<div class="qopts">${rows}</div>${sug?`<div class="mfoot">${sug}</div>`:''}`:`<div class="qchips">${rows}</div>${sug}`;
+  }
+  if(q.type==='text'){
+    const as=tab?qAnswers(q):null, all=P.qall===q.id, shown=as?(all?as:as.slice(0,5)):[];
+    const box=can?`<textarea class="qtext" id="qt_${mode}_${q.id}" data-qtext="${q.id}" data-qm="${mode}" maxlength="500" rows="1" placeholder="${t('Your answer')}">${esc(v||'')}</textarea>`:'';
+    return `${box}${as?(as.length?`<ul class="qans">${shown.map(x=>`<li${x.me?' class="me"':''}><b>${esc(x.name)}</b><span>${esc(x.v)}</span></li>`).join('')}</ul>${as.length>5?`<button type="button" class="btn sm ghost" data-qall="${q.id}">${all?t('Show less'):t('Show all ({n})',{n:as.length})}</button>`:''}`:`<div class="muted small">${t('No answers yet')}</div>`):''}`;
+  }
+  const as=tab?qAnswers(q):null;
+  const btn=(val,lbl)=>`<button type="button" class="${v&&v.y===val?'on':''}" data-qyn="${q.id}" data-v="${val?1:0}" data-qm="${mode}" aria-pressed="${!!(v&&v.y===val)}"${dis}>${lbl}</button>`;
+  const sum=as?(()=>{ const ys=as.filter(x=>x.v&&x.v.y), ns=as.filter(x=>x.v&&x.v.y===false), tot=ys.reduce((s,x)=>s+(x.v.n||0),0);
+    return `<span class="vtally"><span class="tag y" title="${esc(ys.map(x=>x.name+(x.v.n?` (${x.v.n})`:'')).join(', ')||t('Nobody yet'))}">${t('Yes')} ${ys.length}</span><span class="tag" title="${esc(ns.map(x=>x.name).join(', ')||t('Nobody yet'))}">${t('No')} ${ns.length}</span>${q.count&&tot?`<span class="tag">${ICON.users}${tot}</span>`:''}</span>`; })():'';
+  return `<div class="qyn"><div class="seg qseg" role="group" aria-label="${esc(q.label)}">${btn(true,t('Yes'))}${btn(false,t('No'))}</div>${q.count&&v&&v.y?qStep(q,v,mode,dis):''}${sum}</div>`;
+}
+// A question card in the Questions tab (mirrors a meeting card: tile | title + icon buttons, meta line, body, foot).
+function qCard(q){
+  const d=P.data, adm=d.isAdmin, fold=!!P.qfold&&P.qopen!==q.id, as=qAnswers(q), rs=d.responses;
+  const qbt=(attr,ic,l,cls='')=>`<button type="button" class="qb${cls}" ${attr}="${q.id}" title="${l}" aria-label="${l}">${ICON[ic]}</button>`;
+  const acts=`<span class="macts">${adm?qbt('data-qedit','edit',t('Edit question'))+qbt('data-qclose',q.closed?'unlock':'lock',q.closed?t('Reopen question: people can change their answers again'):t('Close question: answers can’t be changed any more'))+qbt('data-qrm','trash',t('Delete question'),' danger'):''}</span>`;
+  const title=`<div class="mtitle">${esc(q.label)}${q.req?`<span class="qreq" title="${t('Required')}">*</span>`:''}${q.closed?` <span class="tag x">${t('closed')}</span>`:''}</div>`;
+  if(fold) return `<div class="meet qcard fold" id="q_tab_${q.id}">${qTile(q)}<div class="mbody"><div class="mhead"><button type="button" class="qfoldb" data-qopen="${q.id}" aria-expanded="false">${title}<span class="qsum">${qSummary(q)}</span></button>${acts}</div></div></div>`;
+  const links=(q.meetings||[]).map(id=>inst().meetings.find(m=>m.id===id)).filter(Boolean).map(m=>`<a href="#" data-qmeet="${m.id}">${ICON[m.proposed?'check':'star']}<span>${esc(meetTitle(m))} · ${esc(meetWhen(m))}</span></a>`).join('');
+  const meta=[links,
+    as&&rs&&rs.length?`<span>${ICON.users}<span>${t('{a}/{b} answered',{a:as.length,b:rs.length})}</span></span>`:'',
+    q.vis==='owner'?`<span>${ICON.lock}<span>${adm?t('Only you see the answers'):t('Only the organiser sees the answers')}</span></span>`:''].filter(Boolean).join('');
+  return `<div class="meet qcard${q.closed?' closed':''}" id="q_tab_${q.id}">${qTile(q)}<div class="mbody"><div class="mhead">${title}${acts}</div>
+    ${meta?`<div class="mmeta">${meta}</div>`:''}${q.help?`<div class="qhelp">${linkText(q.help)}</div>`:''}${qBody(q,'tab')}</div></div>`;
+}
+// Questions tab: toolbar (compact), the cards (or the editor in place of one), empty state with templates.
+// fresh: the editor's state in P.qedit was just changed (don't read the old fields back over it).
+function renderQuestions(fresh){
+  const el=$('questions'); if(!el) return;
+  // A re-render (e.g. after a refresh) keeps the open editor's fields and the field being typed in.
+  if(!fresh&&P.qedit&&$('qeForm')) qeRead();
+  const fa=document.activeElement, keep=fa&&fa.id&&el.contains(fa)?{id:fa.id,v:fa.value,s:fa.selectionStart}:null;
+  const d=P.data, adm=d.isAdmin, qs=qList(), n=adm?qs.length:qOpenN();
+  const tb=$('qtabn'); if(tb){ tb.textContent=n; tb.hidden=!n; }
+  if(P.qfold==null) P.qfold=store.get('qfold:'+P.id,false);
+  if(!qs.length&&!P.qedit){
+    const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
+    el.innerHTML=`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.ask}</span><b>${t('No questions yet')}</b>${adm?`<span class="muted small">${t('Ask people for more than the date: where to meet, a plus-one, dietary needs…')}</span>
+      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('text','note',t('Ask a question'))}${tpl('yesno','users',t('Yes / no'))}</div>`:''}</div></div>`; return; }
+  const foldL=P.qfold?t('Show details'):t('Compact view');
+  const hint=qs.length&&!P.myResp&&editable()?`<div class="notice withic qnote">${ICON.ask}<span class="grow minw">${t('Send your answer to answer the questions here.')}</span><button type="button" class="btn sm" data-qgomine>${t('My answer')}</button></div>`:'';
+  const cards=qs.map(q=>P.qedit&&P.qedit.id===q.id?qEditor():qCard(q)).join('');
+  el.innerHTML=`<div class="mcard"><div class="msec-h"><button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${foldL}" aria-label="${foldL}">${ICON[P.qfold?'grow':'shrink']}</button></div>
+    ${hint}<div class="qlist${P.qfold?' compact':''}">${P.qedit&&!P.qedit.id?qEditor():''}${cards}</div></div>`;
+  qWire(el);
+  if(keep){ const x=$(keep.id); if(x){ if(x.value!==undefined&&keep.v!==undefined) x.value=keep.v; x.focus({preventScroll:true}); try{ x.setSelectionRange(keep.s,keep.s); }catch(e){} } }
+}
+// Under My answer: the questions to fill in before Send (compact; results are in the Questions tab).
 function renderMineQs(){
   const el=$('wsq'); if(!el) return;
   const qs=qList(); el.classList.toggle('hide',P.tab!=='mine'||!qs.length||!editable());
   if(!qs.length||!editable()){ el.innerHTML=''; return; }
-  el.innerHTML=`${secH('ask',t('Questions'),{count:qs.length,tip:t('The organiser asks a few things besides the dates. Your answers go with <b>Send</b>. * = required, 🔒 = only the organiser sees them.')})}<div class="qlist">${qs.map(q=>qItem(q,'mine')).join('')}</div>`;
+  const open=qOpenN();
+  el.innerHTML=`${secH('ask',t('Questions'),{count:open||null,tip:t('The organiser asks a few things besides the dates. Your answers go with <b>Send</b>. * = required, 🔒 = only the organiser sees them.'),extra:`<a href="#" data-atab="questions" class="small">${t('Results')}</a>`})}
+    <div class="qmine">${qs.map(q=>`<div class="qm${q.closed?' closed':''}" id="q_mine_${q.id}"><div class="qm-l">${esc(q.label)}${q.req?'<span class="qreq">*</span>':''}${q.vis==='owner'?`<span class="qlock" title="${t('Only the organiser sees the answers')}">${ICON.lock}</span>`:''}${q.help?`<span class="qm-h">${linkText(q.help)}</span>`:''}</div>${qBody(q,'mine')}</div>`).join('')}</div>`;
   qWire(el);
-}
-// Questions section of the Meetings tab: results, quick answers, and the organiser's editor.
-function qSection(){
-  const d=P.data, adm=d.isAdmin, qs=qList();
-  if(!qs.length&&!adm) return '';
-  const add=adm&&!P.qedit?`<button type="button" class="btn sm ghost withic" data-qnew>${ICON.plus}<span>${t('Ask something')}</span></button>`:'';
-  const help=adm?t('Ask people for more than the date: a vote on the place (they can suggest their own), a plus-one, dietary needs… Link a question to meetings to show it on them. 🔒 = only you see the answers.')
-    :t('Questions from the organiser. 🔒 = only the organiser sees the answers.');
-  const hint=qs.length&&!P.myResp&&editable()?`<div class="muted small qhint">${t('Send your answer to answer here.')} <a href="#" data-qgomine>${t('My answer')}</a></div>`:'';
-  return `<div class="vpanel qpanel" id="qpanel"><div class="vpanel-h"><h3>${ICON.ask}${t('Questions')}${qs.length?`<span class="count">${qs.length}</span>`:''}</h3>${tip(help)}${add}</div>
-    ${P.qedit?qEditor():''}${hint}<div class="qlist">${qs.map(q=>P.qedit&&P.qedit.id===q.id?'':qItem(q,'meet')).join('')}</div>
-    ${!qs.length&&!P.qedit?`<div class="muted small qhint">${t('No questions yet.')}</div>`:''}</div>`;
 }
 // Chips on a meeting card for the questions linked to it (with the leading option of a vote).
 function qMeetChips(m){ const qs=qLinked(m.id); if(!qs.length) return '';
   return `<div class="mqs">${qs.map(q=>{ const tp=qTop(q); return `<a href="#" class="qchip" data-qgo="${q.id}">${ICON.ask}<span>${esc(q.label)}${tp?` · ${esc(tp.o.label)} (${tp.n})`:''}</span></a>`; }).join('')}</div>`; }
-// ---- organiser's editor (P.qedit = the question being edited, with id when it exists) ----
+// ---- organiser's inline editor (P.qedit = the question being edited; with id once it exists) ----
 function qEditor(){
-  const e=P.qedit, ty=e.type||'choice', ms=inst().meetings, chk=(id,on,lbl,tp='')=>`<label class="qchk"><input type="checkbox" id="${id}"${on?' checked':''}><span>${lbl}</span>${tp?tip(tp):''}</label>`;
+  const e=P.qedit, ty=e.type||'choice', ms=inst().meetings;
+  const tog=(id,on,ic,lbl,tp='')=>`<div class="qetog">${ICON[ic]}<label for="${id}">${lbl}</label>${tp?tip(tp):''}${swc(id,on,lbl)}</div>`;
   const types=[['choice','check',t('Vote')],['text','note',t('Text')],['yesno','users',t('Yes / no')]];
-  return `<form class="qedit" id="qeForm" novalidate>
-    <div class="seg iseg" role="group" aria-label="${t('Kind of question')}">${types.map(([k,ic,l])=>`<button type="button" data-qetype="${k}" class="${ty===k?'on':''}" aria-pressed="${ty===k}">${ICON[ic]}<span>${l}</span></button>`).join('')}</div>
-    <input type="text" id="qe_label" maxlength="120" required value="${esc(e.label||'')}" placeholder="${ty==='choice'?t('e.g. Where shall we meet?'):ty==='text'?t('e.g. Any dietary needs?'):t('e.g. Are you bringing someone?')}" aria-label="${t('Question')}">
+  const opts=(e.options&&e.options.length?e.options:[{id:qNewId(),label:''}]);
+  return `<form class="meet qcard qedit" id="qeForm" novalidate>${qTile({type:ty,place:ty==='choice'&&e.place,vis:e.vis})}<div class="mbody">
+    <div class="seg iseg qetype" role="group" aria-label="${t('Kind of question')}">${types.map(([k,ic,l])=>`<button type="button" data-qetype="${k}" class="${ty===k?'on':''}" aria-pressed="${ty===k}"><span class="segic">${ICON[ic]}</span><span>${l}</span></button>`).join('')}</div>
+    <input type="text" id="qe_label" class="qe-label" maxlength="120" required value="${esc(e.label||'')}" placeholder="${ty==='choice'?t('e.g. Where shall we meet?'):ty==='text'?t('e.g. Any dietary needs?'):t('e.g. Are you bringing someone?')}" aria-label="${t('Question')}">
     <input type="text" id="qe_help" maxlength="300" value="${esc(e.help||'')}" placeholder="${t('Note (optional)')}" aria-label="${t('Note (optional)')}">
-    ${ty==='choice'?`<textarea id="qe_opts" rows="3" placeholder="${t('Options, one per line')}" aria-label="${t('Options, one per line')}">${esc((e.options||[]).map(o=>o.label).join('\n'))}</textarea>
-      <div class="qchks">${chk('qe_place',e.place,t('Places'),t('Options are places: suggestions search OpenStreetMap and get a map link. The top one can be set as the meeting’s place.'))}${chk('qe_add',e.add,t('People can add options'))}${chk('qe_multi',e.multi,t('Several answers'))}</div>`:''}
-    ${ty==='yesno'?`<div class="qchks">${chk('qe_cnt',!!e.count,t('Ask how many'))}<input type="text" id="qe_cntl" maxlength="60" value="${esc(e.count?e.count.label:'')}" placeholder="${t('e.g. How many guests?')}" aria-label="${t('Count label')}"></div>`:''}
-    <div class="qchks">${chk('qe_req',e.req,t('Required'))}${chk('qe_priv',e.vis==='owner',t('Only I see the answers'),t('For personal things like dietary or health needs. Others see neither the answers nor the counts.'))}</div>
-    ${ms.length?`<div class="qchks qmts"><span class="muted small">${t('Show on meetings')}</span>${ms.map(m=>`<label class="qchk"><input type="checkbox" data-qemt="${m.id}"${(e.meetings||[]).includes(m.id)?' checked':''}><span>${esc(meetTitle(m))} · ${esc(meetWhen(m))}</span></label>`).join('')}</div>`:''}
-    <div class="row mt-2"><button class="btn primary sm">${t('Save')}</button><button type="button" class="btn sm" data-qecancel>${t('Cancel')}</button></div></form>`;
+    ${ty==='choice'?`<div class="qeopts">${opts.map((o,i)=>`<div class="qeopt${e.place?' locbox':''}">${ICON[e.place?'pin':'check']}<input type="text" data-qeo="${o.id}" id="qeo_${o.id}" maxlength="120" value="${esc(o.label)}" autocomplete="off" placeholder="${e.place?t('Place {n}',{n:i+1}):t('Option {n}',{n:i+1})}" aria-label="${t('Option {n}',{n:i+1})}">${e.place?`<div class="locsug" id="qeo_${o.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-qeorm="${o.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
+      <button type="button" class="btn sm ghost withic qeadd" data-qeoadd>${ICON.plus}<span>${t('Option')}</span></button></div>`:''}
+    <div class="qegrid">${ty==='choice'?tog('qe_place',e.place,'pin',t('Places'),t('Options are places: suggestions search OpenStreetMap and get a map link. The top one can be set as the meeting’s place.'))+tog('qe_add',e.add,'plus',t('People can add options'))+tog('qe_multi',e.multi,'check',t('Several answers')):''}
+      ${ty==='yesno'?tog('qe_cnt',!!e.count,'users',t('Ask how many'))+(e.count?`<input type="text" id="qe_cntl" class="qe-cntl" maxlength="60" value="${esc(e.count.label||'')}" placeholder="${t('e.g. How many guests?')}" aria-label="${t('Count label')}">`:''):''}
+      ${tog('qe_req',e.req,'bell',t('Required'))}${tog('qe_priv',e.vis==='owner','lock',t('Only I see the answers'),t('For personal things like dietary or health needs. Others see neither the answers nor the counts.'))}</div>
+    ${ms.length?`<div class="qemts"><span class="qe-sub">${t('Show on meetings')}</span>${ms.map(m=>{ const on=(e.meetings||[]).includes(m.id); return `<button type="button" class="qemt${on?' on':''}" data-qemt="${m.id}" aria-pressed="${on}">${ICON[on?'check':m.proposed?'check':'star']}<span>${esc(meetWhen(m))} · ${esc(meetTitle(m))}</span></button>`; }).join('')}</div>`:''}
+    <div class="qe-acts"><button type="button" class="btn sm" data-qecancel>${t('Cancel')}</button><button class="btn sm primary withic">${ICON.check}<span>${t('Save')}</span></button></div></div></form>`;
 }
-// Read the editor's fields into P.qedit (before switching the type, and on save).
+// Read the editor's fields into P.qedit (before re-rendering it, and on save).
 function qeRead(){ const e=P.qedit, v=id=>$(id)?$(id).value:undefined, c=id=>$(id)?$(id).checked:undefined; if(!e||!$('qeForm')) return e;
   e.label=v('qe_label'); e.help=v('qe_help');
-  if($('qe_opts')){ const old=new Map((e.options||[]).map(o=>[o.label.toLowerCase(),o.id])), seen=new Set();
-    e.options=v('qe_opts').split('\n').map(s=>s.trim().slice(0,120)).filter(s=>s&&!seen.has(s.toLowerCase())&&seen.add(s.toLowerCase())).map(l=>({id:old.get(l.toLowerCase())||qNewId(),label:l}));
-    e.place=c('qe_place'); e.add=c('qe_add'); e.multi=c('qe_multi'); }
-  if($('qe_cnt')) e.count=c('qe_cnt')?{label:v('qe_cntl').trim(),max:20}:null;
+  const oi=[...document.querySelectorAll('#qeForm [data-qeo]')];
+  if(oi.length) e.options=oi.map(x=>({id:x.dataset.qeo,label:x.value.trim().slice(0,120)}));
+  if($('qe_place')){ e.place=c('qe_place'); e.add=c('qe_add'); e.multi=c('qe_multi'); }
+  if($('qe_cnt')) e.count=c('qe_cnt')?{label:(v('qe_cntl')??(e.count&&e.count.label)??'').trim(),max:20}:null;
   e.req=c('qe_req'); e.vis=c('qe_priv')?'owner':'all';
-  e.meetings=[...document.querySelectorAll('[data-qemt]')].filter(x=>x.checked).map(x=>x.dataset.qemt);
   return e; }
+// Call after qeRead() and changing P.qedit.
+function qeRerender(focus){ renderQuestions(true); if(focus){ const f=$(focus); if(f) f.focus(); } }
 async function saveQuestions(list){
   try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{questions:list},headers()); P.data.instance=r.instance;
     const x=P.data.instances.find(y=>y.id===r.instance.id); if(x) x.questions=r.instance.questions;
-    renderMeetings(); renderMineQs(); return true; }
+    renderHeader(); renderQuestions(); renderMineQs(); return true; }
   catch(e){ toast(e.message); return false; }
 }
-function qOpenEditor(q){ P.qedit=q?JSON.parse(JSON.stringify(q)):{type:'choice',vis:'all',options:[]}; renderMeetings();
-  requestAnimationFrame(()=>{ const f=$('qeForm'); if(f){ f.scrollIntoView({block:'center',behavior:'smooth'}); const l=$('qe_label'); if(l) l.focus({preventScroll:true}); } }); }
+function qOpenEditor(q){ P.qedit=JSON.parse(JSON.stringify(q||{type:'choice',vis:'all',options:[]}));
+  if(P.atab!=='questions') setPollTab('questions'); renderQuestions();
+  requestAnimationFrame(()=>{ const f=$('qeForm'); if(f){ f.scrollIntoView({block:'center',behavior:'smooth'}); const l=$('qe_label'); if(l&&!l.value) l.focus({preventScroll:true}); } }); }
+const Q_TPL={ place:()=>({type:'choice',place:true,add:true,label:t('Where shall we meet?'),options:[]}),
+  text:()=>({type:'text',label:''}), yesno:()=>({type:'yesno',label:t('Are you bringing someone?'),count:{label:t('How many guests?'),max:20}}) };
 // ---- my answers ----
-// Change my answers: 'mine' marks the answer as changed (sent with Send); 'meet' saves them right away.
+// The options I suggested as last saved (the server's list of suggestions still has them until the next load).
+function qSaved(){ P.qAddWas=new Set(Object.values(myExtra().add).flat().map(o=>o.id)); }
+// Change my answers: 'mine' marks the answer as changed (sent with Send); 'tab' saves them right away.
 async function qChange(mode,fn,rerender=true){
   const x=JSON.parse(JSON.stringify(myExtra())); fn(x);
   if(mode==='mine'){ P.mine.extra=x; changed(); if(rerender) renderMineQs(); return; }
@@ -4167,63 +4272,78 @@ async function qChange(mode,fn,rerender=true){
     const before=P.qAddWas||new Set(); P.mine.extra=r.extra||{}; qSaved();
     const row=(P.data.responses||[]).find(y=>y.id===P.myResp.id); if(row) row.extra=myExtra().a;
     const ad=P.data.added||(P.data.added={}); for(const q of qList()) if(q.add) ad[q.id]=[...(ad[q.id]||[]).filter(o=>!before.has(o.id)),...(myExtra().add[q.id]||[])];
-    renderMeetings(); renderMineQs(); refreshResults(); }
-  catch(e){ toast(e.message); renderMeetings(); }
+    renderQuestions(); renderMeetings(); renderMineQs(); refreshResults(); }
+  catch(e){ toast(e.message); renderQuestions(); }
 }
-// The options I suggested as last saved (the server's list of suggestions still has them until the next load).
-function qSaved(){ P.qAddWas=new Set(Object.values(myExtra().add).flat().map(o=>o.id)); }
 function qAddOption(qid,mode){
   const inp=$(`qadd_${mode}_${qid}`), label=inp?inp.value.trim().slice(0,120):''; if(!label) return;
   const q=qList().find(x=>x.id===qid); if(!q) return;
   if(qOpts(q).some(o=>o.label.toLowerCase()===label.toLowerCase())){ toast(t('That option is already there')); return; }
-  const mineN=(myExtra().add[qid]||[]).length; if(mineN>=5){ toast(t('You can suggest up to 5 options')); return; }
+  if((myExtra().add[qid]||[]).length>=5){ toast(t('You can suggest up to 5 options')); return; }
   const id=qNewId();
   qChange(mode,x=>{ (x.add[qid]=x.add[qid]||[]).push({id,label}); const cur=Array.isArray(x.a[qid])?x.a[qid]:[]; x.a[qid]=q.multi?[...cur,id]:[id]; });
 }
-// Hook up place search on suggestion fields after a render.
-function qWire(root){ root.querySelectorAll('[data-qaddin]').forEach(inp=>{
-  const q=qList().find(x=>x.id===inp.dataset.qaddin), box=$(inp.id+'_sug');
-  if(q&&q.place&&box) placeSearch(inp,box,()=>{});
-  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(!box||box.hidden)){ e.preventDefault(); qAddOption(inp.dataset.qaddin,inp.dataset.qm); } }); }); }
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-qpick],[data-qyn],[data-qaddbtn],[data-qunadd],[data-quse],[data-qnew],[data-qedit],[data-qrm],[data-qclose],[data-qetype],[data-qecancel],[data-qask],[data-qgo],[data-qgomine]'); if(!b||!P.data) return;
-  const ds=b.dataset, mode=ds.qm, qs=qList(), q=qs.find(x=>x.id===(ds.qpick||ds.qyn||ds.qaddbtn||ds.qunadd||ds.quse||ds.qedit||ds.qrm||ds.qclose||ds.qgo));
+// After a render: place search on suggestion / editor fields, Enter to add, growing text fields.
+function qWire(root){
+  root.querySelectorAll('[data-qaddin]').forEach(inp=>{ const q=qList().find(x=>x.id===inp.dataset.qaddin), box=$(inp.id+'_sug');
+    if(q&&q.place&&box) placeSearch(inp,box,()=>{});
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(!box||box.hidden)){ e.preventDefault(); qAddOption(inp.dataset.qaddin,inp.dataset.qm); } }); });
+  root.querySelectorAll('#qeForm [data-qeo]').forEach(inp=>{ const box=$(inp.id+'_sug'); if(box) placeSearch(inp,box,()=>{});
+    inp.addEventListener('keydown',e=>{ if(e.key!=='Enter'||(box&&!box.hidden)) return; e.preventDefault(); qeRead(); const id=qNewId(), i=P.qedit.options.findIndex(o=>o.id===inp.dataset.qeo);
+      P.qedit.options.splice(i+1,0,{id,label:''}); qeRerender('qeo_'+id); }); });
+  root.querySelectorAll('.qtext').forEach(growTa);
+}
+let qStepT=0;
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-qpick],[data-qyn],[data-qstep],[data-qaddbtn],[data-qunadd],[data-quse],[data-qwho],[data-qall],[data-qfold],[data-qopen],[data-qtpl],[data-qnew],[data-qedit],[data-qrm],[data-qclose],[data-qetype],[data-qecancel],[data-qeoadd],[data-qeorm],[data-qemt],[data-qask],[data-qgo],[data-qmeet],[data-qgomine]'); if(!b||!P.data) return;
+  const ds=b.dataset, mode=ds.qm, qs=qList(), q=qs.find(x=>x.id===(ds.qpick||ds.qyn||ds.qstep||ds.qaddbtn||ds.qunadd||ds.quse||ds.qedit||ds.qrm||ds.qclose||ds.qgo||ds.qopen));
   if(ds.qpick&&q){ qChange(mode,x=>{ const cur=new Set(Array.isArray(x.a[q.id])?x.a[q.id]:[]); const on=cur.has(ds.o);
     if(q.multi){ on?cur.delete(ds.o):cur.add(ds.o); } else { cur.clear(); if(!on) cur.add(ds.o); }
     if(cur.size) x.a[q.id]=[...cur]; else delete x.a[q.id]; }); return; }
   if(ds.qyn&&q){ const y=ds.v==='1'; qChange(mode,x=>{ const old=x.a[q.id]; if(old&&old.y===y) delete x.a[q.id]; else x.a[q.id]={y,...(y&&old&&old.n!=null?{n:old.n}:{})}; }); return; }
+  if(ds.qstep&&q){ const el=$(`qn_${mode}_${q.id}`), n=Math.max(0,Math.min(q.count.max,(+el.textContent||0)+(+ds.d))); el.textContent=n;
+    const go=()=>qChange(mode,x=>{ const o=x.a[q.id]; if(o&&o.y) o.n=n; },mode==='tab');
+    if(mode==='mine') go(); else { clearTimeout(qStepT); qStepT=setTimeout(go,600); } return; }
   if(ds.qaddbtn){ qAddOption(ds.qaddbtn,mode); return; }
   if(ds.qunadd&&q){ qChange(mode,x=>{ x.add[q.id]=(x.add[q.id]||[]).filter(o=>o.id!==ds.o); if(!x.add[q.id].length) delete x.add[q.id];
     if(Array.isArray(x.a[q.id])){ x.a[q.id]=x.a[q.id].filter(o=>o!==ds.o); if(!x.a[q.id].length) delete x.a[q.id]; } }); return; }
   if(ds.quse&&q){ const o=qOpts(q).find(x=>x.id===ds.o); if(!o) return; const ids=new Set(q.meetings||[]);
-    b.disabled=true; saveMeetings(inst().meetings.map(m=>ids.has(m.id)?{...m,location:o.label.slice(0,200)}:m)).then(ok=>{ if(ok) toast(t('Place set')); else b.disabled=false; }); return; }
+    b.disabled=true; saveMeetings(inst().meetings.map(m=>ids.has(m.id)?{...m,location:o.label.slice(0,200)}:m)).then(ok=>{ if(ok){ toast(t('Place set')); renderQuestions(); } else b.disabled=false; }); return; }
+  if(ds.qwho){ P.qwho=P.qwho===ds.qwho?null:ds.qwho; renderQuestions(); return; }
+  if(ds.qall){ P.qall=P.qall===ds.qall?null:ds.qall; renderQuestions(); return; }
+  if(ds.qfold!==undefined){ P.qfold=!P.qfold; P.qopen=null; store.set('qfold:'+P.id,P.qfold); renderQuestions(); return; }
+  if(ds.qopen){ P.qopen=P.qopen===ds.qopen?null:ds.qopen; renderQuestions(); return; }
+  if(ds.qtpl){ qOpenEditor(Q_TPL[ds.qtpl]()); return; }
   if(ds.qnew!==undefined){ qOpenEditor(null); return; }
   if(ds.qedit&&q){ qOpenEditor(q); return; }
   if(ds.qrm&&q){ if(confirm(t('Delete this question and everyone’s answers to it?'))) saveQuestions(qs.filter(x=>x.id!==q.id)); return; }
   if(ds.qclose&&q){ saveQuestions(qs.map(x=>x.id===q.id?{...x,closed:!x.closed}:x)); return; }
-  if(ds.qetype){ qeRead(); P.qedit.type=ds.qetype; renderMeetings(); return; }
-  if(ds.qecancel!==undefined){ P.qedit=null; renderMeetings(); return; }
-  if(ds.qask){ e.preventDefault(); P.qedit={type:'choice',vis:'all',place:true,add:true,options:[],label:t('Where shall we meet?'),meetings:[ds.qask]};
-    if(P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); } qOpenEditor(P.qedit); return; }
-  if(ds.qgo){ e.preventDefault(); const el=$('q_meet_'+ds.qgo); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); } return; }
-  if(ds.qgomine!==undefined){ e.preventDefault(); P.tab='mine'; renderBody(); const w=$('wsq')||$('wsme'); if(w) w.scrollIntoView({block:'start',behavior:'smooth'}); }
+  if(ds.qetype){ qeRead(); P.qedit.type=ds.qetype; qeRerender(); return; }
+  if(ds.qecancel!==undefined){ P.qedit=null; renderQuestions(); return; }
+  if(ds.qeoadd!==undefined){ qeRead(); const id=qNewId(); (P.qedit.options=P.qedit.options||[]).push({id,label:''}); qeRerender('qeo_'+id); return; }
+  if(ds.qeorm){ qeRead(); P.qedit.options=(P.qedit.options||[]).filter(o=>o.id!==ds.qeorm); qeRerender(); return; }
+  if(ds.qemt){ qeRead(); const s=new Set(P.qedit.meetings||[]); s.has(ds.qemt)?s.delete(ds.qemt):s.add(ds.qemt); P.qedit.meetings=[...s]; qeRerender(); return; }
+  if(ds.qask){ e.preventDefault(); qOpenEditor({...Q_TPL.place(),meetings:[ds.qask]}); return; }
+  if(ds.qgo){ e.preventDefault(); setPollTab('questions'); if(P.qfold) P.qopen=ds.qgo; renderQuestions();
+    const el=$('q_tab_'+ds.qgo); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); } return; }
+  if(ds.qmeet){ e.preventDefault(); setPollTab('meetings'); const m=document.querySelector(`#meetings [data-mtg="${ds.qmeet}"]`); if(m) m.scrollIntoView({block:'center',behavior:'smooth'}); return; }
+  if(ds.qgomine!==undefined){ e.preventDefault(); setPollTab('answers'); P.tab='mine'; renderBody(); const w=$('wsq')||$('wsme'); if(w) w.scrollIntoView({block:'start',behavior:'smooth'}); }
 });
+// Editor switches that change what the editor shows (places, how many) re-render it.
+document.addEventListener('change',e=>{ if(['qe_place','qe_cnt','qe_priv'].includes(e.target.id)){ qeRead(); qeRerender(); } });
 document.addEventListener('submit',e=>{ if(e.target.id!=='qeForm') return; e.preventDefault();
   const q=qeRead(); if(!q.label.trim()){ toast(t('Type the question first')); $('qe_label').focus(); return; }
-  if(q.type==='choice'&&!q.options.length&&!q.add){ toast(t('Add an option, or let people add their own')); $('qe_opts').focus(); return; }
+  const seen=new Set(); q.options=(q.options||[]).filter(o=>o.label&&!seen.has(o.label.toLowerCase())&&seen.add(o.label.toLowerCase()));
+  if(q.type==='choice'&&!q.options.length&&!q.add){ toast(t('Add an option, or let people add their own')); return; }
   const clean={...q, ...(q.type==='choice'?{}:{options:undefined,place:undefined,add:undefined,multi:undefined}), ...(q.type==='yesno'?{}:{count:undefined})};
   const qs=qList(), list=clean.id?qs.map(x=>x.id===clean.id?clean:x):[...qs,clean];
   const btn=e.target.querySelector('.primary'); btn.disabled=true;
-  saveQuestions(list).then(ok=>{ if(ok){ P.qedit=null; renderMeetings(); toast(t('Saved')); } else btn.disabled=false; });
+  saveQuestions(list).then(ok=>{ if(ok){ P.qedit=null; renderQuestions(); toast(t('Saved')); } else btn.disabled=false; });
 });
-// Text and numbers: kept as you type under My answer, saved on leaving the field in the Meetings tab.
-document.addEventListener('input',e=>{ const x=e.target; if(!x.dataset||x.dataset.qm!=='mine') return;
-  if(x.dataset.qtext){ const v=x.value; qChange('mine',y=>{ if(v.trim()) y.a[x.dataset.qtext]=v; else delete y.a[x.dataset.qtext]; },false); }
-  else if(x.dataset.qn){ const q=qList().find(z=>z.id===x.dataset.qn), n=x.value===''?null:Math.max(0,Math.min(q.count.max,Math.round(+x.value)));
-    qChange('mine',y=>{ const o=y.a[q.id]; if(o&&o.y){ if(n==null) delete o.n; else o.n=n; } },false); } });
-document.addEventListener('change',e=>{ const x=e.target; if(!x.dataset||x.dataset.qm!=='meet') return;
-  if(x.dataset.qtext){ const v=x.value; qChange('meet',y=>{ if(v.trim()) y.a[x.dataset.qtext]=v.slice(0,500); else delete y.a[x.dataset.qtext]; }); }
-  else if(x.dataset.qn){ const q=qList().find(z=>z.id===x.dataset.qn), n=x.value===''?null:Math.max(0,Math.min(q.count.max,Math.round(+x.value)));
-    qChange('meet',y=>{ const o=y.a[q.id]; if(o&&o.y){ if(n==null) delete o.n; else o.n=n; } }); } });
+// Text answers: kept as you type under My answer, saved on leaving the field in the Questions tab.
+document.addEventListener('input',e=>{ const x=e.target; if(!x.dataset||!x.dataset.qtext) return; growTa(x);
+  if(x.dataset.qm==='mine'){ const v=x.value; qChange('mine',y=>{ if(v.trim()) y.a[x.dataset.qtext]=v; else delete y.a[x.dataset.qtext]; },false); } });
+document.addEventListener('change',e=>{ const x=e.target; if(!x.dataset||x.dataset.qm!=='tab'||!x.dataset.qtext) return;
+  const v=x.value; qChange('tab',y=>{ if(v.trim()) y.a[x.dataset.qtext]=v.slice(0,500); else delete y.a[x.dataset.qtext]; }); });
 // "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
 function mailAllPanel(){
   const M=P.mmail, parts=M.parts;
@@ -6301,13 +6421,14 @@ document.addEventListener('click',e=>{
 // Everyone else gets the same row without Settings: Rounds only when there is more than one to pick from,
 // People only when the poll shows answers (the Worker then sends `people`).
 const pollTabList = () => { const d=P.data, series=d.poll.kind==='series';
-  if(d.isAdmin) return [['answers',t('Answers')],['meetings',t('Meetings')],...(series?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
-  return [['answers',t('Answers')],['meetings',t('Meetings')],...(series&&d.instances.length>1?[['rounds',t('Rounds')]]:[]),...(d.people?[['people',t('People')]]:[])]; };
-const TAB_ICON = {answers:'check',meetings:'star',rounds:'repeat',chat:'chat',people:'users',settings:'gear'};
+  const qs=d.isAdmin||qList().length?[['questions',t('Questions')]]:[];
+  if(d.isAdmin) return [['answers',t('Answers')],['meetings',t('Meetings')],...qs,...(series?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
+  return [['answers',t('Answers')],['meetings',t('Meetings')],...qs,...(series&&d.instances.length>1?[['rounds',t('Rounds')]]:[]),...(d.people?[['people',t('People')]]:[])]; };
+const TAB_ICON = {answers:'check',meetings:'star',questions:'ask',rounds:'repeat',chat:'chat',people:'users',settings:'gear'};
 function pollTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
   if(!pollTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
-  return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}</button>`).join('')}</nav>`;
+  return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='questions'?(n=>`<span class="count" id="qtabn"${n?'':' hidden'}>${n}</span>`)(P.data.isAdmin?qList().length:qOpenN()):''}</button>`).join('')}</nav>`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
 // Meetings tab sub-view: 'list' (scheduled meetings) or 'plan' (the scheduler). Remembered per poll;
@@ -6337,7 +6458,8 @@ function adminPanes(){
       <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Overview')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
-  ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
+  <div id="pane-questions" class="${hid('questions')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Questions')}</h2>${tip(P.data.isAdmin?t('Ask people for more than the date: a vote on the place (they can suggest their own), a plus-one, dietary needs… Link a question to meetings to show it on them. 🔒 = only you see the answers.'):t('Questions from the organiser. 🔒 = only the organiser sees the answers.'))}${P.data.isAdmin?`<button type="button" class="btn sm primary withic qws-add" data-qnew>${ICON.plus}<span>${t('Ask')}</span></button>`:''}</div><div id="questions"></div></div></div>
+    ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
     <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
       <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'')}</div>
       <div class="err" id="rerr"></div>
@@ -6372,6 +6494,7 @@ function adminPanes(){
 function viewerPanes(){
   const d=P.data, tabs=pollTabList().map(x=>x[0]), hid=k=>P.atab===k?'':'hide';
   return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2></div><div id="meetings"></div></div></div>
+  ${tabs.includes('questions')?`<div id="pane-questions" class="${hid('questions')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Questions')}</h2>${tip(P.data.isAdmin?t('Ask people for more than the date: a vote on the place (they can suggest their own), a plus-one, dietary needs… Link a question to meetings to show it on them. 🔒 = only you see the answers.'):t('Questions from the organiser. 🔒 = only the organiser sees the answers.'))}${P.data.isAdmin?`<button type="button" class="btn sm primary withic qws-add" data-qnew>${ICON.plus}<span>${t('Ask')}</span></button>`:''}</div><div id="questions"></div></div></div>`:''}
   ${tabs.includes('rounds')?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
   ${tabs.includes('people')?`<div id="pane-people" class="${hid('people')}"><div class="card ppl">${viewerPeople()}</div></div>`:''}`;
 }
@@ -7052,6 +7175,26 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving){ e.preventDefa
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"{n} options": "{n} Optionen",
+"{n} answers": "{n} Antworten",
+"Show less": "Weniger zeigen",
+"Show all ({n})": "Alle zeigen ({n})",
+"Only you see the answers": "Nur du siehst die Antworten",
+"No questions yet": "Noch keine Fragen",
+"Ask people for more than the date: where to meet, a plus-one, dietary needs…": "Frag mehr als den Termin: wo ihr euch trefft, eine Begleitung, Essenswünsche …",
+"Vote on the place": "Über den Ort abstimmen",
+"Ask a question": "Eine Frage stellen",
+"Show details": "Details zeigen",
+"Send your answer to answer the questions here.": "Sende deine Antwort, um die Fragen hier zu beantworten.",
+"Results": "Ergebnisse",
+"Place {n}": "Ort {n}",
+"Option {n}": "Option {n}",
+"Are you bringing someone?": "Bringst du jemanden mit?",
+"How many guests?": "Wie viele Gäste?",
+"1 question": "1 Frage",
+"{n} questions": "{n} Fragen",
+"Ask": "Neue Frage",
+"Place": "Ort",
 "Required": "Pflicht",
 "Only the organiser sees the answers": "Nur die Organisatorin / der Organisator sieht die Antworten",
 "Edit question": "Frage bearbeiten",

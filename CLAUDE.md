@@ -82,7 +82,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `responses.extra` = `{ a: { qid: answer }, add: { qid: [{ id, label }] } }`: suggested options live in the suggester's own answer, so they
   go with it. Sent with the answer (required ones enforced) or alone via `PUT /api/polls/:id/responses/:rid/extra` (Meetings tab).
   `GET /api/polls/:id` sends `added` (everyone's suggestions, labels only) and each response's `extra` filtered by `extraFor`.
-  Page: `qItem` / `qSection` (Meetings tab, with the organiser's editor `qEditor`) / `renderMineQs` (`#wsq` under My answer).
+  Page: own **Questions** tab (`pane-questions`, `renderQuestions`; organiser always, others when the round has questions; badge = questions /
+  my unanswered ones): cards like meeting cards (`qCard`: type tile, result bars, compact view `qfold:<poll>`), the organiser's inline editor
+  (`qEditor`, `P.qedit`; `qeRead` then `qeRerender` so re-renders don't drop edits) and empty-state templates (`Q_TPL`).
+  Under My answer `renderMineQs` (`#wsq`, sent with Send). Meeting cards link to their questions (`qMeetChips`).
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
