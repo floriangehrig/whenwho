@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-6YRfF+ECLyZTdBqyxt0qoSs8KqTiiKz0eiGgUhB/wxg=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-1yDczkQe+w+p61tiUmQ95808nDcV3LChF2ZSir2rUCM=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -404,10 +404,14 @@ async function insertInstance(env, poll, seq, fields, notified) {
   // A new round of a series asks the same questions as the last one (without meeting links; place votes for a meeting stay behind).
   if (seq > 0 && fields.questions === undefined) {
     const prev = await env.DB.prepare('SELECT questions FROM instances WHERE poll_id = ? AND seq < ? ORDER BY seq DESC LIMIT 1').bind(poll.id, seq).first('questions');
-    // Questions marked repeat (the default) come along, without links to the old round's meetings.
-    const qs = questionsOf({ questions: prev }).filter((q) => q.repeat !== false)
-      .map(({ closed, at, ...q }) => ({ ...q, link: { to: 'poll' }, who: q.who.mode === 'people' ? q.who : { mode: q.who.mode === 'free' || q.who.mode === 'meeting' ? 'all' : q.who.mode }, at: now() }));
-    if (qs.length) fields = { ...fields, questions: JSON.stringify(qs) };
+    // Questions marked repeat (the default) come along with their questionnaires, without links to the old round's meetings.
+    const keepWho = (w) => (w && w.mode === 'people' ? w : { mode: !w || w.mode === 'free' || w.mode === 'meeting' ? 'all' : w.mode });
+    const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false);
+    const used = new Set(qs.map((q) => q.grp).filter(Boolean));
+    const out = items.filter((x) => (x.type === 'group' ? used.has(x.id) : qs.some((q) => q.id === x.id)))
+      .map((x) => (x.type === 'group' ? x : normQ(x)))
+      .map(({ closed, at, ...q }) => ({ ...q, link: { to: 'poll' }, who: keepWho(q.who), at: now() }));
+    if (out.length) fields = { ...fields, questions: JSON.stringify(out) };
   }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
   const cols = Object.keys(inst);
@@ -486,7 +490,7 @@ function publicPoll(poll, admin) {
 }
 function publicInstance(inst, extra = {}) {
   return { id: inst.id, seq: inst.seq, createdAt: inst.created_at, startDate: inst.start_date, endDate: inst.end_date, deadline: inst.deadline,
-    status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), questions: questionsOf(inst), ...extra };
+    status: effStatus(inst), manualStatus: inst.status, note: inst.note, meetings: JSON.parse(inst.meetings || '[]'), questions: questionsOf(inst), groups: groupsOf(inst), ...extra };
 }
 
 function validateEntries(entries, poll, dates) {
@@ -2063,7 +2067,7 @@ async function updateInstance(request, env, id, iid) {
   if (has('meetings')) u.meetings = JSON.stringify(validateMeetings(b.meetings, poll, JSON.parse(inst.meetings || '[]')));
   if (has('questions')) {
     const { results: ps } = await env.DB.prepare('SELECT id FROM participants WHERE poll_id = ?').bind(id).all();
-    const qs = validateQuestions(b.questions, u.meetings ? JSON.parse(u.meetings) : JSON.parse(inst.meetings || '[]'), questionsOf(inst), new Set(ps.map((p) => p.id)));
+    const qs = validateQuestions(b.questions, u.meetings ? JSON.parse(u.meetings) : JSON.parse(inst.meetings || '[]'), itemsOf(inst), new Set(ps.map((p) => p.id)));
     u.questions = qs.length ? JSON.stringify(qs) : null;
   }
   const cols = Object.keys(u);
@@ -2889,7 +2893,18 @@ function normQ(q) {
   delete x.multi; delete x.meetings;
   return Q_TYPES.includes(x.type) ? x : null;
 }
-function questionsOf(inst) { try { const q = JSON.parse(inst.questions || '[]'); return Array.isArray(q) ? q.map(normQ).filter(Boolean) : []; } catch { return []; } }
+// Questionnaires (type 'group': label, icon, help, link, who) sit in the same list; a question joins one with grp.
+function itemsOf(inst) { try { const q = JSON.parse(inst.questions || '[]'); return Array.isArray(q) ? q.filter((x) => x && typeof x === 'object') : []; } catch { return []; } }
+const groupsOf = (inst) => itemsOf(inst).filter((x) => x.type === 'group');
+// The questions, with link / who taken from their questionnaire unless they have their own (own: true).
+function questionsOf(inst) {
+  const items = itemsOf(inst), gs = new Map(items.filter((x) => x.type === 'group').map((g) => [g.id, g]));
+  return items.filter((x) => x.type !== 'group').map(normQ).filter(Boolean).map((q) => {
+    const g = q.grp && gs.get(q.grp);
+    if (!g) { const { grp, ...x } = q; return x; }
+    return q.own ? q : { ...q, link: g.link || { to: 'poll' }, who: g.who || { mode: 'all' } };
+  });
+}
 function parseExtra(raw) { try { const x = JSON.parse(raw || 'null'); return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; } catch { return {}; } }
 const repeatsOf = (q, meetings) => (q.link.ids || []).map((id) => meetings.find((m) => m.id === id)).filter((m) => m && m.repeat);
 // Is d one of the dates of a repeating meeting m?
@@ -2899,27 +2914,48 @@ function onRepeat(m, d) {
   const days = Math.round((Date.parse(d + 'T00:00:00Z') - Date.parse(first + 'T00:00:00Z')) / 86400000);
   return days >= 0 && days % (7 * m.repeat.every) === 0;
 }
+const MAX_QGROUPS = 15;
+// link / who of a question or questionnaire (meeting ids of this round, participant ids of this poll).
+function linkWho(q, out, meetings, mids, pids) {
+  const ids = q.link && q.link.to === 'meetings' && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
+  out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
+  if (ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
+  const mode = Q_WHO.includes(q.who && q.who.mode) ? q.who.mode : 'all';
+  out.who = { mode };
+  if (mode === 'people') {
+    const ps = Array.isArray(q.who.pids) ? [...new Set(q.who.pids.filter((x) => typeof x === 'string' && pids.has(x)))] : [];
+    if (!ps.length) throw new HttpError(400, 'Pick who can answer');
+    out.who.pids = ps.slice(0, MAX_PARTICIPANTS);
+  }
+}
 function validateQuestions(list, meetings, old = [], pids = new Set()) {
-  if (!Array.isArray(list) || list.length > MAX_QUESTIONS) throw new HttpError(400, `Up to ${MAX_QUESTIONS} questions per round`);
+  if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
+  const nq = list.filter((x) => x && x.type !== 'group').length, ng = list.length - nq;
+  if (nq > MAX_QUESTIONS) throw new HttpError(400, `Up to ${MAX_QUESTIONS} questions per round`);
+  if (ng > MAX_QGROUPS) throw new HttpError(400, `Up to ${MAX_QGROUPS} questionnaires per round`);
   const mids = new Set(meetings.map((m) => m.id)), prev = new Map(old.map((q) => [q.id, q])), seen = new Set();
+  const newId = (x) => { const id = QID_RE.test(x || '') && !seen.has(x) ? x : randomId(8); seen.add(id); return id; };
+  // Questionnaires first, so questions can refer to them.
+  const gids = new Map();
+  for (const g of list) if (g && g.type === 'group') gids.set(g, newId(g.id));
+  const gset = new Set(gids.values());
   return list.map((q0) => {
+    if (q0 && q0.type === 'group') {
+      const id = gids.get(q0);
+      const out = { id, type: 'group', label: str(q0.label, 120, 'Questionnaire', true), icon: emojiIcon(q0.icon, 'Icon') || undefined,
+        help: str(q0.help, 500, 'Questionnaire note') || undefined, at: prev.get(id)?.at || now() };
+      linkWho(q0, out, meetings, mids, pids);
+      return out;
+    }
     const q = normQ(q0);
     if (!q) throw new HttpError(400, 'Invalid question');
-    const id = QID_RE.test(q.id || '') && !seen.has(q.id) ? q.id : randomId(8);
-    seen.add(id);
+    const id = newId(q.id);
     const out = { id, type: q.type, label: str(q.label, 200, 'Question', true), help: str(q.help, 500, 'Question note') || undefined,
+      icon: emojiIcon(q.icon, 'Icon') || undefined,
       req: q.req ? true : undefined, vis: q.vis === 'owner' ? 'owner' : 'all', closed: q.closed ? true : undefined,
       repeat: q.repeat === false ? false : undefined, at: prev.get(id)?.at || now() }; // at = when it was added
-    const ids = q.link && q.link.to === 'meetings' && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
-    out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
-    if (ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
-    const mode = Q_WHO.includes(q.who && q.who.mode) ? q.who.mode : 'all';
-    out.who = { mode };
-    if (mode === 'people') {
-      const ps = Array.isArray(q.who.pids) ? [...new Set(q.who.pids.filter((x) => typeof x === 'string' && pids.has(x)))] : [];
-      if (!ps.length) throw new HttpError(400, 'Pick who can answer');
-      out.who.pids = ps.slice(0, MAX_PARTICIPANTS);
-    }
+    if (typeof q.grp === 'string' && gset.has(q.grp)) { out.grp = q.grp; if (q.own) out.own = true; }
+    linkWho(q, out, meetings, mids, pids);
     if (Q_CHOICE.has(q.type)) {
       const opts = Array.isArray(q.options) ? q.options : [];
       if (opts.length > MAX_Q_OPTIONS) throw new HttpError(400, `Up to ${MAX_Q_OPTIONS} options per question`);

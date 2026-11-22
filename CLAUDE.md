@@ -87,7 +87,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   normalised by `normQ`; `responses.extra` is no longer used.
   Page: the **Questions** tab only (`renderQuestions`): **Fill in** (own Send bar, guests give a name) and **Results** (bars, rating averages,
   text lists, compact view), organiser editor inline (`qEditor`, popup fields `qDd` for type / applies to / who; `qeRead` then `qeRerender`),
-  ⋯ menu and drag (`data-qgrip`) to reorder. The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
+  ⋯ menu and drag (`data-qgrip`) to reorder.
+  **Questionnaires**: items `{ type: 'group', label, icon, help, link, who }` in the same list; a question joins one with `grp` and takes its
+  `link` / `who` (resolved in `questionsOf`) unless `own: true`. `GET` sends `instance.groups`; the page saves `[...groups, ...questions]`
+  (`saveQuestions(list, gs)`), shows them as collapsible cards (`qGroupCard`, collapsed ones in `qgc:<poll>`), drag or ⋯ Move to between them.
+  Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
