@@ -820,18 +820,31 @@
   .dp-h>*{flex:none} .dp-h h3{flex:0 1 auto}
   .dp-h .dp-nav{font-size:18px;line-height:1;color:var(--ink)} .dp-h .dp-nav:disabled{opacity:.25;cursor:default}
   .dp-h .btn.sm{gap:4px;white-space:nowrap}
-  .dp-sum .schips{margin-top:6px} .schips.ovl{margin-top:5px}
-  .schips .sc-o{gap:5px;color:var(--ink)} .schips .sc-o b{font-weight:700;color:var(--muted)}
-  .schips .sc-o.top{border-color:color-mix(in srgb,var(--yes) 55%,var(--line));background:color-mix(in srgb,var(--yes) 14%,var(--card))} .schips .sc-o.top b{color:var(--yes-dark)}
-  .schips .sc-oi{font-style:normal;color:var(--ifn);font-weight:600}
+  /* summary: one row = status counts (joined pill) | best hours; scrolls sideways instead of wrapping */
+  .dp-chips{display:flex;align-items:center;gap:8px;margin-top:8px;overflow-x:auto;scrollbar-width:none;padding-right:14px;
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 18px),transparent)}
+  .dp-chips::-webkit-scrollbar{display:none}
+  .dp-chips>*{flex:none}
+  .dp-seg,.dp-ovl{display:inline-flex;align-items:center}
+  .dp-seg{height:26px;border:1px solid var(--line);border-radius:999px;background:var(--card);overflow:hidden}
+  .dp-seg>span{display:inline-flex;align-items:center;gap:4px;height:100%;padding:0 9px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .dp-seg>span+span{border-left:1px solid var(--line)}
+  .dp-seg .sc-y{color:var(--yes-dark);background:color-mix(in srgb,var(--yes) 10%,var(--card))} .dp-seg .sc-i{color:var(--ifn-ink)} .dp-seg .sc-p{color:var(--ink)} .dp-seg .sc-m{color:var(--maybe-ink)} .dp-seg .sc-n{color:var(--muted)}
+  .dp-sep{width:1px;height:18px;background:var(--line-strong)}
+  .dp-ovl{gap:5px}
+  .dp-ovl .sc-o{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .dp-ovl .sc-o b{font-weight:700;color:var(--muted)}
+  .dp-ovl .sc-o.top{border-color:color-mix(in srgb,var(--yes) 55%,var(--line));background:color-mix(in srgb,var(--yes) 14%,var(--card))} .dp-ovl .sc-o.top b{color:var(--yes-dark)}
+  .dp-ovl .sc-oi{font-style:normal;color:var(--ifn);font-weight:600}
   /* everyone's bars + one line per person, in one grid so the hour columns line up */
-  .dp-rows{display:grid;grid-template-columns:minmax(0,max-content) minmax(80px,1fr) minmax(0,max-content);column-gap:10px;row-gap:5px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .dp-rows{display:grid;grid-template-columns:minmax(0,max-content) minmax(80px,1fr);column-gap:10px;row-gap:5px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
   .dp-rows.days{grid-template-columns:minmax(0,1fr) max-content}
   .dp-r{display:contents} .dp-r.no>*{opacity:.55}
   .dp-n{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9em}
-  .dp-all .dp-n{font-size:12px;color:var(--muted);font-weight:600}
-  .dp-t{font-size:12px;font-weight:600;line-height:1.25;max-width:13em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:right;font-variant-numeric:tabular-nums}
-  .dp-all .dp-t{text-align:left}
+  .dp-all .dp-n{font-size:12px;color:var(--muted);font-weight:600;overflow:visible;display:inline-flex;align-items:center;gap:4px}
+  .dp-s{display:block;min-width:0}
+  .dp-i{justify-self:end;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line)}
+  .dp-i.sc-y{color:var(--yes-dark);border-color:color-mix(in srgb,var(--yes) 45%,var(--line))} .dp-i.sc-i{color:var(--ifn-ink)} .dp-i.sc-m{color:var(--maybe-ink)} .dp-i.sc-part{color:var(--ink)} .dp-i.sc-n{color:var(--muted)}
   .hstrip{display:flex;gap:2px;height:10px;padding:0 3px;border:0 solid transparent;border-width:0 1px}
   .hstrip i{flex:1;border-radius:2px;background:var(--empty)} .hstrip i.ry{background:var(--yes)} .hstrip i.ri{background:var(--ifn)} .hstrip i.rm{background:var(--maybe)} .hstrip i.off{background:none;box-shadow:inset 0 0 0 1px var(--line)}
   .dpanel .bars{background:var(--card);height:56px;margin:0;padding:3px;gap:2px}
@@ -1336,7 +1349,7 @@
     .dp-h{position:sticky;top:0;z-index:1;background:var(--card);padding:12px 0 4px;margin:0 -2px}
     .dp-h::before{content:'';position:absolute;top:5px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line-strong)}
     .dp-h .qb{width:30px;height:30px} .dp-h .btn.sm{padding:0 10px;height:30px}
-    .dp-rows{column-gap:8px;margin-top:8px;padding-top:8px} .dp-n{max-width:6.5em;font-size:12.5px} .dp-t{max-width:8.5em;font-size:11.5px}
+    .dp-rows{column-gap:8px;margin-top:8px;padding-top:8px} .dp-n{max-width:7.5em;font-size:12.5px}
     .dpanel .bars{height:44px;background:var(--sunken)} .dp-leg{display:none} .dpanel .barl span:nth-child(even):not(.in){visibility:hidden}
     body.dsheet #body{padding-bottom:calc(var(--dsheet-h) + 8px)}
     body.dsheet .chatdock{bottom:calc(var(--dsheet-h) + 12px)}
@@ -4913,17 +4926,18 @@ function renderGroup(el){
     const chips=[['y','✓',s.full,t('whole day')],['i','◔',s.ifn,t('if needed')],['p','◐',s.part,t('certain hours')],['m','?',s.maybe,t('maybe')],['n','✕',s.no,t('can’t')]]
       .filter(x=>x[2]||x[0]==='y').map(([c,ic,v,lb])=>`<span class="sc-${c}" title="${v} ${lb}">${ic} ${v}</span>`).join('');
     const ovl=slotsOn?overlapLevels(s,H,tot).map((o,j)=>`<span class="sc-o${j?'':' top'}" title="${esc(freeTip(o.c,o.ifn,0,tot))}"><b>${o.c}/${tot}</b>${esc(hoursText(o.hs))}${o.ifn?`<i class="sc-oi">◔${o.ifn}</i>`:''}</span>`).join(''):'';
-    const rows=s.list.map(x=>({x,c:counts(x.v,k)})).sort((a,b)=>(b.c.y+b.c.i)-(a.c.y+a.c.i)||b.c.m-a.c.m).map(({x})=>{ const st=statusOf(x.v,k), txt=st.t||'–';
-      return `<div class="dp-r${st.cls?'':' no'}"><span class="dp-n" title="${esc(x.name)}">${esc(x.name)}</span>${slotsOn?hourStrip(x.v,k,H):''}<span class="dp-t" style="color:${st.c}" title="${esc(st.t||t('Not available'))}">${esc(txt)}</span></div>`; }).join('');
-    const bars=slotsOn?`<div class="dp-r dp-all"><span class="dp-n">${t('Everyone')}</span><div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div>
-        <span class="dp-t">${pick?tip(t('Drag across the bars to pick the meeting time.'),'right'):''}</span></div>
-      <div class="dp-r dp-hl"><span></span><div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div><span></span></div>`:'';
+    // One line per person: name + hour strip (days-only polls: a status icon instead). The status text is in the tooltip.
+    const stIc={y:'✓',i:'◔',m:'?',part:'◐'};
+    const rows=s.list.map(x=>({x,c:counts(x.v,k)})).sort((a,b)=>(b.c.y+b.c.i)-(a.c.y+a.c.i)||b.c.m-a.c.m).map(({x})=>{ const st=statusOf(x.v,k), tt=esc(x.name+' · '+(st.t||t('Not available')));
+      return `<div class="dp-r${st.cls?'':' no'}"><span class="dp-n" title="${tt}">${esc(x.name)}</span>${slotsOn?`<span class="dp-s" title="${tt}">${hourStrip(x.v,k,H)}</span>`:`<span class="dp-i sc-${st.cls||'n'}" title="${tt}" aria-label="${esc(st.t||t('Not available'))}">${stIc[st.cls]||'✕'}</span>`}</div>`; }).join('');
+    const bars=slotsOn?`<div class="dp-r dp-all"><span class="dp-n">${t('Everyone')}${pick?tip(t('Drag across the bars to pick the meeting time.')):''}</span><div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div></div>
+      <div class="dp-r dp-hl"><span></span><div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div></div>`:'';
     const anim=P.ovShown!==k; P.ovShown=k; // slide in only when a day opens, not on every redraw
     h+=`<div class="dpanel${anim?' anim':''}" id="dpanel" role="region" aria-label="${esc(dLabel(k))}">
       <div class="dp-h">${nav(d.dates[ix-1],t('Previous day'),'‹')}<h3>${lblLS(dLabel(k),new Date(k+'T12:00').toLocaleDateString(LOC,{weekday:'short',day:'numeric'}))}</h3>${nav(d.dates[ix+1],t('Next day'),'›')}<span class="ml-auto"></span>
         ${d.isAdmin?`${sr?ib('x',t('Clear time'),'data-clearrange','sm ghost'):''}<button class="btn sm primary withic" data-schedule="${k}" title="${t('Schedule')}${sr?` ${esc(rg)}`:''}" aria-label="${t('Schedule')}${sr?` ${esc(rg)}`:''}">★<span class="bl">${t('Schedule')}</span>${sr?`<span>${esc(rg)}</span>`:''}</button>`:''}
         ${chatRefBtn('d:'+k)}<button type="button" class="qb" data-ov="${k}" title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
-      <div class="dp-sum"><div class="schips">${chips}</div>${ovl?`<div class="schips ovl" title="${t('Hours when most people are free')}">${ovl}</div>`:''}</div>
+      <div class="dp-sum"><div class="dp-chips"><span class="dp-seg">${chips}</span>${ovl?`<span class="dp-sep"></span><span class="dp-ovl" title="${t('Hours when most people are free')}">${ovl}</span>`:''}</div></div>
       <div class="dp-rows${slotsOn?'':' days'}">${bars}${rows}</div>${slotsOn?`<div class="dp-leg">${legend('yes','best','ifn','maybe')}</div>`:''}</div>`;
   }
   h+='</div>';
