@@ -69,7 +69,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The sharer's page works out their busy hours (picked auto calendars) for the round's dates and uploads only `{ "YYYY-MM-DD": [h] }`
   via `PUT /api/polls/:id/instances/:iid/busy` `{ share, hours }` (when changed, or every 6 h; off deletes all their rows).
   `GET /api/polls/:id` sends `busy: [{ pid, name, hours, updatedAt }]` (same visibility as answers, caller left out) and `me.shareBusy`.
-  The Busy ▾ in My answer: my calendars, the Share switch, and people who share (picks in localStorage `busyPplOff:<poll>`); their hours
+  The Busy ▾ in My answer has two sections: **Own** (my auto calendars + the Share switch) and **Others** (people who share; All / None /
+  one by one, picks in localStorage `busyPplOff:<poll>`, `"*"` = None so later sharers stay hidden too); their hours
   show with accent stripes the other way (`obusy` / `.obm`).
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the

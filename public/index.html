@@ -467,8 +467,10 @@
   #grid .slot.obusy{background-image:var(--obusy-hatch)}
   .day .obm{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:3px;background:var(--obusy-hatch),var(--card);border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));pointer-events:none}
   .day .bzm~.obm{right:22px} .day:has(.star) .obm{top:auto;bottom:6px}
-  .vtsplit .vtdd .ddp .ddh{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 2px 2px}
-  .vtsplit .vtdd .ddp .ddh:first-child{margin-top:0}
+  .vtsplit .vtdd .ddp .ddh{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px;font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 2px 2px}
+  .vtsplit .vtdd .ddp .ddh .ddb{margin:0;padding:0;border:0;text-transform:none;letter-spacing:0;font-weight:500}
+  .vtsplit .vtdd .ddp .ddsec+.ddsec{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+  .vtsplit .vtdd .ddp .ddnone{margin:2px 2px 0;max-width:230px}
   .vtsplit .vtdd .ddp label.ddsw{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:6px 0;padding-top:8px;padding-bottom:8px;align-items:flex-start}
   .vtsplit .vtdd .ddp label.ddsw:first-child{border-top:0;margin-top:0;padding-top:2px} .vtsplit .vtdd .ddp label.ddsw:last-child{border-bottom:0;margin-bottom:0;padding-bottom:2px}
   .vtsplit .vtdd .ddp label.ddsw.dis{opacity:.6}
@@ -4002,17 +4004,19 @@ function renderMine(el){
       return `<button type="button" class="amode${on?' on':''}" data-arange="${v}" aria-pressed="${on}" title="${lb}" aria-label="${lb}">${ICON[ic]}</button>`; }).join('')}<span class="asep" aria-hidden="true"></span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
-  const bzOn=showBusy(), bzMine=!!(ME.user&&ME.user.calendarsAuto&&editable()), bzPpl=P.data.busy||[];
-  const bzTog=`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide busy times'):t('Show busy times')}">${ICON.cal}<span>${t('Busy')}</span>${bzPpl.length?`<i class="vtn">${bzPpl.length}</i>`:''}</button>`;
-  // ▾ next to Busy: which of the account's auto calendars grey out hours (2+), sharing mine with this poll, and the people who share theirs.
+  const bzOn=showBusy(), bzMine=!!(ME.user&&ME.user.calendarsAuto&&editable()), bzPpl=P.data.busy||[], bpOff=busyPplOff();
+  const bzN=bzPpl.filter(x=>!bpOff.has(x.pid)).length, bzNt=bzN<bzPpl.length?`${bzN}/${bzPpl.length}`:bzPpl.length;
+  const bzTog=`<button type="button" class="btn sm withic vt${bzOn?' on':''}" data-busytoggle aria-pressed="${bzOn}" title="${bzOn?t('Hide busy times'):t('Show busy times')}">${ICON.cal}<span>${t('Busy')}</span>${bzPpl.length?`<i class="vtn">${bzNt}</i>`:''}</button>`;
+  // ▾ next to Busy, two sections. Own: which of my auto calendars grey out hours, and sharing them with this poll.
+  // Others: the people who share their busy hours with this poll (All / None / one by one).
   if(ME.user&&ME.user.calendarsAuto&&!CALS.list&&!CALS.tried){ CALS.tried=true; loadCals().then(r=>{ if(r&&P.data&&P.tab==='mine') renderBody(); }); }
-  const bzCals=CALS.list?CALS.list.calendars.filter(c=>c.auto):[], bzOff=busyOff(), bpOff=busyPplOff();
+  const bzCals=CALS.list?CALS.list.calendars.filter(c=>c.auto):[], bzOff=busyOff();
   let bzMenu='';
-  if(bzMine&&bzCals.length>1) bzMenu+=ddList(t('My calendars'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})));
   if(bzMine){ const me=P.data.me||{}, can=!!me.participantId;
-    bzMenu+=`<label class="ddsw${can?'':' dis'}" title="${esc(t('People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.'))}"><input type="checkbox" data-bshare ${me.shareBusy?'checked':''} ${can?'':'disabled'}> <span class="minw">${t('Share my busy hours with this poll')}<span class="muted small">${can?t('Others see when, not what'):t('Save your answer first')}</span></span></label>`; }
-  if(bzPpl.length) bzMenu+=ddList(t('Shared by others'),'bppl',bzPpl.map(x=>({id:x.pid,label:`${esc(x.name||t('Someone'))}<span class="muted small">${esc(t('updated {when}',{when:agoText(x.updatedAt)}))}</span>`,on:!bpOff.has(x.pid)})));
-  const bzBtn=!(bzMine||bzPpl.length)?'':!bzMenu?bzTog:vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
+    bzMenu+=`<div class="ddsec">${ddList(t('Own'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})))}
+      <label class="ddsw${can?'':' dis'}" title="${esc(t('People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.'))}"><input type="checkbox" data-bshare ${me.shareBusy?'checked':''} ${can?'':'disabled'}> <span class="minw">${t('Share my busy hours with this poll')}<span class="muted small">${can?t('Others see when, not what'):t('Save your answer first')}</span></span></label></div>`; }
+  if(bzPpl.length||bzMine) bzMenu+=`<div class="ddsec">${ddList(t('Others'),'bppl',bzPpl.map(x=>({id:x.pid,label:`${esc(x.name||t('Someone'))}<span class="muted small">${esc(t('updated {when}',{when:agoText(x.updatedAt)}))}</span>`,on:!bpOff.has(x.pid)})),1)}${bzPpl.length?'':`<p class="muted small ddnone">${t('Nobody in this poll shares their busy times yet')}</p>`}</div>`;
+  const bzBtn=!(bzMine||bzPpl.length)?'':vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
@@ -4523,7 +4527,8 @@ async function setShareBusy(on,cb){
   catch(e){ toast(e.message); if(cb) cb.checked=!on; }
   finally{ if(cb) cb.disabled=false; P.bddOpen=true; renderBody(); }
 }
-const busyPplOff=()=>new Set(store0('busyPplOff:'+P.id)||[]);
+// Others' busy hours left out ("*" = None, so people who start sharing later stay hidden too).
+const busyPplOff=()=>{ const v=store0('busyPplOff:'+P.id); return new Set(v==='*'?((P.data&&P.data.busy)||[]).map(x=>x.pid):Array.isArray(v)?v:[]); };
 function othBusyPicked(){ if(!showBusy()||!P.data||!P.data.busy) return []; const off=busyPplOff(); return P.data.busy.filter(x=>!off.has(x.pid)); }
 // Names of the picked people who are busy in hour h of day k.
 function othBusyFor(k,h){ return othBusyPicked().filter(x=>(x.hours[k]||[]).includes(h)).map(x=>x.name||t('Someone')); }
@@ -4684,12 +4689,13 @@ function vtSplitRaw(btn,id,open,label,inner){
   return `<span class="vtsplit">${btn}<details class="dd vtdd" id="${id}"${open?' open':''}><summary title="${esc(label)}" aria-label="${esc(label)}"></summary><div class="ddp">${inner}</div></details></span>`;
 }
 // One titled block of checkboxes with All / None (title optional).
-function ddList(title,key,items){
-  return `${title?`<div class="ddh">${esc(title)}</div>`:''}<div class="ddb"><button type="button" class="btn" data-${key}all="1">${t('All')}</button><button type="button" class="btn" data-${key}all="0">${t('None')}</button></div>
+function ddList(title,key,items,minAll=2){
+  const btns=`<button type="button" class="btn" data-${key}all="1">${t('All')}</button><button type="button" class="btn" data-${key}all="0">${t('None')}</button>`;
+  return `${title?`<div class="ddh"><span>${esc(title)}</span>${items.length>=minAll?`<span class="ddb">${btns}</span>`:''}</div>`:`<div class="ddb">${btns}</div>`}
     ${items.map(x=>`<label><input type="checkbox" data-${key}="${esc(x.id)}" ${x.on?'checked':''}> <span class="minw">${x.label}</span></label>`).join('')}`;
 }
-function setBusyPplOff(off){ try{ localStorage.setItem('busyPplOff:'+P.id,JSON.stringify([...off])); }catch(e){} P.bddOpen=true;
-  if(!showBusy()&&off.size<(P.data.busy||[]).length) try{ localStorage.setItem('showBusy','true'); }catch(e){}
+function setBusyPplOff(off,none){ try{ localStorage.setItem('busyPplOff:'+P.id,JSON.stringify(none?'*':[...off])); }catch(e){} P.bddOpen=true;
+  if(!showBusy()&&!none&&off.size<(P.data.busy||[]).length) try{ localStorage.setItem('showBusy','true'); }catch(e){}
   renderBody(); }
 function setHintOff(off){ P.hintOff=off; P.hddOpen=true; if(!P.hint&&off.size<others().length){ P.hint=true; store.set('showOthers',true); } renderBody(); }
 function setBusyOff(off){ try{ localStorage.setItem('busyOff',JSON.stringify([...off])); }catch(e){} P.bddOpen=true;
@@ -4703,7 +4709,7 @@ document.addEventListener('change',e=>{ const cb=e.target, ds=cb.dataset||{};
   else if(ds.bshare!==undefined) setShareBusy(cb.checked,cb); });
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall],[data-bpplall]'); if(!b) return; e.preventDefault();
   if(b.dataset.hwhoall!==undefined) setHintOff(b.dataset.hwhoall==='1'?new Set():new Set(others().map(r=>r.id)));
-  else if(b.dataset.bpplall!==undefined) setBusyPplOff(b.dataset.bpplall==='1'?new Set():new Set((P.data.busy||[]).map(x=>x.pid)));
+  else if(b.dataset.bpplall!==undefined) setBusyPplOff(new Set(),b.dataset.bpplall!=='1');
   else setBusyOff(b.dataset.bcalall==='1'?new Set():new Set((CALS.list?CALS.list.calendars:[]).filter(c=>c.auto).map(c=>c.id))); });
 
 // Everyone's saved answers except my own (for the "Show others" hints in My availability).
@@ -7793,12 +7799,12 @@ function germanText(){ return {
 "Show my busy times": "Meine belegten Zeiten zeigen",
 "Hide busy times": "Belegte Zeiten ausblenden",
 "Show busy times": "Belegte Zeiten zeigen",
-"My calendars": "Meine Kalender",
+"Own": "Eigene",
+"Nobody in this poll shares their busy times yet": "Noch niemand in dieser Umfrage teilt seine belegten Zeiten",
 "Share my busy hours with this poll": "Meine belegten Stunden mit dieser Umfrage teilen",
 "Others see when, not what": "Andere sehen wann, nicht was",
 "Save your answer first": "Speichere zuerst deine Antwort",
 "People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.": "Wer die Antworten dieser Umfrage sieht, sieht, in welchen Stunden du in deinen Kalendern (den oben gewählten) belegt bist. Keine Termintitel. Wird bei jedem Öffnen der Umfrage aktualisiert.",
-"Shared by others": "Von anderen geteilt",
 "updated {when}": "aktualisiert {when}",
 "Choose busy times": "Belegte Zeiten wählen",
 "Busy in their calendar: {names}": "Im Kalender belegt: {names}",
