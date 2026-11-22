@@ -37,8 +37,8 @@ SITE_URL = "https://when-who.app"
 TURNSTILE_SITE_KEY = "0x4AAAAAAGEFcq5D-SUTLIt7"   # public site key of the Turnstile widget
 # Legal pages: Impressum (?imprint, required in Germany by § 5 DDG), privacy policy (?privacy) and rules (?rules).
 # All of this is shown publicly. Fill in before the site goes public (and before the Google / Microsoft app review).
-# OPERATOR_NAME = ""                        # who runs the site: your full name (or company name + who represents it)
-# OPERATOR_ADDRESS = ""                     # postal address that can receive legal mail (no P.O. box), lines separated by ", "
+OPERATOR_NAME = "[Vor- und Nachname]"     # PLACEHOLDER: who runs the site: your full name (or company name + who represents it)
+OPERATOR_ADDRESS = "[Straße Hausnummer], [PLZ] Frankfurt am Main, Deutschland"   # PLACEHOLDER: postal address that can receive legal mail (no P.O. box), lines separated by ", "
 # OPERATOR_PHONE = ""                       # optional second quick contact next to the email (or leave out and reply fast by email)
 CONTACT_EMAIL = "when-who.app.passage385@passmail.net"   # contact for data questions and reports of illegal content (DSA contact point)
 DPA_NAME = "Der Hessische Beauftragte für Datenschutz und Informationsfreiheit, Wiesbaden"   # data protection authority of your Land (Hessen)
