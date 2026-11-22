@@ -711,6 +711,7 @@
   .mcard>.mopt+.vpanel>.vpanel-h{padding:6px 10px 6px 14px;background:color-mix(in srgb,var(--accent) 8%,var(--card));border-bottom:1px dashed color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:var(--r-lg) var(--r-lg) 0 0}
   .mcard>.mopt+.vpanel>.vpanel-h h3{font-size:13px;font-weight:600;color:var(--accent-ink)} .mcard>.mopt+.vpanel>.vpanel-h h3>svg{display:none}
   .mcard>.mopt+.vpanel>.muted{padding-top:8px}
+  .mcard>.mopt+.vpanel{margin-top:10px}
   .vpanel .mlist.compact .vacts{gap:6px;align-items:center} .vpanel .mlist.compact .vbtn{min-height:30px;padding-block:0}
   .mfold{gap:6px} .mfold>svg,.vpanel-h h3 svg{width:17px;height:17px;flex:none;color:var(--accent)} .mfold h3{margin:0;font-size:15px;white-space:nowrap}
   .vpanel-h h3{font-size:15px;color:var(--ink)}
@@ -789,6 +790,8 @@
   .mcard .savebar.mb-bar{justify-content:flex-start;flex-wrap:nowrap;gap:8px;min-width:0;margin-top:var(--s3);padding:8px 10px;border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
   .mb-all{display:inline-flex;align-items:center;gap:7px;flex:none;height:32px;padding:0 11px 0 9px;border:1px solid var(--line-strong);border-radius:999px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
   .mb-all input{pointer-events:none;margin:0;width:16px;height:16px;accent-color:var(--accent)}
+  .mb-kind svg{width:15px;height:15px;flex:none;color:var(--accent)} .mb-kind{gap:5px}
+  @media (max-width:560px){ .mb-kind :is(.bl,input){display:none} .mb-kind{width:32px;padding:0;justify-content:center} }
   .mb-all.on{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--accent-weak);color:var(--accent-ink)}
   .mb-cnt{display:flex;flex-direction:column;min-width:0;flex:1 1 auto;white-space:nowrap;font-size:13px;line-height:1.25;font-variant-numeric:tabular-nums}
   .mb-cnt>*{overflow:hidden;text-overflow:ellipsis}
@@ -4241,9 +4244,13 @@ function batchPanel(ms,n){
 }
 // Sticky bar under the list in select mode: all · count · delete / cancel / update.
 function batchBar(ms,n){
-  const all=n>0&&n===ms.length;
+  const all=n>0&&n===ms.length, pr=proposals(), cf=confirmedMeetings();
+  // Pick one kind at once (vote options / scheduled meetings), shown when both are there.
+  const kind=(k,list,ic,label,tl)=>{ const on=list.every(m=>P.msel.has(m.id));
+    return `<button type="button" class="mb-all mb-kind${on?' on':''}" data-mselall="${k}" aria-pressed="${on}" aria-label="${tl}" title="${tl}"><input type="checkbox" tabindex="-1" aria-hidden="true"${on?' checked':''}>${ICON[ic]}<span class="bl">${label}</span></button>`; };
+  const kinds=pr.length&&cf.length?kind('prop',pr,'check',t('Options'),t('Select all vote options'))+kind('set',cf,'star',t('Scheduled'),t('Select all scheduled meetings')):'';
   return `<div class="savebar mb-bar">
-      <button type="button" class="mb-all${all?' on':''}" data-mselall aria-pressed="${all}" aria-label="${all?t('Select none'):t('Select all')}" title="${all?t('Select none'):t('Select all')}"><input type="checkbox" tabindex="-1" aria-hidden="true"${all?' checked':''}><span>${t('All')}</span></button>
+      <button type="button" class="mb-all${all?' on':''}" data-mselall aria-pressed="${all}" aria-label="${all?t('Select none'):t('Select all')}" title="${all?t('Select none'):t('Select all')}"><input type="checkbox" tabindex="-1" aria-hidden="true"${all?' checked':''}><span>${t('All')}</span></button>${kinds}
       <span class="mb-cnt" id="mb_cnt" aria-live="polite"></span>
       <span class="mb-acts"><button type="button" class="qb danger" data-mbatch="del" title="${t('Delete selected')}" aria-label="${t('Delete selected')}"${n?'':' disabled'}>${ICON.trash}</button>
         <button type="button" class="btn sm primary withic" id="mb_upd" data-mbatch="upd">${ICON.check}<span>${t('Update')}</span></button></span>
@@ -4311,6 +4318,8 @@ document.addEventListener('click',e=>{
   if(ds.mfold!==undefined){ P.mfold=!P.mfold; store.set('mfold:'+P.id,P.mfold); renderMeetings(); return; }
   if(ds.mselect!==undefined){ P.msel=P.msel?null:new Set(); P.mbatch={}; P.mdesc=null; P.mmail=null; renderMeetings(); return; }
   if(ds.mpick){ e.preventDefault(); if(!P.msel) return; P.msel.has(ds.mpick)?P.msel.delete(ds.mpick):P.msel.add(ds.mpick); renderMeetings(); return; }
+  if(ds.mselall){ const ids=(ds.mselall==='prop'?proposals():confirmedMeetings()).map(m=>m.id), on=ids.every(id=>P.msel.has(id));
+    ids.forEach(id=>on?P.msel.delete(id):P.msel.add(id)); renderMeetings(); return; }
   if(ds.mselall!==undefined){ P.msel=P.msel.size===ms.length?new Set():new Set(ms.map(m=>m.id)); renderMeetings(); return; }
   if(ds.mbatch){ runBatch(ds.mbatch,t); }
 });
@@ -7984,6 +7993,8 @@ function germanText(){ return {
 "See who's free": "Sehen, wer Zeit hat",
 "Select": "Auswählen",
 "Select all": "Alle auswählen",
+"Select all vote options": "Alle Terminoptionen auswählen",
+"Select all scheduled meetings": "Alle geplanten Termine auswählen",
 "Select none": "Keine auswählen",
 "Select several meetings to edit, move or delete them together": "Mehrere Termine auswählen, um sie gemeinsam zu bearbeiten, zu verschieben oder zu löschen",
 "Select {name}": "{name} auswählen",
