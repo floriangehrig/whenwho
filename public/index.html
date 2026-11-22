@@ -706,6 +706,11 @@
   .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)} .msec-h .qb{color:var(--accent-ink)}
   .msec-h .qb[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 12%,var(--card))}
   .mcard>.msec-h+.vpanel{margin-top:0}
+  /* Options title sits right on the vote box; "Vote on a date" is a slim tinted strip at the box's top */
+  .mcard>.mopt .mfold{padding-bottom:2px}
+  .mcard>.mopt+.vpanel>.vpanel-h{padding:6px 10px 6px 14px;background:color-mix(in srgb,var(--accent) 8%,var(--card));border-bottom:1px dashed color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:var(--r-lg) var(--r-lg) 0 0}
+  .mcard>.mopt+.vpanel>.vpanel-h h3{font-size:13px;font-weight:600;color:var(--accent-ink)} .mcard>.mopt+.vpanel>.vpanel-h h3>svg{display:none}
+  .mcard>.mopt+.vpanel>.muted{padding-top:8px}
   .vpanel .mlist.compact .vacts{gap:6px;align-items:center} .vpanel .mlist.compact .vbtn{min-height:30px;padding-block:0}
   .mfold{gap:6px} .mfold>svg,.vpanel-h h3 svg{width:17px;height:17px;flex:none;color:var(--accent)} .mfold h3{margin:0;font-size:15px;white-space:nowrap}
   .vpanel-h h3{font-size:15px;color:var(--ink)}
