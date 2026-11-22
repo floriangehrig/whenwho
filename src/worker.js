@@ -62,7 +62,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ACRVVG+LPdAGTFWWAYeVMaw/OW2deAyH4fD/QVWhd0Y=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -78,9 +78,10 @@ function secure(res, url) {
   h.set('x-content-type-options', 'nosniff');
   h.set('referrer-policy', 'same-origin');
   h.set('x-frame-options', 'DENY');
+  h.set('cross-origin-opener-policy', 'same-origin');
   h.set('permissions-policy', 'camera=(), microphone=(self), geolocation=()');
   if ((h.get('content-type') || '').startsWith('text/html')) h.set('content-security-policy', CSP);
-  if (url.protocol === 'https:') h.set('strict-transport-security', 'max-age=31536000');
+  if (url.protocol === 'https:') h.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
   return r;
 }
 
@@ -123,6 +124,10 @@ async function route(request, env, ctx, url) {
   // Sign-in requests too, so another site can't sign a visitor into an attacker's account.
   if ((cookies.ww_session || parts[1] === 'auth') && m !== 'GET' && m !== 'HEAD' && request.headers.get('origin') !== url.origin)
     throw new HttpError(403, 'Request from another site was blocked');
+  // Flood guard (Workers Rate Limiting bindings, in memory, no D1 writes): changes and place lookups per IP per minute,
+  // so a script can't burn the free plan's daily D1 / Workers allowance. Missing bindings (local dev) = no limit.
+  const rl = parts[1] === 'places' ? env.RL_PLACES : m !== 'GET' && m !== 'HEAD' ? env.RL_WRITE : null;
+  if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   USERS.set(request, await getUser(env, cookies));
   if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
@@ -189,7 +194,7 @@ async function route(request, env, ctx, url) {
     if (m === 'PATCH') return updatePoll(request, env, id);
     if (m === 'DELETE') return deletePoll(request, env, id);
   }
-  if (a === 'calendar.ics' && m === 'GET') return calendar(env, url, id);
+  if (a === 'calendar.ics' && m === 'GET') return calendar(request, env, url, id);
   if (a === 'image' && m === 'GET') return pollImage(request, env, url, id);
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
@@ -434,9 +439,26 @@ function requireAdmin(request, poll) {
 async function passwordOk(poll, pw) {
   return !poll.password_hash || (!!pw && safeEqual(await sha256(poll.id + ':pw:' + pw), poll.password_hash));
 }
-async function checkPassword(request, poll) {
+// Password guesses are throttled per IP per poll and per poll overall (rotating IPs doesn't help). Once over the limit even
+// the right password gets 429, so a guesser can't tell when they hit it. Requests without a password cost nothing.
+const PW_FAILS_IP = 10;     // wrong poll passwords per IP per poll ...
+const PW_FAILS_POLL = 50;   // ... and per poll from anywhere, within FAIL_WINDOW_MIN
+async function guardedPasswordOk(env, request, poll, pw) {
+  if (!poll.password_hash || !pw) return passwordOk(poll, pw);
+  const msg = `Too many wrong passwords. Try again in ${FAIL_WINDOW_MIN} minutes.`;
+  const ipKey = clientIp(request) + ':' + poll.id;
+  await checkThrottle(env, request, 'pw', { key: ipKey, max: PW_FAILS_IP, msg });
+  await checkThrottle(env, request, 'pw', { key: 'p:' + poll.id, max: PW_FAILS_POLL, msg });
+  if (await passwordOk(poll, pw)) return true;
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO login_attempts (ip, kind, at) VALUES (?, ?, ?)').bind(ipKey, 'pw', now()),
+    env.DB.prepare('INSERT INTO login_attempts (ip, kind, at) VALUES (?, ?, ?)').bind('p:' + poll.id, 'pw', now()),
+  ]);
+  return false;
+}
+async function checkPassword(env, request, poll) {
   const pw = request.headers.get('x-poll-password');
-  if (!(await passwordOk(poll, pw)))
+  if (!(await guardedPasswordOk(env, request, poll, pw)))
     throw new HttpError(401, pw ? 'Wrong password' : 'Password required', { needPassword: true, title: poll.title });
 }
 function publicPoll(poll, admin) {
@@ -1149,7 +1171,7 @@ async function chatAccess(request, env, id) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
   const owner = isAdmin(request, poll);
-  if (!owner) await checkPassword(request, poll);
+  if (!owner) await checkPassword(env, request, poll);
   if (!poll.allow_comments) throw new HttpError(403, 'The chat is turned off for this poll');
   if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Only invited people can join this chat');
   return { poll, user, owner };
@@ -1304,8 +1326,14 @@ const icsResponse = (text) => new Response(text, { headers: { 'content-type': 't
 async function fetchIcalText(url) {
   let res;
   try {
-    res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000), headers: { accept: 'text/calendar, */*;q=0.5', 'user-agent': 'when-who calendar import' } });
-  } catch (e) { throw new HttpError(502, 'Could not reach that calendar'); }
+    // Follow redirects by hand, so every hop passes the same checks as the link itself (https, no local or IP hosts).
+    for (let hop = 0; ; hop++) {
+      res = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(10000), headers: { accept: 'text/calendar, */*;q=0.5', 'user-agent': 'when-who calendar import' } });
+      if (res.status < 300 || res.status > 399 || !res.headers.get('location')) break;
+      if (hop >= 4) throw new HttpError(502, 'Could not reach that calendar');
+      url = icalUrl(new URL(res.headers.get('location'), url).toString());
+    }
+  } catch (e) { if (e instanceof HttpError) throw e; throw new HttpError(502, 'Could not reach that calendar'); }
   if (!res.ok) throw new HttpError(502, `The calendar link answered with an error (${res.status})`);
   // Read with a size cap, so a huge or endless response can't run us out of memory.
   const reader = res.body.getReader(), chunks = [];
@@ -1814,7 +1842,7 @@ async function createPoll(request, env) {
 async function getPoll(request, env, ctx, url, id) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
   const created = await ensureCurrent(env, poll);
   if (created) ctx.waitUntil(notifyOpened(env, poll, created, url.origin).catch((e) => console.error(e)));
   const { results: all } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
@@ -1901,7 +1929,7 @@ async function updatePoll(request, env, id) {
 async function pollImage(request, env, url, id) {
   const poll = await env.DB.prepare('SELECT id, owner_id, password_hash, image FROM polls WHERE id = ?').bind(id).first();
   if (!poll || !poll.image) throw new HttpError(404, 'No picture');
-  if (!isAdmin(request, poll) && !(await passwordOk(poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
+  if (!isAdmin(request, poll) && !(await guardedPasswordOk(env, request, poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
   const m = poll.image.match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/);
   if (!m) throw new HttpError(404, 'No picture');
   const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
@@ -2011,9 +2039,9 @@ function buildIcs(poll, meetings, link) {
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
 const whoText = (mt) => (mt.participants === 'all' ? 'Everyone' : mt.participants.map((p) => p.name).join(', '));
-async function calendar(env, url, id) {
+async function calendar(request, env, url, id) {
   const poll = await loadPoll(env, id);
-  if (!(await passwordOk(poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
+  if (!(await guardedPasswordOk(env, request, poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
   const { results } = await env.DB.prepare('SELECT id, meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
   let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]')).filter((mt) => !mt.proposed);
   const only = url.searchParams.get('m');
@@ -2419,7 +2447,7 @@ async function shareBusy(request, env, id, iid) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   await requireInvited(env, poll, user, admin);
   const part = await accountParticipant(env, id, user.id);
@@ -2530,7 +2558,7 @@ async function fillFromText(request, env, id, iid) {
   if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
   const poll = await loadPoll(env, id);
   const admin = isAdmin(request, poll);
-  if (!admin) await checkPassword(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
@@ -2637,7 +2665,7 @@ async function suggestFromText(request, env, id, iid) {
 async function createResponse(request, env, id, iid) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
@@ -2715,7 +2743,7 @@ async function canEditResponse(request, env, r) {
 // "Is that me?": find the participant for a name and their answer in this round.
 async function recall(request, env, id, iid) {
   const poll = await loadPoll(env, id);
-  if (!(await isAdmin(request, poll))) await checkPassword(request, poll);
+  if (!(await isAdmin(request, poll))) await checkPassword(env, request, poll);
   await loadInstance(env, id, iid);
   await checkThrottle(env, request, 'name');
   const b = await body(request);
@@ -2740,7 +2768,7 @@ async function voteMeetings(request, env, id, rid) {
   const inst = await loadInstance(env, id, r.instance_id);
   const admin = await isAdmin(request, poll);
   if (!admin && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
-  if (!admin) await checkPassword(request, poll);
+  if (!admin) await checkPassword(env, request, poll);
   const b = await body(request);
   const props = proposedIds(inst);
   if (!Array.isArray(b.votes) || b.votes.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid votes');
@@ -2756,7 +2784,7 @@ async function updateResponse(request, env, id, rid) {
   const admin = isAdmin(request, poll), own = await canEditResponse(request, env, r);
   if (!own && !admin) throw new HttpError(403, 'Not your response');
   if (!admin) {
-    await checkPassword(request, poll);
+    await checkPassword(env, request, poll);
     if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
   }
   await requireInvited(env, poll, userOf(request), admin);

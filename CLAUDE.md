@@ -124,6 +124,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Email is sent through the Resend HTTP API (`sendEmail` in the Worker). Without `RESEND_API_KEY`, sign-in codes are printed to the `npm run dev` log.
 - Cost guard: the site is meant to run on the Workers Free plan (hard limits, no usage billing) + Resend free tier.
 - Secrets (API tokens, email settings) never go in the repo. Use `wrangler secret put` or the dashboard, and `.dev.vars` locally (git-ignored).
+- **CSP:** the page's two inline `<script>` blocks are allowed by sha256 hash (no `'unsafe-inline'`), so after editing either one run
+  `node scripts/check-csp.mjs --fix` (updates `CSP` in the Worker and `public/_headers`; `npm run check` fails until then). No inline
+  `on…=` handlers in HTML or templates: use `addEventListener`. Poll passwords are throttled per IP and per poll (`guardedPasswordOk`);
+  `RL_WRITE` / `RL_PLACES` (Rate Limiting bindings in `wrangler.toml`) cap changes and place lookups per IP per minute.
 - Keep the app dependency-free: one HTML file, inline CSS/JS. Escape all user content with `esc()` in the page and validate all input in the Worker.
 - **Languages (English + German):** every user-visible string in the page goes through `t('English text',{vars})`, with its German text
   added to `germanText()` at the end of the script (missing entries fall back to English). Dates use `LOC`. The language picker (System default / English / Deutsch) is in the app bar

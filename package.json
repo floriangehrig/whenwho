@@ -7,7 +7,7 @@
     "db:migrate:local": "wrangler d1 migrations apply whenwho --local",
     "db:migrate:remote": "wrangler d1 migrations apply whenwho --remote",
     "deploy": "wrangler deploy",
-    "check": "node scripts/check-user-data.mjs"
+    "check": "node scripts/check-user-data.mjs && node scripts/check-csp.mjs"
   },
   "devDependencies": { "wrangler": "^4" }
 }

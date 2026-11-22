@@ -1637,6 +1637,8 @@
 (function(){
 'use strict';
 const $app = document.getElementById('app');
+// A tile picture that fails to load is dropped (no inline onerror: the CSP allows no inline handlers).
+document.addEventListener('error',e=>{ const el=e.target; if(el.tagName==='IMG'&&el.parentNode?.classList?.contains('tile')) el.remove(); },true);
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
@@ -1674,6 +1676,8 @@ const ERR_DE = [
   [/^Request failed \((\d+)\)$/, (m,n)=>`Anfrage fehlgeschlagen (${n})`],
   [/^At most (\d+) calendar links per account$/, (m,n)=>`Höchstens ${n} Kalender-Links pro Konto`],
   [/^Too many calendar requests\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Abrufe. Versuch es in ${n} Minuten noch einmal.`],
+  [/^Too many requests\. Wait a minute and try again\.$/, ()=>'Zu viele Anfragen. Warte eine Minute und versuch es noch einmal.'],
+  [/^Too many wrong passwords\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele falsche Passwörter. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many calendar imports\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Importe. Versuch es in ${n} Minuten noch einmal.`],
   [/^You can fill from text (\d+) times a day\. Try again tomorrow\.$/, (m,n)=>`Du kannst ${n}-mal am Tag per Text ausfüllen. Versuch es morgen wieder.`],
   [/^Too many tries\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
@@ -2141,7 +2145,7 @@ const initialOf = t => esc((String(t||'?').trim().match(/\p{L}|\p{N}/u)||['?'])[
 // A square/round tile: picture (with fallback underneath), emoji, or initial on a colour.
 function tile({img,emoji,text,seed},cls=''){
   const base = emoji ? `<span class="tile-e">${esc(emoji)}</span>` : `<span class="tile-i" style="--t:${tintOf(seed||text)}">${initialOf(text)}</span>`;
-  return `<span class="tile ${cls}${emoji?' has-e':''}">${base}${img?`<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">`:''}</span>`;
+  return `<span class="tile ${cls}${emoji?' has-e':''}">${base}${img?`<img src="${esc(img)}" alt="" loading="lazy">`:''}</span>`;
 }
 const avatarOf = (u,cls='') => tile({img:u&&u.avatarImg,emoji:u&&u.avatar,text:displayName(u),seed:u&&u.email},'avatar '+cls);
 const pollImgUrl = (id,v) => { if(!v) return ''; const pw=store.get('pw:'+id,null); return `/api/polls/${encodeURIComponent(id)}/image?v=${encodeURIComponent(v)}${pw?'&pw='+encodeURIComponent(pw):''}`; };

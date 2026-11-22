@@ -22,6 +22,18 @@ database_id = "f485894f-738a-4ac7-be68-bec6aeb8d13e"
 [ai]
 binding = "AI"
 
+# Flood guard: requests per IP per minute (Workers Rate Limiting, free, counted in memory). Changes (POST/PATCH/DELETE) and
+# place lookups (one per keystroke). namespace_id is any number unique within the account.
+[[ratelimits]]
+name = "RL_WRITE"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "RL_PLACES"
+namespace_id = "1002"
+simple = { limit = 60, period = 60 }
+
 # Runs every hour: opens new polls in a series on time and sends notification/reminder emails.
 [triggers]
 crons = ["17 * * * *"]
