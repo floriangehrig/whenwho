@@ -1097,6 +1097,7 @@
     .demo .day.pop,.demo.best .day.allfree{animation:none}
   }
   .poll-h{display:flex;gap:18px;align-items:center}
+  .poll-h .eyebrow{display:flex;align-items:center;gap:6px} .poll-h .eyebrow .qb{width:24px;height:24px} .poll-h .eyebrow .qb svg{width:13px;height:13px}
   .card-h>.tile{margin-right:2px}
 
   /* ---------- picker ---------- */
@@ -3834,7 +3835,7 @@ function roundChip(d,i){
 function renderHeader(){
   const d=P.data, p=d.poll, i=inst(), el=$('hdr'); if(!el) return;
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
-  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='series'?t('Recurring poll'):p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span></div>
+  el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span>${d.isAdmin?(i.manualStatus==='open'?pqb('lock',t('Close poll'),`data-istatus="${i.id}" data-to="closed"`):pqb('unlock',t('Reopen poll'),`data-istatus="${i.id}" data-to="open"`)):''}</div>
     <h1>${esc(p.title)}</h1></div></div>
     <div class="meta">${roundChip(d,i)}${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
@@ -6460,11 +6461,7 @@ function adminPanes(){
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   <div id="pane-questions" class="${hid('questions')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Questions')}</h2>${tip(P.data.isAdmin?t('Ask people for more than the date: a vote on the place (they can suggest their own), a plus-one, dietary needs… Link a question to meetings to show it on them. 🔒 = only you see the answers.'):t('Questions from the organiser. 🔒 = only the organiser sees the answers.'))}${P.data.isAdmin?`<button type="button" class="btn sm primary withic qws-add" data-qnew>${ICON.plus}<span>${t('Ask')}</span></button>`:''}</div><div id="questions"></div></div></div>
-    ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div>
-    <div class="card"><div class="card-h"><h2 class="row tight">${t('Schedule for new rounds')}${tip(t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</h2></div><form id="rf">
-      <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'')}</div>
-      <div class="err" id="rerr"></div>
-      <div class="row mt-4"><button class="btn primary">${t('Save schedule')}</button></div></form></div></div>`:''}
+    ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card sform"><div class="card-h"><h2>${t('Settings')}</h2></div>
@@ -6474,7 +6471,7 @@ function adminPanes(){
       <div id="pkwrap" class="field" hidden>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div>
       <textarea id="s_desc" class="sdesc" maxlength="1000" rows="2" placeholder="${t('Description (optional)')}" aria-label="${t('Description')}">${esc(p.description)}</textarea>`,
       p.icon||p.image?pollTile(p,''):'')}
-    ${series?'':datesSection()}
+    ${series?roundsSection(p):datesSection()}
     ${sset('answering','check',t('Answering'),`
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('s_ans',ansOpts(),p.answerMode,t('People answer with'),'sp')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.'))}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
@@ -6519,10 +6516,10 @@ function mailRows(o){
     ${o.notify?srow('repeat',t('New round'),t('Email everyone when a round opens'),swc(o.notify,o.notifyOn,t('Email everyone in the series when a new round opens')),{hid:!!o.notifyHidden,id:'notifyRow'}):''}
     ${srow('bell',t('Reminder'),t("To people who haven't answered"),`<label class="mrow-n${o.remindOn?'':' off'}"><input type="number" id="${o.days}" min="0" max="30" value="${esc(o.n)}" aria-label="${t('Days before the reply-by date')}"${o.remindOn?'':' disabled'}><span>${t('days before')}</span></label>${swc(o.remind,o.remindOn,t('Email a reminder before the reply-by date'))}`)}</div>`;
 }
-// A series' timing rows (New poll's Recurring box, Rounds tab): when a round opens and its reply-by, in days before it starts.
-function dayRows(open,dl,openN,dlN){
+// A series' timing rows (New poll's Recurring box, Settings): when a round opens and its reply-by, in days before it starts.
+function dayRows(open,dl,openN,dlN,tp=''){
   const n=(id,v,l)=>`<span class="mrow-n"><input type="number" id="${id}" min="0" max="90" value="${esc(v)}" aria-label="${esc(l)}"><span>${t('days before')}</span></span>`;
-  return srow('day',t('Opens'),t('Before the round starts'),n(open,openN,t('Opens')))
+  return srow('day',t('Opens'),t('Before the round starts'),n(open,openN,t('Opens')),{tip:tp})
     +srow('clock',t('Reply by'),t('Optional. Leave empty for no deadline.'),n(dl,dlN,t('Reply by')));
 }
 // Privacy rows: hide answers (switch) and password (input; Settings adds a Remove switch when one is set).
@@ -6558,13 +6555,18 @@ document.addEventListener('click',e=>{
   if(k){ const w=$('pkwrap'), open=w.hidden; w.hidden=!open; k.setAttribute('aria-expanded',open); }
 });
 // A collapsible Settings section (open state kept while the page is open). body is trusted markup; extra = icons shown when closed.
-const SSET_C={details:'#4f7cff',dates:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',privacy:'#e0912b',email:'#e0508f'};
+const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',privacy:'#e0912b',email:'#e0508f'};
 // open: a fixed open map (New poll), so the open state isn't kept in P.
 function sset(k,icon,title,body,extra='',open=null){
   const o=open||P.setOpen||(P.setOpen={details:true});
   return `<details class="section sset" ${open?'data-nset':'data-sset'}="${k}"${o[k]?' open':''}><summary><span class="sic" style="--c:${SSET_C[k]||'var(--accent)'}">${ICON[icon]}</span><span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
 }
 document.addEventListener('toggle',e=>{ const k=e.target.dataset&&e.target.dataset.sset; if(k) (P.setOpen||(P.setOpen={}))[k]=e.target.open; },true);
+// Settings → Schedule for new rounds (series): when a round opens and its reply-by, in days before it starts.
+function roundsSection(p){
+  return sset('rounds','repeat',t('Schedule for new rounds'),
+    `<div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil in the Rounds tab. To change how often it repeats, create a new series.'))}</div>`);
+}
 // Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
 function datesSection(){
   const i=inst(), open=i.status==='open';
@@ -6802,14 +6804,12 @@ document.addEventListener('change',e=>{
 });
 function wireAdmin(){
   if(P.atab==='people') loadParts();
-  const rf=$('rf'); if(rf) rf.onsubmit=async e=>{ e.preventDefault(); const err=$('rerr'); err.textContent='';
-    try{ await api('PATCH',`/polls/${P.id}`,{openDays:+$('s_open').value, deadlineDays:$('s_dld').value===''?null:+$('s_dld').value},headers());
-      toast(t('Schedule saved')); await loadPoll(false); }catch(ex){ err.textContent=ex.message; } };
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
+    if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
     if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
     // Settings → Dates edits the poll's single round; only sent when something there changed.
@@ -7623,7 +7623,7 @@ function germanText(){ return {
 "Anyone with the link can answer, no account needed.": "Alle mit dem Link können antworten, ohne Konto.",
 "Anything people should know": "Was die Leute wissen sollten",
 "Anything that applies just to this date": "Alles, was nur für diesen Tag gilt",
-"Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.": "Gilt für Runden, die ab jetzt öffnen. Die Daten einer bestehenden Runde änderst du mit dem Stift oben. Um die Wiederholung zu ändern, erstelle eine neue Serie.",
+"Applies to rounds opened from now on. To change the dates of an existing round, use the pencil in the Rounds tab. To change how often it repeats, create a new series.": "Gilt für Runden, die ab jetzt öffnen. Die Daten einer bestehenden Runde änderst du mit dem Stift im Tab Runden. Um die Wiederholung zu ändern, erstelle eine neue Serie.",
 "Apply": "Anwenden",
 "Ask about whole days, or let people paint the exact hours they're free.": "Frag nach ganzen Tagen oder lass die Leute genau die Stunden markieren, in denen sie frei sind.",
 "At most 200 addresses at once": "Höchstens 200 Adressen auf einmal",
@@ -8174,7 +8174,6 @@ function germanText(){ return {
 "All rounds": "Alle Runden",
 "Save": "Speichern",
 "Save profile": "Profil speichern",
-"Save schedule": "Zeitplan speichern",
 "Save this link on my account instead": "Stattdessen diesen Link in meinem Konto speichern",
 "Save your calendar’s iCal link to fill in polls from it with one click. Add it from <i>From calendar…</i> on any poll you answer.": "Speichere den iCal-Link deines Kalenders, um Umfragen mit einem Klick auszufüllen. Füg ihn über <i>Aus Kalender…</i> in einer Umfrage hinzu, die du beantwortest.",
 "Save<span class=\"bl\"> settings</span>": "Speichern",
@@ -8185,7 +8184,6 @@ function germanText(){ return {
 "Saved. To change it later, open the poll here or enter the same name on any device, then press <b>Update</b>.": "Gespeichert. Um sie später zu ändern, öffne die Umfrage hier oder gib auf einem beliebigen Gerät denselben Namen ein und tippe dann auf <b>Aktualisieren</b>.",
 "Schedule": "Termin anlegen",
 "Schedule for new rounds": "Zeitplan für neue Runden",
-"Schedule saved": "Zeitplan gespeichert",
 "Schedule the meeting": "Termin festlegen",
 "Scheduled": "Geplant",
 "Scheduled meetings": "Geplante Termine",
