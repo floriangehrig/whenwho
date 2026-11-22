@@ -574,7 +574,7 @@
   .sc{font-weight:700;min-width:48px;text-align:center;font-size:12.5px;padding:3px 8px;border-radius:999px;background:var(--yes-bg);color:var(--yes-dark);font-variant-numeric:tabular-nums}
   .comments .c{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
   .comments .c:first-of-type{border-top:0}
-  /* ---------- availability workspace (My answer / Everyone views in one card) ---------- */
+  /* ---------- availability workspace (My answer / Overview views in one card) ---------- */
   .ws{padding-top:14px}
   .ws-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
   .ws-h>h2{flex:1;min-width:0}
@@ -2000,6 +2000,8 @@ Object.assign(ICON,{
   check:svgI('<path d="m4.5 12.5 5 5 10-11"/>'),
   monitor:svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   x:svgI('<path d="M6 6l12 12M18 6 6 18"/>'),
+  undo:svgI('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
+  redo:svgI('<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>'),
   bell:svgI('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2zM10 21h4"/>'),
   search:svgI('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'),
   upload:svgI('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
@@ -3416,7 +3418,7 @@ async function loadPoll(first){
   }
   P.iid = inst().id;
   if(P.mineFor!==P.iid){
-    P.mineFor=P.iid; P.myVotes=[]; P.qAddWas=new Set(); P.qedit=null; qfReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.hintOff=new Set(); P.hddOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
+    P.mineFor=P.iid; P.myVotes=[]; P.qAddWas=new Set(); P.qedit=null; qfReset(); histReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.hintOff=new Set(); P.hddOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
     const me=P.data.me; // signed in: the answer belongs to the account
     P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
     P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
@@ -3527,6 +3529,57 @@ function changed(){
   if(!editable()) return;
   P.dirty=true; saveBar();
 }
+// Undo / redo: two histories, My answer ('ans': marks + Quick fill layers) and the Meetings planner ('plan': drafts).
+// Each keeps the last committed snapshot (JSON); histTick() runs on every renderBody() and pushes it to the undo
+// stack when the state has changed since, so every edit path (painting, Clear, Quick fill, AI, Suggest …) is covered.
+const HIST={ans:null, plan:null}, HIST_MAX=50;
+const MODK=/Mac|iP(hone|ad|od)/.test(navigator.platform||'')?'⌘':'Ctrl+';
+function histSnap(kind){
+  if(kind==='ans') return JSON.stringify({e:P.mine.entries, qb:P.qfBase, qo:P.qfOver, ql:P.qfLast, qa:P.qfApplied, qr:PAT.qf?PAT.qf.rules||null:null, qf:P.qfFor});
+  return JSON.stringify({d:P.drafts||[], sd:P.sugDates&&P.sugDates.poll===P.id?[...P.sugDates.set]:null});
+}
+function histTick(kind){
+  if(!P.data||!P.mine||!P.iid) return null;
+  const key=P.id+':'+P.iid, s=histSnap(kind); let h=HIST[kind];
+  if(!h||h.for!==key) return HIST[kind]={for:key, cur:s, un:[], re:[]};
+  if(s!==h.cur){ h.un.push(h.cur); if(h.un.length>HIST_MAX) h.un.shift(); h.re=[]; h.cur=s; }
+  return h;
+}
+const histCan=(kind,dir)=>{ const h=HIST[kind]; return !!(h&&h.for===P.id+':'+P.iid&&(dir<0?h.un:h.re).length); };
+function histRestore(kind,s){
+  const o=JSON.parse(s);
+  if(kind==='ans'){
+    P.mine.entries=o.e||{}; P.qfBase=o.qb; P.qfOver=o.qo; P.qfLast=o.ql; P.qfApplied=o.qa; P.qfFor=o.qf;
+    if(PAT.qf){ PAT.qf.rules=o.qr?o.qr:[]; PAT.qf.editRef=null; }
+    P.aiUndo=null; changed();
+  } else {
+    P.drafts=o.d||[]; P.drafts.forEach(x=>{ if(x.key>draftSeq) draftSeq=x.key; });
+    P.sugDates=o.sd?{poll:P.id,set:new Set(o.sd)}:null; P.sugAiUndo=null;
+  }
+}
+function histStep(kind,dir){
+  const h=histTick(kind); if(!h) return false;
+  if(kind==='ans'&&!editable()) return false;
+  const from=dir<0?h.un:h.re, to=dir<0?h.re:h.un;
+  if(!from.length){ toast(dir<0?t('Nothing to undo'):t('Nothing to redo')); return true; }
+  to.push(h.cur); h.cur=from.pop(); histRestore(kind,h.cur); renderBody();
+  toast(dir<0?t('Undone'):t('Redone')); return true;
+}
+function histReset(){ HIST.ans=HIST.plan=null; }
+function histBtns(kind){
+  const b=(dir,icon,label,keys)=>`<button type="button" class="btn sm withic ib" data-hist="${kind}:${dir}" title="${esc(label+' ('+keys+')')}" aria-label="${esc(label)}" ${histCan(kind,dir)?'':'disabled'}>${ICON[icon]}</button>`;
+  return b(-1,'undo',t('Undo'),MODK+'Z')+b(1,'redo',t('Redo'),MODK+(MODK==='⌘'?'⇧Z':'Y'));
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-hist]'); if(!b) return; const [k,d]=b.dataset.hist.split(':'); histStep(k,+d); });
+document.addEventListener('keydown',e=>{
+  if(!(e.metaKey||e.ctrlKey)||e.altKey||e.defaultPrevented||!P.data) return;
+  const key=(e.key||'').toLowerCase(); let dir=0;
+  if(key==='z') dir=e.shiftKey?1:-1; else if(key==='y'&&e.ctrlKey&&!e.metaKey) dir=1; else return;
+  const tg=e.target; if(tg&&(tg.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))) return; // text fields keep their own undo
+  if(document.querySelector('dialog[open],.pigeon-ov,.dmenu')||chatState().open) return;
+  const kind=P.tab==='mine'?'ans':(P.atab==='meetings'&&$('mplan')&&msub()==='plan')?'plan':null; if(!kind) return;
+  if(histStep(kind,dir)) e.preventDefault();
+});
 async function save(retried){
   if(P.saving||!P.dirty) return false;
   if(!P.mine.name.trim()){ if(P.tab!=='mine'){ P.tab='mine'; renderBody(); } saveBar('Enter your name first'); const nm=$('name'); if(nm) nm.focus(); return false; }
@@ -3586,7 +3639,7 @@ async function recallMine(){
     P.myResp={id:r.responseId,editKey:null,name:r.name};
     const a=await api('GET',`/polls/${P.id}/responses/${r.responseId}`,null,headers());
     store.set(respKey(),P.myResp); P.dirty=false;
-    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:cleanEntries(a.entries),extra:a.extra||{}}; qSaved(); qfReset(); qfRestore(a.fill);
+    P.mine={name:a.name,email:a.email||'',comment:a.comment,entries:cleanEntries(a.entries),extra:a.extra||{}}; qSaved(); qfReset(); qfRestore(a.fill); histReset();
     render(); toast(t('Your answer is loaded'));
   }catch(e){ P.myResp=null; toast(e.message); }
 }
@@ -3616,7 +3669,7 @@ function render(){
     <div class="card ws">
       <div class="ws-h"><h2>${t('Answers')}</h2><div class="seg ws-views" role="tablist" aria-label="${t('View')}">
         <button role="tab" data-tab="mine" ${editable()?'':'disabled'}><span class="segic">${ICON.edit}</span>${t('My answer')}</button>
-        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Everyone')}</button></div></div>
+        <button role="tab" data-tab="group"><span class="segic">${ICON.users}</span>${t('Overview')}</button></div></div>
       ${editable()?`<div class="ws-me asec" id="wsme">${meFields(d,p)}</div>`
         :inst().status==='open'&&inviteLock()?`<div class="notice withic me-lock">${ICON.lock}<span class="grow minw">${inviteLock()==='signin'?t('Only invited people can answer. Sign in with the email address you were invited with.'):t('Only invited people can answer, and {email} isn’t invited. Ask the organiser to add you.',{email:esc(ME.user.email)})}</span>${inviteLock()==='signin'?`<button type="button" class="btn sm primary" data-opensignin>${t('Sign in')}</button>`:''}</div>`
         :`<div class="notice warn withic">${ICON.lock}<span>${t('Closed · answers for {round} are final.',{round:esc(instLabel(i))})}</span></div>`}
@@ -3701,7 +3754,7 @@ function shareRow(p,i){
     <button type="button" class="qb pshare-copy" data-copy="${esc(link)}" title="${t('Copy link')}" aria-label="${t('Copy link')}">${ICON.copy}</button>${shareBtns(info,true)}</div>`;
 }
 function renderBody(){
-  const b=$('body'); if(!b) return; closeDraftMenu();
+  const b=$('body'); if(!b) return; closeDraftMenu(); histTick('ans'); histTick('plan');
   // iOS Safari has no scroll anchoring: rebuilding the panel briefly shortens the page and Safari scrolls up
   // (often to the top). Hold the old height until the next frame and put the scroll position back.
   const y0=window.scrollY, h0=b.offsetHeight; if(h0) b.style.minHeight=h0+'px';
@@ -3870,7 +3923,7 @@ function renderMeetings(listOnly){
   const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
   ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
   if(!ms.length&&!props.length){ P.msel=null;
-    el.innerHTML=`<div class="mcard">${qSection()}<div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Everyone.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
+    el.innerHTML=`<div class="mcard">${qSection()}<div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Overview.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
     qWire(el); return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   // Select and Collapse act on the whole section: vote options and scheduled meetings.
@@ -4368,7 +4421,7 @@ function renderMine(el){
   else { wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); real=wks[P.week].filter(Boolean);
     if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`; }
-  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
+  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${editable()?histBtns('ans'):''}${aiIc}${qfIc}${clrIc}`,'tbar')}${aiFill()}${quickFill()}`;
   h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
   h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
   // Legend above the grid: colours, then only the markers this view can show right now.
@@ -5364,7 +5417,7 @@ function renderPlan(el){
   const S={}, who=whoDropdown(); d.dates.forEach(k=>S[k]=stats(k));
   const how=slotsOn?(TOUCH?t('<b>Press and hold, then drag down a day</b> to add a meeting (a tap adds one hour).'):t('<b>Drag down a day</b> to add a meeting.'))+' '+t('Tap a day name for an all-day one (hold and drag across day names for several days). Drafts may overlap: tap one to remove it or add another. Darker = more of them are free.')
     :(TOUCH?t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>press and hold, then drag</b> across days for one meeting over several days (a trip, an offsite). Darker = more of them are free.'):t('<b>Tap a day</b> to add or remove an all-day meeting, or <b>drag across days</b> for one meeting over several days (a trip, an offsite). Darker = more of them are free.'));
-  h+=`<div class="asec">${secH('cal',t('Pick the times'),{tip:(tot?how+' ':'')+t('Each meeting invites the people selected when you add it.'),extra:tot?sugAiBtn()+sugButton():''})}`
+  h+=`<div class="asec">${secH('cal',t('Pick the times'),{tip:(tot?how+' ':'')+t('Each meeting invites the people selected when you add it.'),extra:tot?histBtns('plan')+sugAiBtn()+sugButton():''})}`
     +(tot?sugAi()+sugPanel()+renderPlanner(S,who):vrow('',who)+`<div class="empty-v"><b>${t('Nobody selected.')}</b><span class="muted small">${t('Pick at least one person to see when they’re free.')}</span></div>`)+'</div>';
   h+=`<div class="asec">${secH('edit',t('Details'),{count:nd||null,tip:nd?'':t('Meetings you add above show up here. Set the details, then create them in one go.'),extra:nd?ib('trash',t('Clear all'),'data-cleardrafts','sm ghost danger'):''})}${draftTray()}</div>`;
   el.innerHTML=h; wireWho(); wirePlanner();
@@ -7134,6 +7187,10 @@ function germanText(){ return {
 "e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th": "z. B. werktags ab 18 Uhr, Samstagvormittag vielleicht, nicht am 12.",
 "Undo": "Rückgängig",
 "Undone": "Rückgängig gemacht",
+"Redo": "Wiederholen",
+"Redone": "Wiederhergestellt",
+"Nothing to undo": "Nichts rückgängig zu machen",
+"Nothing to redo": "Nichts zu wiederholen",
 "Reading…": "Wird gelesen…",
 "Filling from text isn’t available here": "Ausfüllen per Text ist hier nicht verfügbar",
 "The text helper is busy or used up for today. Try again later.": "Die Texthilfe ist ausgelastet oder für heute aufgebraucht. Versuch es später noch einmal.",
@@ -7574,7 +7631,7 @@ function germanText(){ return {
 "Hide where the others are available": "Ausblenden, wann die anderen verfügbar sind",
 "Hours": "Stunden",
 "Plan new": "Neu planen",
-"Plan them, or ★ a day under Everyone.": "Plane sie, oder markiere einen Tag unter Alle mit ★.",
+"Plan them, or ★ a day under Overview.": "Plane sie, oder markiere einen Tag unter Übersicht mit ★.",
 "Answer with": "Antwort mit",
 "Days and time slots": "Tage und Zeitfenster",
 "Email required": "E-Mail Pflicht",
@@ -7813,7 +7870,7 @@ function germanText(){ return {
 "Pigeon: Gadgetroid, CC BY-SA 3.0 (edited)": "Taube: Gadgetroid, CC BY-SA 3.0 (bearbeitet)",
 "Places from OpenStreetMap (via Photon)": "Orte von OpenStreetMap (über Photon)",
 "Plan new meetings": "Neue Termine planen",
-"Plan them below, or ★ a day under Everyone.": "Plane sie unten oder markiere unter „Alle“ einen Tag mit ★.",
+"Plan them below, or ★ a day under Overview.": "Plane sie unten oder markiere unter „Übersicht“ einen Tag mit ★.",
 "Plans cancelled. Rain check?": "Abgesagt. Ein andermal?",
 "Please answer by {date}.": "Bitte antworte bis {date}.",
 "Please complete the “I’m human” check": "Bitte bestätige, dass du ein Mensch bist",
