@@ -1424,6 +1424,11 @@
   .tbar .seg.brush button{height:30px;min-width:30px;justify-content:center;padding:0 10px}
   .tbar .seg.brush .dot{margin:0}
   .brush .segl{display:inline-flex;align-items:center;padding:0 4px 0 6px;color:var(--muted)} .brush .segl svg{width:16px;height:16px}
+  .seg.brush button.amode{min-width:26px;width:26px;padding:0;color:var(--muted)} .seg.brush button.amode svg{width:15px;height:15px}
+  .seg.brush button.amode.on{color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+  .brush .asep{width:1px;align-self:stretch;margin:6px 3px;background:var(--line-strong)}
+  #dgrid .day.da,#grid .slot.da{box-shadow:inset 0 0 0 2px var(--accent);outline:1.5px dashed var(--accent);outline-offset:1px}
+  #dgrid .day.dp:not(.da),#grid .slot.dp:not(.da){box-shadow:inset 0 0 0 1.5px var(--accent)}
   .brush .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong)} .brush button.on .dot.gry{box-shadow:inset 0 0 0 1.5px var(--line-strong),0 0 0 2px var(--card),0 0 0 4px var(--muted)}
   .legend span.gry::before{box-shadow:inset 0 0 0 1.5px var(--line-strong)} .legend span.drf::before{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 45%,transparent)}
   .badgeb{position:relative;gap:6px} .badgeb svg{width:16px;height:16px}
@@ -1946,6 +1951,7 @@ Object.assign(ICON,{
   grow:svgI('<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>'),
   zap:svgI('<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12l1-8z"/>'),
   spark:svgI('<path d="M11 3.5l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>'),
+  tap:svgI('<path d="M9 11.5V5.2a1.7 1.7 0 0 1 3.4 0v5.3"/><path d="M12.4 10.2a1.7 1.7 0 0 1 3.4 0v1.3M15.8 11a1.7 1.7 0 0 1 3.4 0v3.5c0 4-2.6 6.5-6.2 6.5h-1c-2 0-3.3-.8-4.5-2.4L4.4 15a1.6 1.6 0 0 1 2.5-2L9 15"/><path d="M5 4.5 3.5 3M14.5 4.5 16 3M9.8 1.5V.8" opacity=".7"/>'),
   brush:svgI('<path d="M19.5 3.5a2.1 2.1 0 0 1 3 3L13 16l-3-3z"/><path d="M10 13c-2.2 0-3.8 1.6-3.8 3.8 0 1.5-1 2.5-2.7 2.9 1.1 1.4 2.8 2.3 4.7 2.3 3 0 5-2.1 5-5z"/>'),
   user:svgI('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
@@ -3243,7 +3249,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, dirty:false, saving:false,
-  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
+  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), arange:!!store.get('arange',0), aanchor:null, panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -3992,7 +3998,8 @@ function renderMine(el){
   const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
-  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}"><span class="segl" title="${t('Brush')}" aria-hidden="true">${ICON.brush}</span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
+  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','brush',t('Paint: tap or drag')],['1','tap',P.mode==='slots'?t('One range: tap the first and the last hour'):t('One range: tap the first and the last day')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
+      return `<button type="button" class="amode${on?' on':''}" data-arange="${v}" aria-pressed="${on}" title="${lb}" aria-label="${lb}">${ICON[ic]}</button>`; }).join('')}<span class="asep" aria-hidden="true"></span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
   const bzOn=showBusy(), bzMine=!!(ME.user&&ME.user.calendarsAuto&&editable()), bzPpl=P.data.busy||[];
@@ -4579,11 +4586,22 @@ function wireDays(){
   const apply=el=>{ const k=el.dataset.day; if(touched.has(k)) return; touched.add(k);
     setEntry(k,paint==='x'?null:paint); const st=statusOf(P.mine.entries[k],k);
     el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls); };
-  const end=()=>{ if(paint===null) return; paint=null; touched=new Set(); changed(); renderBody(); };
+  // One range (P.arange): a tap marks the first day (P.aanchor), the next tap paints every poll day up to there. Dragging still paints.
+  let pend=null;
+  const end=()=>{ if(pend){ const k=pend.dataset.day, a=P.aanchor; pend=null;
+      if(!a){ P.aanchor={k}; renderBody(); toast(t('Now tap the last day')); return; }
+      P.aanchor=null; const [lo,hi]=a.k<k?[a.k,k]:[k,a.k];
+      dates.filter(x=>x>=lo&&x<=hi).forEach(x=>setEntry(x,P.brush==='x'?null:P.brush)); changed(); renderBody(); return; }
+    if(paint===null) return; paint=null; touched=new Set(); changed(); renderBody(); };
+  const begin=el=>{ const v=P.mine.entries[el.dataset.day]; paint=(P.brush!=='x'&&v===P.brush)?'x':P.brush; touched=new Set(); last=el.dataset.day; apply(el); };
   gridGestures(grid,cellAt,{
-    start:el=>{ const v=P.mine.entries[el.dataset.day]; paint=(P.brush!=='x'&&v===P.brush)?'x':P.brush; touched=new Set(); last=el.dataset.day; apply(el); },
-    move:el=>{ if(paint!==null) span(el); },
-    end, cancel:end });
+    start:el=>{ if(P.arange){ pend=el; return; } begin(el); },
+    move:el=>{ if(pend){ if(el===pend) return; const p=pend; pend=null; P.aanchor=null; begin(p); } if(paint!==null) span(el); },
+    end, cancel:()=>{ pend=null; end(); } });
+  if(P.arange&&P.aanchor){ const a=cellOf(P.aanchor.k); if(a) a.classList.add('da');
+    grid.addEventListener('pointermove',e=>{ if(e.pointerType!=='mouse'||!P.aanchor||paint!==null) return; const el=cellAt(e.clientX,e.clientY); if(!el) return;
+      const [lo,hi]=P.aanchor.k<el.dataset.day?[P.aanchor.k,el.dataset.day]:[el.dataset.day,P.aanchor.k];
+      grid.querySelectorAll('.day[data-day]').forEach(c=>c.classList.toggle('dp',c.dataset.day>=lo&&c.dataset.day<=hi)); }); }
 }
 function wireGrid(){
   const grid=$('grid'); if(!grid) return;
@@ -4593,11 +4611,23 @@ function wireGrid(){
   const apply=el=>{ const k=el.dataset.k, hr=+el.dataset.h; if(!touched.has(k)) touched.set(k,hourMap(P.mine.entries[k],k));
     const map=touched.get(k); if(paint==='x') map.delete(hr); else map.set(hr,paint);
     ['y','i','m'].forEach(s=>el.classList.toggle('s'+s,paint===s)); };
-  const end=()=>{ if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map,k))); touched=new Map(); changed(); renderBody(); };
+  // One range (P.arange): a tap marks the first hour (P.aanchor), the next tap paints one continuous span up to there
+  // (within the poll's hours, across days). Dragging still paints.
+  let pend=null;
+  const end=()=>{ if(pend){ const b={k:pend.dataset.k,h:+pend.dataset.h}, a=P.aanchor; pend=null;
+      if(!a){ P.aanchor=b; renderBody(); toast(t('Now tap the last hour')); return; }
+      P.aanchor=null; spanCells(a,b).forEach(({k,sel})=>{ const map=hourMap(P.mine.entries[k],k); sel.forEach(hr=>{ if(P.brush==='x') map.delete(hr); else map.set(hr,P.brush); }); setEntry(k,fromMap(map,k)); });
+      changed(); renderBody(); return; }
+    if(paint===null) return; paint=null; touched.forEach((map,k)=>setEntry(k,fromMap(map,k))); touched=new Map(); changed(); renderBody(); };
+  const begin=el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); };
   gridGestures(grid,cellAt,{
-    start:el=>{ paint=(P.brush!=='x'&&stateOf(el)===P.brush)?'x':P.brush; touched=new Map(); apply(el); },
-    move:el=>{ if(paint!==null) apply(el); },
-    end, cancel:end });
+    start:el=>{ if(P.arange){ pend=el; return; } begin(el); },
+    move:el=>{ if(pend){ if(el===pend) return; const p=pend; pend=null; P.aanchor=null; begin(p); } if(paint!==null) apply(el); },
+    end, cancel:()=>{ pend=null; end(); } });
+  if(P.arange&&P.aanchor){ const a=grid.querySelector(`.slot[data-k="${P.aanchor.k}"][data-h="${P.aanchor.h}"]`); if(a) a.classList.add('da');
+    grid.addEventListener('pointermove',e=>{ if(e.pointerType!=='mouse'||!P.aanchor||paint!==null) return; const el=cellAt(e.clientX,e.clientY); if(!el) return;
+      const cells=new Set(); spanCells(P.aanchor,{k:el.dataset.k,h:+el.dataset.h}).forEach(({k,sel})=>sel.forEach(hr=>cells.add(k+'|'+hr)));
+      grid.querySelectorAll('.slot[data-k]').forEach(c=>c.classList.toggle('dp',cells.has(c.dataset.k+'|'+c.dataset.h))); }); }
   // Tap a day's header to give every hour of that day the chosen colour (again with the same colour, or grey, clears the day).
   const fill=k=>{ if(!editable()) return; const H=hours(k), map=hourMap(P.mine.entries[k],k);
     const clear=P.brush==='x'||H.every(hr=>map.get(hr)===P.brush);
@@ -4869,12 +4899,15 @@ function pickDays(a,b){
 // (hours(k), day patterns included). Over several days, days covered completely become all-day meetings
 // (consecutive ones joined into a date range); the rest become one timed meeting per block of allowed hours.
 // Returns the drafts and the covered cells ('k|h', for the preview) and full days.
-function blockPlan(a,b){
+// The poll's hours from cell a to cell b (both included, either order) as one continuous span: [{k, H (the day's hours), sel}].
+function spanCells(a,b){
   if(a.k>b.k||(a.k===b.k&&a.h>b.h)) [a,b]=[b,a];
-  const days=P.data.dates.filter(k=>k>=a.k&&k<=b.k), multi=a.k!==b.k, drafts=[], cells=new Set(), full=new Set();
+  return P.data.dates.filter(k=>k>=a.k&&k<=b.k).map(k=>{ const H=hours(k); return {k,H,sel:H.filter(h=>(k!==a.k||h>=a.h)&&(k!==b.k||h<=b.h))}; });
+}
+function blockPlan(a,b){
+  const multi=a.k!==b.k, drafts=[], cells=new Set(), full=new Set();
   let run=null; const flush=()=>{ if(run){ drafts.push({date:run.a,allDay:true,endDate:run.b}); run=null; } };
-  days.forEach(k=>{
-    const H=hours(k), sel=H.filter(h=>(k!==a.k||h>=a.h)&&(k!==b.k||h<=b.h));
+  spanCells(a,b).forEach(({k,H,sel})=>{
     sel.forEach(h=>cells.add(k+'|'+h));
     if(multi&&!hourMode()&&sel.length&&sel.length===H.length){ full.add(k); if(run&&addDaysL(run.b,1)===k) run.b=k; else { flush(); run={a:k,b:k}; } return; }
     flush();
@@ -6212,7 +6245,7 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const tg=e.target.closest('[data-prange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
+  const tg=e.target.closest('[data-prange],[data-arange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
   if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setPollTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
@@ -6254,9 +6287,10 @@ document.addEventListener('click',async e=>{
   if(ds.cleardrafts!==undefined){ P.drafts=[]; renderBody(); return; }
   if(ds.suggest!==undefined){ suggestDrafts(); return; }
   if(ds.savedrafts!==undefined){ saveDrafts(tg); return; }
-  if(ds.tab){ if(tg.disabled) return; P.tab=ds.tab; store.set('view:'+P.id,P.tab); renderBody(); return; }
-  if(ds.mode){ P.mode=ds.mode; renderBody(); return; }
+  if(ds.tab){ if(tg.disabled) return; P.tab=ds.tab; P.aanchor=null; store.set('view:'+P.id,P.tab); renderBody(); return; }
+  if(ds.mode){ P.mode=ds.mode; P.aanchor=null; renderBody(); return; }
   if(ds.brush){ P.brush=ds.brush; renderBody(); return; }
+  if(ds.arange){ P.arange=ds.arange==='1'; P.aanchor=null; store.set('arange',P.arange?1:0); renderBody(); return; }
   if(ds.wk){ P.week+=+ds.wk; renderBody(); return; }
   if(ds.mon){ P.month+=+ds.mon; renderBody(); return; }
   if(ds.schedule){ scheduleDay(ds.schedule); return; }
@@ -7504,6 +7538,9 @@ function germanText(){ return {
 "Suggest": "Vorschlagen",
 "Off": "Aus",
 "Options": "Optionen",
+"Paint: tap or drag": "Malen: tippen oder ziehen",
+"One range: tap the first and the last day": "Ein Bereich: ersten und letzten Tag antippen",
+"One range: tap the first and the last hour": "Ein Bereich: erste und letzte Stunde antippen",
 "Close multi-edit": "Mehrfachbearbeitung schließen",
 "hours apart": "Std. Abstand",
 "Hours between start times": "Stunden zwischen den Startzeiten",
