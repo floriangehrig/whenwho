@@ -115,7 +115,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
   (no mic button of our own). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
-- **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 30): `data` = the New poll body without
+- **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 50): `data` = the New poll body without
   dates or password (`days` = length of a one-off range) plus `questions` (links reset by `presetQuestions`: meetings → whole poll,
   after-meeting ones kept, `people` → everyone). `GET|POST /api/me/presets` (POST with a name you already use replaces it),
   `PATCH|DELETE /api/me/presets/:id` (PATCH `{ folder }` moves one to another group). `POST /api/polls` takes `questions` for the first round.
@@ -124,6 +124,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (`prsOpen`, dialog `#psdlg`, classes `ps-*`: search, group chips, collapsible groups in localStorage `prsc`, tap a row to preview its
   questions, Use / double-click / Enter; ⋯ Rename / Move to group / Delete on mine) and **Save as preset** (name + group); Settings has a
   Save as preset row (`presetFromPoll`).
+  The Save dialog has an **Include questions** switch (off = settings only); the picker's **Without questions** uses a preset's settings only.
+  **Question presets**: same table, `data = { scope: 'questions', questions, icon?, folder? }` (no settings; `presetData` validates only
+  the questions). Saved from a questionnaire's or question's ⋯ menu or Ask ▾ → Save all as preset (`qPresetData`); Ask ▾ → From a preset
+  opens the picker with `ctx.mode = 'questions'` (every preset with questions, built-in too) and `qPresetAdd` adds them with fresh ids
+  (`qFromPreset`). In poll mode the picker hides question presets.
 - **Your data** (Account page, GDPR rights): `GET /api/me/export` = JSON copy of everything about the account (secret columns
   like `*_hash` / tokens stripped; owned polls in full, polls answered by title); `POST /api/me/delete` emails a code (`login_codes` key
   `delete:<user id>`, can't sign in), `POST /api/me/delete/verify` `{ code }` deletes the account, its owned polls (with everyone's answers
