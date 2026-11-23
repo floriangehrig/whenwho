@@ -708,6 +708,8 @@
   /* questions tab: cards like meetings (type tile | title + icon buttons, meta, body) */
   .ws-h .qws-add,.ws-h .qws-ai{margin-left:auto} .ws-h .qws-ai+.qws-add{margin-left:0} .ws-h>.tip{position:static}
   .qlist{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
+  .qhide{display:flex;align-items:center;gap:10px;margin:4px 0 16px;padding:10px 14px;border-radius:12px;background:var(--sunken);border:1px solid var(--line);color:var(--muted);font-size:13.5px;line-height:1.4}
+  .qhide-ic{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;background:var(--accent-weak);color:var(--accent)} .qhide-ic svg{width:15px;height:15px}
   .qlist.compact{gap:6px}
   .qcard{position:relative;transition:box-shadow .3s} .qcard.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}
   .qcard.closed .qopts,.qcard.closed .qyn{opacity:.7}
@@ -4740,7 +4742,7 @@ function renderQuestions(fresh){
   const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.qname??(P.mine.name||''))}"></label>${d.poll.requireEmail?`<label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" placeholder="${t('Email (required)')}" aria-label="${t('Email (required, only the organiser sees it)')}" value="${esc(P.qemail??(P.mine.email||''))}"></label>`:''}</div></div>`
     :fill&&(P.form&&P.form.name||P.mine.name)?`<div class="qas muted small">${ICON.user}<span>${t('Answering as {name}',{name:esc((P.form&&P.form.name)||P.mine.name)})}</span></div>`:'';
   const bar=fill&&mayFill?`<div class="savebar wsfoot qsave"><span class="sstat ${P.form.saving?'':P.form.dirty?'dirty':P.form.id?'ok':'idle'}">${P.form.id&&!P.form.dirty?ICON.check:'<i class="sdot"></i>'}<span>${P.form.saving?t('Sending…'):P.form.dirty?(P.form.id?t('Unsent changes'):t('Not sent')):P.form.id?t('Saved'):t('Not answered')}</span></span>${P.form.id?ib('trash',t('Remove my answers'),'data-qdelmine','ghost danger'):''}<button type="button" class="btn primary withic sendbtn" data-qsend${P.form.saving||!P.form.dirty?' disabled':''}>${ICON.send}<span>${P.form.id?t('Update'):t('Send')}</span></button></div>`:'';
-  const hide=!fill&&!d.draft&&!d.form?.rows?`<div class="notice">${t('Only the organiser can see everyone’s answers.')}</div>`:'';
+  const hide=!fill&&!d.draft&&!d.form?.rows?`<div class="qhide"><span class="qhide-ic">${ICON.lock}</span><span>${t('Only the organiser can see everyone’s answers.')}</span></div>`:'';
   const tools=!fill?`<div class="msec-h"><button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${P.qfold?t('Show details'):t('Compact view')}" aria-label="${P.qfold?t('Show details'):t('Compact view')}">${ICON[P.qfold?'grow':'shrink']}</button></div>`:'<div class="qgap"></div>';
   // Questions without a questionnaire first, then the questionnaires with theirs (new questions open where they'll land).
   const gs=qGroups(), inG=new Set(gs.map(g=>g.id)), E=P.qedit;
