@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-k2mwHfVrQRiuzz/aC0R36o6DpXDxQQIogP2yjRNc1po=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-mMtSOqcI1SrEM05juLp2C6SjwuC21jBD9QVz8On8zOk=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1201,7 +1201,7 @@ function groupInput(b, partial, user) {
   return out;
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
-const MAX_PRESETS = 30, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
+const MAX_PRESETS = 50, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
   'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
@@ -1216,6 +1216,16 @@ function presetQuestions(list) {
 }
 function presetData(d) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) throw new HttpError(400, 'Invalid preset');
+  if (d.scope === 'questions') { // a question preset: just questions (a questionnaire, one question or a round's set)
+    const q = { scope: 'questions' }, ic = emojiIcon(d.icon, 'Icon');
+    if (ic) q.icon = ic;
+    if (d.folder !== undefined && d.folder !== null) { const f = str(d.folder, 40, 'Group').trim(); if (f) q.folder = f; }
+    q.questions = presetQuestions(d.questions);
+    if (!q.questions.length) throw new HttpError(400, 'A question preset needs at least one question');
+    const s = JSON.stringify(q);
+    if (s.length > 64000) throw new HttpError(413, 'This preset is too large');
+    return s;
+  }
   const out = {};
   for (const k of PRESET_KEYS) if (d[k] !== undefined && d[k] !== null) out[k] = d[k];
   // Same checks as creating a poll (dates aren't part of a preset).
