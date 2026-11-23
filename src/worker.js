@@ -2506,7 +2506,8 @@ async function mailQuota(env, poll, count) {
   await env.DB.prepare('INSERT INTO mail_log (user_id, n, at) VALUES (?, ?, ?)').bind(key, count, now()).run();
 }
 const ownerOf = (env, poll) => poll.owner_id ? env.DB.prepare('SELECT name, email FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
-async function sendMail(env, poll, { to, subject, text, attachments, quota = false, fromName, replyTo }) {
+// `html` (optional): the email's own body HTML (already escaped); without it the text is shown with an Open poll button on top.
+async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachments, quota = false, fromName, replyTo }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
   if (quota) await mailQuota(env, poll, list.length);
@@ -2517,8 +2518,8 @@ async function sendMail(env, poll, { to, subject, text, attachments, quota = fal
   const sender = fromName || (owner && owner.name) || poll.title;
   const ownerMail = (owner && owner.email) || poll.admin_email || '';
   const reply = replyTo || ownerMail;
-  const pollLink = (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
-  const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
+  const pollLink = bodyHtml ? null : (text.match(/https?:\/\/[^\s]+\?p=[^\s]+/) || [])[0];
+  const html = emailHtml(bodyHtml || `<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
     preheader: subject, button: pollLink ? { href: pollLink, label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
     site: siteUrl(env, ''), lang: langOf(poll.lang),
   });
@@ -2677,30 +2678,63 @@ async function inviteIds(env, url, poll, user, ids, opts) {
   if (!rows.length) return 0;
   return sendPollInvite(env, url, poll, user, [...new Set(rows.map((p) => p.mail_to.toLowerCase()))], rows.map((p) => p.id), opts);
 }
+// The invite / reminder email for a poll: says who asks, what for, which dates, what to do and by when, the organiser's
+// message and the poll's description, so it makes sense to someone who has never heard of when-who.
+function inviteMail(poll, inst, name, { again = false, message = '', link }) {
+  const de = poll.lang === 'de';
+  const who = name || (de ? 'Jemand' : 'Someone');
+  const title = poll.title;
+  const dates = inst ? periodText(poll, inst) : '';
+  const deadline = inst && inst.status === 'open' && inst.deadline ? fmtDay(inst.deadline.slice(0, 10), poll.lang) : '';
+  const L = de ? {
+    subject: again ? `Erinnerung: Wann hast du Zeit für „${title}“?` : `${who} lädt dich ein: Wann hast du Zeit für „${title}“?`,
+    intro: `${who} plant „${title}“ und sucht einen Termin, der für alle passt.`
+      + (again ? ' Du hast noch nicht geantwortet.' : '') + ' Bitte trag ein, an welchen Tagen und zu welchen Zeiten du Zeit hast. Das dauert etwa eine Minute.',
+    dates: 'Zeitraum', by: 'Bitte antworte bis', msg: `Nachricht von ${who}`, about: 'Worum es geht',
+    how: poll.invited_only ? 'Melde dich mit dieser E-Mail-Adresse an (wir schicken dir einen Code) und trag dann ein, wann du Zeit hast.'
+      : 'Öffne den Link und tippe die Tage an, an denen du Zeit hast. Du brauchst kein Konto.',
+    button: 'Eintragen, wann ich Zeit habe', orLink: 'Oder öffne diesen Link:',
+    foot: `when-who ist ein kostenloses Werkzeug, um einen Termin zu finden, der für eine Gruppe passt. Du bekommst diese E-Mail, weil ${name || 'jemand'} deine Adresse zu dieser Umfrage hinzugefügt hat. Antworte auf diese E-Mail, um ${name ? who : 'die Organisatorin oder den Organisator'} zu erreichen. Wenn du nicht teilnehmen möchtest, ignoriere sie einfach.`,
+  } : {
+    subject: again ? `Reminder: when are you free for “${title}”?` : `${who} invites you: when are you free for “${title}”?`,
+    intro: `${who} is planning “${title}” and wants to find a time that suits everyone.`
+      + (again ? " You haven't answered yet." : '') + " Please mark the days and times you're free. It takes about a minute.",
+    dates: 'Dates', by: 'Please answer by', msg: `Message from ${who}`, about: 'About this poll',
+    how: poll.invited_only ? "Sign in with this email address (we'll email you a code), then mark when you're free."
+      : "Open the link and tap the days you're free. You don't need an account.",
+    button: "Mark when I'm free", orLink: 'Or open this link:',
+    foot: `when-who is a free tool for finding a time that works for a group. You're getting this because ${name || 'someone'} added your address to this poll. Reply to this email to reach ${name ? who : 'the organiser'}. If you don't want to take part, just ignore it.`,
+  };
+  const facts = [dates && [L.dates, dates], deadline && [L.by, deadline]].filter(Boolean);
+  const text = [
+    L.intro, '',
+    ...facts.map(([k, v]) => `${k}: ${v}`), facts.length ? '' : null,
+    message ? `${L.msg}:\n${message}\n` : null,
+    poll.description ? `${L.about}:\n${poll.description}\n` : null,
+    L.how, link,
+  ].filter((x) => x !== null).join('\n') + `\n\n—\n${L.foot}`;
+  const box = (label, body, bg, border) => `<div style="margin:0 0 20px;padding:14px 16px;background:${bg};border-left:3px solid ${border};border-radius:8px">
+    <div style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#5B6578">${escHtml(label)}</div>
+    <div style="white-space:pre-wrap;color:#0F172A">${linkify(escHtml(body))}</div></div>`;
+  const html = `<h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:#0B1F3A">${poll.icon ? escHtml(poll.icon) + ' ' : ''}${escHtml(title)}</h1>
+    <p style="margin:0 0 16px;color:#334155">${escHtml(L.intro)}</p>
+    ${facts.length ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px">${facts.map(([k, v]) =>
+      `<tr><td style="padding:2px 12px 2px 0;color:#5B6578;white-space:nowrap;vertical-align:top">${escHtml(k)}</td><td style="padding:2px 0;font-weight:600;color:#0F172A">${escHtml(v)}</td></tr>`).join('')}</table>` : ''}
+    ${message ? box(L.msg, message, '#F1F5F9', '#94A3B8') : ''}
+    ${poll.description ? box(L.about, poll.description, '#E8EFFF', '#1F5EFF') : ''}
+    <p style="margin:0 0 16px;color:#334155">${escHtml(L.how)}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px"><tr><td style="border-radius:8px;background:#1F5EFF">
+      <a href="${escHtml(link)}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${escHtml(L.button)}</a></td></tr></table>
+    <p style="margin:0 0 24px;font-size:13px;color:#5B6578">${escHtml(L.orLink)} ${linkify(escHtml(link))}</p>
+    <p style="margin:0;padding-top:16px;border-top:1px solid #E2E8F0;font-size:13px;color:#5B6578">${escHtml(L.foot)}</p>`;
+  return { subject: L.subject, text, html };
+}
 // Sends the invite (or reminder) email to `emails` and marks participants `pids` as invited.
 async function sendPollInvite(env, url, poll, user, emails, pids, { again, message = '' }) {
   const inst = await latestInstance(env, poll.id);
-  const deadline = inst && inst.status === 'open' && inst.deadline ? inst.deadline.slice(0, 10) : null;
   const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
-  let text, subject;
-  if (poll.lang === 'de') {
-    const who = user.name || 'Jemand';
-    text = [message || (again ? `Eine Erinnerung: ${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.` : `${who} möchte wissen, wann du für „${poll.title}“ Zeit hast.`), '',
-      poll.description ? poll.description + '\n' : null,
-      poll.invited_only ? 'Melde dich mit dieser E-Mail-Adresse an und trag hier ein, wann du Zeit hast:' : 'Trag hier ein, wann du Zeit hast (kein Konto nötig):', link,
-      deadline ? `\nBitte antworte bis ${fmtDay(deadline, 'de')}.` : null].filter((x) => x !== null).join('\n')
-      + `\n\n—\nDu bekommst diese E-Mail, weil ${user.name || 'jemand'} dich zu einer Umfrage auf when-who eingeladen hat.`;
-    subject = `${again ? 'Erinnerung: Wann' : 'Wann'} hast du Zeit? ${poll.title}`;
-  } else {
-    const who = user.name || 'The organiser';
-    text = [message || (again ? `A reminder: ${who} would like to know when you're free for “${poll.title}”.` : `${who} would like to know when you're free for “${poll.title}”.`), '',
-      poll.description ? poll.description + '\n' : null,
-      poll.invited_only ? 'Sign in with this email address and mark your availability here:' : 'Mark your availability here (no account needed):', link,
-      deadline ? `\nPlease answer by ${fmtDay(deadline)}.` : null].filter((x) => x !== null).join('\n')
-      + `\n\n—\nYou're getting this because ${who} invited you to a poll on when-who.`;
-    subject = `${again ? 'Reminder: when' : 'When'} are you free? ${poll.title}`;
-  }
-  const sent = await sendMail(env, poll, { to: emails, subject, text, quota: true });
+  const { subject, text, html } = inviteMail(poll, inst, user.name, { again, message, link });
+  const sent = await sendMail(env, poll, { to: emails, subject, text, html, quota: true });
   if (pids.length) {
     const at = now();
     await env.DB.batch(pids.map((pid) => env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ?').bind(at, pid)));
