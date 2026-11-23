@@ -788,8 +788,13 @@
   .qdbar{height:8px;border-radius:4px;background:var(--sunken);overflow:hidden} .qdbar i{display:block;height:100%;background:#f2b01e;border-radius:4px}
   .qdrow-h{display:flex;align-items:center;gap:6px} .qdrow-h>svg{width:15px;height:15px;color:var(--accent)} .qdsel{margin:0;min-height:34px;padding-block:4px}
   .qseg button{display:inline-flex;align-items:center;gap:6px}
-  .qcard .macts{gap:0} .qgrip{cursor:grab;touch-action:none;color:var(--muted)} .qcard.drag{opacity:.55}
-  .qcard.dropb{box-shadow:0 -3px 0 var(--accent)} .qcard.dropa{box-shadow:0 3px 0 var(--accent)}
+  .qcard .macts{gap:0} .qgrip{cursor:grab;touch-action:none;color:var(--muted);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  /* drag to reorder: the lifted card follows the pointer, the others slide out of its way (qDrag / qFlip) */
+  .qcard.lift,.qgroup.lift{position:relative;z-index:6;box-shadow:0 14px 34px rgba(0,0,0,.2),0 2px 6px rgba(0,0,0,.08);border-radius:14px;transition:box-shadow .15s;will-change:transform}
+  .qcard.lift .qgrip,.qgroup.lift>.qg-h .qgrip{cursor:grabbing;color:var(--accent)}
+  .qgroup.lift{background:var(--card)!important}
+  body.qdragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
+  .qlist>.qnone:not(:only-child){display:none}
   .qmore{margin:0} .qmore>summary{list-style:none;cursor:pointer} .qmore>summary::after,.qmore>summary::-webkit-details-marker{display:none}
   .qmore>summary.qb{min-height:0;padding:0;border-color:transparent;background:none} .qmore .ddp{min-width:200px} .qmore .ddp .danger{color:var(--no)}
   .qmore .pickm button svg{width:16px;height:16px;color:var(--muted)}
@@ -813,7 +818,6 @@
   .qic-any{display:flex;gap:6px} .qic-any input{flex:1 1 auto;min-width:0;height:34px;margin:0}
   /* questionnaires */
   .qgroup{border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--accent) 3%,var(--card));box-shadow:var(--shadow-sm);transition:box-shadow .3s}
-  .qgroup.drag{opacity:.55} .qgroup.dropb{box-shadow:0 -3px 0 var(--accent)} .qgroup.dropa{box-shadow:0 3px 0 var(--accent)}
   .qg-h{display:flex;align-items:center;gap:12px;padding:12px 10px 12px 12px;border-radius:14px} .qg-h.dropin{box-shadow:inset 0 0 0 2px var(--accent)}
   .qg-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
   .qg-t b{font-size:16px;font-weight:700;overflow-wrap:anywhere} .qg-sub{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)} .qg-sub svg{width:14px;height:14px;color:var(--yes)}
@@ -858,8 +862,8 @@
     .qg-h{border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--card));box-shadow:var(--shadow-sm)}
     .qg-b{margin:10px 0 0 -10px;padding:2px 0 2px 8px;border-left:2px solid color-mix(in srgb,var(--accent) 35%,transparent)} /* the rail sits in the card's side padding: questions keep the full width */
     .qg-b .qcard:not(.fold) .qtile{width:36px;height:36px} .qg-b .qcard:not(.fold) .qtile.emo .qemo{font-size:19px}
-    /* fewer buttons in headers: Edit is the ⋯ menu's first item, Move up / down replace dragging */
-    .qcard .qgrip,.qgroup .qgrip,.qcard .macts>[data-qedit],.qg-h .macts>[data-qgedit]{display:none}
+    /* fewer buttons in headers: Edit is the ⋯ menu's first item (the grip stays: drag works by touch too) */
+    .qcard .macts>[data-qedit],.qg-h .macts>[data-qgedit]{display:none}
   }
   @media (min-width:561px){ .qm-mob{display:none!important} }
   .qg-prog{display:block;width:min(160px,100%);height:4px;margin-top:4px;border-radius:2px;background:color-mix(in srgb,var(--accent) 15%,var(--sunken));overflow:hidden}
@@ -5155,13 +5159,20 @@ function qAddOption(qid){
 }
 // ---- organiser: saving the list, the inline editor ----
 // The whole list: questionnaires, then the questions (in order). gs = questionnaires (default: as they are).
-async function saveQuestions(list,gs=qGroups()){
+// o.fast (reordering): show the new order at once and send it after; a failed save puts the old order back.
+let qSaveN=0;
+async function saveQuestions(list,gs=qGroups(),o={}){
   const strip=({isNew,...x})=>x;
   if(P.data&&P.data.draft){ qDraftSet([...gs.map(strip),...list.map(strip)],true); if(P.qdraftChanged) P.qdraftChanged(); return true; } // New poll page: kept on the page
-  try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{questions:[...gs.map(strip),...list.map(strip)]},headers()); P.data.instance=r.instance;
+  const n=++qSaveN, I=inst(), was={questions:I.questions,groups:I.groups};
+  if(o.fast){ I.questions=list.map(strip); I.groups=gs.map(strip); renderQuestions(); }
+  try{ const r=await api('PATCH',`/polls/${P.id}/instances/${I.id}`,{questions:[...gs.map(strip),...list.map(strip)]},headers());
+    if(n!==qSaveN) return true; // a newer save is on its way
+    const same=o.fast&&inst()===I&&JSON.stringify([r.instance.questions,r.instance.groups])===JSON.stringify([I.questions,I.groups]);
+    if(inst()===I) P.data.instance=r.instance;
     const x=P.data.instances.find(y=>y.id===r.instance.id); if(x){ x.questions=r.instance.questions; x.groups=r.instance.groups; }
-    renderHeader(); renderQuestions(); return true; }
-  catch(e){ toast(e.message); return false; }
+    renderHeader(); if(!same) renderQuestions(); return true; }
+  catch(e){ if(o.fast&&n===qSaveN&&inst()===I){ Object.assign(I,was); qFlip(()=>renderQuestions()); } toast(e.message); return false; }
 }
 // New poll page (P.data.draft): the questions live on the page until the poll is created. Items = [...groups, ...questions]
 // (preset shape); questions show their questionnaire's Applies to / Who unless they have their own (like the Worker's questionsOf).
@@ -5339,31 +5350,69 @@ function qWire(root){
       P.qedit.options.splice(i+1,0,{id,label:''}); qeRerender('qeo_'+id); }); });
   root.querySelectorAll('.qtext').forEach(growTa);
 }
-// Drag a card by its grip to reorder (like the Quick fill rules); arrow keys on the grip move it too.
+// Drag a card by its grip to reorder (mouse, pen or touch); arrow keys on the grip move it too.
+// The lifted card follows the pointer and moves through the list as it goes (the others slide out of its way);
+// the drop is worked out from where it ended up in the page.
 let qDrag=null;
-// grp: move it into that questionnaire ('' = none; undefined = keep).
-function qMove(from,to,grp){ const qs=[...qList()]; if(from<0||to<0||to>qs.length) return; const x=qs[from], ng=grp===undefined?x.grp:grp||undefined;
-  if(from===to&&ng===x.grp) return; qs.splice(from,1); qs.splice(Math.min(to,qs.length),0,{...x,grp:ng,own:ng?(ng===x.grp?x.own:false):undefined}); saveQuestions(qs); }
+// grp: move it into that questionnaire ('' = none; undefined = keep). Returns true when something changed.
+function qMove(from,to,grp){ const qs=[...qList()]; if(from<0||to<0||to>qs.length) return false; const x=qs[from], ng=grp===undefined?x.grp:grp||undefined;
+  if(from===to&&ng===x.grp) return false; qs.splice(from,1); qs.splice(Math.min(to,qs.length),0,{...x,grp:ng,own:ng?(ng===x.grp?x.own:false):undefined}); qFlip(()=>saveQuestions(qs,qGroups(),{fast:true})); return true; }
 const qGroupEnd=gid=>{ const qs=qList(); let i=-1; qs.forEach((q,k)=>{ if(q.grp===gid) i=k; }); return i<0?qs.length:i+1; };
-function qGroupMove(from,to){ const gs=[...qGroups()]; if(to<0||to>=gs.length||from===to) return; const [x]=gs.splice(from,1); gs.splice(to,0,x); saveQuestions(qList(),gs); }
-const qDropClear=()=>document.querySelectorAll('#questions .dropa,#questions .dropb,#questions .dropin').forEach(x=>x.classList.remove('dropa','dropb','dropin'));
-document.addEventListener('pointerdown',e=>{ const g=e.target.closest&&e.target.closest('[data-qgrip],[data-qggrip]'); if(!g||e.button>0) return;
+function qGroupMove(from,to){ const gs=[...qGroups()]; if(from<0||to<0||to>=gs.length||from===to) return false; const [x]=gs.splice(from,1); gs.splice(to,0,x); qFlip(()=>saveQuestions(qList(),gs,{fast:true})); return true; }
+const qRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const QEASE='cubic-bezier(.2,.8,.3,1)';
+// FLIP: note where every card / questionnaire is, run fn (a DOM move or a re-render), then slide each one from its old place.
+function qFlip(fn,skip){ const root=$('questions'); if(!root||qRM()) return fn();
+  const sel='[data-qcard],[data-qgcard]', key=el=>el.dataset.qcard?'q'+el.dataset.qcard:'g'+el.dataset.qgcard, old=new Map();
+  root.querySelectorAll(sel).forEach(el=>old.set(key(el),el.getBoundingClientRect().top));
+  const r=fn(), root2=$('questions'); if(!root2) return r;
+  const els=[...root2.querySelectorAll(sel)].filter(el=>el!==skip), dy=new Map();
+  els.forEach(el=>{ const o=old.get(key(el)); if(o===undefined) return; el.getAnimations().forEach(a=>a.cancel()); dy.set(el,o-el.getBoundingClientRect().top); });
+  els.forEach(el=>{ let v=dy.get(el); if(v===undefined) return; const p=el.parentElement&&el.parentElement.closest('[data-qgcard]'); if(p&&dy.has(p)) v-=dy.get(p);
+    if(Math.abs(v)>=1) el.animate([{transform:`translateY(${v}px)`},{transform:'none'}],{duration:240,easing:QEASE}); });
+  return r; }
+const qDropClear=()=>document.querySelectorAll('#questions .dropin').forEach(x=>x.classList.remove('dropin'));
+// Keep the lifted card under the pointer (its place in the layout changes as it moves through the list).
+function qDragPlace(){ const d=qDrag, lt=d.c.getBoundingClientRect().top-d.ty; d.ty=d.y-d.grab-lt; d.c.style.transform=`translateY(${d.ty}px)`; }
+// Card under the pointer, not counting the lifted one.
+function qDragHit(sel){ const d=qDrag; for(const el of document.elementsFromPoint(d.x,d.y)){ if(d.c.contains(el)) continue; const t=el.closest(sel); if(t&&!d.c.contains(t)&&t.closest('#questions')) return t; } return null; }
+// Move the lifted card before / after t once the pointer passes t's middle in the direction it is going.
+function qDragOver(t){ const d=qDrag, r=t.getBoundingClientRect(), mid=r.top+r.height/2, below=d.c.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_FOLLOWING;
+  if(below&&d.y>mid) qFlip(()=>t.after(d.c),d.c); else if(!below&&d.y<mid) qFlip(()=>t.before(d.c),d.c); else return; qDragPlace(); }
+function qDragMove(){ const d=qDrag; if(!d) return; qDragPlace(); qDropClear(); d.into=undefined;
+  if(d.kind==='g'){ const t=qDragHit('[data-qgcard]'); if(t) qDragOver(t); return; }
+  const t=qDragHit('[data-qcard],.qg-h'); if(!t) return;
+  if(t.matches('.qg-h')){ const g=t.closest('[data-qgcard]'), list=g.querySelector('.qg-b .qlist');
+    if(!list){ t.classList.add('dropin'); d.into=g.dataset.qgcard; return; } // collapsed: drop = add at its end
+    if(list.firstElementChild!==d.c) qFlip(()=>list.prepend(d.c),d.c); qDragPlace(); return; }
+  qDragOver(t); }
+// Scroll the page while the pointer is near the top / bottom edge.
+function qDragScroll(){ const d=qDrag; if(!d) return; const e=70, h=innerHeight, v=d.y<e?-(e-d.y):d.y>h-e?d.y-(h-e):0;
+  if(v){ const y0=scrollY; scrollBy(0,Math.round(v/4)); if(scrollY!==y0) qDragMove(); } d.raf=requestAnimationFrame(qDragScroll); }
+document.addEventListener('pointerdown',e=>{ const g=e.target.closest&&e.target.closest('[data-qgrip],[data-qggrip]'); if(!g||e.button>0||qDrag) return;
+  const c=g.dataset.qggrip?g.closest('[data-qgcard]'):g.closest('[data-qcard]'); if(!c) return;
   e.preventDefault(); try{ g.setPointerCapture(e.pointerId); }catch{}
-  if(g.dataset.qggrip){ const c=g.closest('[data-qgcard]'); qDrag={kind:'g',from:qGroups().findIndex(x=>x.id===c.dataset.qgcard),c,to:null}; c.classList.add('drag'); return; }
-  const c=g.closest('[data-qcard]'); qDrag={kind:'q',from:qList().findIndex(q=>q.id===c.dataset.qcard),c,to:null,grp:undefined}; c.classList.add('drag'); });
-document.addEventListener('pointermove',e=>{ if(!qDrag) return; e.preventDefault();
-  const el=document.elementFromPoint(e.clientX,e.clientY); qDropClear(); qDrag.to=null; if(!el) return;
-  if(qDrag.kind==='g'){ const c=el.closest('#questions [data-qgcard]'); if(!c||c===qDrag.c) return; const r=c.getBoundingClientRect(), after=e.clientY>r.top+r.height/2; c.classList.add(after?'dropa':'dropb');
-    const to0=qGroups().findIndex(x=>x.id===c.dataset.qgcard)+(after?1:0); qDrag.to=to0>qDrag.from?to0-1:to0; return; }
-  const h=el.closest('#questions .qg-h'), c=el.closest('#questions [data-qcard]');
-  if(h&&!c){ const gid=h.closest('[data-qgcard]').dataset.qgcard; h.classList.add('dropin'); const end=qGroupEnd(gid); qDrag.to=end>qDrag.from?end-1:end; qDrag.grp=gid; return; }
-  if(!c||c===qDrag.c) return; const r=c.getBoundingClientRect(), after=e.clientY>r.top+r.height/2; c.classList.add(after?'dropa':'dropb');
-  const tq=qList().find(q=>q.id===c.dataset.qcard), to0=qList().indexOf(tq)+(after?1:0); qDrag.to=to0>qDrag.from?to0-1:to0;
-  qDrag.grp=tq&&tq.grp&&qGroups().some(g=>g.id===tq.grp)?tq.grp:''; },{passive:false});
-function qDragEnd(drop){ if(!qDrag) return; const d=qDrag; qDrag=null; d.c.classList.remove('drag'); qDropClear(); if(!drop||d.to==null) return;
-  if(d.kind==='g') qGroupMove(d.from,d.to); else qMove(d.from,d.to,d.grp); }
-document.addEventListener('pointerup',()=>qDragEnd(true));
-document.addEventListener('pointercancel',()=>qDragEnd(false));
+  c.getAnimations().forEach(a=>a.cancel());
+  qDrag=g.dataset.qggrip?{kind:'g',from:qGroups().findIndex(x=>x.id===c.dataset.qgcard)}:{kind:'q',from:qList().findIndex(q=>q.id===c.dataset.qcard)};
+  Object.assign(qDrag,{c,pid:e.pointerId,x:e.clientX,y:e.clientY,grab:e.clientY-c.getBoundingClientRect().top,ty:0,parent:c.parentElement,next:c.nextSibling,into:undefined});
+  c.classList.add('lift'); document.body.classList.add('qdragging'); if(e.pointerType==='touch') try{ navigator.vibrate&&navigator.vibrate(8); }catch{}
+  qDrag.raf=requestAnimationFrame(qDragScroll); });
+document.addEventListener('pointermove',e=>{ if(!qDrag||e.pointerId!==qDrag.pid) return; e.preventDefault(); qDrag.x=e.clientX; qDrag.y=e.clientY; qDragMove(); },{passive:false});
+// Where it landed → qMove / qGroupMove (which re-render with a slide); otherwise slide it back into its slot.
+function qDragEnd(drop){ if(!qDrag) return; const d=qDrag; qDrag=null; cancelAnimationFrame(d.raf); qDropClear(); document.body.classList.remove('qdragging');
+  const c=d.c, settle=()=>{ if(!c.isConnected) return; const ty=d.ty; c.style.transform=''; c.classList.remove('lift'); if(ty&&!qRM()) c.animate([{transform:`translateY(${ty}px)`},{transform:'none'}],{duration:220,easing:QEASE}); };
+  if(!drop||d.from<0){ if(c.parentElement!==d.parent||c.nextSibling!==d.next) qFlip(()=>d.parent.insertBefore(c,d.next&&d.next.parentElement===d.parent?d.next:null),c); return settle(); }
+  let moved=false;
+  if(d.kind==='g') moved=qGroupMove(d.from,[...document.querySelectorAll('#questions [data-qgcard]')].indexOf(c));
+  else { const qs=qList(), at=t=>t?qs.findIndex(q=>q.id===t.dataset.qcard):-1, fix=t0=>t0>d.from?t0-1:t0;
+    if(d.into!==undefined){ if(c.parentElement!==d.parent||c.nextSibling!==d.next) d.parent.insertBefore(c,d.next&&d.next.parentElement===d.parent?d.next:null); moved=qMove(d.from,fix(qGroupEnd(d.into)),d.into); }
+    else { const sib=(el,k)=>{ for(let x=el[k];x;x=x[k]) if(x.dataset&&x.dataset.qcard) return x; return null; };
+      const g=c.parentElement.closest('[data-qgcard]'), grp=g?g.dataset.qgcard:'', nx=at(sib(c,'nextElementSibling')), pv=at(sib(c,'previousElementSibling'));
+      moved=qMove(d.from,fix(nx>=0?nx:pv>=0?pv+1:grp?qGroupEnd(grp):qs.length),grp); } }
+  if(!moved) settle(); }
+document.addEventListener('pointerup',e=>{ if(qDrag&&e.pointerId===qDrag.pid) qDragEnd(true); });
+document.addEventListener('pointercancel',e=>{ if(qDrag&&e.pointerId===qDrag.pid) qDragEnd(false); });
+document.addEventListener('keydown',e=>{ if(qDrag&&e.key==='Escape'){ e.preventDefault(); qDragEnd(false); } });
 document.addEventListener('keydown',e=>{ const g=e.target.closest&&e.target.closest('[data-qgrip]'); if(!g||(e.key!=='ArrowUp'&&e.key!=='ArrowDown')) return;
   e.preventDefault(); const i=qList().findIndex(q=>q.id===g.dataset.qgrip); qMove(i,i+(e.key==='ArrowUp'?-1:1)); });
 // Popups: remember which one is open (re-renders keep it), close on a tap elsewhere, filter by typing.
