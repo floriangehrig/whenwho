@@ -5744,7 +5744,7 @@ function repState(){ return P.rep||(P.rep={from:isoL(new Date()), every:1, until
 function repeatFields(){
   if(!isWeekly()) return '';
   const r=repState();
-  return `<div class="drep"><label class="ifld">${ICON.repeat}<select id="rp_every" data-rp="every" aria-label="${t('Repeats')}" title="${t('Repeats')}">${[[1,t('Every week')],[2,t('Every other week')],[4,t('Every 4 weeks')]].map(([v,lb])=>`<option value="${v}" ${r.every===v?'selected':''}>${lb}</option>`).join('')}</select></label>
+  return `<div class="drep"><label class="ifld">${ICON.repeat}<select id="rp_every" data-rp="every" aria-label="${t('Repeats')}" title="${t('Repeats')}">${[1,2,3,4,5,6,7,8].map(v=>[v,v===1?t('Every week'):v===2?t('Every other week'):t('Every {n} weeks',{n:v})]).map(([v,lb])=>`<option value="${v}" ${r.every===v?'selected':''}>${lb}</option>`).join('')}</select></label>
     ${tip(t('Sent as one repeating calendar event, starting on the first matching weekday from this date.'),'right')}
     <span class="drep-d"><input type="date" id="rp_from" data-rp="from" value="${esc(r.from)}" aria-label="${t('Starting from')}" title="${t('Starting from')}"><span class="dsep">→</span>
     <input type="date" id="rp_until" data-rp="until" value="${esc(r.until)}" aria-label="${t('Until')} (${t('optional')})" title="${t('Until')} (${t('optional')})"></span></div>`;
@@ -8244,7 +8244,6 @@ function germanText(){ return {
 "Enter your name, then send": "Gib deinen Namen ein und sende dann",
 "Evening 18–22": "Abends 18–22",
 "Every": "Jede",
-"Every 4 weeks": "Alle 4 Wochen",
 "Every day": "Jeden Tag",
 "Every month": "Jeden Monat",
 "Every other week": "Alle 2 Wochen",
@@ -8609,7 +8608,7 @@ function germanText(){ return {
 "Rename": "Umbenennen",
 "Reopen": "Wieder öffnen",
 "Reopen poll": "Umfrage wieder öffnen",
-"Repeat every 1, 2 or 4 weeks": "Wiederholung alle 1, 2 oder 4 Wochen",
+"Repeat every 1 to 8 weeks": "Wiederholung alle 1 bis 8 Wochen",
 "Repeat every week(s) or month(s)": "Wiederholung wöchentlich oder monatlich",
 "Repeat interval": "Wiederholungsintervall",
 "Repeats": "Wiederholung",

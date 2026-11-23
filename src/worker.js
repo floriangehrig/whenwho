@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-LhWNnVDsKKGp4Qt3pRiFg96TmNa5/Ps6S5nUXsoy05g=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-Uo7/mwFtJoAVi5Abca3IZPvG3LD4EUEwT/g5qLDTf9U=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -558,7 +558,7 @@ function validateMeetings(list, poll, old = []) {
       const r = mt.repeat;
       if (!r || typeof r !== 'object') throw new HttpError(400, 'A weekly meeting needs a start date');
       if (!isDate(r.from)) throw new HttpError(400, 'Pick the date of the first meeting');
-      if (![1, 2, 4].includes(r.every)) throw new HttpError(400, 'Repeat every 1, 2 or 4 weeks');
+      if (!Number.isInteger(r.every) || r.every < 1 || r.every > 8) throw new HttpError(400, 'Repeat every 1 to 8 weeks');
       if (r.until != null && r.until !== '' && (!isDate(r.until) || r.until < r.from)) throw new HttpError(400, 'The end date is before the first meeting');
       repeat = { from: r.from, every: r.every, until: r.until || null };
     }
