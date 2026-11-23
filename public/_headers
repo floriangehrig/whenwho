@@ -1,7 +1,7 @@
 # Security headers for the static page (assets are served without running the Worker).
 # Keep in sync with CSP in src/worker.js.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-mMtSOqcI1SrEM05juLp2C6SjwuC21jBD9QVz8On8zOk=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://photon.komoot.io; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-dbJSOvLj3F3XHvfad0+HbA2ygN/U2n7v5S+JbEXWAS4=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://photon.komoot.io; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
   X-Content-Type-Options: nosniff
   Referrer-Policy: same-origin
   X-Frame-Options: DENY

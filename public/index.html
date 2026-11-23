@@ -1727,6 +1727,8 @@
   .pst{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1.5px dashed var(--line-strong)}
   .pst svg{width:13px;height:13px;stroke-width:2.6}
   .pst.y{border:0;background:var(--yes);color:#fff} .pst.m{border:0;background:var(--maybe-bg);color:var(--maybe)} .pst.x{border:0;background:var(--sunken);color:var(--muted)}
+  .role-tag{gap:3px;padding:1px 7px;margin-left:6px;flex:none;background:var(--accent-weak);color:var(--accent-ink)} .role-tag svg{width:12px;height:12px}
+  .prole .ddp{min-width:200px} .prole .ddp button svg:last-child{color:var(--accent-ink)}
   .pplist .pname{flex-wrap:nowrap} .pacct{display:inline-flex;color:var(--accent-ink)} .pacct svg{width:14px;height:14px}
   /* People tab: link + share on one row, counts as icon chips, row actions in ⋯ on phones */
   .pshare{display:flex;gap:6px;align-items:center;margin-bottom:6px}
@@ -2645,7 +2647,7 @@ function pollCard(p,answered){
   const c=p.current, open=c&&c.status==='open';
   const as=answered?`<span class="pc-n minw" title="${esc(t('as {name}',{name:p.name}))}">${ICON.check}<span class="ell">${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span>`:'';
   return `<div class="pcard">${pollTile(p)}
-    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}
+    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}${p.role?roleTag(p.role):''}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
       ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.clock}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
@@ -2763,6 +2765,7 @@ function renderPrivacy(){
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
+        t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.'),
       ]))}
@@ -3875,7 +3878,20 @@ const instLabel = i => P.data.poll.kind==='weekly' ? t('A typical week') : P.dat
 async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); if(P.atab==='chat'){ P.atab='answers'; store.set('chatOpen:'+id,true); } // the Chat tab is now the drawer P.tab=store.get('view:'+id,'mine');
   P.msub=null; if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; P.msub='plan'; } // the old "★ Schedule" view now lives in the Meetings tab
   P.password=store.get('pw:'+id,null); await loadPoll(true); }
-async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return api('GET',`/polls/${P.id}${q}`,null,headers()); }
+async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return normRole(await api('GET',`/polls/${P.id}${q}`,null,headers())); }
+// Roles (owner › admin › editor › viewer). The Worker sends `can` = { see, edit, manage, own }; the page's organiser view
+// (`isAdmin`) is for editors and up, viewers get everyone's view but see what organisers see (hidden answers, all rounds).
+function normRole(d){ if(d&&!d.draft){ const a=!!d.isAdmin; d.can=d.can||{see:a,edit:a,manage:a,own:a}; d.isAdmin=!!d.can.edit; } return d; }
+const canSee=()=>!!(P.data&&(P.data.isAdmin||(P.data.can&&P.data.can.see)));
+const canManage=()=>!!(P.data&&(P.data.can?P.data.can.manage:P.data.isAdmin));
+const isOwnerP=()=>!!(P.data&&(P.data.can?P.data.can.own:P.data.isAdmin));
+const ROLE_IC={owner:'star',admin:'gear',editor:'edit',viewer:'eye'};
+const roleName=r=>({owner:t('Owner'),admin:t('Admin'),editor:t('Editor'),viewer:t('Viewer')})[r]||'';
+const roleHelp=r=>({owner:t('Created the poll. Can do everything, including deleting it and giving roles.'),
+  admin:t('Can do everything except delete the poll or give roles: settings, people, emails, everyone’s answers.'),
+  editor:t('Can schedule meetings, edit questions and change round dates. Can’t change settings or people.'),
+  viewer:t('Sees everything organisers see (also hidden answers), but can’t change anything.')})[r]||'';
+const roleTag=r=>r?`<span class="tag role-tag" title="${esc(roleHelp(r))}">${ICON[ROLE_IC[r]]}<span>${esc(roleName(r))}</span></span>`:'';
 async function loadPoll(first){
   try{ P.data = await fetchPoll(); }
   catch(e){
@@ -3973,7 +3989,7 @@ function windowStatus(v,start,end,allDay,k){
 
 // ---- saving ----
 // Invited-only polls: '' = may answer, 'signin' = signed out, 'not' = this account isn't invited. The owner always may.
-function inviteLock(){ const d=P.data, p=d&&d.poll; if(!p||!p.invitedOnly||d.isAdmin) return ''; if(!ME.user) return 'signin'; return d.me&&d.me.invited?'':'not'; }
+function inviteLock(){ const d=P.data, p=d&&d.poll; if(!p||!p.invitedOnly||canSee()) return ''; if(!ME.user) return 'signin'; return d.me&&d.me.invited?'':'not'; }
 function editable(){ return P.data && inst().status==='open' && !inviteLock(); }
 function status(t){ saveBar(t); }
 // The send/update bar under the calendar. Answers are only sent when the button is pressed.
@@ -4205,13 +4221,13 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span>${d.isAdmin?(i.manualStatus==='open'?pqb('lock',t('Close poll'),`data-istatus="${i.id}" data-to="closed"`):pqb('unlock',t('Reopen poll'),`data-istatus="${i.id}" data-to="open"`)):''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta">${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+    <div class="meta">${d.role&&d.role!=='owner'?`<span class="chip" title="${esc(t('Your role in this poll')+': '+roleHelp(d.role))}">${ICON[ROLE_IC[d.role]]}<span>${esc(roleName(d.role))}</span></span>`:''}${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
-      :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
+      :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&canManage()?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${p.invitedOnly&&!d.isAdmin?'':shareRow(p,i)}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
-    ${p.hideResults&&!d.isAdmin?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
+    ${p.hideResults&&!canSee()?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
   renderMeetings(); renderQuestions();
 }
 // The share link with Copy and Share / WhatsApp / email buttons, under the poll header.
@@ -4263,7 +4279,7 @@ function renderSeries(){
       <span class="acts">${x.id!==cur.id?ib('eye',t('View'),`data-inst="${x.id}"`):''}
       ${adm?`${x.manualStatus==='open'?ib('lock',t('Close'),`data-istatus="${x.id}" data-to="closed"`):ib('unlock',t('Reopen'),`data-istatus="${x.id}" data-to="open"`)}
       ${ib('edit',t('Edit'),`data-iedit="${x.id}"`)}
-      ${d.instances.length>1?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}`:''}</span>
+      ${d.instances.length>1&&canManage()?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}`:''}</span>
       ${adm&&P.iedit===x.id?`<div class="sched full" id="ieditForm">
         <div class="dates-row">${isWeekly()?'':`<div class="field"><label for="dpkb_ie">${t('Dates')}</label>${dpk('ie',{mode:'range',a:'ie_s',b:'ie_e',va:x.startDate,vb:x.endDate,title:t('Pick dates'),empty:t('Pick a date range')})}</div>`}
         <div class="field"><label for="dpkb_ied">${t('Reply by')}</label>${dpk('ied',{mode:'single',a:'ie_d',va:x.deadline||'',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>$('ie_s')?[$('ie_s').value,$('ie_e').value]:['','']})}</div></div>
@@ -4432,10 +4448,10 @@ function renderMeetings(listOnly){
   const foldL=fold?t('Show meeting details'):t('Compact view');
   const selL=sel?t('Close multi-edit'):t('Select several meetings to edit, move or delete them together');
   const top=`<div class="msec-h"><div class="seg iseg hseg mview" role="group" aria-label="${t('View')}">${adm?`<button type="button" class="${sel?'on':''}" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="${fold?'on':''}" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div></div>`;
-  const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${adm&&!sel?mailAll:''}</div>`;
+  const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${canManage()&&!sel?mailAll:''}</div>`;
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); document.querySelectorAll('[data-vlist]').forEach(vl=>{ const g=groups.find(x=>vgKey(x)===vl.dataset.vlist); if(g) vl.innerHTML=g.opts.map(card).join(''); }); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
-  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&adm&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
+  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&canManage()&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
   if(sel){ syncBatchBar(pv,nSel,all.length); const ta=$('mb_desc'); if(ta&&ta.value) growTa(ta); }
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; batchPreview(0); });
 }
@@ -4569,7 +4585,7 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('[data-qps
 // The options I suggested as last saved (the server's list still has them until the next load).
 function qSaved(){ P.qAddWas=new Set(Object.values(myExtra().add).flat().map(o=>o.id)); }
 // After-meeting questions stay open in a closed round.
-const qMayFill=q=>(editable()||(qAfter(q)&&P.data&&!inviteLock()))&&(!q.closed||P.data.isAdmin)&&(P.data.isAdmin||(P.form&&P.form.can?P.form.can.has(q.id):q.who.mode==='all'));
+const qMayFill=q=>(editable()||(qAfter(q)&&P.data&&!inviteLock()))&&(!q.closed||canManage())&&(canManage()||(P.form&&P.form.can?P.form.can.has(q.id):q.who.mode==='all'));
 // After-meeting questions (link.to 'after'): one answer per meeting that has ended (each date of a repeating one), key "<meeting id>:<date>".
 // No linked meetings = all confirmed meetings of the round. last = only the latest one can be answered.
 const qAfter=q=>!!(q&&q.link&&q.link.to==='after');
@@ -4584,7 +4600,7 @@ function qOccs(q,ms=inst().meetings){ const ids=q.link.ids&&q.link.ids.length?ne
   out.sort((a,b)=>b.end-a.end); out.next=next; return out; }
 // May I (still) answer q for this meeting date? last: only the newest; the server says which ones are mine (form.occ).
 function qOccOpen(q,key){ const os=qOccs(q); if(!os.some(o=>o.key===key)) return false; if(q.link.last&&os[0].key!==key) return false;
-  if(P.data.isAdmin) return true; const oc=P.form&&P.form.occ; return !oc||!oc[q.id]||oc[q.id].includes(key); }
+  if(canManage()) return true; const oc=P.form&&P.form.occ; return !oc||!oc[q.id]||oc[q.id].includes(key); }
 const qOccLabel=o=>`${meetTitle(o.m)} · ${dayLabel(o.d)}`;
 function qDateLabel(q,k){ if(!qAfter(q)) return dayLabel(k); const o=qOccs(q).find(x=>x.key===k); return o?qOccLabel(o)+(qOccOpen(q,k)?'':` · ${t('closed')}`):k; }
 // Dates of the repeating meetings a per-date question is linked to: the next 8 from today.
@@ -4607,10 +4623,10 @@ const qAnswered=(q,a)=>qAfter(q)?qOccs(q).filter(o=>qOccOpen(q,o.key)).every(o=>
   :q.link.each?!!(a[q.id]&&Object.keys(a[q.id]).length):!qEmpty(a[q.id]);
 const qOpenN=()=>qList().filter(q=>qMayFill(q)&&!qAnswered(q,myExtra().a)).length;
 // Everyone's answers to q (for its picked date) — null when this person can't see them.
-function qAnswers(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!P.data.isAdmin)) return null;
+function qAnswers(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!canSee())) return null;
   return rows.map(r=>({name:r.name||t('Someone'),v:qPer(q)?((r.extra||{})[q.id]||{})[qDate(q)]:(r.extra||{})[q.id],me:!!(P.form&&r.pid===P.form.pid)})).filter(x=>!qEmpty(x.v)); }
 // Rating of an after-meeting question: the average per meeting, newest first (null when I can't see answers).
-function qTrend(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!P.data.isAdmin)) return null;
+function qTrend(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!canSee())) return null;
   return qOccs(q).slice(0,8).map(o=>{ const vs=rows.map(r=>+(((r.extra||{})[q.id]||{})[o.key])).filter(v=>v>0); return {o,n:vs.length,avg:vs.length?vs.reduce((s,v)=>s+v,0)/vs.length:0}; }).filter(x=>x.n); }
 function qTally(q){ const as=qAnswers(q); if(!as) return null; const m=new Map(); for(const o of qOpts(q)) m.set(o.id,[]); as.forEach(x=>(Array.isArray(x.v)?x.v:[]).forEach(id=>m.has(id)&&m.get(id).push(x.name))); return m; }
 const qLinked=mid=>qList().filter(q=>!qAfter(q)&&(q.link.ids||[]).includes(mid));
@@ -4761,7 +4777,7 @@ function qMeetChips(m){ const qs=qLinked(m.id);
 function qChange(fn){ const x=JSON.parse(JSON.stringify(myExtra())); fn(x); P.form.extra=x; P.form.dirty=true; renderQuestions(); qPromptRender(); }
 async function qSend(){
   if(!P.form||P.form.saving) return;
-  const miss=!P.data.isAdmin&&qList().find(q=>q.req&&qMayFill(q)&&!qPer(q)&&!qAnswered(q,myExtra().a));
+  const miss=!canManage()&&qList().find(q=>q.req&&qMayFill(q)&&!qPer(q)&&!qAnswered(q,myExtra().a));
   if(miss){ toast(t('Please answer: {q}',{q:miss.label})); const c=$('q_'+miss.id); if(c){ c.scrollIntoView({block:'center',behavior:'smooth'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'),1200); } return; }
   const guest=!ME.user&&!P.form.pid&&!P.myResp, name=guest?(($('fq_name')||{}).value||'').trim():'';
   if(guest&&!name){ toast(t('Enter your name first')); const n=$('fq_name'); if(n) n.focus(); return; }
@@ -6139,7 +6155,7 @@ function renderGroup(el){
       `data-ov="${o.k}"`, d.isAdmin?ib('star',t('Schedule'),`data-schedule="${o.k}"`,'sm'):'')).join('')||`<li class="muted">${t('Nobody has marked a day as available yet.')}</li>`}</ul></div>`;
   const withC=sel().filter(r=>r.comment);
   if(withC.length) h+=`<details class="asec comments"${P.cOpen?' open':''} data-keep="cOpen">${secH('chat',t('Comments'),{count:withC.length,summary:true})}${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
-  if(d.isAdmin) h+=`<details class="asec"${P.rOpen?' open':''} data-keep="rOpen">${secH('gear',t('Manage responses'),{count:all,summary:true})}<ul class="list">${d.responses.map(r=>
+  if(canManage()) h+=`<details class="asec"${P.rOpen?' open':''} data-keep="rOpen">${secH('gear',t('Manage responses'),{count:all,summary:true})}<ul class="list">${d.responses.map(r=>
     `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString(LOC))}</span>${ib('trash',t('Delete'),`data-delresp="${esc(r.id)}"`,'sm ghost danger')}</li>`).join('')}</ul></details>`;
   el.innerHTML=h;
   wireWho();
@@ -6808,7 +6824,7 @@ async function chatFetch(full){
     const after=full?null:c.since;
     const r=await api('GET',`/polls/${P.id}/chat${after?'?after='+encodeURIComponent(after):''}`,null,headers());
     if(c!==P.chat) return;
-    c.since=r.now; c.owner=r.owner; c.canDel=!!r.canDeleteAll; c.me=r.me||c.me||null;
+    c.since=r.now; c.owner=r.owner; if(r.roles) c.roles=r.roles; c.canDel=!!r.canDeleteAll; c.me=r.me||c.me||null;
     if(full){
       const unread=(P.data.chat&&P.data.chat.unread)||0;
       c.msgs=r.messages.concat((c.msgs||[]).filter(m=>m.tmp)); c.people=r.people||{}; c.members=r.members||[];
@@ -6930,7 +6946,7 @@ function chatHtml(c){
     const menu=c.menu===m.id?`<div class="msg-menu" role="menu"><div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}" aria-pressed="${!!(m.rx&&m.rx[e]&&m.rx[e].mine)}">${e}</button>`).join('')}</div>
       <div class="mm-acts">${can?`<button type="button" role="menuitem" data-chatreply="${esc(m.id)}">${ICON.reply}${t('Reply')}</button>`:''}<button type="button" role="menuitem" data-chatcopy="${esc(m.id)}">${ICON.copy}${t('Copy')}</button>${canDel?`<button type="button" role="menuitem" class="danger" data-chatdel="${esc(m.id)}">${ICON.trash}${t('Delete')}</button>`:''}</div></div>`:'';
     h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}${m.tmp?' pending':''}${m.failed?' failed':''}${tagme?' tagme':''}${c.menu===m.id?' menuopen':''}" data-mid="${esc(m.id)}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
-      <div class="msg-w"><div class="msg-b">${more}${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}${quote}<div class="msg-t">${msgText(m.body,q)}</div>
+      <div class="msg-w"><div class="msg-b">${more}${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:c.roles&&c.roles[m.uid]?` <span class="msg-tag">${esc(roleName(c.roles[m.uid]))}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}${quote}<div class="msg-t">${msgText(m.body,q)}</div>
       <div class="msg-m">${stat}</div></div>${rx?`<div class="msg-rx">${rx}</div>`:''}${menu}</div></div>`;
     prev=m;
   }
@@ -7223,7 +7239,7 @@ function setPollTab(k){
 function adminPanes(){
   const d=P.data, p=d.poll, series=p.kind==='series', hid=k=>P.atab===k?'':'hide', i=inst();
   const info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
-  const ms=msub();
+  const ms=msub(), man=canManage(); // editors: Settings shows only the rounds / dates
   return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2><div class="seg ws-views msub" role="tablist" aria-label="${t('Meetings')}">
       <button type="button" role="tab" data-msub="list" class="${ms==='list'?'on':''}" aria-selected="${ms==='list'}"><span class="segic">${ICON.star}</span>${t('Overview')}<span class="count" id="msubn"${i&&i.meetings.length?'':' hidden'}>${i?i.meetings.length:0}</span></button>
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
@@ -7232,30 +7248,30 @@ function adminPanes(){
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card sform"><div class="card-h"><h2>${t('Settings')}</h2></div>
-    ${sset('details','edit',t('Details'),`
+    ${man?sset('details','edit',t('Details'),`
       <div class="ttl-row"><button type="button" class="ttl-ic" data-pktog aria-expanded="false" aria-controls="pkwrap" title="${t('Icon or picture')}" aria-label="${t('Icon or picture')}">${pollTile(p,'')}<span class="ttl-ed">${ICON.edit}</span></button>
         <input type="text" id="s_title" maxlength="120" value="${esc(p.title)}" placeholder="${t('Title')}" aria-label="${t('Title')}"></div>
       <div id="pkwrap" class="field" hidden>${picker('poll',{emoji:p.icon,img:pollImgUrl(p.id,p.image),text:p.title,seed:p.id})}</div>
       <textarea id="s_desc" class="sdesc" maxlength="1000" rows="2" placeholder="${t('Description (optional)')}" aria-label="${t('Description')}">${esc(p.description)}</textarea>`,
-      p.icon||p.image?pollTile(p,''):'')}
+      p.icon||p.image?pollTile(p,''):''):''}
     ${series?roundsSection(p):datesSection()}
-    ${sset('answering','check',t('Answering'),`
+    ${man?sset('answering','check',t('Answering'),`
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('s_ans',ansOpts(),p.answerMode,t('People answer with'),'sp')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.'))}</label>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
-      `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`)}
-    ${sset('privacy','lock',t('Privacy'),`
+      `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`):''}
+    ${man?sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
-      p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:'')}
-    ${sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2})
+      p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:''):''}
+    ${man?sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2})
       :`<div class="row tight muted small">${t('Not set up: invites open in your email app.')}${tip(t('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.'),'right')}</div>`,
-      d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:'')}
+      d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:''):''}
     <div class="err" id="serr"></div>
-    <div class="savebar setbar"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>${t('Save<span class="bl"> settings</span>')}</span></button></div></form>
+    <div class="savebar setbar${man||!series?'':' hide'}"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>${t('Save<span class="bl"> settings</span>')}</span></button></div></form>
     <div class="card dz-row prs-row"><span class="sic" style="--c:var(--accent)">${ICON.copy}</span><span class="row tight grow"><b>${t('Preset')}</b>${tip(t('Save this poll’s settings and this round’s questions to start new polls from them (New poll → Start from). No dates, people or password.'))}</span>
       ${ib('copy',t('Save as preset'),'id="savePreset"','sm',t('Save'))}</div>
-    <div class="card danger-zone dz-row"><span class="sic" style="--c:#e05252">${ICON.trash}</span><span class="row tight grow"><b>${t('Danger zone')}</b>${tip(series?t('Deletes the whole series, all its rounds and every answer. This can’t be undone.'):t('Deletes this poll and every answer. This can’t be undone.'))}</span>
-      ${ib('trash',series?t('Delete whole series'):t('Delete poll'),'id="delPoll"','danger keep sm',t('Delete'))}</div></div>`;
+    ${isOwnerP()?`<div class="card danger-zone dz-row"><span class="sic" style="--c:#e05252">${ICON.trash}</span><span class="row tight grow"><b>${t('Danger zone')}</b>${tip(series?t('Deletes the whole series, all its rounds and every answer. This can’t be undone.'):t('Deletes this poll and every answer. This can’t be undone.'))}</span>
+      ${ib('trash',series?t('Delete whole series'):t('Delete poll'),'id="delPoll"','danger keep sm',t('Delete'))}</div>`:''}</div>`;
 }
 // Everyone else's panes behind the same tab row: meetings (list + voting), questions, who is in the poll.
 function viewerPanes(){
@@ -7269,7 +7285,7 @@ function viewerPeople(){
   const ps=P.data.people||[], n=ps.filter(x=>x.answered).length, series=P.data.poll.kind==='series';
   const ans=series?t('Answered the current round'):t('Answered');
   return `<div class="card-h"><h2 class="grow">${t('People')}</h2><span class="muted small">${t('{n} of {total} answered',{n,total:ps.length})}</span></div>
-    ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b></span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
+    ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b>${roleTag(x.role)}</span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
       :`<div class="empty-v"><span class="ev-ic">${ICON.users}</span><b>${t('Nobody is in this poll yet.')}</b></div>`}`;
 }
 // Settings rows (New poll and Settings): icon, title + hint (+ ⓘ tip), then the controls (.mrow-n = extra control, .sw = switch).
@@ -7336,8 +7352,8 @@ function roundsSection(p){
   const n=P.data.instances.length, open=P.data.instances.filter(x=>x.status==='open').length;
   return sset('rounds','repeat',t('Rounds'),
     `<div id="series"></div>
-    <h3 class="srounds-sub">${t('Schedule for new rounds')}</h3>
-    <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</div>`,
+    ${canManage()?`<h3 class="srounds-sub">${t('Schedule for new rounds')}</h3>
+    <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</div>`:''}`,
     `<span class="muted small">${n===1?t('1 round'):t('{n} rounds',{n})}${open?` · ${t('{n} open',{n:open})}`:''}</span>`);
 }
 // Header links to the rounds (organiser): open Settings with the Rounds section unfolded.
@@ -7390,18 +7406,23 @@ function renderParts(){
   const answered=ps.filter(p=>p.answeredNow).length, waiting=ps.filter(p=>p.canMail&&!p.answeredNow);
   const selMail=ps.filter(p=>sel.has(p.id)&&p.canMail);
   const active=document.activeElement&&document.activeElement.id, favs=favEmails();
-  const view=p=>`<li class="${sel.has(p.id)?'on':''}"><input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="${t('Select {name}',{name:esc(p.name)})}">
-      ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}</span>
+  // Roles: everyone with the organiser view sees them; only admins+ change people, only the owner gives roles.
+  const here=P.data&&PEOPLE.id===P.id, man=!here||canManage(), own=here&&isOwnerP();
+  const rmenu=p=>!own||!p.account||p.isOwner?'':`<details class="dd more prole"><summary class="qb" title="${esc(t('Role'))}" aria-label="${esc(t('Role')+': '+p.name)}">${ICON[ROLE_IC[p.role]||'user']}</summary><div class="ddp menu right">
+      <div class="menu-h row tight">${t('Role')}${tip(t('Give people who answer with an account a role, so they can help organise. Only you can change roles.'),'right')}</div>
+      ${['','viewer','editor','admin'].map(r=>`<button type="button" role="menuitemradio" aria-checked="${(p.role||'')===r}" data-prole="${esc(p.id)}" data-r="${r}" title="${esc(r?roleHelp(r):t('Answers like everyone else'))}">${r?ICON[ROLE_IC[r]]:ICON.user}<span class="grow">${r?esc(roleName(r)):t('No role')}</span>${(p.role||'')===r?ICON.check:''}</button>`).join('')}</div></details>`;
+  const view=p=>`<li class="${sel.has(p.id)?'on':''}">${man?`<input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="${t('Select {name}',{name:esc(p.name)})}">`:''}
+      ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
-      <span class="acts">${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
+      <span class="acts">${rmenu(p)}${!man?'':`${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
         <details class="dd more pmore"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
-          <button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></div></details></span></li>`;
+          <button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></div></details>`}</span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
         <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
         <input type="email" id="pe_e" maxlength="200" value="${esc(p.email||'')}" aria-label="${t('Email')}" placeholder="${t('Email (optional)')}" data-pekey="${esc(p.id)}" autocomplete="off" autocapitalize="off" spellcheck="false"${p.account?` readonly title="${t('Linked to their account')}"`:''}></span>
       <span class="acts">${pqb('check',t('Save'),`data-psave="${esc(p.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-pcancel=""')}</span></li>`;
   const addBtn=`<button type="button" class="btn primary padd-btn" data-paddopen title="${t('Add people')}" aria-label="${t('Add people')}" aria-haspopup="dialog">${ICON.plus}</button>`;
-  const tools=!ps.length?`<div class="ptools"><span class="grow muted">${t('Nobody yet. Add people or share the link.')}</span>${addBtn}</div>`:`<div class="ptools">
+  const tools=!man?`<div class="ptools"><span class="grow muted small">${t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered})}</span></div>`:!ps.length?`<div class="ptools"><span class="grow muted">${t('Nobody yet. Add people or share the link.')}</span>${addBtn}</div>`:`<div class="ptools">
       <label class="check m0 psall"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''} aria-label="${t('Select all')}"> ${sel.size?`<span>${t('{n} selected',{n:sel.size})}</span>`
         :(()=>{ const tx=series?t('{people} · {n} answered this round',{people:plural(ps.length,t('person'),t('people')),n:answered}):t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered});
           return `<span class="pcounts" title="${esc(tx)}"><span class="pcnt">${ICON.users}${ps.length}</span><span class="pcnt y">${ICON.check}${answered}</span><span class="sr">${esc(tx)}</span></span>`; })()}</label>
@@ -7414,12 +7435,12 @@ function renderParts(){
   const row=p=>PEOPLE.edit===p.id?edit(p):view(p), shut=pgShut();
   const gh=(PEOPLE.groups||[]).map(g=>{ const ms=ps.filter(p=>p.groupId===g.id), open=!shut.has(g.id), all=ms.length&&ms.every(p=>sel.has(p.id));
     const lbl=t('{people} · {n} answered',{people:plural(ms.length,t('person'),t('people')),n:ms.filter(p=>p.answeredNow).length});
-    return `<li class="pg-h${all?' on':''}"><input type="checkbox" data-pselgrp="${esc(g.id)}" ${all?'checked':''} ${ms.length?'':'disabled'} aria-label="${esc(t('Select {name}',{name:g.name}))}">
+    return `<li class="pg-h${all?' on':''}">${man?`<input type="checkbox" data-pselgrp="${esc(g.id)}" ${all?'checked':''} ${ms.length?'':'disabled'} aria-label="${esc(t('Select {name}',{name:g.name}))}">`:''}
       ${grpTile(g)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(g.name)}</b>${tip(esc(t('Linked group: when you change the group on your Account page, its people here change too.')))}</span><span class="muted small ell">${esc(lbl)}</span></span>
       <span class="acts"><button type="button" class="qb grp-x" data-pgrpx="${esc(g.id)}" aria-expanded="${open}" title="${open?t('Hide people'):t('Show people')}" aria-label="${esc((open?t('Hide people'):t('Show people'))+': '+g.name)}">${ICON.chevd}</button>
-        <details class="dd more"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+g.name)}">${ICON.more}</summary><div class="ddp menu">
+        ${man?`<details class="dd more"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+g.name)}">${ICON.more}</summary><div class="ddp menu">
           <button type="button" data-pgunlink="${esc(g.id)}">${ICON.x}<span>${t('Unlink group (keep people)')}</span></button>
-          <button type="button" class="danger" data-pgunlink="${esc(g.id)}" data-pgpeople>${ICON.trash}<span>${t('Unlink and remove who hasn’t answered')}</span></button></div></details></span></li>
+          <button type="button" class="danger" data-pgunlink="${esc(g.id)}" data-pgpeople>${ICON.trash}<span>${t('Unlink and remove who hasn’t answered')}</span></button></div></details>`:''}</span></li>
       ${open&&ms.length?`<li class="pg-w"><ul class="list">${ms.map(row).join('')}</ul></li>`:''}`; }).join('');
   const gids=new Set((PEOPLE.groups||[]).map(g=>g.id)), rest=ps.filter(p=>!p.groupId||!gids.has(p.groupId));
   el.innerHTML=`${tools}
@@ -7616,10 +7637,11 @@ function wireAdmin(){
   const f=$('sf'); if(!f) return;
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
-    const b={ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans') }; { const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
-    const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image;
+    const man=canManage();
+    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans') }; if(man){ const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    if(man){ const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image; }
     if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
-    if(P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
+    if(man&&P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
     // Settings → Dates edits the poll's single round; only sent when something there changed.
     const i=inst(), ib={};
@@ -7627,13 +7649,13 @@ function wireAdmin(){
     if($('s_dl') && (v('s_dl')||null)!==(i.deadline||null)) ib.deadline=v('s_dl')||null;
     if($('s_note') && v('s_note')!==i.note) ib.note=v('s_note');
     try{ if(Object.keys(ib).length) await api('PATCH',`/polls/${P.id}/instances/${i.id}`,ib,headers());
-      await api('PATCH',`/polls/${P.id}`,b,headers());
+      if(man) await api('PATCH',`/polls/${P.id}`,b,headers());
       if(b.password!==undefined){ if(b.password) store.set('pw:'+P.id,b.password); else store.del('pw:'+P.id); P.password=b.password||null; }
       if(b.answerMode==='slots') P.mode='slots'; else if(b.answerMode==='days') P.mode='days';
       toast(t('Settings saved')); await loadPoll(false);
     }catch(ex){ err.textContent=ex.message; } };
   $('savePreset').onclick=async()=>{ await loadPresets(); const d=presetFromPoll(); await presetSave(d,d.title); };
-  $('delPoll').onclick=async()=>{
+  if($('delPoll')) $('delPoll').onclick=async()=>{
     if(!confirm(p.kind==='series'?t('Delete this whole series (all its polls) and all answers? This can’t be undone.'):t('Delete this poll and all answers? This can’t be undone.'))) return;
     try{ await api('DELETE',`/polls/${P.id}`,null,headers()); location.href=origin; }
     catch(ex){ alert(ex.message); } };
@@ -7641,7 +7663,7 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const tg=e.target.closest('[data-prange],[data-arange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-isave],[data-sroundgo],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
+  const tg=e.target.closest('[data-prole],[data-prange],[data-arange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-isave],[data-sroundgo],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
   if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setPollTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
@@ -7656,6 +7678,9 @@ document.addEventListener('click',async e=>{
   if(ds.pmailsel!==undefined){ const ids=pp.filter(p=>PEOPLE.sel.has(p.id)&&p.canMail).map(p=>p.id); if(ids.length){ await partsInvite(tg,{ids},t('Invite')); PEOPLE.sel=new Set(); renderParts(); } return; }
   if(ds.pmailapp!==undefined){ peopleMailApp(ds.pmailapp==='waiting'?pp.filter(p=>!p.answeredNow):pp.filter(p=>PEOPLE.sel.has(p.id))); return; }
   if(ds.pselnone!==undefined){ PEOPLE.sel=new Set(); renderParts(); return; }
+  if(ds.prole){ const dd=tg.closest('details'); if(dd) dd.open=false; const p=pp.find(x=>x.id===ds.prole); if(!p||(p.role||'')===ds.r) return;
+    try{ await api('PUT',`/polls/${PEOPLE.id}/participants/${p.id}/role`,{role:ds.r},pollHeaders(PEOPLE.id)); p.role=ds.r; renderParts();
+      toast(ds.r?t('{name} is now {role}',{name:p.name,role:roleName(ds.r)}):t('{name} no longer has a role',{name:p.name})); }catch(ex){ toast(ex.message); } return; }
   if(ds.pedit){ PEOPLE.edit=ds.pedit; renderParts(); return; }
   if(ds.psave){ peopleSave(ds.psave); return; }
   if(ds.pcancel!==undefined){ PEOPLE.edit=null; renderParts(); return; }
@@ -7988,6 +8013,28 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Owner": "Eigentümer*in",
+"<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.": "<b>Rollen in Umfragen:</b> Die Eigentümer*in einer Umfrage kann Personen, die mit einem Konto antworten, zu Admin, Bearbeiter*in oder Betrachter*in machen. Sie sehen dann, was die Organisator*in sieht: alle Antworten (auch wenn Antworten versteckt sind) und die Liste der Personen, Admins auch deren E-Mail-Adressen. Die Rolle wird mit deinem Platz in dieser Umfrage gespeichert und mit ihm gelöscht.",
+"Only the poll’s organisers can see this.": "Das sehen nur die Organisator*innen der Umfrage.",
+"Only the poll’s owner, admins and editors can do this.": "Das können nur Eigentümer*in, Admins und Bearbeiter*innen der Umfrage.",
+"Only the poll’s owner and admins can do this.": "Das können nur Eigentümer*in und Admins der Umfrage.",
+"Invalid role": "Ungültige Rolle",
+"Only people who answer with an account can get a role": "Nur Personen, die mit einem Konto antworten, können eine Rolle bekommen",
+"The owner already has every right": "Die Eigentümer*in hat schon alle Rechte",
+"Admin": "Admin",
+"Editor": "Bearbeiter*in",
+"Viewer": "Betrachter*in",
+"Role": "Rolle",
+"No role": "Keine Rolle",
+"Your role in this poll": "Deine Rolle in dieser Umfrage",
+"Answers like everyone else": "Antwortet wie alle anderen",
+"Created the poll. Can do everything, including deleting it and giving roles.": "Hat die Umfrage erstellt. Darf alles, auch sie löschen und Rollen vergeben.",
+"Can do everything except delete the poll or give roles: settings, people, emails, everyone’s answers.": "Darf alles außer die Umfrage löschen oder Rollen vergeben: Einstellungen, Personen, E-Mails, alle Antworten.",
+"Can schedule meetings, edit questions and change round dates. Can’t change settings or people.": "Darf Termine planen, Fragen bearbeiten und Rundendaten ändern. Keine Einstellungen oder Personen.",
+"Sees everything organisers see (also hidden answers), but can’t change anything.": "Sieht alles, was Organisator*innen sehen (auch versteckte Antworten), kann aber nichts ändern.",
+"Give people who answer with an account a role, so they can help organise. Only you can change roles.": "Gib Personen, die mit einem Konto antworten, eine Rolle, damit sie beim Organisieren helfen. Nur du kannst Rollen ändern.",
+"{name} is now {role}": "{name} ist jetzt {role}",
+"{name} no longer has a role": "{name} hat keine Rolle mehr",
 "Replace your questions with the ones from this preset?": "Deine Fragen durch die aus dieser Vorlage ersetzen?",
 "5–6 min/km": "5–6 min/km",
 "6–7 min/km": "6–7 min/km",

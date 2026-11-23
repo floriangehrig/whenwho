@@ -26,7 +26,14 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Changing the account email (`POST /api/me/email`, then `.../email/verify`) sends a code to the new address, stored in
   `login_codes` as `change:<user id>:<address>` (so it can't sign anyone in); on success it updates `users.email` and the copies
   in `participants` / `responses` (the account's), owned polls' legacy `admin_email` and `friends.to_email`, and notifies the old address.
-  Only the owning account can manage a poll.
+  Only the owning account can manage a poll, unless it gives people **roles** (0026, `participants.role` = `admin` | `editor` | `viewer`,
+  accounts only, set by the owner in the People tab's role menu via `PUT /api/polls/:id/participants/:pid/role`). The Worker checks
+  capabilities, not ownership: `roleOf` / `isAdmin(request, env, poll, cap)` / `requireAdmin(…, cap)` / `adminPoll(…, cap)` with
+  `see` (viewer: hidden answers, all rounds, owner-only questions, people without emails; no poll password needed) ‹ `edit` (editor: meetings,
+  questions, round dates / status, next round, AI suggest) ‹ `manage` (admin: settings, people, emails, others' answers, chat deletes) ‹ `own`
+  (owner: delete poll, roles; role holders can only be removed by the owner). `GET /api/polls/:id` sends `role` and `can`; the page's
+  `normRole` sets `isAdmin` = `can.edit` (organiser view) and uses `canSee()` / `canManage()` / `isOwnerP()` for the rest.
+  Emails sent by admins count toward the owner's daily cap.
   Everyone gets the organiser's tab row minus Settings: Availability · Meetings · Questions · People. A series' rounds are managed in
   Settings → **Rounds** (list + schedule for new rounds, `roundsSection` / `renderSeries`); others switch rounds with the header's round chip.
   For non-organisers People is read-only from `people` in `GET /api/polls/:id` (names + answered this round, no emails;

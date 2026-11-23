@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-mMtSOqcI1SrEM05juLp2C6SjwuC21jBD9QVz8On8zOk=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-dbJSOvLj3F3XHvfad0+HbA2ygN/U2n7v5S+JbEXWAS4=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -220,6 +220,7 @@ async function route(request, env, ctx, url) {
     if (b && !c && m === 'PATCH') return updateParticipant(request, env, id, b);
     if (b && !c && m === 'DELETE') return deleteParticipant(request, env, url, id, b);
     if (b && c === 'merge' && m === 'POST') return mergeParticipant(request, env, id, b);
+    if (b && c === 'role' && m === 'PUT') return setParticipantRole(request, env, id, b);
   }
   if (a === 'groups') {
     if (!b && m === 'POST') return linkGroup(request, env, url, id);
@@ -459,13 +460,35 @@ async function adminKeyOk(request, poll) {
   const key = request.headers.get('x-admin-key');
   return !!key && safeEqual(await sha256('admin:' + key), poll.admin_hash);
 }
-// Admin of a poll: the signed-in account that owns it.
-function isAdmin(request, poll) {
+// Roles: the owning account, plus accounts in the poll's participants the owner gave a role (participants.role, 0026).
+// Each capability needs at least that rank: see (viewer: organiser view, read only), edit (editor: meetings, questions, rounds),
+// manage (admin: settings, people, emails, others' answers), own (owner: delete the poll, set roles).
+const ROLE_RANK = { viewer: 1, editor: 2, admin: 3, owner: 4 };
+const CAP_RANK = { see: 1, edit: 2, manage: 3, own: 4 };
+const POLL_ROLES = ['admin', 'editor', 'viewer'];
+const ROLES = new WeakMap(); // request -> Map(poll id -> role)
+async function roleOf(request, env, poll) {
   const user = userOf(request);
-  return !!user && !!poll.owner_id && poll.owner_id === user.id;
+  if (!user) return null;
+  if (poll.owner_id && poll.owner_id === user.id) return 'owner';
+  let m = ROLES.get(request);
+  if (!m) ROLES.set(request, (m = new Map()));
+  if (!m.has(poll.id)) {
+    const r = await env.DB.prepare("SELECT role FROM participants WHERE poll_id = ? AND user_id = ? AND role != '' LIMIT 1").bind(poll.id, user.id).first('role');
+    m.set(poll.id, POLL_ROLES.includes(r) ? r : null);
+  }
+  return m.get(poll.id);
 }
-function requireAdmin(request, poll) {
-  if (!isAdmin(request, poll)) throw new HttpError(403, 'Only the poll’s owner can do this. Sign in with the account that created it.');
+const roleCan = (role, cap = 'see') => (ROLE_RANK[role] || 0) >= CAP_RANK[cap];
+const capsOf = (role) => ({ see: roleCan(role, 'see'), edit: roleCan(role, 'edit'), manage: roleCan(role, 'manage'), own: roleCan(role, 'own') });
+// Organiser of a poll with at least this capability (default: see = any role).
+async function isAdmin(request, env, poll, cap = 'see') {
+  return roleCan(await roleOf(request, env, poll), cap);
+}
+const CAP_MSG = { see: 'Only the poll’s organisers can see this.', edit: 'Only the poll’s owner, admins and editors can do this.',
+  manage: 'Only the poll’s owner and admins can do this.', own: 'Only the poll’s owner can do this. Sign in with the account that created it.' };
+async function requireAdmin(request, env, poll, cap = 'manage') {
+  if (!(await isAdmin(request, env, poll, cap))) throw new HttpError(403, CAP_MSG[cap]);
 }
 async function passwordOk(poll, pw) {
   return !poll.password_hash || (!!pw && safeEqual(await sha256(poll.id + ':pw:' + pw), poll.password_hash));
@@ -488,6 +511,7 @@ async function guardedPasswordOk(env, request, poll, pw) {
   return false;
 }
 async function checkPassword(env, request, poll) {
+  if (!poll.password_hash || (await roleOf(request, env, poll))) return; // organisers (any role) don't need the password
   const pw = request.headers.get('x-poll-password');
   if (!(await guardedPasswordOk(env, request, poll, pw)))
     throw new HttpError(401, pw ? 'Wrong password' : 'Password required', { needPassword: true, title: poll.title });
@@ -877,7 +901,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0025';
+const USER_DATA_REVIEWED = '0026';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1417,8 +1441,8 @@ async function chatAllowed(env, poll, user) {
 async function chatAccess(request, env, id) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
-  const owner = isAdmin(request, poll);
-  if (!owner) await checkPassword(env, request, poll);
+  const owner = await isAdmin(request, env, poll, 'manage');
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   if (!poll.allow_comments) throw new HttpError(403, 'The chat is turned off for this poll');
   if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Only invited people can join this chat');
   return { poll, user, owner };
@@ -1472,6 +1496,8 @@ async function listChat(request, env, url, id) {
        UNION SELECT user_id FROM chat_reads WHERE poll_id = ?1
        UNION SELECT user_id FROM messages WHERE poll_id = ?1`).bind(id).all();
     out.members = [...new Set([...(poll.owner_id ? [poll.owner_id] : []), ...mem.map((r) => r.user_id)])];
+    const { results: rr } = await env.DB.prepare("SELECT user_id, role FROM participants WHERE poll_id = ? AND user_id IS NOT NULL AND role != ''").bind(id).all();
+    out.roles = Object.fromEntries(rr.filter((r) => POLL_ROLES.includes(r.role)).map((r) => [r.user_id, r.role])); // tag next to names
     const ids = [...new Set([user.id, ...out.members, ...msgs.map((m) => m.user_id), ...msgs.map((m) => m.q_uid).filter(Boolean)])];
     out.people = {};
     for (let i = 0; i < ids.length; i += 90) { // D1 caps bound parameters per query
@@ -1965,7 +1991,7 @@ async function myPolls(request, env) {
      FROM polls p LEFT JOIN instances i ON i.id = (SELECT id FROM instances WHERE poll_id = p.id ORDER BY seq DESC LIMIT 1)
      WHERE p.owner_id = ? ORDER BY p.created_at DESC`).bind(user.id).all();
   const { results: answered } = await env.DB.prepare(
-    `SELECT p.id, p.title, p.kind, p.icon, p.image_at, p.image IS NOT NULL AS has_image, pa.name,
+    `SELECT p.id, p.title, p.kind, p.icon, p.image_at, p.image IS NOT NULL AS has_image, pa.name, pa.role,
        (SELECT MAX(r.updated_at) FROM responses r WHERE r.participant_id = pa.id) AS last,
        i.start_date, i.end_date, i.status, i.deadline, (SELECT COUNT(*) FROM responses r WHERE r.instance_id = i.id) AS answers
      FROM participants pa JOIN polls p ON p.id = pa.poll_id
@@ -1985,7 +2011,7 @@ async function myPolls(request, env) {
     polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at, unread: unread[p.id] || 0,
       current: current(p) })),
     answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last,
-      unread: unread[p.id] || 0, current: current(p) })),
+      ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p) })),
   });
 }
 // Move a poll that was only reachable by its (old) admin link into the signed-in account.
@@ -2089,10 +2115,10 @@ async function createPoll(request, env) {
 
 async function getPoll(request, env, ctx, url, id) {
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
+  const role = await roleOf(request, env, poll), caps = capsOf(role), admin = caps.see; // admin: organiser view (any role)
   if (!admin) await checkPassword(env, request, poll);
   // The owner opened a poll that was about to be deleted for being old: keep it (counts as activity).
-  if (admin && poll.retention_warned_at) await env.DB.prepare('UPDATE polls SET retention_warned_at = NULL, updated_at = ? WHERE id = ?').bind(now(), id).run();
+  if (caps.own && poll.retention_warned_at) await env.DB.prepare('UPDATE polls SET retention_warned_at = NULL, updated_at = ? WHERE id = ?').bind(now(), id).run();
   const created = await ensureCurrent(env, poll);
   if (created) ctx.waitUntil(notifyOpened(env, poll, created, url.origin).catch((e) => console.error(e)));
   const { results: all } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
@@ -2108,7 +2134,7 @@ async function getPoll(request, env, ctx, url, id) {
   }
   const listed = admin ? all : all.filter((i) => effStatus(i) === 'open' || i.id === sel.id);
   const out = {
-    poll: publicPoll(poll, admin), isAdmin: admin, emailEnabled: emailEnabled(env),
+    poll: publicPoll(poll, admin), isAdmin: admin, role, can: caps, emailEnabled: emailEnabled(env),
     instances: listed.map((i) => publicInstance(i, admin ? { responses: counts[i.id] || 0 } : {})),
     instance: publicInstance(sel), dates: datesOf(sel, poll),
   };
@@ -2141,16 +2167,16 @@ async function getPoll(request, env, ctx, url, id) {
     const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
     const props = proposedIds(sel);
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
-      ...(admin ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
+      ...(caps.manage ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
     out.participantCount = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(id).first('n');
-    if (!admin) { // read-only People tab: names and whether they answered this round (no ids or emails)
+    if (!caps.edit) { // read-only People tab (everyone, and viewers): names, roles and whether they answered this round (no ids or emails)
       const { results: pp } = await env.DB.prepare(
-        `SELECT p.name, p.user_id IS NOT NULL AS account, EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS answered
+        `SELECT p.name, p.user_id IS NOT NULL AS account, p.role, EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS answered
          FROM participants p WHERE p.poll_id = ? ORDER BY p.name COLLATE NOCASE`).bind(sel.id, id).all();
-      out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered }));
+      out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered, ...(p.account && POLL_ROLES.includes(p.role) ? { role: p.role } : {}) }));
     }
     // Busy hours others chose to share with this poll (same visibility as answers; the caller's own is left out).
     const caller = userOf(request);
@@ -2185,7 +2211,7 @@ async function getPoll(request, env, ctx, url, id) {
 
 async function updatePoll(request, env, id) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'manage');
   const b = await body(request);
   const p = readPollSettings(b, poll);
   if (b.password !== undefined) p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
@@ -2200,7 +2226,7 @@ async function updatePoll(request, env, id) {
 async function pollImage(request, env, url, id) {
   const poll = await env.DB.prepare('SELECT id, owner_id, password_hash, image FROM polls WHERE id = ?').bind(id).first();
   if (!poll || !poll.image) throw new HttpError(404, 'No picture');
-  if (!isAdmin(request, poll) && !(await guardedPasswordOk(env, request, poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
+  if (!(await isAdmin(request, env, poll)) && !(await guardedPasswordOk(env, request, poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
   const m = poll.image.match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/);
   if (!m) throw new HttpError(404, 'No picture');
   const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
@@ -2209,7 +2235,7 @@ async function pollImage(request, env, url, id) {
 
 async function deletePoll(request, env, id) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'own');
   await env.DB.batch(pollDeleteStmts(env, id));
   return json({ ok: true });
 }
@@ -2283,7 +2309,7 @@ async function retentionWarning(env, poll, months, onDay) {
 // ---------- instances ----------
 async function createNextInstance(request, env, ctx, url, id) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'edit');
   if (poll.kind !== 'series') throw new HttpError(400, 'Only recurring series have a next poll');
   const last = await env.DB.prepare('SELECT MAX(seq) AS s FROM instances WHERE poll_id = ?').bind(id).first('s');
   const n = last == null ? currentSeq(poll) : last + 1;
@@ -2295,7 +2321,7 @@ async function createNextInstance(request, env, ctx, url, id) {
 
 async function updateInstance(request, env, id, iid) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'edit');
   const inst = await loadInstance(env, id, iid);
   const b = await body(request), u = {}, has = (k) => b[k] !== undefined;
   if (has('status')) { if (!['open', 'closed'].includes(b.status)) throw new HttpError(400, 'Invalid status'); u.status = b.status; }
@@ -2318,7 +2344,7 @@ async function updateInstance(request, env, id, iid) {
 
 async function deleteInstance(request, env, id, iid) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'manage');
   await loadInstance(env, id, iid);
   const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM instances WHERE poll_id = ?').bind(id).first('n');
   if (n <= 1) throw new HttpError(400, 'This is the only poll left. Delete the whole poll instead.');
@@ -2516,7 +2542,7 @@ const seriesFooter = (poll) => poll.lang === 'de'
 
 async function sendInvite(request, env, url, id, iid, mid) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'manage');
   await adoptLang(request, env, poll);
   const inst = await loadInstance(env, id, iid);
   const meetings = JSON.parse(inst.meetings || '[]');
@@ -2548,7 +2574,7 @@ async function sendInvite(request, env, url, id, iid, mid) {
 // with the .ics of all of them attached and the subscription link. Body: { ids: [participantId], emails: [address], message? }.
 async function sendAllMeetings(request, env, url, id) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'manage');
   await adoptLang(request, env, poll);
   const b = await body(request);
   const message = str(b.message, 1000, 'Message');
@@ -2608,7 +2634,7 @@ async function sendAllMeetings(request, env, url, id) {
 // Participants who are emailed get invited_at set. Already-invited people (and { remind }) get a reminder wording.
 async function invitePoll(request, env, url, id) {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'manage');
   await adoptLang(request, env, poll);
   const b = await body(request);
   const message = str(b.message, 1000, 'Message');
@@ -2793,7 +2819,7 @@ const BUSY_PER_DAY = 300;
 async function shareBusy(request, env, id, iid) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
+  const admin = await isAdmin(request, env, poll);
   if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   await requireInvited(env, poll, user, admin);
@@ -2904,7 +2930,7 @@ function fillPrompt(poll, dates, lang) {
 async function fillFromText(request, env, id, iid) {
   if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
   const poll = await loadPoll(env, id);
-  const admin = isAdmin(request, poll);
+  const admin = await isAdmin(request, env, poll);
   if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
@@ -2978,7 +3004,7 @@ function suggestPrompt(poll, dates, tot, lang) {
 async function suggestFromText(request, env, id, iid) {
   if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
   const poll = await loadPoll(env, id);
-  requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'edit');
   const inst = await loadInstance(env, id, iid);
   const b = await body(request);
   const text = str(b.text, 500, 'Text', true);
@@ -3056,7 +3082,7 @@ function qgenPrompt(poll, lang) {
 async function questionsFromText(request, env, id, iid) {
   if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
   const poll = await loadPoll(env, id);
-  requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, 'edit');
   await loadInstance(env, id, iid);
   const b = await body(request);
   const text = str(b.text, 500, 'Text', true);
@@ -3093,8 +3119,8 @@ async function questionsFromText(request, env, id, iid) {
 
 async function createResponse(request, env, id, iid) {
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(env, request, poll);
+  const admin = await isAdmin(request, env, poll, 'manage');
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
@@ -3172,7 +3198,7 @@ async function canEditResponse(request, env, r) {
 // "Is that me?": find the participant for a name and their answer in this round.
 async function recall(request, env, id, iid) {
   const poll = await loadPoll(env, id);
-  if (!(await isAdmin(request, poll))) await checkPassword(env, request, poll);
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   await loadInstance(env, id, iid);
   await checkThrottle(env, request, 'name');
   const b = await body(request);
@@ -3183,7 +3209,7 @@ async function recall(request, env, id, iid) {
 async function getOwnResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
-  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
+  if (!(await isAdmin(request, env, poll, 'manage')) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
   return json({ id: r.id, instanceId: r.instance_id, name: r.name, email: r.email, comment: r.comment, entries: JSON.parse(r.entries),
     fill: r.fill ? JSON.parse(r.fill) : null, votes: parseVotes(r.votes, proposedIds(await loadInstance(env, id, r.instance_id))) });
 }
@@ -3195,9 +3221,9 @@ async function voteMeetings(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
-  const admin = await isAdmin(request, poll);
+  const admin = await isAdmin(request, env, poll, 'manage');
   if (!admin && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not your response');
-  if (!admin) await checkPassword(env, request, poll);
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   const b = await body(request);
   const props = proposedIds(inst);
   if (!Array.isArray(b.votes) || b.votes.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid votes');
@@ -3502,8 +3528,8 @@ async function formIdentity(request, env, id, iid, { fid, rid }) {
 // GET /api/polls/:id/instances/:iid/form?fid=&rid= — my answers to the questions and which questions I may answer.
 async function getForm(request, env, url, id, iid) {
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(env, request, poll);
+  const admin = await isAdmin(request, env, poll, 'manage');
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   const { part, row } = await formIdentity(request, env, id, iid, { fid: url.searchParams.get('fid'), rid: url.searchParams.get('rid') });
   const qs = questionsOf(inst), meetings = JSON.parse(inst.meetings || '[]');
@@ -3517,8 +3543,8 @@ async function getForm(request, env, url, id, iid) {
 // PUT /api/polls/:id/instances/:iid/form { fid?, rid?, name?, email?, extra } — save my answers to the questions.
 async function saveForm(request, env, url, id, iid) {
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
-  if (!admin) await checkPassword(env, request, poll);
+  const admin = await isAdmin(request, env, poll, 'manage');
+  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
   // A closed round still takes answers to its after-meeting questions ("How was the last rehearsal?").
   const onlyAfter = effStatus(inst) !== 'open' && !admin;
@@ -3558,7 +3584,7 @@ async function saveForm(request, env, url, id, iid) {
 // DELETE /api/polls/:id/instances/:iid/form?fid=&rid= — remove my answers to the questions (the organiser: ?fid= of anyone's).
 async function deleteForm(request, env, url, id, iid) {
   const poll = await loadPoll(env, id);
-  const admin = await isAdmin(request, poll);
+  const admin = await isAdmin(request, env, poll, 'manage');
   let { row } = await formIdentity(request, env, id, iid, { fid: url.searchParams.get('fid'), rid: url.searchParams.get('rid') });
   if (!row && admin && ID_RE.test(url.searchParams.get('fid') || '')) row = await env.DB.prepare('SELECT id FROM form_answers WHERE id = ? AND poll_id = ?').bind(url.searchParams.get('fid'), id).first();
   if (!row) throw new HttpError(404, 'Answers not found');
@@ -3569,7 +3595,7 @@ async function updateResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
-  const admin = isAdmin(request, poll), own = await canEditResponse(request, env, r);
+  const admin = await isAdmin(request, env, poll, 'manage'), own = await canEditResponse(request, env, r);
   if (!own && !admin) throw new HttpError(403, 'Not your response');
   if (!admin) {
     await checkPassword(env, request, poll);
@@ -3630,16 +3656,31 @@ async function updateResponse(request, env, id, rid) {
 async function deleteResponse(request, env, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
-  if (!(await isAdmin(request, poll)) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not allowed');
+  if (!(await isAdmin(request, env, poll, 'manage')) && !(await canEditResponse(request, env, r))) throw new HttpError(403, 'Not allowed');
   await env.DB.prepare('DELETE FROM responses WHERE id = ?').bind(rid).run();
   return json({ ok: true });
 }
 
 // ---------- participants (admin) ----------
-async function adminPoll(request, env, id) {
+async function adminPoll(request, env, id, cap = 'manage') {
   const poll = await loadPoll(env, id);
-  await requireAdmin(request, poll);
+  await requireAdmin(request, env, poll, cap);
   return poll;
+}
+// Body: { role: 'admin' | 'editor' | 'viewer' | '' }. Owner only; only people in the poll as their account can hold a role.
+async function setParticipantRole(request, env, id, pid) {
+  const poll = await adminPoll(request, env, id, 'own');
+  const p = await loadParticipant(env, id, pid);
+  const b = await body(request), role = b.role == null ? '' : b.role;
+  if (role !== '' && !POLL_ROLES.includes(role)) throw new HttpError(400, 'Invalid role');
+  if (!p.user_id) throw new HttpError(400, 'Only people who answer with an account can get a role');
+  if (p.user_id === poll.owner_id) throw new HttpError(400, 'The owner already has every right');
+  await env.DB.prepare('UPDATE participants SET role = ? WHERE id = ?').bind(role, pid).run();
+  return json({ ok: true, role });
+}
+// Only the owner may remove or merge away someone who holds a role.
+async function guardRoleHolder(request, env, id, p) {
+  if (p.role && POLL_ROLES.includes(p.role)) await adminPoll(request, env, id, 'own');
 }
 async function loadParticipant(env, id, pid) {
   if (!ID_RE.test(pid)) throw new HttpError(404, 'Participant not found');
@@ -3652,7 +3693,7 @@ const latestInstance = (env, pollId) => env.DB.prepare('SELECT * FROM instances 
 // and whether they answered `instId` (`here`).
 async function participantRows(env, pollId, instId) {
   const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, p.role, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
        (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email,
        (SELECT r3.email FROM responses r3 WHERE r3.participant_id = p.id ORDER BY r3.updated_at DESC LIMIT 1) AS re,
        EXISTS (SELECT 1 FROM responses r4 WHERE r4.participant_id = p.id AND r4.instance_id = ?) AS here
@@ -3661,11 +3702,13 @@ async function participantRows(env, pollId, instId) {
   return results.map((p) => ({ ...p, mail_to: (p.ue || (p.re !== null ? p.re : p.email) || '').trim() }));
 }
 async function listParticipants(request, env, id) {
-  await adminPoll(request, env, id);
+  const poll = await adminPoll(request, env, id, 'see');
+  const mails = await isAdmin(request, env, poll, 'manage'); // viewers and editors see the list without addresses
   const inst = await latestInstance(env, id);
   const rows = await participantRows(env, id, inst && inst.id);
   const { results: groups } = await env.DB.prepare('SELECT group_id AS id, name, icon FROM poll_groups WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
-  return json({ groups, participants: rows.map((p) => ({ id: p.id, name: p.name, email: p.email || p.answer_email || '', account: !!p.user_id,
+  return json({ groups, participants: rows.map((p) => ({ id: p.id, name: p.name, email: mails ? p.email || p.answer_email || '' : '', account: !!p.user_id,
+    role: p.user_id && POLL_ROLES.includes(p.role) ? p.role : '', isOwner: !!p.user_id && p.user_id === poll.owner_id,
     rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to, groupId: p.group_id || null })) });
 }
 // People from the page: [{ name, email }] (email required, except friends picked by { uid }). Legacy: "Anna\nBen, ben@example.com".
@@ -3745,7 +3788,7 @@ async function updateParticipant(request, env, id, pid) {
 // ?answers=1 also deletes their answers; otherwise the answers stay, no longer linked to a name.
 async function deleteParticipant(request, env, url, id, pid) {
   await adminPoll(request, env, id);
-  await loadParticipant(env, id, pid);
+  await guardRoleHolder(request, env, id, await loadParticipant(env, id, pid));
   await env.DB.batch(removeParticipantStmts(env, pid, url.searchParams.get('answers') === '1'));
   return json({ ok: true });
 }
@@ -3761,6 +3804,7 @@ const removeParticipantStmts = (env, pid, answers) => [
 async function mergeParticipant(request, env, id, pid) {
   await adminPoll(request, env, id);
   const src = await loadParticipant(env, id, pid);
+  await guardRoleHolder(request, env, id, src);
   const b = await body(request);
   if (typeof b.into !== 'string' || b.into === pid) throw new HttpError(400, 'Pick someone else to merge into');
   const dst = await loadParticipant(env, id, b.into);
