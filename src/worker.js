@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-dbJSOvLj3F3XHvfad0+HbA2ygN/U2n7v5S+JbEXWAS4=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-7P1x1aY81vlDPosVTkKVazHK94JA4SiEVqi2o4tGwmo=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -516,7 +516,7 @@ async function checkPassword(env, request, poll) {
   if (!(await guardedPasswordOk(env, request, poll, pw)))
     throw new HttpError(401, pw ? 'Wrong password' : 'Password required', { needPassword: true, title: poll.title });
 }
-function publicPoll(poll, admin) {
+function publicPoll(poll, admin, edit = admin) {
   const p = {
     id: poll.id, title: poll.title, description: poll.description, kind: poll.kind,
     unit: poll.unit, every: poll.every, anchor: poll.anchor, openDays: poll.open_days, deadlineDays: poll.deadline_days,
@@ -525,6 +525,7 @@ function publicPoll(poll, admin) {
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
+  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '' }); // planner defaults for new meetings
   return p;
 }
 function publicInstance(inst, extra = {}) {
@@ -901,7 +902,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0026';
+const USER_DATA_REVIEWED = '0027';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1226,7 +1227,7 @@ function groupInput(b, partial, user) {
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
 const MAX_PRESETS = 50, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
-  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder'];
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
   if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
@@ -2078,6 +2079,9 @@ function readPollSettings(b, existing) {
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
   if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
+  // Filled into the Meetings planner for every new meeting (same limits as a meeting's own fields).
+  if (!existing || has('meetLocation')) p.meet_location = str(b.meetLocation, 200, 'Location');
+  if (!existing || has('meetNote')) p.meet_note = str(b.meetNote, 1000, 'Description');
   if (!existing || has('image')) { p.image = imageData(b.image, 'Picture'); p.image_at = p.image ? now() : null; }
   return p;
 }
@@ -2134,7 +2138,7 @@ async function getPoll(request, env, ctx, url, id) {
   }
   const listed = admin ? all : all.filter((i) => effStatus(i) === 'open' || i.id === sel.id);
   const out = {
-    poll: publicPoll(poll, admin), isAdmin: admin, role, can: caps, emailEnabled: emailEnabled(env),
+    poll: publicPoll(poll, admin, caps.edit), isAdmin: admin, role, can: caps, emailEnabled: emailEnabled(env),
     instances: listed.map((i) => publicInstance(i, admin ? { responses: counts[i.id] || 0 } : {})),
     instance: publicInstance(sel), dates: datesOf(sel, poll),
   };
