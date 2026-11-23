@@ -1873,6 +1873,19 @@
   .legal p,.legal li{color:var(--ink-2);line-height:1.6} .legal ul{padding-left:20px;margin:6px 0}
   .site-foot{max-width:1100px;margin:40px auto 28px;padding:0 16px;display:flex;gap:16px;justify-content:center;font-size:13px}
   .site-foot a{color:var(--muted)}
+  /* Guided tour: a spotlight (hole) over the explained element and a bubble with Back / Next */
+  .tourb{display:inline-flex;align-items:center;justify-content:center;width:34px;min-width:34px;height:34px;padding:0;border:0;border-radius:8px;background:none;color:#fff;cursor:pointer}
+  .tourb:hover{background:rgba(255,255,255,.1)} .tourb svg{width:18px;height:18px}
+  .tour-ov{position:fixed;inset:0;z-index:200;background:transparent}
+  .tour-ov.dim{background:rgba(6,12,26,.55)}
+  .tour-hole{position:fixed;z-index:201;border-radius:12px;pointer-events:none;box-shadow:0 0 0 9999px rgba(6,12,26,.55);outline:2px solid var(--accent);outline-offset:2px;transition:top .2s,left .2s,width .2s,height .2s}
+  .tour-b{position:fixed;z-index:202;width:min(360px,calc(100vw - 24px));padding:16px 16px 12px;border-radius:16px;background:var(--card);color:var(--ink);box-shadow:var(--shadow-pop,0 16px 40px rgba(0,0,0,.3));border:1px solid var(--line)}
+  .tour-b h3{margin:0 28px 6px 0;font-size:16px;line-height:1.3} .tour-b p{margin:0;font-size:14px;line-height:1.5;color:var(--ink-2)}
+  .tour-b .tour-x{position:absolute;top:8px;right:8px;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer}
+  .tour-b .tour-x:hover{background:var(--sunken)} .tour-b .tour-x svg{width:16px;height:16px}
+  .tour-f{display:flex;align-items:center;gap:8px;margin-top:14px}
+  .tour-b.center{top:50%!important;left:50%!important;transform:translate(-50%,-50%)}
+  @media (max-width:560px){ .tour-b:not(.center){left:12px!important;right:12px;width:auto;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom))} }
 </style>
 </head>
 <body>
@@ -2371,7 +2384,7 @@ function ibl(icon,label,href,cls='',short='',title=''){
 // Navy app bar shown on every page: logo (links to All polls), language, theme, account menu or sign-in.
 function appbar(){
   return `<header class="appbar"><div class="appbar-in"><a class="logo" href="${esc(origin)}"><span class="mark">${ICON.logo}</span>when-who</a>
-    <div class="acct">${langButton()}${themeButton()}${accountBar()}</div></div></header>`;
+    <div class="acct">${tourButton()}${langButton()}${themeButton()}${accountBar()}</div></div></header>`;
 }
 // Language picker (opens on click): System default / English / Deutsch; the choice is saved in this browser.
 function pickItem(attr,val,label,on,icon='',lang=''){
@@ -2396,6 +2409,166 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
   try{ if(v==='light') localStorage.removeItem('theme'); else localStorage.setItem('theme',JSON.stringify(v)); }catch(x){}
   document.documentElement.dataset.theme=n; syncTheme(); document.dispatchEvent(new Event('themechange')); });
 document.addEventListener('themechange',syncTheme); syncTheme();
+// ---------- guided tour ----------
+// A spotlight walkthrough per page and per role: 'answer' (people answering, viewers), 'edit' (editors: + planner,
+// questions editor), 'manage' (admins and the owner: everything), 'home', 'new', 'account'. Steps are { sel, title, body, go, when };
+// go() opens the right tab first, steps whose element isn't there (no AI, no chat, closed round …) are skipped.
+// Shown once per tour (localStorage `tour`), replayed with the ? button in the app bar.
+const TOUR={on:false,steps:[],i:0,key:'',back:null,dir:1,auto:false};
+const TOUR_LV={answer:['answer'],edit:['answer','edit'],manage:['answer','edit','manage']};
+function tourKey(){
+  const qs=new URLSearchParams(location.search);
+  if(qs.has('p')) return P.data&&!P.data.draft&&P.data.poll?(canManage()?'manage':P.data.isAdmin?'edit':'answer'):null;
+  if(qs.has('privacy')||qs.has('imprint')||qs.has('rules')||!ME.user) return null;
+  return qs.has('account')?'account':qs.has('new')?'new':'home';
+}
+function tourButton(){ return tourKey()?`<button type="button" class="tourb" data-tour title="${t('Guided tour')}" aria-label="${t('Guided tour')}">${ICON.ask}</button>`:''; }
+const tourVis=el=>!!el&&el.getClientRects().length>0&&!el.closest('.hide,[hidden]');
+// Poll page helpers for go(): open a tab, a view of the Availability tab, a Meetings sub-view.
+const tgTab=k=>()=>{ if(P.atab!==k) setPollTab(k); };
+const tgView=v=>()=>{ if(P.atab!=='answers') setPollTab('answers'); if(P.tab!==v&&(v!=='mine'||editable())){ P.tab=v; renderBody(); } };
+const tgMsub=v=>()=>{ if(P.atab!=='meetings') setPollTab('meetings'); if(msub()!==v) setMsub(v); };
+function tourSteps(key){
+  const S=(sel,title,body,o={})=>Object.assign({sel,title,body},o);
+  const end=S(null,t('That’s it!'),t('You can open this tour again any time with the ? button at the top of the page.'));
+  if(key==='home') return [
+    S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
+    S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.')),
+    S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
+    S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
+    S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),end];
+  if(key==='new') return [
+    S(null,t('Create a poll'),t('A quick look at the New poll page.')),
+    S('#prs',t('Start from'),t('Start from a ready-made preset (with fitting questions) or one you saved, or start empty.')),
+    S('[data-nset="details"]',t('Details'),t('Title, an icon or picture, and an optional description.')),
+    S('[data-nset="when"]',t('Dates'),t('One date range, a new round every week or month, or a regular weekly slot.')),
+    S('[data-nset="answering"]',t('Answering'),t('Whole days or hours, which days and times are offered, chat, required email or invited people only.')),
+    S('[data-nset="questions"]',t('Questions'),t('Add a short form to the poll: choices, ratings, text, or questions asked after a meeting.')),
+    S('#prSave',t('Save as preset'),t('Keep these settings to start the next poll from them.')),
+    S('#createBtn',t('Create poll'),t('Creates the poll. Then share the link or add people to invite them.')),end];
+  if(key==='account') return [
+    S(null,t('Your account'),t('A quick look at your account page.')),
+    S('#pf',t('Profile'),t('Your name and picture, shown to others in polls and chats. You can also change your email address here.')),
+    S('#calcard',t('Calendars'),t('Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.')),
+    S('#ctcard',t('Contacts'),t('Favourites, people from your polls and groups, to add many people to a poll at once.')),
+    S('#datacard',t('Your data'),t('Download everything we store about you, or delete your account.')),end];
+  const d=P.data, edit=key!=='answer', man=key==='manage', guest=!ME.user, role=d.role&&d.role!=='owner'?d.role:'';
+  const series=d.poll.kind==='series', chatOn=d.poll.allowComments!==false;
+  return [
+    S(null,t('Welcome to when-who'),edit?t('A quick look at everything you can do in this poll, from answering to planning meetings.'):t('A quick look at how to answer this poll. It takes about a minute.'),{go:tgView(editable()?'mine':'group')}),
+    S('#hdr .meta',t('This poll'),(series?t('The dates of this round, the deadline and how many people answered. Tap the date to switch between rounds.'):t('The dates, the deadline and how many people answered.'))+(role?' '+t('Your role: {role}.',{role:esc(roleName(role))})+' '+esc(roleHelp(role)):'')),
+    S('.pshare',t('Share the link'),t('Send this link to everyone who should answer: copy it or share it straight to WhatsApp or email.'),{when:()=>edit}),
+    S('[data-istatus]',t('Close or reopen'),t('Closing stops new answers. Reopen it any time.'),{when:()=>edit}),
+    S('.atabs',t('Sections'),edit?t('Availability, Meetings, Questions, People and Settings: everything about this poll is in these tabs.'):t('Answer in Availability, see the planned meetings and fill in the organiser’s questions.')),
+    S('#wsme',t('You'),guest?t('Enter your name (and, if you like, your email). No account needed.'):t('You answer as your account, so your answer follows you to every device.'),{go:tgView('mine')}),
+    S('.ws-tools .brush,.brush',t('Mark when you can'),t('Pick a colour (available, if needed, maybe), then tap or drag across the days or hours. Blank means not available.'),{go:tgView('mine')}),
+    S('.iseg:not(.brush)',t('Days or hours'),t('Answer for whole days, or switch to hours to mark only certain times.'),{go:tgView('mine')}),
+    S('[data-qf]',t('Quick fill'),t('Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.'),{go:tgView('mine')}),
+    S('[data-ai]',t('Fill with AI'),t('Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.'),{go:tgView('mine')}),
+    S('[data-hint]',t('See the others'),t('Show where the others are free while you answer, to find a time that suits everyone.'),{go:tgView('mine')}),
+    S('[data-busytoggle]',t('Busy times'),t('Hours you’re busy in your calendars are greyed out. You can also share them with this poll.'),{go:tgView('mine')}),
+    S('#saveBtn',t('Send your answer'),t('Saves your answer. You can come back and change it any time while the poll is open.'),{go:tgView('mine')}),
+    S('[data-tab="group"]',t('Overview'),t('Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.'),{go:tgView('group')}),
+    // Meetings: everyone sees the list; editors also the planner.
+    S('#pane-meetings',t('Meetings'),t('The times the organiser picked. When there are options to vote on, pick the ones that suit you. Add meetings to your calendar from here.'),{go:tgTab('meetings'),when:()=>!edit}),
+    S('#mplan',t('Plan meetings'),t('Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.'),{go:tgMsub('plan'),when:()=>edit}),
+    S('[data-sugopen]',t('Quick Suggest'),t('Let when-who find the best times for the people, days and hours you pick.'),{go:tgMsub('plan'),when:()=>edit}),
+    S('[data-sugai]',t('Suggest with AI'),t('Describe what you need, like “2 evening meetings a week, not Fridays”, and it sets up the suggestions.'),{go:tgMsub('plan'),when:()=>edit}),
+    S('[data-msub="list"]',t('Your meetings'),t('Confirmed and proposed meetings: add a place and notes, send invites and export them to calendars.'),{go:tgMsub('list'),when:()=>edit}),
+    // Questions
+    S('#pane-questions',t('Questions'),t('A short form from the organiser. Fill it in, then see everyone’s results.'),{go:tgTab('questions'),when:()=>!edit&&qList().length>0}),
+    S('.qaskdd',t('Ask questions'),t('Add questions or whole questionnaires, or start from a preset. Questions can be about the poll, about meetings, or asked after a meeting.'),{go:tgTab('questions'),when:()=>edit}),
+    S('[data-qai]',t('Generate with AI'),t('Describe what you want to know and get draft questions to pick from.'),{go:tgTab('questions'),when:()=>edit}),
+    // People
+    S('#pane-people',t('People'),t('Who is in this poll and who has answered.'),{go:tgTab('people'),when:()=>!man&&!!d.people}),
+    S('[data-paddopen]',t('Add people'),t('Add people by email, from your contacts or a group. Then invite them and send reminders to those who haven’t answered.'),{go:tgTab('people'),when:()=>man}),
+    S('#parts',t('Roles'),t('Give people who answer with an account a role with the menu next to their name: viewers see all answers, editors plan meetings and questions, admins manage the poll.'),{go:tgTab('people'),when:()=>isOwnerP()}),
+    // Settings
+    S('[data-sset="rounds"],[data-sset="dates"]',series?t('Rounds'):t('Dates'),series?t('Every round of this series, and when new rounds open.'):t('Change the dates and the deadline.'),{go:tgTab('settings'),when:()=>edit}),
+    S('[data-sset="answering"]',t('Answering'),t('Whole days or hours, which days and times are offered, chat, required email or invited people only.'),{go:tgTab('settings'),when:()=>man}),
+    S('[data-sset="privacy"]',t('Privacy'),t('Hide the answers from everyone but the organisers, or protect the poll with a password.'),{go:tgTab('settings'),when:()=>man}),
+    S('[data-sset="email"]',t('Email'),t('Reminders before the deadline and emails when a new round opens.'),{go:tgTab('settings'),when:()=>man}),
+    S('#savePreset',t('Save as preset'),t('Start your next poll from this one’s settings and questions.'),{go:tgTab('settings'),when:()=>man}),
+    S('#chatdock',t('Chat'),guest?t('People who are signed in chat here. You see what happens in the poll: answers, meetings and rounds.'):t('Chat with everyone in the poll. Tag people with @ and reply to a day or a meeting.'),{go:tgView(editable()?'mine':'group'),when:()=>chatOn}),
+    S('.su-btn',t('Create an account (optional)'),t('Your answers follow you to every device, and you can make polls of your own.'),{when:()=>guest}),
+    end];
+}
+function tourStart(key,auto){
+  key=key||tourKey(); if(!key||TOUR.on) return;
+  const steps=tourSteps(key).filter(s=>!s.when||s.when()); if(!steps.length) return;
+  const seen=store.get('tour',{}); (TOUR_LV[key]||[key]).forEach(k=>seen[k]=1); store.set('tour',seen);
+  Object.assign(TOUR,{on:true,steps,i:0,key,dir:1,auto:!!auto,back:P.data&&!P.data.draft?{atab:P.atab,tab:P.tab,msub:P.msub}:null});
+  document.querySelectorAll('details[open]').forEach(x=>x.open=false);
+  document.body.insertAdjacentHTML('beforeend',`<div class="tour-ov" id="tourov"></div><div class="tour-hole" id="tourhole" hidden></div><div class="tour-b" id="tourb" role="dialog" aria-modal="true" aria-labelledby="tourt"></div>`);
+  tourShow(0,1);
+}
+// Show step i (moving in direction dir): prepare the page, wait a moment for the element (People loads), skip it if it's missing.
+async function tourShow(i,dir){
+  const n=TOUR.steps.length; if(i<0) i=0;
+  if(i>=n){ tourEnd(); return; }
+  const s=TOUR.steps[i]; TOUR.i=i; TOUR.dir=dir;
+  try{ if(s.go) s.go(); }catch(e){}
+  let el=null;
+  if(s.sel){ for(let k=0;k<12;k++){ el=[...document.querySelectorAll(s.sel)].find(tourVis); if(el) break; await new Promise(r=>setTimeout(r,100)); if(!TOUR.on||TOUR.i!==i) return; }
+    if(!el){ if(dir<0&&i===0) return tourShow(0,1); return tourShow(i+dir,dir); } }
+  TOUR.el=el;
+  const b=$('tourb'); if(!b) return;
+  const first=i===0, last=i===n-1;
+  b.classList.toggle('center',!el);
+  b.innerHTML=`<button type="button" class="tour-x" data-tourgo="x" title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button>
+    <h3 id="tourt">${esc(s.title)}</h3><p>${s.body}</p>
+    <div class="tour-f">${first?`<span class="grow"></span>`:`<span class="grow"></span><button type="button" class="btn sm ghost" data-tourgo="-1">${t('Back')}</button>`}
+      ${first?`<button type="button" class="btn sm ghost" data-tourgo="x">${t('Not now')}</button>`:''}
+      <button type="button" class="btn sm primary" data-tourgo="1">${first?t('Show me'):last?t('Done'):t('Next')}</button></div>`;
+  $('tourov').classList.toggle('dim',!el); $('tourhole').hidden=!el;
+  if(el){ const r=el.getBoundingClientRect(), tall=r.height>innerHeight*.55;
+    el.scrollIntoView({block:tall?'start':'center',inline:'nearest'});
+    if(matchMedia('(max-width:560px)').matches){ const r2=el.getBoundingClientRect(), room=innerHeight-b.offsetHeight-24; if(!tall&&r2.bottom>room) window.scrollBy(0,r2.bottom-room); } }
+  tourPlace(); const nb=b.querySelector('[data-tourgo="1"]'); if(nb) nb.focus({preventScroll:true});
+}
+function tourPlace(){
+  if(!TOUR.on) return; const b=$('tourb'), h=$('tourhole'), el=TOUR.el; if(!b||!h) return;
+  if(!el||!b.classList||b.classList.contains('center')) return;
+  if(!el.isConnected){ const s=TOUR.steps[TOUR.i]; const nx=s&&[...document.querySelectorAll(s.sel)].find(tourVis); if(!nx) return; TOUR.el=nx; return tourPlace(); }
+  const r=el.getBoundingClientRect(), H=innerHeight, W=document.documentElement.clientWidth, pad=6;
+  const top=Math.max(r.top-pad,4), bot=Math.min(r.bottom+pad,H-4), left=Math.max(r.left-pad,4), right=Math.min(r.right+pad,W-4);
+  Object.assign(h.style,{top:top+'px',left:left+'px',width:Math.max(right-left,0)+'px',height:Math.max(bot-top,0)+'px'});
+  if(matchMedia('(max-width:560px)').matches){ b.style.top=''; b.style.left=''; return; }
+  const bw=b.offsetWidth, bh=b.offsetHeight;
+  let y=H-bot>=bh+16?bot+10:top>=bh+16?top-10-bh:H-bh-12;
+  let x=Math.min(Math.max(r.left+r.width/2-bw/2,12),W-bw-12);
+  b.style.top=y+'px'; b.style.left=x+'px';
+}
+function tourEnd(){
+  if(!TOUR.on) return; TOUR.on=false; TOUR.el=null;
+  ['tourov','tourhole','tourb'].forEach(id=>{ const x=$(id); if(x) x.remove(); });
+  const bk=TOUR.back; TOUR.back=null;
+  if(bk&&P.data){ try{ if(bk.msub&&P.msub!==bk.msub&&P.data.isAdmin) setMsub(bk.msub,false); if(P.atab!==bk.atab) setPollTab(bk.atab); if(P.tab!==bk.tab){ P.tab=bk.tab; } renderBody(); }catch(e){} }
+  window.scrollTo(0,0);
+}
+// Auto-start once per tour, a moment after the page is drawn (not over a dialog, the after-meeting prompt or the pigeon).
+function tourAuto(){
+  setTimeout(()=>{ const key=tourKey(); if(!key||TOUR.on||TOUR.autoTried) return;
+    if(store.get('tour',{})[key]) return;
+    if(document.querySelector('dialog[open],.pigeon-ov')||(P.data&&!P.data.draft&&chatState().open)) return;
+    TOUR.autoTried=true; tourStart(key,true); },700);
+}
+document.addEventListener('click',e=>{
+  const g=e.target.closest&&e.target.closest('[data-tourgo]');
+  if(g){ e.preventDefault(); const v=g.dataset.tourgo; if(v==='x') tourEnd(); else tourShow(TOUR.i+(+v),+v); return; }
+  const b=e.target.closest&&e.target.closest('[data-tour]');
+  if(b){ e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; tourStart(); }
+});
+// While the tour is open: → / Enter next, ← back, Esc closes; other shortcuts (undo, day panel) are held back.
+document.addEventListener('keydown',e=>{
+  if(!TOUR.on) return; const inB=e.target.closest&&e.target.closest('#tourb');
+  if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); tourEnd(); return; }
+  if(e.key==='ArrowRight'||(e.key==='Enter'&&!inB)){ e.preventDefault(); e.stopImmediatePropagation(); tourShow(TOUR.i+1,1); return; }
+  if(e.key==='ArrowLeft'){ e.preventDefault(); e.stopImmediatePropagation(); tourShow(TOUR.i-1,-1); return; }
+  if(e.key!=='Tab'&&!inB){ e.preventDefault(); e.stopImmediatePropagation(); }
+},true);
+window.addEventListener('resize',()=>tourPlace());
+window.addEventListener('scroll',()=>tourPlace(),{passive:true});
 // ---------- profile, avatars, poll icons ----------
 const displayName = u => (u&&(u.name||(u.email||'').split('@')[0]))||'';
 const TINTS=['#1F5EFF','#0E9F8E','#7C4DFF','#E2683C','#D23F7E','#2F8FD8','#5B6CFF','#1E7B4E'];
@@ -2542,7 +2715,7 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account Overview')}</a><a href="${esc(origin)}">${t('Your Polls')}</a>
+    <a href="?account">${t('Account Overview')}</a><a href="${esc(origin)}">${t('Your Polls')}</a>${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign Out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign Out Everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -2770,7 +2943,7 @@ function renderPrivacy(){
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
-        t('<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.'),
+        t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
       ]))}
       ${legalSec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
         <p>${t('when-who’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.')}</p>
@@ -4175,7 +4348,7 @@ function render(){
   [nm,em].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }); });
   if(d.isAdmin) wireAdmin();
   renderBody();
-  chatSync();
+  chatSync(); tourAuto();
 }
 // "You" strip at the top of the Mine view: the name (and, for guests, email) that go with the answer.
 // Guests get a small card: name, email and an optional "Create account" (opens sign-up with both filled in).
@@ -8024,10 +8197,87 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
   else if(qs.has('imprint')) renderImprint();
   else if(qs.has('rules')) renderRules();
   else { renderHome(); if(qs.has('deleted')){ history.replaceState(null,'',location.pathname); toast(t('Your account and its data were deleted.')); } }
+  if(!pid) tourAuto();
 })();
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Guided tour": "Rundgang",
+"Take the tour": "Rundgang starten",
+"That’s it!": "Das war’s!",
+"You can open this tour again any time with the ? button at the top of the page.": "Mit dem ?-Knopf oben auf der Seite kannst du den Rundgang jederzeit wieder öffnen.",
+"Welcome to when-who": "Willkommen bei when-who",
+"A one-minute look around. You can skip it any time.": "Ein kurzer Rundgang von einer Minute. Du kannst ihn jederzeit überspringen.",
+"Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.": "Erstelle eine Umfrage: Wähle die Termine (einmalig, wiederkehrend oder ein fester Wochentermin), wie geantwortet wird, und teile den Link. Zum Antworten braucht man kein Konto.",
+"Your polls": "Deine Umfragen",
+"Polls you own. Open one to see answers, plan meetings, ask questions and invite people.": "Umfragen, die dir gehören. Öffne eine, um Antworten zu sehen, Treffen zu planen, Fragen zu stellen und Leute einzuladen.",
+"Polls you answered while signed in. Your answers follow you to every device.": "Umfragen, die du angemeldet beantwortet hast. Deine Antworten sind auf jedem Gerät dabei.",
+"Profile, calendars (to grey out busy hours), contacts and groups, and your data.": "Profil, Kalender (um belegte Stunden auszugrauen), Kontakte und Gruppen sowie deine Daten.",
+"A quick look at the New poll page.": "Ein kurzer Blick auf die Seite „Neue Umfrage“.",
+"Start from a ready-made preset (with fitting questions) or one you saved, or start empty.": "Starte mit einer fertigen Vorlage (mit passenden Fragen), einer eigenen oder ganz leer.",
+"Title, an icon or picture, and an optional description.": "Titel, ein Symbol oder Bild und eine optionale Beschreibung.",
+"One date range, a new round every week or month, or a regular weekly slot.": "Ein Zeitraum, jede Woche oder jeden Monat eine neue Runde oder ein fester Wochentermin.",
+"Whole days or hours, which days and times are offered, chat, required email or invited people only.": "Ganze Tage oder Stunden, welche Tage und Zeiten angeboten werden, Chat, Pflicht-E-Mail oder nur eingeladene Personen.",
+"Add a short form to the poll: choices, ratings, text, or questions asked after a meeting.": "Füge der Umfrage ein kurzes Formular hinzu: Auswahl, Bewertungen, Text oder Fragen nach einem Treffen.",
+"Keep these settings to start the next poll from them.": "Speichere diese Einstellungen, um die nächste Umfrage damit zu beginnen.",
+"Creates the poll. Then share the link or add people to invite them.": "Erstellt die Umfrage. Danach teilst du den Link oder fügst Leute hinzu, um sie einzuladen.",
+"A quick look at your account page.": "Ein kurzer Blick auf deine Kontoseite.",
+"Your name and picture, shown to others in polls and chats. You can also change your email address here.": "Dein Name und Bild, die andere in Umfragen und Chats sehen. Hier kannst du auch deine E-Mail-Adresse ändern.",
+"Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.": "Verbinde Google oder Outlook oder füge iCal-Links hinzu. Belegte Stunden werden beim Antworten ausgegraut, und du kannst Antworten daraus vorausfüllen.",
+"Favourites, people from your polls and groups, to add many people to a poll at once.": "Favoriten, Leute aus deinen Umfragen und Gruppen, um viele Personen auf einmal zu einer Umfrage hinzuzufügen.",
+"Download everything we store about you, or delete your account.": "Lade alles herunter, was wir über dich speichern, oder lösche dein Konto.",
+"A quick look at everything you can do in this poll, from answering to planning meetings.": "Ein kurzer Blick auf alles, was du in dieser Umfrage tun kannst, vom Antworten bis zum Planen von Treffen.",
+"A quick look at how to answer this poll. It takes about a minute.": "Ein kurzer Blick darauf, wie du diese Umfrage beantwortest. Dauert etwa eine Minute.",
+"This poll": "Diese Umfrage",
+"The dates of this round, the deadline and how many people answered. Tap the date to switch between rounds.": "Die Termine dieser Runde, die Frist und wie viele geantwortet haben. Tippe auf das Datum, um zwischen Runden zu wechseln.",
+"The dates, the deadline and how many people answered.": "Die Termine, die Frist und wie viele geantwortet haben.",
+"Your role: {role}.": "Deine Rolle: {role}.",
+"Send this link to everyone who should answer: copy it or share it straight to WhatsApp or email.": "Schick diesen Link an alle, die antworten sollen: kopieren oder direkt per WhatsApp oder E-Mail teilen.",
+"Close or reopen": "Schließen oder wieder öffnen",
+"Closing stops new answers. Reopen it any time.": "Nach dem Schließen sind keine neuen Antworten möglich. Du kannst jederzeit wieder öffnen.",
+"Sections": "Bereiche",
+"Availability, Meetings, Questions, People and Settings: everything about this poll is in these tabs.": "Verfügbarkeit, Treffen, Fragen, Personen und Einstellungen: Alles zu dieser Umfrage findest du in diesen Tabs.",
+"Answer in Availability, see the planned meetings and fill in the organiser’s questions.": "Antworte unter Verfügbarkeit, sieh dir die geplanten Treffen an und beantworte die Fragen der Organisator*in.",
+"Enter your name (and, if you like, your email). No account needed.": "Gib deinen Namen ein (und wenn du willst, deine E-Mail). Kein Konto nötig.",
+"You answer as your account, so your answer follows you to every device.": "Du antwortest mit deinem Konto, so ist deine Antwort auf jedem Gerät dabei.",
+"Mark when you can": "Markiere, wann du kannst",
+"Pick a colour (available, if needed, maybe), then tap or drag across the days or hours. Blank means not available.": "Wähle eine Farbe (verfügbar, wenn nötig, vielleicht) und tippe oder ziehe über die Tage oder Stunden. Leer heißt: nicht verfügbar.",
+"Answer for whole days, or switch to hours to mark only certain times.": "Antworte für ganze Tage oder wechsle zu Stunden, um nur bestimmte Zeiten zu markieren.",
+"Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.": "Fülle viele Tage auf einmal mit Regeln, etwa „jeden Werktag ab 18 Uhr“. Deine eigenen Markierungen bleiben obenauf.",
+"Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.": "Oder schreib (oder diktiere) einfach, wann du Zeit hast, etwa „am Wochenende, nicht vor 10“, und deine Antwort wird ausgefüllt.",
+"See the others": "Die anderen sehen",
+"Show where the others are free while you answer, to find a time that suits everyone.": "Zeig beim Antworten, wann die anderen Zeit haben, um einen Termin für alle zu finden.",
+"Busy times": "Belegte Zeiten",
+"Hours you’re busy in your calendars are greyed out. You can also share them with this poll.": "Stunden, in denen du laut deinen Kalendern belegt bist, werden ausgegraut. Du kannst sie auch mit dieser Umfrage teilen.",
+"Send your answer": "Antwort senden",
+"Saves your answer. You can come back and change it any time while the poll is open.": "Speichert deine Antwort. Solange die Umfrage offen ist, kannst du sie jederzeit ändern.",
+"Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.": "Alle Antworten auf einen Blick: Die besten Tage stechen hervor. Tippe auf einen Tag, um zu sehen, wer kann.",
+"The times the organiser picked. When there are options to vote on, pick the ones that suit you. Add meetings to your calendar from here.": "Die Termine, die die Organisator*in gewählt hat. Gibt es Optionen zur Abstimmung, wähle die, die dir passen. Von hier kannst du Treffen in deinen Kalender übernehmen.",
+"Plan meetings": "Treffen planen",
+"Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.": "Wähle Zeiten anhand aller Antworten: Zieh im Raster, um Treffen zu entwerfen, und speichere sie oder lass darüber abstimmen.",
+"Let when-who find the best times for the people, days and hours you pick.": "Lass when-who die besten Zeiten für die gewählten Personen, Tage und Stunden finden.",
+"Describe what you need, like “2 evening meetings a week, not Fridays”, and it sets up the suggestions.": "Beschreib, was du brauchst, etwa „2 Abendtreffen pro Woche, nicht freitags“, und die Vorschläge werden eingestellt.",
+"Your meetings": "Deine Treffen",
+"Confirmed and proposed meetings: add a place and notes, send invites and export them to calendars.": "Feste und vorgeschlagene Treffen: Ort und Notizen ergänzen, Einladungen senden und in Kalender exportieren.",
+"A short form from the organiser. Fill it in, then see everyone’s results.": "Ein kurzes Formular der Organisator*in. Füll es aus und sieh dir danach die Ergebnisse aller an.",
+"Ask questions": "Fragen stellen",
+"Add questions or whole questionnaires, or start from a preset. Questions can be about the poll, about meetings, or asked after a meeting.": "Füge Fragen oder ganze Fragebögen hinzu oder starte mit einer Vorlage. Fragen können sich auf die Umfrage oder auf Treffen beziehen oder nach einem Treffen gestellt werden.",
+"Describe what you want to know and get draft questions to pick from.": "Beschreib, was du wissen willst, und bekomm Entwürfe für Fragen zur Auswahl.",
+"Who is in this poll and who has answered.": "Wer in dieser Umfrage ist und wer schon geantwortet hat.",
+"Add people by email, from your contacts or a group. Then invite them and send reminders to those who haven’t answered.": "Füge Leute per E-Mail, aus deinen Kontakten oder einer Gruppe hinzu. Lade sie dann ein und erinnere die, die noch nicht geantwortet haben.",
+"Roles": "Rollen",
+"Give people who answer with an account a role with the menu next to their name: viewers see all answers, editors plan meetings and questions, admins manage the poll.": "Gib Leuten, die mit Konto antworten, über das Menü neben ihrem Namen eine Rolle: Betrachter*innen sehen alle Antworten, Bearbeiter*innen planen Treffen und Fragen, Admins verwalten die Umfrage.",
+"Every round of this series, and when new rounds open.": "Alle Runden dieser Reihe und wann neue Runden starten.",
+"Change the dates and the deadline.": "Ändere die Termine und die Frist.",
+"Hide the answers from everyone but the organisers, or protect the poll with a password.": "Verberge die Antworten vor allen außer den Organisator*innen oder schütze die Umfrage mit einem Passwort.",
+"Reminders before the deadline and emails when a new round opens.": "Erinnerungen vor der Frist und E-Mails, wenn eine neue Runde startet.",
+"Start your next poll from this one’s settings and questions.": "Starte deine nächste Umfrage mit den Einstellungen und Fragen dieser.",
+"People who are signed in chat here. You see what happens in the poll: answers, meetings and rounds.": "Angemeldete Personen chatten hier. Du siehst, was in der Umfrage passiert: Antworten, Treffen und Runden.",
+"Chat with everyone in the poll. Tag people with @ and reply to a day or a meeting.": "Chatte mit allen in der Umfrage. Markiere Leute mit @ und antworte auf einen Tag oder ein Treffen.",
+"Create an account (optional)": "Konto erstellen (optional)",
+"Your answers follow you to every device, and you can make polls of your own.": "Deine Antworten sind auf jedem Gerät dabei, und du kannst eigene Umfragen erstellen.",
+"Not now": "Nicht jetzt",
+"Show me": "Zeig’s mir",
 "Owner": "Eigentümer*in",
 "<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.": "<b>Rollen in Umfragen:</b> Die Eigentümer*in einer Umfrage kann Personen, die mit einem Konto antworten, zu Admin, Bearbeiter*in oder Betrachter*in machen. Sie sehen dann, was die Organisator*in sieht: alle Antworten (auch wenn Antworten versteckt sind) und die Liste der Personen, Admins auch deren E-Mail-Adressen. Die Rolle wird mit deinem Platz in dieser Umfrage gespeichert und mit ihm gelöscht.",
 "Only the poll’s organisers can see this.": "Das sehen nur die Organisator*innen der Umfrage.",
@@ -8664,7 +8914,7 @@ function germanText(){ return {
 "<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name, das Profilbild und die Beschreibung, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Deine Beschreibung siehst nur du. Dein Profilbild sehen angemeldete Personen, die deine E-Mail-Adresse in ihren Kontakten haben. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
 "<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.": "<b>Umfragen und Antworten:</b> was du in einer Umfrage eingibst: Titel, Termine, Namen und E-Mail-Adressen der Personen, die du hinzufügst, Verfügbarkeiten, Kommentare und Chatnachrichten.",
 "<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
-"<b>In your browser:</b> your language, your name for answering without an account, and the keys of polls you answered. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto und die Schlüssel der Umfragen, die du beantwortet hast. Das bleibt auf deinem Gerät.",
+"<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto, die Schlüssel der Umfragen, die du beantwortet hast, und welche Rundgänge du schon gesehen hast. Das bleibt auf deinem Gerät.",
 "Google and Outlook calendars": "Google- und Outlook-Kalender",
 "If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen, und nur wenn du für eine Umfrage das Teilen einschaltest, um deren Leuten zu zeigen, in welchen Stunden du belegt bist (ohne Termindetails). Kalenderdaten werden nicht verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
