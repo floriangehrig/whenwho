@@ -2839,6 +2839,32 @@ async function linkGuestToAccount(env, pollId, partId, mail) {
   await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
     .bind(acct.id, acctKey(acct.id), acct.email, partId).run();
 }
+// Guest rows that are this account's person: added by the organiser with its email, or a guest who answered with it.
+const guestRowsOf = (env, pollId, mail) => env.DB.prepare(
+  `SELECT * FROM participants pa WHERE pa.poll_id = ? AND pa.user_id IS NULL AND (LOWER(TRIM(pa.email)) = ?
+     OR EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = pa.id AND LOWER(TRIM(r.email)) = ?)) ORDER BY pa.created_at`)
+  .bind(pollId, mail, mail).all().then((r) => r.results);
+// The signed-in account's person in this poll: its own row, else a guest row with its email (which becomes the
+// account's). Guest rows with that email next to the account's row (duplicates from before) are merged into it.
+// null = not in this poll yet.
+async function accountRow(env, pollId, user) {
+  let part = await accountParticipant(env, pollId, user.id);
+  const guests = await guestRowsOf(env, pollId, user.email.toLowerCase());
+  if (!part && guests.length) {
+    part = guests.shift();
+    await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
+      .bind(user.id, acctKey(user.id), user.email, part.id).run();
+    Object.assign(part, { user_id: user.id, name_key: acctKey(user.id), email: user.email });
+  }
+  for (const g of guests) await mergeInto(env, g, part);
+  return part;
+}
+// Name a signed-in person answers under: the profile name, else the typed one, else the name they already have in
+// this poll (e.g. the one the organiser gave them), else the start of their email. Accounts made before sign-up asked
+// for a name have none, so it's never required here.
+const acctName = (user, typed, part) => user.name
+  || (typeof typed === 'string' && typed.trim() ? personName(typed) : '')
+  || (part && part.name) || user.email.split('@')[0].slice(0, 60);
 // Invited-only polls: the answer must come from a signed-in account that the owner invited, either as that account
 // or as a guest row with the account's email (that row then becomes the account's). The owner can always answer.
 async function requireInvited(env, poll, user, admin) {
@@ -3165,7 +3191,8 @@ async function createResponse(request, env, id, iid) {
   const user = userOf(request);
   await requireInvited(env, poll, user, admin);
   // Signed in: the name shown to others is the account's profile name (typed name only while the profile has none).
-  const name = user && user.name ? user.name : personName(b.name);
+  const mine = user ? await accountRow(env, id, user) : null;
+  const name = user ? acctName(user, b.name, mine) : personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
   const mail = user ? user.email : email(b.email);
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
@@ -3175,7 +3202,7 @@ async function createResponse(request, env, id, iid) {
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
   if (user) { // signed in: one participant per account, whatever name they give
-    part = await accountParticipant(env, id, user.id);
+    part = mine;
     if (part) {
       const existing = await answerIn(env, part.id, iid);
       if (existing) throw new HttpError(409, 'You have already answered this poll', { code: 'own_answer', responseId: existing });
@@ -3543,7 +3570,7 @@ function extraFor(raw, qs, added, full) {
 async function formIdentity(request, env, id, iid, { fid, rid }) {
   const user = userOf(request);
   if (user) {
-    const part = await accountParticipant(env, id, user.id);
+    const part = await accountRow(env, id, user);
     const row = part ? await env.DB.prepare('SELECT * FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, part.id).first() : null;
     return { part, row, user };
   }
@@ -3594,7 +3621,7 @@ async function saveForm(request, env, url, id, iid) {
   let { part, row } = await formIdentity(request, env, id, iid, { fid: b.fid, rid: b.rid });
   let editKey = null;
   if (!part) {
-    if (user) part = await newParticipant(env, id, user.name || personName(b.name), user.email, user.id);
+    if (user) part = await newParticipant(env, id, acctName(user, b.name, null), user.email, user.id);
     else {
       const name = personName(b.name), mail = email(b.email);
       if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
@@ -3847,6 +3874,11 @@ async function mergeParticipant(request, env, id, pid) {
   if (typeof b.into !== 'string' || b.into === pid) throw new HttpError(400, 'Pick someone else to merge into');
   const dst = await loadParticipant(env, id, b.into);
   if (src.user_id && dst.user_id) throw new HttpError(409, 'Both are signed-in accounts, so they can’t be merged');
+  return json({ ok: true, removedAnswers: await mergeInto(env, src, dst) });
+}
+// Moves everything of participant src to dst and deletes src; where both answered the same round, the newer answer wins.
+// Returns how many answers were dropped.
+async function mergeInto(env, src, dst) {
   const { results } = await env.DB.prepare('SELECT id, instance_id, participant_id, updated_at FROM responses WHERE participant_id IN (?, ?)').bind(src.id, dst.id).all();
   const byRound = {}, drop = [];
   for (const r of results) {
@@ -3870,6 +3902,7 @@ async function mergeParticipant(request, env, id, pid) {
       ? env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(src.user_id, src.name_key, src.email, dst.id)
       : env.DB.prepare("UPDATE participants SET email = CASE WHEN email = '' THEN ? ELSE email END WHERE id = ?").bind(src.email, dst.id),
     env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ? AND (invited_at IS NULL OR invited_at < ?)').bind(src.invited_at, dst.id, src.invited_at),
+    env.DB.prepare('UPDATE participants SET group_id = COALESCE(group_id, ?) WHERE id = ?').bind(src.group_id || null, dst.id),
   ]);
-  return json({ ok: true, removedAnswers: drop.length });
+  return drop.length;
 }
