@@ -1481,6 +1481,8 @@
   .sum-list dd{margin:0;font-size:14px}
   .sum-btn{width:100%;min-height:42px;margin-top:16px;font-size:14.5px}
   .prs{margin-bottom:var(--s4);padding:0;overflow:hidden}
+  .nq{padding:0;margin:0;border:0;box-shadow:none;background:none} .nq .ws-h{margin-bottom:6px} .nq .ws-h h2{display:none} .nq .ws-h .qws-add{margin-left:auto}
+  .nq .mcard{padding:0;border:0;background:none;box-shadow:none}
   .prs-field{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
   .prs-field:hover{background:var(--sunken)} .prs-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
   .prs-tx b{font-size:15px} .prs-l{font-size:11.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
@@ -2758,7 +2760,7 @@ function renderPrivacy(){
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
         t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
-        t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
+        t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll you save as a starting point for new polls. They contain no dates, people, answers or passwords, and you can delete them on the New poll page.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
@@ -2953,47 +2955,35 @@ async function loadPresets(){ if(!ME.user) return []; if(ME.presets) return ME.p
   try{ ME.presets=(await api('GET','/me/presets')).presets; }catch(e){ ME.presets=[]; } return ME.presets; }
 const qCountText=qs=>{ const n=(qs||[]).filter(x=>x.type!=='group').length, g=(qs||[]).length-n; return (n===1?t('1 question'):t('{n} questions',{n}))+(g?` · ${g===1?t('1 questionnaire'):t('{n} questionnaires',{n:g})}`:''); };
 // Save as preset: name (an existing name is replaced), icon from the data. Resolves with the saved preset's id, or null.
-// data.scope 'questions' = a question preset (a questionnaire, a question or a round's questions); a poll preset with
-// questions gets an Include questions switch.
-const isQPreset=p=>!!(p&&p.data&&p.data.scope==='questions');
 function presetSave(data,name,folder=''){ return new Promise(res=>{
   let d=$('prdlg'); if(!d){ d=document.createElement('dialog'); d.id='prdlg'; d.className='dlg prdlg'; d.setAttribute('aria-labelledby','pr_h'); document.body.appendChild(d); d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
-  const mine=ME.presets||[], qp=data.scope==='questions', hasQ=!qp&&!!(data.questions&&data.questions.length);
-  d.innerHTML=`<form method="dialog" id="pr_f"><div class="dlg-h"><span class="qp-ic">${data.icon?esc(data.icon):ICON.copy}</span><h2 id="pr_h">${data.scope==='questions'?t('Save questions as preset'):t('Save as preset')}</h2>${pqb('x',t('Close'),'data-prclose=""')}</div>
+  const mine=ME.presets||[];
+  d.innerHTML=`<form method="dialog" id="pr_f"><div class="dlg-h"><span class="qp-ic">${data.icon?esc(data.icon):ICON.copy}</span><h2 id="pr_h">${t('Save as preset')}</h2>${pqb('x',t('Close'),'data-prclose=""')}</div>
     <div class="dlg-b"><input type="text" id="pr_name" maxlength="60" required value="${esc(name||'')}" placeholder="${t('Name, e.g. Band rehearsals')}" aria-label="${t('Name')}" list="pr_names" autocomplete="off">
       <datalist id="pr_names">${mine.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
       <label class="pr-g">${ICON.note}<input type="text" id="pr_folder" maxlength="40" value="${esc(folder)}" placeholder="${t('Group: My presets')}" aria-label="${t('Group')}" list="pr_folders" autocomplete="off"></label>
       <datalist id="pr_folders">${[...new Set(mine.map(myFolder).filter(Boolean))].map(f=>`<option value="${esc(f)}">`).join('')}</datalist>
-      ${hasQ?`<div class="qetog">${ICON.ask}<label for="pr_q">${t('Include questions ({n})',{n:(data.questions||[]).filter(x=>x.type!=='group').length})}</label>${swc('pr_q',true,t('Include questions'))}</div>`:''}
-      <div class="muted small" id="pr_hint"></div><div class="err" id="pr_err"></div></div>
+      <div class="muted small" id="pr_hint">${t('Settings and {q}. No dates, people or password.',{q:qCountText(data.questions)})}</div><div class="err" id="pr_err"></div></div>
     <div class="dlg-f"><span class="grow"></span><button type="button" class="btn ghost" data-prclose>${t('Cancel')}</button><button class="btn primary withic" id="pr_ok">${ICON.check}<span>${t('Save')}</span></button></div></form>`;
   let done=false; const fin=v=>{ if(done) return; done=true; res(v); };
   const hint=()=>{ const n=$('pr_name').value.trim().toLowerCase(), x=mine.find(p=>p.name.toLowerCase()===n); $('pr_ok').lastChild.textContent=x?t('Replace'):t('Save'); };
   $('pr_name').addEventListener('input',hint); hint();
-  const withQ=()=>!hasQ||$('pr_q').checked;
-  const qhint=()=>{ $('pr_hint').textContent=qp?t('{q}, without links to meetings or people.',{q:qCountText(data.questions)}):withQ()&&hasQ?t('Settings and {q}. No dates, people or password.',{q:qCountText(data.questions)}):t('Settings only, no questions. No dates, people or password.'); };
-  qhint(); if(hasQ) $('pr_q').addEventListener('change',qhint);
   d.querySelectorAll('[data-prclose]').forEach(b=>b.addEventListener('click',()=>d.close()));
   d.addEventListener('close',()=>fin(null),{once:true});
   $('pr_f').addEventListener('submit',async e=>{ e.preventDefault(); const nm=$('pr_name').value.trim(); if(!nm){ $('pr_name').focus(); return; }
     $('pr_ok').disabled=true;
     const fo=$('pr_folder').value.trim();
-    const dd={...data,folder:fo||undefined}; if(!withQ()) delete dd.questions;
-    try{ const r=await api('POST','/me/presets',{name:nm,icon:data.icon||'',data:dd}); ME.presets=null; await loadPresets(); toast(r.replaced?t('Preset replaced'):t('Preset saved')); fin(r.id); d.close(); }
+    try{ const r=await api('POST','/me/presets',{name:nm,icon:data.icon||'',data:{...data,folder:fo||undefined}}); ME.presets=null; await loadPresets(); toast(r.replaced?t('Preset replaced'):t('Preset saved')); fin(r.id); d.close(); }
     catch(ex){ $('pr_err').textContent=ex.message; $('pr_ok').disabled=false; } });
   if(!d.open) d.showModal(); setTimeout(()=>{ const i=$('pr_name'); i.focus(); i.select(); },30); }); }
 // ---- The preset picker: search, group chips and a grouped list (built-in groups, then my own groups = data.folder).
-// One dialog (centred on desktop, bottom sheet on phones). ctx = { cur: chosen id, apply(preset|null,{noQ}), changed(), mode }.
-// mode 'poll' (default): poll presets, Use / Without questions. mode 'questions': every preset with questions, Add N questions.
+// One dialog (centred on desktop, bottom sheet on phones). ctx = { cur: chosen id, apply(preset|null), changed() }.
 function presetSummary(p){ const d=(p&&p.data)||{}, k=d.kind;
-  if(isQPreset(p)) return t('Questions only')+' · '+qCountText(d.questions);
   const a=k==='series'?(d.unit==='week'?(d.every>1?t('Every {n} weeks',{n:d.every}):t('Every week')):(d.every>1?t('Every {n} months',{n:d.every}):t('Every month'))):k==='weekly'?t('Weekly schedule'):t('One-off');
   const b={days:t('Whole days'),slots:t('Time slots'),both:t('Whole days or time slots')}[d.answerMode||'both'];
   return [a,b,d.questions&&d.questions.length?qCountText(d.questions):''].filter(Boolean).join(' · '); }
 const myFolder=p=>(p.data&&p.data.folder)||'';
-const prsQMode=()=>!!(PK.ctx&&PK.ctx.mode==='questions');
-const prsHasQ=p=>!!(p.data&&p.data.questions&&p.data.questions.some(x=>x.type!=='group'));
-function prsGroups(){ const qm=prsQMode(), ok=p=>qm?prsHasQ(p):!isQPreset(p), b=builtinPresets().filter(ok), mine=(ME.presets||[]).filter(ok);
+function prsGroups(){ const b=builtinPresets(), mine=ME.presets||[];
   const gs=PRESET_CATS().map(([key,icon,label])=>({key,icon,label,items:b.filter(p=>p.cat===key)}));
   const fs=[...new Set(mine.map(myFolder))].sort((x,y)=>!x?-1:!y?1:x.localeCompare(y));
   for(const f of fs) gs.push({key:'mine:'+f,icon:'⭐',label:f||t('My presets'),mine:true,items:mine.filter(p=>myFolder(p)===f)});
@@ -3007,12 +2997,12 @@ function prsOpen(ctx){ PK.ctx=ctx; PK.q=''; PK.open=ctx.cur&&ctx.cur!=='blank'?c
     d.addEventListener('input',e=>{ if(e.target.id==='ps_q'){ PK.q=e.target.value; prsList(); } });
     d.addEventListener('click',prsClick); d.addEventListener('dblclick',e=>{ const r=e.target.closest('[data-psrow]'); if(r&&!e.target.closest('details,button')) prsUse(r.dataset.psrow); });
     d.addEventListener('keydown',prsKey); }
-  d.innerHTML=`<div class="dlg-h"><span class="qp-ic">${ICON[ctx.mode==='questions'?'ask':'copy']}</span><h2 id="ps_h">${ctx.mode==='questions'?t('Add questions from a preset'):t('Start from')}</h2>${pqb('x',t('Close'),'data-psclose=""')}</div>
+  d.innerHTML=`<div class="dlg-h"><span class="qp-ic">${ICON.copy}</span><h2 id="ps_h">${t('Start from')}</h2>${pqb('x',t('Close'),'data-psclose=""')}</div>
     <div class="ps-top"><label class="ps-s">${ICON.search||''}<input type="search" id="ps_q" placeholder="${t('Search presets')}" aria-label="${t('Search presets')}" autocomplete="off"></label><div class="ps-cats" id="ps_cats" role="tablist"></div></div>
     <div class="ps-list" id="ps_list" role="listbox" aria-labelledby="ps_h"></div>`;
   prsList(); if(!d.open) d.showModal();
   requestAnimationFrame(()=>{ const c=d.querySelector('.ps-row.cur'); if(c) c.scrollIntoView({block:'center'}); if(!matchMedia('(pointer:coarse)').matches) $('ps_q').focus(); }); }
-function prsList(){ const L=$('ps_list'); if(!L) return; const qm=prsQMode(), gs=prsGroups(), q=PK.q.trim().toLowerCase(), shut=new Set(store.get('prsc',[])), hasMine=gs.some(g=>g.mine);
+function prsList(){ const L=$('ps_list'); if(!L) return; const gs=prsGroups(), q=PK.q.trim().toLowerCase(), shut=new Set(store.get('prsc',[])), hasMine=gs.some(g=>g.mine);
   if(PK.cat==='mine'&&!hasMine) PK.cat='all';
   const chip=(k,ic,l)=>`<button type="button" class="ps-cat${PK.cat===k?' on':''}" data-pscat="${k}" role="tab" aria-selected="${PK.cat===k}">${ic?`<span>${ic}</span>`:''}${esc(l)}</button>`;
   $('ps_cats').innerHTML=chip('all','',t('All'))+(hasMine?chip('mine','⭐',t('Mine')):'')+PRESET_CATS().map(([k,ic,l])=>chip(k,ic,l)).join('');
@@ -3022,21 +3012,20 @@ function prsList(){ const L=$('ps_list'); if(!L) return; const qm=prsQMode(), gs
     return `<div class="ps-row${open?' open':''}${cur?' cur':''}" data-psrow="${id}" tabindex="0" role="option" aria-selected="${!!cur}" aria-expanded="${!!open}"><div class="ps-main"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.plus}</span>
       <span class="ps-tx"><b>${esc(p?p.name:t('Blank'))}</b><span>${esc(p?presetSummary(p):t('Start with an empty poll'))}</span></span>${cur?`<span class="ps-cur">${ICON.check}</span>`:''}${menu}${p?`<span class="ps-chev">${ICON.chevd}</span>`:''}</div>
       ${open?`<div class="ps-prev">${qs.length?`<div class="ps-qs">${qs.map(x=>`<span class="ps-q">${x.icon?`<i>${esc(x.icon)}</i>`:''}${esc(x.label)}</span>`).join('')}</div>`:`<div class="muted small">${t('No questions')}</div>`}
-        <div class="ps-act">${qm?`<span class="muted small grow">${t('Adds these questions to this round.')}</span><button type="button" class="btn sm primary withic" data-psuse="${id}">${ICON.plus}<span>${qs.length===1?t('Add 1 question'):t('Add {n} questions',{n:qs.length})}</span></button>`
-          :`<span class="muted small grow">${qs.length?t('Fills in the title, settings and questions.'):t('Fills in the title and settings.')}</span>${qs.length?`<button type="button" class="btn sm ghost" data-psuse="${id}" data-psnoq="">${t('Without questions')}</button>`:''}<button type="button" class="btn sm primary withic" data-psuse="${id}">${ICON.check}<span>${t('Use')}</span></button>`}</div></div>`:''}</div>`; };
-  let h=!q&&PK.cat==='all'&&!qm?row(null):'', n=0;
-  for(const g of gs){ if(PK.cat!=='all'&&!(PK.cat==='mine'?g.mine:g.key===PK.cat)) continue; if(!g.items.length) continue;
+        <div class="ps-act"><span class="muted small grow">${t('Fills in the title, settings and questions.')}</span><button type="button" class="btn sm primary withic" data-psuse="${id}">${ICON.check}<span>${t('Use')}</span></button></div></div>`:''}</div>`; };
+  let h=!q&&PK.cat==='all'?row(null):'', n=0;
+  for(const g of gs){ if(PK.cat!=='all'&&!(PK.cat==='mine'?g.mine:g.key===PK.cat)) continue;
     const its=g.items.filter(p=>hit(p,g)); if(!its.length) continue; n+=its.length;
     const col=!q&&shut.has(g.key);
     h+=`<div class="ps-g${col?' col':''}"><button type="button" class="ps-gh" data-psgrp="${esc(g.key)}" aria-expanded="${!col}"><span>${g.icon}</span><b>${esc(g.label)}</b><span class="ps-n">${its.length}</span><span class="ps-chev">${ICON.chevd}</span></button>${col?'':its.map(p=>row(p,g.mine)).join('')}</div>`; }
-  L.innerHTML=h+(!n&&(q||qm)?`<div class="muted small ps-none">${t('No presets found.')}</div>`:''); }
-function prsUse(id,noQ){ const c=PK.ctx; if(!c) return; if(c.mode!=='questions') c.cur=id; $('psdlg').close(); c.apply(prsFind(id),{noQ:!!noQ}); }
+  L.innerHTML=h+(q&&!n?`<div class="muted small ps-none">${t('No presets found.')}</div>`:''); }
+function prsUse(id){ const c=PK.ctx; if(!c) return; c.cur=id; c.apply(prsFind(id)); $('psdlg').close(); }
 async function prsClick(e){ const b=e.target.closest('[data-psclose],[data-pscat],[data-psgrp],[data-psuse],[data-psren],[data-psmove],[data-psdel],[data-psrow]'); if(!b) return;
   const ds=b.dataset, d=$('psdlg');
   if(ds.psclose!==undefined){ d.close(); return; }
   if(ds.pscat){ PK.cat=ds.pscat; prsList(); return; }
   if(ds.psgrp){ const s=new Set(store.get('prsc',[])); s.has(ds.psgrp)?s.delete(ds.psgrp):s.add(ds.psgrp); store.set('prsc',[...s]); prsList(); return; }
-  if(ds.psuse){ prsUse(ds.psuse,ds.psnoq!==undefined); return; }
+  if(ds.psuse){ prsUse(ds.psuse); return; }
   const pid=ds.psren||ds.psmove||ds.psdel;
   if(pid){ const p=(ME.presets||[]).find(x=>x.id===pid); if(!p) return; const det=b.closest('details'); if(det) det.open=false;
     try{
@@ -3051,14 +3040,6 @@ function prsKey(e){ const r=e.target.closest&&e.target.closest('[data-psrow]');
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){ const rows=[...document.querySelectorAll('#ps_list [data-psrow]')]; if(!rows.length) return; e.preventDefault();
     const i=r?rows.indexOf(r):-1, n=rows[Math.max(0,Math.min(rows.length-1,i+(e.key==='ArrowDown'?1:-1)))]; n.focus(); n.scrollIntoView({block:'nearest'}); return; }
   if(e.key==='Enter'&&r&&e.target===r){ e.preventDefault(); const id=r.dataset.psrow; if(id==='blank'||PK.open===id) prsUse(id); else { PK.open=id; prsList(); const x=document.querySelector(`[data-psrow="${id}"]`); if(x) x.focus(); } } }
-// A preset's questions with fresh ids (questionnaires, questions, options), to add next to existing ones.
-function qFromPreset(list){ const gm={}, src=JSON.parse(JSON.stringify(list||[]));
-  for(const x of src) if(x.type==='group'){ const n=qNewId(); gm[x.id]=n; x.id=n; }
-  return src.map(({at,closed,...x})=>{ if(x.type==='group') return x;
-    x.id=qNewId(); if(x.grp&&gm[x.grp]) x.grp=gm[x.grp]; else { delete x.grp; delete x.own; }
-    if(x.options) x.options=x.options.map(o=>({id:qNewId(),label:o.label})); return x; }); }
-// Question preset data: questionnaires and questions as they are, minus when they were added and closed answers.
-const qPresetData=(list,icon)=>({scope:'questions',...(icon?{icon}:{}),questions:list.map(({at,closed,isNew,...x})=>x)});
 // A poll's settings and the shown round's questions as preset data (Settings → Save as preset).
 function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
@@ -3075,7 +3056,10 @@ function renderNew(){
       <p class="help mt-0">${t('Sign in with your email to create polls. No password needed, just a code we email you.')}</p>
       <button type="button" class="btn primary" data-opensignin>${t('Sign in to get started')}</button></div></div></main>${siteFoot()}`; return;
   }
-  const mail=CONFIG.emailEnabled, NOPEN={details:1,when:1,answering:1,privacy:1,email:1};
+  const mail=CONFIG.emailEnabled, NOPEN={details:1,when:1,answering:1,questions:1,privacy:1,email:1};
+  // The Questions section is the Questions tab's editor on a stand-in poll (P.data.draft): saving keeps it on the page.
+  Object.assign(P,{id:'new',atab:'questions',qview:'results',qedit:null,qai:null,qdd:null,qfold:false,form:{extra:{},can:null},
+    data:{draft:true,isAdmin:true,poll:{kind:'single',title:''},instance:{id:'new',meetings:[],questions:[],groups:[]},instances:[]}});
   $app.innerHTML=`${appbar()}${band}
     <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"></div><form id="f" class="new-grid" novalidate>
     <div class="card sform new-form">
@@ -3099,6 +3083,7 @@ function renderNew(){
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'both',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
+    ${sset('questions','ask',t('Questions'),`<div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
     ${mail?sset('email','mail',t('Email'),mailRows({notify:'notify',remind:'remind',days:'remindDays',notifyOn:true,remindOn:true,n:2,notifyHidden:true}),'',NOPEN):''}
@@ -3150,6 +3135,7 @@ function renderNew(){
     rows.push([t('Access'), priv.join(', ')]);
     if(mail&&$('remind').checked&&$('remindDays').value!=='') rows.push([t('Reminder'), t('{n} days before reply-by',{n:+$('remindDays').value})]);
     $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+    P.data.poll.kind=kind; P.data.poll.title=title; const nq=$('nqn'); if(nq) nq.textContent=NP.qs&&NP.qs.length?qCountText(NP.qs):'';
     const qn=(NP.qs||[]).filter(x=>x.type!=='group');
     $('sumQs').innerHTML=NP.qs&&NP.qs.length?`<details class="prs-qs"${NP.qsOpen?' open':''}><summary>${ICON.ask}<span class="grow">${esc(qCountText(NP.qs))}</span>${pqb('x',t('Don’t add these questions'),'data-prsqx=""')}<span class="ps-chev">${ICON.chevd}</span></summary><ul>${qn.map(x=>`<li>${x.icon?`<i>${esc(x.icon)}</i>`:''}${esc(x.label)}</li>`).join('')}</ul></details>`:'';
   };
@@ -3162,7 +3148,7 @@ function renderNew(){
     if(mail){ d.notifyOpen=kind==='series'&&$('notify').checked; d.remindDays=$('remind').checked&&v0('remindDays')!==''?+v0('remindDays'):null; }
     if(NP.qs&&NP.qs.length) d.questions=NP.qs; return d; };
   const v0=id=>$(id).value;
-  const applyPreset=(pr,o={})=>{ const d=pr?pr.data:{};
+  const applyPreset=(pr,keepQs)=>{ const d=pr?pr.data:{};
     $('title').value=d.title||''; pickerSetText('new',d.title||''); $('desc').value=d.description||'';
     const st=PICK.new; st.emoji=d.icon||''; st.data=null; st.img=''; pickerRefresh('new');
     const kind=d.kind||'single', kr=f.querySelector(`input[name="kind"][value="${kind}"]`); if(kr&&!kr.checked){ kr.checked=true; kr.dispatchEvent(new Event('change',{bubbles:true})); }
@@ -3173,13 +3159,17 @@ function renderNew(){
     const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'both')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
     if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
-    NP.qs=!o.noQ&&d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; sum(); };
+    if(!keepQs){ NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; NP.qsEdited=false; qDraftSet(NP.qs||[]); NP.qs=NP.qs&&qDraftItems(); }
+    sum(); };
+  // The Questions section edits NP.qs (questionnaires first, then questions).
+  P.qdraftChanged=()=>{ const it=qDraftItems(); NP.qs=it.length?it:null; NP.qsEdited=true; sum(); };
+  qDraftSet([]);
   const field=()=>{ const p=prsFind(NP.pick);
     $('prs').innerHTML=`<button type="button" class="prs-field" id="prsBtn" aria-haspopup="dialog"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.copy}</span><span class="prs-tx"><span class="prs-l">${t('Start from')}</span><b>${esc(p?p.name:t('Blank'))}</b><span class="prs-s">${esc(p?presetSummary(p):t('{n} presets: dinner, trips, sport, team meetings…',{n:builtinPresets().length+(ME.presets||[]).length}))}</span></span><span class="prs-go">${t('Change')}${ICON.chevd}</span></button>`; };
   field(); loadPresets().then(()=>{ if($('prs')) field(); });
-  const ctx={get cur(){ return NP.pick; }, set cur(v){ NP.pick=v; }, apply:(pr,o)=>{ applyPreset(pr,o); field(); }, changed:()=>{ if(!prsFind(NP.pick)) NP.pick='blank'; field(); }};
+  const ctx={get cur(){ return NP.pick; }, set cur(v){ NP.pick=v; }, apply:pr=>{ applyPreset(pr,NP.qsEdited&&!!NP.qs&&!confirm(t('Replace your questions with the ones from this preset?'))); field(); }, changed:()=>{ if(!prsFind(NP.pick)) NP.pick='blank'; field(); }};
   $('prs').addEventListener('click',async e=>{ if(!e.target.closest('#prsBtn')) return; await loadPresets(); prsOpen(ctx); });
-  $('sumQs').addEventListener('click',e=>{ if(e.target.closest('[data-prsqx]')){ e.preventDefault(); NP.qs=null; sum(); } });
+  $('sumQs').addEventListener('click',e=>{ if(e.target.closest('[data-prsqx]')){ e.preventDefault(); NP.qs=null; NP.qsEdited=false; qDraftSet([]); sum(); } });
   $('sumQs').addEventListener('toggle',e=>{ NP.qsOpen=e.target.open; },true);
   $('prSave').addEventListener('click',async()=>{ const d=formData(), cur=(ME.presets||[]).find(p=>p.id===NP.pick);
     const id=await presetSave(d,cur?cur.name:d.title,cur?myFolder(cur):''); if(id){ NP.pick=id; field(); } });
@@ -4666,7 +4656,7 @@ function qCard(q,fill){
   const acts=adm?`<span class="macts"><button type="button" class="qb qgrip" data-qgrip="${q.id}" title="${t('Drag to reorder')}" aria-label="${t('Drag to reorder')}">${ICON.grip}</button><button type="button" class="qb" data-qedit="${q.id}" title="${t('Edit question')}" aria-label="${t('Edit question')}">${ICON.edit}</button>
     <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-qmv="${q.id}" data-d="-1">${ICON.up}<span class="grow">${t('Move up')}</span></button><button type="button" data-qmv="${q.id}" data-d="1">${ICON.down}<span class="grow">${t('Move down')}</span></button>
-      <button type="button" data-qdup="${q.id}">${ICON.copy}<span class="grow">${t('Duplicate')}</span></button><button type="button" data-qprsq="${q.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button><button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>
+      <button type="button" data-qdup="${q.id}">${ICON.copy}<span class="grow">${t('Duplicate')}</span></button>${P.data.draft?'':`<button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>`}
       ${qGroups().length?`<div class="menu-sep"></div><div class="qm-h">${t('Move to')}</div>${q.grp?`<button type="button" data-qmvto="${q.id}" data-g="">${ICON.x}<span class="grow">${t('No questionnaire')}</span></button>`:''}${qGroups().filter(g=>g.id!==q.grp).map(g=>`<button type="button" data-qmvto="${q.id}" data-g="${g.id}">${g.icon?`<span class="qemo-s">${esc(g.icon)}</span>`:ICON.note}<span class="grow">${esc(g.label)}</span></button>`).join('')}`:''}
       <div class="menu-sep"></div><button type="button" class="danger" data-qrm="${q.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details></span>`:'';
   const title=`<div class="mtitle">${esc(q.label)}${q.req?`<span class="qreq" title="${t('Required')}">*</span>`:''}${q.closed?` <span class="tag x">${t('closed')}</span>`:''}</div>`;
@@ -4693,20 +4683,20 @@ function renderQuestions(fresh){
   const d=P.data, adm=d.isAdmin, qs=qList(), mayFill=qs.some(qMayFill);
   const tb=$('qtabn'); if(tb){ const n=adm?qs.length:qOpenN(); tb.textContent=n; tb.hidden=!n; }
   if(!P.qview) P.qview=store.get('qview:'+P.id,'')||(mayFill&&!adm?'fill':'results');
-  const view=mayFill||adm?P.qview:'results', fill=view==='fill';
+  const view=d.draft?'results':mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${tip(adm?t('A short form for this round: votes (also on places, with suggestions), checkboxes, dropdowns, ratings, text and yes / no. Link a question to the whole poll or to meetings, pick who may answer, and drag to reorder. 🔒 = only you see the answers.'):t('Questions from the organiser, answered separately from your availability. 🔒 = only the organiser sees the answers.'))}${qs.length&&(mayFill||adm)?seg:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}${qAiOk()?`<div class="menu-sep"></div><button type="button" data-qai>${ICON.spark}<span class="grow">${t('Generate with AI')}</span></button>`:''}</div></details>`:''}</div>`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${tip(adm?t('A short form for this round: votes (also on places, with suggestions), checkboxes, dropdowns, ratings, text and yes / no. Link a question to the whole poll or to meetings, pick who may answer, and drag to reorder. 🔒 = only you see the answers.'):t('Questions from the organiser, answered separately from your availability. 🔒 = only the organiser sees the answers.'))}${qs.length&&(mayFill||adm)&&!d.draft?seg:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button>${qAiOk()?`<div class="menu-sep"></div><button type="button" data-qai>${ICON.spark}<span class="grow">${t('Generate with AI')}</span></button>`:''}</div></details>`:''}</div>`;
   const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
     if(aiP){ el.innerHTML=`${head}<div class="mcard">${aiP}</div>`; return; }
     el.innerHTML=`${head}<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.ask}</span><b>${t('No questions yet')}</b>${adm?`<span class="muted small">${t('Ask people for more than the date: where to meet, a plus-one, dietary needs…')}</span>
-      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}<button type="button" class="btn sm withic" data-qprsadd>${ICON.copy}<span>${t('From a preset')}</span></button>${qAiOk()?`<button type="button" class="btn sm withic" data-qai>${ICON.spark}<span>${t('Generate with AI')}</span></button>`:''}</div>`:''}</div></div>`; return; }
+      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}${qAiOk()?`<button type="button" class="btn sm withic" data-qai>${ICON.spark}<span>${t('Generate with AI')}</span></button>`:''}</div>`:''}</div></div>`; return; }
   const shown=fill&&!adm?qs.filter(q=>qMayFill(q)||(P.form&&P.form.can&&!P.form.can.has(q.id)&&qAnswers(q))):qs;
   const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.qname??(P.mine.name||''))}"></label>${d.poll.requireEmail?`<label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" placeholder="${t('Email (required)')}" aria-label="${t('Email (required, only the organiser sees it)')}" value="${esc(P.qemail??(P.mine.email||''))}"></label>`:''}</div></div>`
     :fill&&(P.form&&P.form.name||P.mine.name)?`<div class="qas muted small">${ICON.user}<span>${t('Answering as {name}',{name:esc((P.form&&P.form.name)||P.mine.name)})}</span></div>`:'';
   const bar=fill&&mayFill?`<div class="savebar wsfoot qsave"><span class="sstat ${P.form.saving?'':P.form.dirty?'dirty':P.form.id?'ok':'idle'}">${P.form.id&&!P.form.dirty?ICON.check:'<i class="sdot"></i>'}<span>${P.form.saving?t('Sending…'):P.form.dirty?(P.form.id?t('Unsent changes'):t('Not sent')):P.form.id?t('Saved'):t('Not answered')}</span></span>${P.form.id?ib('trash',t('Remove my answers'),'data-qdelmine','ghost danger'):''}<button type="button" class="btn primary withic sendbtn" data-qsend${P.form.saving||!P.form.dirty?' disabled':''}>${ICON.send}<span>${P.form.id?t('Update'):t('Send')}</span></button></div>`:'';
-  const hide=!fill&&!d.form?.rows?`<div class="notice">${t('Only the organiser can see everyone’s answers.')}</div>`:'';
+  const hide=!fill&&!d.draft&&!d.form?.rows?`<div class="notice">${t('Only the organiser can see everyone’s answers.')}</div>`:'';
   const tools=!fill?`<div class="msec-h"><button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${P.qfold?t('Show details'):t('Compact view')}" aria-label="${P.qfold?t('Show details'):t('Compact view')}">${ICON[P.qfold?'grow':'shrink']}</button></div>`:'<div class="qgap"></div>';
   // Questions without a questionnaire first, then the questionnaires with theirs (new questions open where they'll land).
   const gs=qGroups(), inG=new Set(gs.map(g=>g.id)), E=P.qedit;
@@ -4731,7 +4721,6 @@ function qGroupCard(g,qs,fill){
   const acts=adm?`<span class="macts"><button type="button" class="qb qgrip" data-qggrip="${g.id}" title="${t('Drag to reorder')}" aria-label="${t('Drag to reorder')}">${ICON.grip}</button><button type="button" class="qb" data-qgedit="${g.id}" title="${t('Edit questionnaire')}" aria-label="${t('Edit questionnaire')}">${ICON.edit}</button>
     <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-qgadd="${g.id}">${ICON.plus}<span class="grow">${t('Add a question')}</span></button>
-      <button type="button" data-qprsg="${g.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button>
       <button type="button" data-qgmv="${g.id}" data-d="-1">${ICON.up}<span class="grow">${t('Move up')}</span></button><button type="button" data-qgmv="${g.id}" data-d="1">${ICON.down}<span class="grow">${t('Move down')}</span></button>
       <div class="menu-sep"></div><button type="button" data-qgrm="${g.id}">${ICON.x}<span class="grow">${t('Ungroup (keep questions)')}</span></button><button type="button" class="danger" data-qgrmall="${g.id}">${ICON.trash}<span class="grow">${t('Delete with its questions')}</span></button></div></details></span>`:'';
   const newQ=P.qedit&&P.qedit.isNew&&P.qedit.type!=='group'&&P.qedit.grp===g.id?qEditor():'';
@@ -4777,17 +4766,29 @@ function qAddOption(qid){
 // The whole list: questionnaires, then the questions (in order). gs = questionnaires (default: as they are).
 async function saveQuestions(list,gs=qGroups()){
   const strip=({isNew,...x})=>x;
+  if(P.data&&P.data.draft){ qDraftSet([...gs.map(strip),...list.map(strip)],true); if(P.qdraftChanged) P.qdraftChanged(); return true; } // New poll page: kept on the page
   try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{questions:[...gs.map(strip),...list.map(strip)]},headers()); P.data.instance=r.instance;
     const x=P.data.instances.find(y=>y.id===r.instance.id); if(x){ x.questions=r.instance.questions; x.groups=r.instance.groups; }
     renderHeader(); renderQuestions(); return true; }
   catch(e){ toast(e.message); return false; }
 }
+// New poll page (P.data.draft): the questions live on the page until the poll is created. Items = [...groups, ...questions]
+// (preset shape); questions show their questionnaire's Applies to / Who unless they have their own (like the Worker's questionsOf).
+function qDraftSet(items,keepEdit){ const gs=[], qs=[];
+  for(const x of items||[]){ const y=JSON.parse(JSON.stringify(x)); if(!y.id) y.id=qNewId(); if(!y.link) y.link={to:'poll'}; if(!y.who) y.who={mode:'all'};
+    if(Array.isArray(y.options)) y.options=y.options.map(o=>({id:o.id||qNewId(),label:o.label}));
+    (y.type==='group'?gs:qs).push(y); }
+  const gm=new Map(gs.map(g=>[g.id,g]));
+  P.data.instance.groups=gs;
+  P.data.instance.questions=qs.map(q=>{ const g=q.grp&&gm.get(q.grp); if(q.grp&&!g){ const {grp,own,...r}=q; return r; } return g&&!q.own?{...q,link:g.link,who:g.who}:q; });
+  if(!keepEdit) P.qedit=null; renderQuestions(true); }
+const qDraftItems=()=>[...qGroups(),...qList()];
 const Q_TPL={ place:()=>({type:'radio',place:true,add:true,label:t('Where shall we meet?'),options:[]}), radio:()=>({type:'radio',label:'',options:[]}),
   rating:()=>({type:'rating',label:t('How did you like it?'),rating:{max:5}}), long:()=>({type:'long',label:''}),
   yesno:()=>({type:'yesno',label:t('Are you bringing someone?'),count:{label:t('How many guests?'),max:20}}), group:()=>({type:'group',label:''}) };
 // ---- Generate with AI (organiser ✨): the Worker turns "dinner after the hike: where, diet, plus-ones" into draft questions
 // (only the text and the poll's title are sent). The page shows them to pick from and saves the picked ones as usual.
-const qAiOk=()=>!!(CONFIG.aiFill&&P.data&&P.data.isAdmin);
+const qAiOk=()=>!!(CONFIG.aiFill&&P.data&&P.data.isAdmin&&!P.data.draft);
 function qAiPanel(){
   const A=P.qai; if(!A||!qAiOk()) return '';
   const r=A.res, undo=P.qaiUndo&&P.qaiUndo.iid===inst().id;
@@ -4837,27 +4838,6 @@ async function qAiUndo(){
   if((P.data.form?.rows||[]).length&&!confirm(t('Remove the added questions and any answers to them?'))) return;
   if(await saveQuestions(u.list,u.gs)){ P.qaiUndo=null; if(P.qai){ P.qai.msg=t('Undone'); P.qai.err=false; } renderQuestions(true); }
 }
-// ---- Question presets: save a questionnaire / question / the whole round, add questions from any preset ----
-async function qPresetAdd(pr){ if(!pr) return;
-  const qs=qList(), gs=qGroups(), add=qFromPreset(pr.data.questions), ag=add.filter(x=>x.type==='group'), aq=add.filter(x=>x.type!=='group');
-  if(!aq.length) return;
-  if(qs.length+aq.length>30){ toast(t('Up to {n} questions per round',{n:30})); return; }
-  if(gs.length+ag.length>15){ toast(t('Up to {n} questionnaires per round',{n:15})); return; }
-  if(await saveQuestions([...qs,...aq],[...gs,...ag])){ toast(aq.length===1?t('Added 1 question'):t('Added {n} questions',{n:aq.length}));
-    const c=$(ag.length?'qg_'+ag[0].id:'q_'+aq[0].id); if(c) c.scrollIntoView({block:'nearest',behavior:'smooth'}); } }
-document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-qprsadd],[data-qprsall],[data-qprsg],[data-qprsq]'); if(!b||!P.data||!P.data.isAdmin) return;
-  const m=b.closest('.qmore[open]'); if(m) m.open=false;
-  if(!ME.user){ toast(t('Sign in to save presets')); return; }
-  await loadPresets(); const ds=b.dataset;
-  if(ds.qprsadd!==undefined){ prsOpen({mode:'questions',apply:pr=>qPresetAdd(pr)}); return; }
-  let list, name, icon;
-  if(ds.qprsg){ const g=qGroups().find(x=>x.id===ds.qprsg); if(!g) return; list=[g,...qList().filter(q=>q.grp===g.id)]; name=g.label; icon=g.icon; }
-  else if(ds.qprsq){ const q=qList().find(x=>x.id===ds.qprsq); if(!q) return; const {grp,own,...x}=q; list=[x]; name=q.label; icon=q.icon; }
-  else { list=[...qGroups(),...qList()]; name=P.data.poll.title||''; icon=P.data.poll.icon; }
-  if(!list.some(x=>x.type!=='group')){ toast(t('Add a question first')); return; }
-  await presetSave(qPresetData(list,icon),String(name||'').slice(0,60));
-});
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-qai]')){ const m=e.target.closest('.qmore[open]'); if(m) m.open=false; qAiOpen(); return; }
   if(!e.target.closest('.qai')||!P.qai) return;
@@ -4891,18 +4871,20 @@ function qEditor(){
     ${af?`<div class="menu-sep"></div><div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${tip(t('Earlier meetings close once the next one has happened.'))}${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
       :reps?`<div class="menu-sep"></div><div class="qetog">${ICON.repeat}<label for="qe_each">${t('Answer for each date')}</label>${swc('qe_each',!!e.link.each,t('Answer for each date'))}</div>`:''}`);
   const w=e.who.mode, parts=P.qparts||[], pk=new Set(e.who.pids||[]);
-  const whoDd=qDd('who',w==='people'?'user':'users',esc(qWhoText({who:e.who})),`${pickItem('data-qewho','all',t('Everyone'),w==='all',ICON.users)}${pickItem('data-qewho','meeting',t('People in the linked meetings'),w==='meeting',ICON.star)}${pickItem('data-qewho','free',t('People free at the linked meetings'),w==='free',ICON.check)}${pickItem('data-qewho','people',t('Pick people…'),w==='people',ICON.user)}
+  const whoDd=qDd('who',w==='people'?'user':'users',esc(qWhoText({who:e.who})),`${pickItem('data-qewho','all',t('Everyone'),w==='all',ICON.users)}${pickItem('data-qewho','meeting',t('People in the linked meetings'),w==='meeting',ICON.star)}${pickItem('data-qewho','free',t('People free at the linked meetings'),w==='free',ICON.check)}${P.data.draft?'':pickItem('data-qewho','people',t('Pick people…'),w==='people',ICON.user)}
     ${w==='people'?`<div class="menu-sep"></div>${P.qparts?`${search('who',parts.length)}<div class="ddb"><button type="button" class="btn" data-qepall="1">${t('All')}</button><button type="button" class="btn" data-qepall="0">${t('None')}</button></div>${parts.map(p=>`<label data-qsi="${esc(p.name.toLowerCase())}"><input type="checkbox" data-qep="${p.id}"${pk.has(p.id)?' checked':''}><span class="minw">${esc(p.name)}</span></label>`).join('')||`<div class="muted small qdd-e">${t('No people yet')}</div>`}`:`<div class="muted small qdd-e">${t('Loading…')}</div>`}`:''}`);
-  const iconDd=qIconDd(e), acts=`<div class="qe-acts"><button type="button" class="btn sm" data-qecancel>${t('Cancel')}</button><button class="btn sm primary withic">${ICON.check}<span>${t('Save')}</span></button></div>`;
-  if(ty==='group') return `<form class="meet qcard qedit qgedit" id="qeForm" novalidate>${iconDd}<div class="mbody">
+  // New poll page: the editor sits inside the poll's own form, so it's a div there (no nested forms) and Save is a plain button.
+  const FT=P.data.draft?'div':'form';
+  const iconDd=qIconDd(e), acts=`<div class="qe-acts"><button type="button" class="btn sm" data-qecancel>${t('Cancel')}</button><button ${P.data.draft?'type="button" data-qesave':''} class="btn sm primary withic">${ICON.check}<span>${t('Save')}</span></button></div>`;
+  if(ty==='group') return `<${FT} class="meet qcard qedit qgedit" id="qeForm" novalidate>${iconDd}<div class="mbody">
     <input type="text" id="qe_label" class="qe-label" maxlength="120" required value="${esc(e.label||'')}" placeholder="${t('Questionnaire title, e.g. Travel')}" aria-label="${t('Questionnaire')}">
     <input type="text" id="qe_help" maxlength="500" value="${esc(e.help||'')}" placeholder="${t('Note (optional)')}" aria-label="${t('Note (optional)')}">
     <div class="qe-pick"><span class="qe-sub">${t('Applies to')}</span>${linkDd}<span class="qe-sub">${t('Who can answer')}</span>${whoDd}</div>
-    <div class="muted small">${t('Its questions use these settings unless they have their own.')}</div>${acts}</div></form>`;
+    <div class="muted small">${t('Its questions use these settings unless they have their own.')}</div>${acts}</div></${FT}>`;
   const gs=qGroups(), g=gs.find(x=>x.id===e.grp);
   const grpDd=gs.length?qDd('grp','note',esc(g?g.label:t('No questionnaire')),pickItem('data-qegrp','',t('No questionnaire'),!g,ICON.x)+gs.map(x=>pickItem('data-qegrp',x.id,esc(x.label),!!g&&g.id===x.id,x.icon?`<span class="qemo-s">${esc(x.icon)}</span>`:ICON.note)).join('')):'';
   const opts=(e.options&&e.options.length?e.options:[{id:qNewId(),label:''}]);
-  return `<form class="meet qcard qedit" id="qeForm" novalidate>${iconDd}<div class="mbody">
+  return `<${FT} class="meet qcard qedit" id="qeForm" novalidate>${iconDd}<div class="mbody">
     <div class="qe-top">${typeDd}<input type="text" id="qe_label" class="qe-label" maxlength="200" required value="${esc(e.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"></div>
     <input type="text" id="qe_help" maxlength="500" value="${esc(e.help||'')}" placeholder="${t('Note (optional)')}" aria-label="${t('Note (optional)')}">
     ${choice?`<div class="qeopts">${opts.map((o,i)=>`<div class="qeopt${e.place?' locbox':''}"><span class="qmark ${ty==='check'?'box':'dot'}"></span><input type="text" data-qeo="${o.id}" id="qeo_${o.id}" maxlength="120" value="${esc(o.label)}" autocomplete="off" placeholder="${e.place?t('Place {n}',{n:i+1}):t('Option {n}',{n:i+1})}" aria-label="${t('Option {n}',{n:i+1})}">${e.place?`<div class="locsug" id="qeo_${o.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-qeorm="${o.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
@@ -4913,7 +4895,7 @@ function qEditor(){
       ${ty==='yesno'?tog('qe_cnt',!!e.count,'users',t('Ask how many'))+(e.count?`<input type="text" id="qe_cntl" class="qe-cntl" maxlength="60" value="${esc(e.count.label||'')}" placeholder="${t('e.g. How many guests?')}" aria-label="${t('Count label')}">`:''):''}
       ${tog('qe_req',e.req,'bell',t('Required'))}${tog('qe_priv',e.vis==='owner','lock',t('Only I see the answers'),t('For personal things like dietary or health needs. Others see neither the answers nor the counts.'))}
       ${P.data.poll.kind==='series'?tog('qe_rep',e.repeat!==false,'repeat',t('Ask again in new rounds')):''}</div>
-    ${acts}</div></form>`;
+    ${acts}</div></${FT}>`;
 }
 // The editor's tile opens the icon picker: the type's own icon, defaults, or any emoji.
 function qIconDd(e){ const ty=e.type||'radio', def=ty==='group'?'note':Q_CHOICE.has(ty)&&e.place?'pin':(Q_KIND[ty]||Q_KIND.radio)[0];
@@ -4988,7 +4970,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.qgtog&&g){ const c=qgcSet(); c.has(g.id)?c.delete(g.id):c.add(g.id); store.set('qgc:'+P.id,[...c]); renderQuestions(); return; }
   if(ds.qgmv&&g){ const i=gs.indexOf(g); qGroupMove(i,i+(+ds.d)); return; }
   if(ds.qgrm&&g){ saveQuestions(qs.map(x=>x.grp===g.id?{...x,grp:undefined,own:undefined}:x),gs.filter(x=>x!==g)); return; }
-  if(ds.qgrmall&&g){ const n=qs.filter(x=>x.grp===g.id).length; if(!confirm(n?t('Delete “{name}” and its {n} questions with everyone’s answers to them?',{name:g.label,n}):t('Delete “{name}”?',{name:g.label}))) return;
+  if(ds.qgrmall&&g){ const n=qs.filter(x=>x.grp===g.id).length; if(!P.data.draft&&!confirm(n?t('Delete “{name}” and its {n} questions with everyone’s answers to them?',{name:g.label,n}):t('Delete “{name}”?',{name:g.label}))) return;
     saveQuestions(qs.filter(x=>x.grp!==g.id),gs.filter(x=>x!==g)); return; }
   if(ds.qmvto!==undefined){ const q2=qs.find(x=>x.id===ds.qmvto); if(!q2) return; const i=qs.indexOf(q2); qMove(i,ds.g?Math.min(qGroupEnd(ds.g),qs.length)-(qGroupEnd(ds.g)>i?1:0):qs.length-1,ds.g||''); return; }
   if(ds.qegrp!==undefined){ qeRead(); P.qedit.grp=ds.qegrp||undefined; P.qedit.own=false; P.qdd=null; qeRerender(); return; }
@@ -5012,7 +4994,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.qtpl){ qOpenEditor(Q_TPL[ds.qtpl]()); return; }
   if(ds.qnew!==undefined){ qOpenEditor(null); return; }
   if(ds.qedit&&q){ qOpenEditor(q); return; }
-  if(ds.qrm&&q){ if(confirm(t('Delete this question and everyone’s answers to it?'))) saveQuestions(qs.filter(x=>x.id!==q.id)); return; }
+  if(ds.qrm&&q){ if(P.data.draft||confirm(t('Delete this question and everyone’s answers to it?'))) saveQuestions(qs.filter(x=>x.id!==q.id)); return; }
   if(ds.qclose&&q){ saveQuestions(qs.map(x=>x.id===q.id?{...x,closed:!x.closed}:x)); return; }
   if(ds.qmv&&q){ const i=qs.indexOf(q); qMove(i,i+(+ds.d)); return; }
   if(ds.qdup&&q){ const i=qs.indexOf(q), c={...JSON.parse(JSON.stringify(q)),id:undefined,at:undefined,label:q.label+' '+t('(copy)'),options:(q.options||[]).map(o=>({label:o.label}))}; const l=[...qs]; l.splice(i+1,0,c); saveQuestions(l); return; }
@@ -5042,7 +5024,7 @@ document.addEventListener('change',e=>{ const x=e.target; if(!P.data) return;
   if(x.dataset.qsel){ const q=qList().find(z=>z.id===x.dataset.qsel); qChange(y=>qPut(y,q,x.value?[x.value]:undefined)); return; }
   if(x.dataset.qdate){ P.qdate[x.dataset.qdate]=x.value; renderQuestions(); return; }
 });
-document.addEventListener('submit',e=>{ if(e.target.id!=='qeForm') return; e.preventDefault();
+const qeSubmit=e=>{ if(e.target.id!=='qeForm') return; e.preventDefault();
   const q=qeRead(); if(!q.label.trim()){ toast(q.type==='group'?t('Give the questionnaire a title'):t('Type the question first')); $('qe_label').focus(); return; }
   if(q.type==='group'){
     if(q.who.mode==='people'&&!(q.who.pids||[]).length){ toast(t('Pick who can answer')); P.qdd='who'; qeRerender(); return; }
@@ -5060,7 +5042,13 @@ document.addEventListener('submit',e=>{ if(e.target.id!=='qeForm') return; e.pre
   if(!q.isNew) list.splice(list.findIndex(x=>x.id===clean.id),1,clean); else list.splice(clean.grp?qGroupEnd(clean.grp):list.length,0,clean);
   const btn=e.target.querySelector('.primary'); btn.disabled=true;
   saveQuestions(list).then(ok=>{ if(ok){ P.qedit=null; P.qdd=null; renderQuestions(true); toast(t('Saved')); } else btn.disabled=false; });
-});
+};
+document.addEventListener('submit',qeSubmit);
+// The New poll page's editor (a div): Save and Enter in its one-line fields save it, and never submit the poll form.
+const qeDivSubmit=()=>{ const f=$('qeForm'); if(f&&f.tagName==='DIV') qeSubmit({target:f,preventDefault(){}}); };
+document.addEventListener('click',e=>{ if(e.target.closest('[data-qesave]')) qeDivSubmit(); });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter'||e.defaultPrevented||e.isComposing) return; const x=e.target, f=x.closest&&x.closest('#qeForm');
+  if(!f||f.tagName!=='DIV'||x.tagName!=='INPUT'||x.type==='checkbox'||x.type==='search') return; e.preventDefault(); if(!x.dataset.qeo&&x.id!=='qe_iconany') qeDivSubmit(); });
 // Text answers: kept as you type (sent with Send).
 document.addEventListener('input',e=>{ const x=e.target; if(!x.dataset||!x.dataset.qtext||!P.form) return; if(x.tagName==='TEXTAREA') growTa(x);
   const q=qList().find(z=>z.id===x.dataset.qtext), v=x.value; const y=JSON.parse(JSON.stringify(myExtra())); qPut(y,q,v.trim()?v:undefined); P.form.extra=y;
@@ -7955,6 +7943,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Replace your questions with the ones from this preset?": "Deine Fragen durch die aus dieser Vorlage ersetzen?",
 "5–6 min/km": "5–6 min/km",
 "6–7 min/km": "6–7 min/km",
 "< 5 min/km": "< 5 min/km",
@@ -8058,7 +8047,7 @@ function germanText(){ return {
 "Workshop / offsite": "Workshop / Offsite",
 "Your pace": "Dein Tempo",
 "{n} presets: dinner, trips, sport, team meetings…": "{n} Vorlagen: Essen, Ausflüge, Sport, Team-Meetings…",
-"<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.": "<b>Vorlagen (nur wenn du eine speicherst):</b> Name, Symbol, Einstellungen und Fragen einer Umfrage oder eine Reihe von Fragen, die du als Ausgangspunkt speicherst. Sie enthalten keine Daten, Personen, Antworten oder Passwörter, und du kannst sie in der Vorlagenauswahl löschen.",
+"<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll you save as a starting point for new polls. They contain no dates, people, answers or passwords, and you can delete them on the New poll page.": "<b>Vorlagen (nur wenn du eine speicherst):</b> Name, Symbol, Einstellungen und Fragen einer Umfrage, die du als Ausgangspunkt für neue Umfragen speicherst. Sie enthalten keine Daten, Personen, Antworten oder Passwörter, und du kannst sie auf der Seite Neue Umfrage löschen.",
 "1 questionnaire": "1 Fragebogen",
 "{n} questionnaires": "{n} Fragebögen",
 "A preset fills in the title, the settings and the questions. Save your own from a poll’s Settings or with <b>Save as preset</b> here.": "Eine Vorlage füllt Titel, Einstellungen und Fragen aus. Eigene speicherst du in den Einstellungen einer Umfrage oder hier mit <b>Als Vorlage speichern</b>.",
@@ -8098,22 +8087,6 @@ function germanText(){ return {
 "Rehearsals": "Proben",
 "Replace": "Ersetzen",
 "Save as preset": "Als Vorlage speichern",
-"Save questions as preset": "Fragen als Vorlage speichern",
-"Include questions ({n})": "Fragen mitspeichern ({n})",
-"Include questions": "Fragen mitspeichern",
-"{q}, without links to meetings or people.": "{q}, ohne Verknüpfungen zu Terminen oder Personen.",
-"Settings only, no questions. No dates, people or password.": "Nur Einstellungen, keine Fragen. Keine Daten, Personen oder Passwort.",
-"Questions only": "Nur Fragen",
-"Add questions from a preset": "Fragen aus einer Vorlage hinzufügen",
-"Adds these questions to this round.": "Fügt diese Fragen zu dieser Runde hinzu.",
-"Fills in the title and settings.": "Füllt Titel und Einstellungen aus.",
-"Without questions": "Ohne Fragen",
-"From a preset…": "Aus einer Vorlage …",
-"From a preset": "Aus einer Vorlage",
-"Save all as preset": "Alle als Vorlage speichern",
-"Sign in to save presets": "Melde dich an, um Vorlagen zu speichern",
-"Add a question first": "Füge zuerst eine Frage hinzu",
-"A question preset needs at least one question": "Eine Fragenvorlage braucht mindestens eine Frage",
 "Save this poll’s settings and this round’s questions to start new polls from them (New poll → Start from). No dates, people or password.": "Speichert die Einstellungen dieser Umfrage und die Fragen dieser Runde, um neue Umfragen damit zu starten (Neue Umfrage → Starten mit). Ohne Daten, Personen oder Passwort.",
 "Settings and {q}. No dates, people or password.": "Einstellungen und {q}. Ohne Daten, Personen oder Passwort.",
 "Skip": "Überspringen",
