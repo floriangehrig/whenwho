@@ -212,6 +212,8 @@
   .patp{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--sunken)}
   .pat-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
   .pat-row.hide{display:none}
+  /* each section of the picker (Days, Dates, Time, Mark as …) under a thin line; .pat-cont rows belong to the one above */
+  .patp .pat-row+.pat-row:not(.pat-cont){border-top:1px solid var(--line);padding-top:8px}
   .pat-l{flex:none;width:44px;font-size:13px;font-weight:600;color:var(--muted)}
   .pat-in{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:14px}
   .pat-in .num-sm{margin:0 2px} .num-sm.dom-in{width:42px!important;padding-inline:4px;text-align:center}
@@ -294,16 +296,20 @@
   .dtm{font-size:12px;font-weight:600;color:var(--muted);flex-basis:100%;margin-top:2px}
   .dtm:first-child{margin-top:0}
   @media (max-width:520px){ .pat-l{width:100%} .wdchips{display:flex;width:100%;gap:3px} .wdc{flex:1;width:auto;min-width:0} }
-  /* quick fill: tighter panel; on phones the row labels go (the controls say what they are) and the brush stays on one line */
-  .qf .patp{gap:8px;padding:10px 12px}
+  /* every day/time picker (Quick fill, Quick Suggest, New poll, Settings): tight panel; on phones the row labels go
+     (the controls say what they are) and the weekday chips fill the row */
+  .patp{gap:8px;padding:10px 12px}
   @media (max-width:560px){
-    .qf .patp{padding:10px;gap:10px}
-    .qf .pat-row{gap:6px 10px}
-    .qf .pat-l,.qf .pat-keys,.qf .pat-in .muted{display:none}
-    .qf .wdchips{display:flex;width:100%;gap:3px} .qf .wdc{flex:1;width:auto;min-width:0;height:34px}
-    .qf .pat-pre{gap:4px}
-    .qf .pat-in{font-size:13.5px} .qf .num-sm.dom-in{width:38px!important;padding-inline:4px}
-    .qf .seg{display:flex;width:100%;gap:1px;padding:2px} .qf .seg button[data-qfs=x]{flex:0 0 auto;padding-inline:10px} .qf .seg button[data-qfs=x] .bl{display:none} .qf .seg button[data-qfs=x] .dot{margin:0} .qf .seg button{flex:1 1 auto;justify-content:center;padding:7px 3px;font-size:12px;letter-spacing:-.1px;white-space:nowrap} .qf .seg .dot{width:8px;height:8px;margin-right:3px}
+    .patp{padding:10px;gap:10px}
+    .patp .pat-row{gap:6px 10px}
+    .patp .pat-l,.patp .pat-keys,.patp .pat-in .muted{display:none}
+    .patp .wdchips{display:flex;width:100%;gap:3px} .patp .wdc{flex:1;width:auto;min-width:0;height:34px}
+    .patp .pat-pre{gap:4px}
+    .patp .pat-in{font-size:13.5px} .patp .num-sm.dom-in{width:38px!important;padding-inline:4px}
+    /* Quick fill's brush: the four colours with their names, two by two */
+    .qf .seg:has([data-qfs]){display:grid;grid-template-columns:1fr 1fr;width:100%;gap:2px;padding:2px}
+    .qf .seg button[data-qfs]{justify-content:center;padding:7px 4px;font-size:12.5px;white-space:nowrap}
+    .qf .seg button[data-qfs] .bl{display:inline} .qf .seg button[data-qfs] .dot{width:9px;height:9px;margin-right:5px}
   }
   .num-sm{width:64px!important;display:inline-block;margin:0 4px}
   select.inline{width:auto}
@@ -2088,7 +2094,7 @@ function patInner(id){
   const pre=(v,l,on)=>`<button type="button" data-patpre="${id}" data-v="${v}" class="${on?'on':''}" aria-pressed="${!!on}">${esc(l)}</button>`;
   const wk=[...st.wd].sort().join(''), dm=st.dom.map(x=>x===''?'':+x).join('-');
   // daysRow (optional): replaces the weekday row, given a function that draws it with a label (e.g. Quick Suggest's Weekdays | Dates).
-  const wdRow=l=>`<div class="pat-row"><span class="pat-l">${l}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
+  const wdRow=(l,c='')=>`<div class="pat-row${c}"><span class="pat-l">${l}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
       <span class="pat-pre">${pre('all',t('Every day'),wk==='0123456')}${pre('wk',t('Weekdays'),wk==='01234')}${pre('we',t('Weekends'),wk==='56')}</span></div>`;
   return `${st.title?`<div class="boxh">${st.title}</div>`:''}${st.daysRow?st.daysRow(wdRow):wdRow(t('Days'))}
     <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in"><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">–<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"></span>
@@ -4426,8 +4432,9 @@ function render(){
     </div></div>
     ${d.isAdmin?adminPanes():viewerPanes()}</main>${siteFoot()}${chatDock()}`;
   renderHeader(); renderSeries();
-  const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; nameHint(); changed(); }; nameHint(); }
-  const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; changed(); }; }
+  // Guests type their name / email here or in the Questions tab (#fq_name / #fq_email): one value, kept in sync live.
+  const nm=$('name'); if(nm){ nm.value=P.mine.name||''; nm.oninput=e=>{ P.mine.name=e.target.value; meMirror('fq_name',e.target.value); nameHint(); changed(); }; nameHint(); }
+  const em=$('email'); if(em){ em.value=P.mine.email||''; em.oninput=e=>{ P.mine.email=e.target.value; meMirror('fq_email',e.target.value); changed(); }; }
   wireDel();
   const sb=$('saveBtn'); if(sb) sb.onclick=()=>save();
   [nm,em].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }); });
@@ -4997,7 +5004,7 @@ function renderQuestions(fresh){
     el.innerHTML=`${head}<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.ask}</span><b>${t('No questions yet')}</b>${adm?`<span class="muted small">${t('Ask people for more than the date: where to meet, a plus-one, dietary needs…')}</span>
       <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}<button type="button" class="btn sm withic" data-qprsadd>${ICON.copy}<span>${t('From a preset')}</span></button></div>`:''}</div></div>`; return; }
   const shown=fill&&!adm?qs.filter(q=>qMayFill(q)||(P.form&&P.form.can&&!P.form.can.has(q.id)&&qAnswers(q))):qs;
-  const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.qname??(P.mine.name||''))}"></label>${d.poll.requireEmail?`<label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" placeholder="${t('Email (required)')}" aria-label="${t('Email (required, only the organiser sees it)')}" value="${esc(P.qemail??(P.mine.email||''))}"></label>`:''}</div></div>`
+  const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.mine.name||'')}"></label><label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" autocomplete="email" placeholder="${d.poll.requireEmail?t('Email (required)'):t('Email (optional)')}" aria-label="${d.poll.requireEmail?t('Email (required, only the organiser sees it)'):t('Email (optional, only the organiser sees it)')}" value="${esc(P.mine.email||'')}"></label></div></div>`
     :fill&&(P.form&&P.form.name||P.mine.name)?`<div class="qas muted small">${ICON.user}<span>${t('Answering as {name}',{name:esc((P.form&&P.form.name)||P.mine.name)})}</span></div>`:'';
   const bar=fill&&mayFill?`<div class="savebar wsfoot qsave"><span class="sstat ${P.form.saving?'':P.form.dirty?'dirty':P.form.id?'ok':'idle'}">${P.form.id&&!P.form.dirty?ICON.check:'<i class="sdot"></i>'}<span>${P.form.saving?t('Sending…'):P.form.dirty?(P.form.id?t('Unsent changes'):t('Not sent')):P.form.id?t('Saved'):t('Not answered')}</span></span>${P.form.id?ib('trash',t('Remove my answers'),'data-qdelmine','ghost danger'):''}<button type="button" class="btn primary withic sendbtn" data-qsend${P.form.saving||!P.form.dirty?' disabled':''}>${ICON.send}<span>${P.form.id?t('Update'):t('Send')}</span></button></div>`:'';
   const hide=!fill&&!d.draft&&!d.form?.rows?`<div class="qhide"><span class="qhide-ic">${ICON.lock}</span><span>${t('Only the organiser can see everyone’s answers.')}</span></div>`:'';
@@ -5380,7 +5387,12 @@ document.addEventListener('input',e=>{ const x=e.target; if(!x.dataset||!x.datas
   const q=qList().find(z=>z.id===x.dataset.qtext), v=x.value; const y=JSON.parse(JSON.stringify(myExtra())); qPut(y,q,v.trim()?v:undefined); P.form.extra=y;
   if(!P.form.dirty){ P.form.dirty=true; renderQuestions(); }
   const sb=P.qpk&&document.querySelector('[data-qpsend]'); if(sb) sb.disabled=!P.qpk.qs.some(z=>!qEmpty(qGet(z,myExtra().a))); });
-document.addEventListener('input',e=>{ if(e.target.id==='fq_name') P.qname=e.target.value; if(e.target.id==='fq_email') P.qemail=e.target.value; });
+// Questions' guest name / email = the availability answer's (P.mine), mirrored into the Availability tab's fields.
+// The availability answer is only marked unsaved when it has marks (no prompt to send an empty answer).
+const meMirror=(id,v)=>{ const x=$(id); if(x&&x.value!==v) x.value=v; };
+document.addEventListener('input',e=>{ const id=e.target.id; if(id!=='fq_name'&&id!=='fq_email') return;
+  const v=e.target.value; if(id==='fq_name'){ P.mine.name=v; meMirror('name',v); if($('name')) nameHint(); } else { P.mine.email=v; meMirror('email',v); }
+  if(Object.keys(P.mine.entries||{}).length) changed(); });
 // "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
 function mailAllPanel(){
   const M=P.mmail, parts=M.parts;
@@ -6722,15 +6734,15 @@ function sugDaysRow(wdRow){
   if(isWeekly()) return wdRow(t('Days'));
   const m=sugMode(), b=(v,l)=>`<button type="button" data-sugmode="${v}" class="${m===v?'on':''}" aria-pressed="${m===v}">${esc(l)}</button>`;
   let h=`<div class="pat-row"><span class="pat-l">${t('Days')}</span><div class="seg">${b('wd',t('By weekday'))}${b('dates',t('Pick dates'))}</div>${tip(t('By weekday: every date of the round on those days. Pick dates: only the exact dates you choose. With Options on, every start time in the hours below becomes its own option on each date.'),'right')}</div>`;
-  if(m!=='dates') return h+wdRow('');
+  if(m!=='dates') return h+wdRow('',' pat-cont');
   const ks=P.data.dates||[], on=P.sugDates&&P.sugDates.poll===P.id?P.sugDates.set:new Set(), busy=new Set(confirmedMeetings().flatMap(x=>spanDays(x.date,mEnd(x))));
   const n=ks.filter(k=>on.has(k)).length, pre=(v,l)=>`<button type="button" data-sugdtp="${v}">${esc(l)}</button>`;
   let c='', mo='';
   ks.forEach(k=>{ const d=parseD(k), mk=k.slice(0,7);
     if(mk!==mo){ mo=mk; c+=`<span class="dtm">${esc(d.toLocaleDateString(LOC,{month:'long',year:'numeric'}))}</span>`; }
     c+=`<button type="button" class="dtc${on.has(k)?' on':''}${busy.has(k)?' dim':''}" data-sugdt="${k}" aria-pressed="${on.has(k)}" aria-label="${esc(dayLabel(k))}" title="${esc(dayLabel(k)+(busy.has(k)?' · '+t('Meeting set'):''))}"><small>${esc(WD[wdOf(k)].slice(0,2))}</small><b>${d.getDate()}</b></button>`; });
-  return h+`<div class="pat-row"><span class="pat-l"></span><div class="dtchips" role="group" aria-label="${t('Dates')}">${c}</div></div>
-    <div class="pat-row"><span class="pat-l"></span><span class="pat-pre">${pre('all',t('All'))}${pre('none',t('None'))}${pre('wk',t('Weekdays'))}${pre('we',t('Weekends'))}</span><span class="muted small">${n===1?t('{n} date picked',{n}):t('{n} dates picked',{n})}</span></div>`;
+  return h+`<div class="pat-row pat-cont"><span class="pat-l"></span><div class="dtchips" role="group" aria-label="${t('Dates')}">${c}</div></div>
+    <div class="pat-row pat-cont"><span class="pat-l"></span><span class="pat-pre">${pre('all',t('All'))}${pre('none',t('None'))}${pre('wk',t('Weekdays'))}${pre('we',t('Weekends'))}</span><span class="muted small">${n===1?t('{n} date picked',{n}):t('{n} dates picked',{n})}</span></div>`;
 }
 // − value + (and an optional toggle button, e.g. "All") for one setting.
 function sugStep(key,val,{min=0,max=99,ph='',tog='',togOn=false,label}){
