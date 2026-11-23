@@ -56,4 +56,7 @@ CONTACT_EMAIL = "when-who.app.passage385@passmail.net"   # contact for data ques
 DPA_NAME = "Der Hessische Beauftragte für Datenschutz und Informationsfreiheit, Wiesbaden"   # data protection authority of your Land (Hessen)
 MAIL_PER_DAY = "50"                         # invite/test-email recipients per account per day
 AI_PER_DAY = "20"                           # text fills per account (or IP) per day
+# Chat notifications (Web Push): run `node scripts/vapid-keys.mjs`, put the public key here and the private one in
+# `npx wrangler secret put VAPID_PRIVATE_KEY`. Without both, notifications are hidden.
+# VAPID_PUBLIC_KEY = ""
 # RETAIN_MONTHS = "12"                     # delete polls with no activity for this long (default 12, "0" = never)

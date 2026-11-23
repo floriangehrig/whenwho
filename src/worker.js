@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-UqLixcPMJ1FmKUpv+3wKKNB0psJl+bW36Wi/+oqm9qE=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-FjIoyuh+zPi2La6P/r3DHnO+xR04wnrzTiJcUoJPops=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -131,7 +131,7 @@ async function route(request, env, ctx, url) {
   if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   USERS.set(request, await getUser(env, cookies));
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -154,6 +154,11 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
+    if (parts[2] === 'push') {
+      if (!parts[3] && m === 'POST') return savePushSub(request, env);
+      if (!parts[3] && m === 'DELETE') return deletePushSub(request, env);
+      if (parts[3] === 'test' && !parts[4] && m === 'POST') return testPush(request, env);
+    }
     if (parts[2] === 'friends') {
       if (!parts[3] && m === 'GET') return listFriends(request, env);
       if (!parts[3] && m === 'POST') return addFriend(request, env, url);
@@ -210,7 +215,8 @@ async function route(request, env, ctx, url) {
   if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
   if (a === 'chat') {
     if (!b && m === 'GET') return listChat(request, env, url, id);
-    if (!b && m === 'POST') return postChat(request, env, id);
+    if (!b && m === 'POST') return postChat(request, env, ctx, id);
+    if (b === 'mute' && !c && m === 'PUT') return muteChat(request, env, id);
     if (b && !c && m === 'DELETE') return deleteChat(request, env, id, b);
     if (b && c === 'react' && !d && m === 'POST') return reactChat(request, env, id, b);
   }
@@ -902,7 +908,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0027';
+const USER_DATA_REVIEWED = '0028';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -931,6 +937,8 @@ const USER_DATA = {
   user_calendars: { rows: 'SELECT * FROM user_calendars WHERE user_id = ?', del: 'DELETE FROM user_calendars WHERE user_id = ?' },
   calendar_accounts: { rows: 'SELECT * FROM calendar_accounts WHERE user_id = ?', del: 'DELETE FROM calendar_accounts WHERE user_id = ?' }, // tokens revoked first
   oauth_states: { skip: 'calendar sign-ins in progress (deleted after an hour)', del: 'DELETE FROM oauth_states WHERE user_id = ?' },
+  push_subs: { rows: "SELECT id, substr(endpoint, 1, instr(substr(endpoint, 9), '/') + 7) AS push_service, lang, created_at FROM push_subs WHERE user_id = ?",
+    del: 'DELETE FROM push_subs WHERE user_id = ?' }, // devices with chat notifications; the push address and keys stay out of the export
   mail_log: { rows: 'SELECT * FROM mail_log WHERE user_id = ?', del: 'DELETE FROM mail_log WHERE user_id = ?' },
   sessions: { skip: 'sign-in tokens', del: 'DELETE FROM sessions WHERE user_id = ?' },
   login_codes: { skip: 'one-time codes (expire after 10 minutes)',
@@ -1428,7 +1436,7 @@ async function unlinkGroup(request, env, url, id, gid) {
 
 // ---------- chat ----------
 // One chat per poll (a series shares it). Readable and writable by everyone signed in (invited-only polls: the owner and invited people).
-// The page polls for new messages while the chat is open; there are no emails, only unread counts.
+// The page polls for new messages while the chat is open; no emails, but Web Push to members who turned notifications on (pushChat).
 const CHAT_MAX_LEN = 2000, CHAT_PAGE = 200, CHAT_MAX_PER_POLL = 5000, CHAT_BURST = 30, CHAT_BURST_MIN = 10;
 async function chatAllowed(env, poll, user) {
   if (!user || !poll.allow_comments) return false; // allow_comments = the poll's Chat switch (also covers the guest Comment field)
@@ -1472,6 +1480,11 @@ const msgOut = (m, user) => ({ id: m.id, uid: m.user_id, body: m.body, at: m.cre
   ref: m.ref || null, rx: rxOut(m.reactions, user), upd: m.updated_at || null, re: m.reply_to || null,
   rq: m.reply_to && m.q_uid ? { uid: m.q_uid, body: String(m.q_body || '').slice(0, 140) } : null });
 const chatSelect = 'SELECT m.*, q.user_id AS q_uid, substr(q.body, 1, 300) AS q_body FROM messages m LEFT JOIN messages q ON q.id = m.reply_to';
+// Members (?1 = poll id): account participants, accounts invited by email that haven't answered yet, and everyone who opened or wrote in the chat.
+const CHAT_MEMBERS_SQL = `SELECT user_id FROM participants WHERE poll_id = ?1 AND user_id IS NOT NULL
+  UNION SELECT u.id FROM participants p JOIN users u ON u.email = LOWER(p.email) WHERE p.poll_id = ?1 AND p.user_id IS NULL AND p.email IS NOT NULL
+  UNION SELECT user_id FROM chat_reads WHERE poll_id = ?1
+  UNION SELECT user_id FROM messages WHERE poll_id = ?1`;
 // ?after=<iso>: only messages from then on (>=, the page drops ones it has). Without it: the newest CHAT_PAGE plus who wrote them.
 async function listChat(request, env, url, id) {
   const { poll, user, owner } = await chatAccess(request, env, id);
@@ -1491,11 +1504,7 @@ async function listChat(request, env, url, id) {
   // a later message from someone new makes the page reload once.
   if (!after) {
     // Members: account participants, accounts invited by email that haven't answered yet, and everyone who opened or wrote in the chat.
-    const { results: mem } = await env.DB.prepare(
-      `SELECT user_id FROM participants WHERE poll_id = ?1 AND user_id IS NOT NULL
-       UNION SELECT u.id FROM participants p JOIN users u ON u.email = LOWER(p.email) WHERE p.poll_id = ?1 AND p.user_id IS NULL AND p.email IS NOT NULL
-       UNION SELECT user_id FROM chat_reads WHERE poll_id = ?1
-       UNION SELECT user_id FROM messages WHERE poll_id = ?1`).bind(id).all();
+    const { results: mem } = await env.DB.prepare(CHAT_MEMBERS_SQL).bind(id).all();
     out.members = [...new Set([...(poll.owner_id ? [poll.owner_id] : []), ...mem.map((r) => r.user_id)])];
     const { results: rr } = await env.DB.prepare("SELECT user_id, role FROM participants WHERE poll_id = ? AND user_id IS NOT NULL AND role != ''").bind(id).all();
     out.roles = Object.fromEntries(rr.filter((r) => POLL_ROLES.includes(r.role)).map((r) => [r.user_id, r.role])); // tag next to names
@@ -1511,8 +1520,8 @@ async function listChat(request, env, url, id) {
   return json(out);
 }
 // Body: { body }.
-async function postChat(request, env, id) {
-  const { user } = await chatAccess(request, env, id);
+async function postChat(request, env, ctx, id) {
+  const { poll, user } = await chatAccess(request, env, id);
   const b = await body(request);
   const text = str(b.body, CHAT_MAX_LEN, 'Message', true);
   const ref = b.ref == null || b.ref === '' ? null : String(b.ref);
@@ -1534,6 +1543,7 @@ async function postChat(request, env, id) {
     env.DB.prepare('INSERT INTO chat_reads (poll_id, user_id, read_at) VALUES (?, ?, ?) ON CONFLICT (poll_id, user_id) DO UPDATE SET read_at = excluded.read_at')
       .bind(id, user.id, m.created_at),
   ]);
+  ctx.waitUntil(pushChat(env, poll, user, m).catch((e) => console.error(e)));
   return json({ message: msgOut(m, user) }, 201);
 }
 // Your own message, or any message in a poll you own.
@@ -1562,6 +1572,148 @@ async function reactChat(request, env, id, mid) {
   await env.DB.prepare('UPDATE messages SET reactions = ?, updated_at = ? WHERE id = ?').bind(m.reactions, m.updated_at, mid).run();
   return json({ message: msgOut(m, user) });
 }
+// ---------- push notifications (Web Push) ----------
+// Each browser that turns on chat notifications stores its push address (push_subs). A new chat message is sent, end-to-end
+// encrypted (RFC 8291 aes128gcm, VAPID RFC 8292), to the push service of every member's browsers, except the writer and people
+// who muted that poll (chat_reads.muted). No dependencies: WebCrypto only. Without VAPID keys the feature is off (config push: null).
+const PUSH_MAX = 30;        // subscriptions per message (Free plan: 50 subrequests and 10 ms CPU per request)
+const PUSH_PER_USER = 10;   // devices per account (oldest dropped)
+// Only real push services (the Worker POSTs to the endpoint, so no arbitrary hosts).
+const PUSH_HOST_RE = /^(fcm\.googleapis\.com|android\.googleapis\.com|[a-z0-9.-]+\.push\.services\.mozilla\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]*\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)$/;
+const unb64u = (s) => unb64(String(s).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((String(s).length + 3) % 4));
+const pushOn = (env) => !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
+const cat = (...parts) => { const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0)); let i = 0; for (const p of parts) { out.set(p, i); i += p.length; } return out; };
+let VAPID = null; // { pub, key } cached per isolate
+async function vapidKey(env) {
+  if (VAPID && VAPID.pub === env.VAPID_PUBLIC_KEY) return VAPID.key;
+  const raw = unb64u(env.VAPID_PUBLIC_KEY);
+  const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: b64url(raw.slice(1, 33)), y: b64url(raw.slice(33, 65)), d: env.VAPID_PRIVATE_KEY, ext: true },
+    { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  VAPID = { pub: env.VAPID_PUBLIC_KEY, key };
+  return key;
+}
+async function vapidJwt(env, aud) {
+  const part = (o) => b64url(enc.encode(JSON.stringify(o)));
+  const sub = env.CONTACT_EMAIL ? 'mailto:' + env.CONTACT_EMAIL : env.SITE_URL || 'https://when-who.app';
+  const unsigned = part({ typ: 'JWT', alg: 'ES256' }) + '.' + part({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub });
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, await vapidKey(env), enc.encode(unsigned)));
+  return unsigned + '.' + b64url(sig);
+}
+const hkdf = async (salt, ikm, info, len) => new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info },
+  await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']), len * 8));
+// One ephemeral key pair per message (random salt per recipient).
+async function pushEphemeral() {
+  const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+  return { kp, pub: new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey)) };
+}
+async function pushEncrypt(eph, sub, payload) {
+  const ua = unb64u(sub.p256dh), auth = unb64u(sub.auth);
+  const uaKey = await crypto.subtle.importKey('raw', ua, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, eph.kp.privateKey, 256));
+  const ikm = await hkdf(auth, shared, cat(enc.encode('WebPush: info\0'), ua, eph.pub), 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, enc.encode('Content-Encoding: aes128gcm\0'), 16);
+  const nonce = await hkdf(salt, ikm, enc.encode('Content-Encoding: nonce\0'), 12);
+  const key = await crypto.subtle.importKey('raw', cek, 'AES-GCM', false, ['encrypt']);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, cat(enc.encode(payload), new Uint8Array([2]))));
+  const head = new Uint8Array(21); head.set(salt); new DataView(head.buffer).setUint32(16, 4096); head[20] = eph.pub.length;
+  return cat(head, eph.pub, ct);
+}
+// Sends one payload (object, or a function of the subscription for per-language text) to subscriptions; drops dead ones.
+async function pushSend(env, subs, payload, topic) {
+  if (!pushOn(env) || !subs.length) return 0;
+  const eph = await pushEphemeral(), jwts = new Map(), gone = [];
+  let sent = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const aud = new URL(s.endpoint).origin;
+      if (!jwts.has(aud)) jwts.set(aud, vapidJwt(env, aud));
+      const data = JSON.stringify(typeof payload === 'function' ? payload(s) : payload);
+      const res = await fetch(s.endpoint, { method: 'POST', body: await pushEncrypt(eph, s, data), headers: {
+        authorization: `vapid t=${await jwts.get(aud)}, k=${env.VAPID_PUBLIC_KEY}`, 'content-encoding': 'aes128gcm',
+        'content-type': 'application/octet-stream', ttl: '86400', urgency: 'normal', ...(topic ? { topic } : {}) } });
+      if (res.status === 404 || res.status === 410) gone.push(s.id);
+      else if (!res.ok) console.error('push', res.status, aud, (await res.text()).slice(0, 200));
+      else sent++;
+    } catch (e) { console.error('push', e); }
+  }));
+  if (gone.length) await env.DB.prepare(`DELETE FROM push_subs WHERE id IN (${gone.map(() => '?').join(',')})`).bind(...gone).run();
+  return sent;
+}
+// A new chat message → every member's devices (not the writer's, not muted).
+async function pushChat(env, poll, user, m) {
+  if (!pushOn(env)) return;
+  const { results: subs } = await env.DB.prepare(
+    `SELECT s.id, s.endpoint, s.p256dh, s.auth, s.lang FROM push_subs s
+     WHERE s.user_id != ?2 AND s.user_id IN (${CHAT_MEMBERS_SQL} UNION SELECT owner_id FROM polls WHERE id = ?1)
+       AND NOT EXISTS (SELECT 1 FROM chat_reads r WHERE r.poll_id = ?1 AND r.user_id = s.user_id AND r.muted = 1)
+     ORDER BY s.created_at DESC LIMIT ?3`).bind(poll.id, user.id, PUSH_MAX).all();
+  if (!subs.length) return;
+  // Tags as @name, attached meetings as ★.
+  const tagged = [...new Set([...m.body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)].map((x) => x[1]))];
+  const names = {};
+  if (tagged.length) {
+    const { results } = await env.DB.prepare(`SELECT id, email, name FROM users WHERE id IN (${tagged.map(() => '?').join(',')})`).bind(...tagged).all();
+    for (const u of results) names[u.id] = personOut({ ...u, avatar: '', avatar_img: '' }).name;
+  }
+  let text = m.body.replace(/<@([A-Za-z0-9_]{4,40})>/g, (_, id) => '@' + (names[id] || '?')).replace(/<#m:[A-Za-z0-9_-]{1,24}>/g, '★').replace(/\s+/g, ' ').trim();
+  if (text.length > 200) text = text.slice(0, 199) + '…';
+  const tag = 'chat-' + poll.id;
+  await pushSend(env, subs, { kind: 'chat', title: String(poll.title || '').slice(0, 120), name: personOut({ ...user, avatar: '', avatar_img: '' }).name.slice(0, 60),
+    body: text, url: `/?p=${poll.id}&chat=1`, tag, poll: poll.id, at: m.created_at }, tag);
+}
+// Body: { endpoint, keys: { p256dh, auth } }.
+async function savePushSub(request, env) {
+  const user = requireUser(request);
+  if (!pushOn(env)) throw new HttpError(503, 'Notifications aren’t set up on this site');
+  const b = await body(request);
+  const endpoint = typeof b.endpoint === 'string' ? b.endpoint : '';
+  let u; try { u = new URL(endpoint); } catch { u = null; }
+  if (!u || u.protocol !== 'https:' || endpoint.length > 1000 || !PUSH_HOST_RE.test(u.hostname)) throw new HttpError(400, 'This browser’s push service isn’t supported');
+  const k = b.keys || {};
+  let p, a; try { p = unb64u(k.p256dh); a = unb64u(k.auth); } catch { p = a = null; }
+  if (!p || p.length !== 65 || p[0] !== 4 || !a || a.length !== 16) throw new HttpError(400, 'Invalid push keys');
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO push_subs (id, user_id, endpoint, p256dh, auth, lang, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, lang = excluded.lang`)
+      .bind(randomId(12), user.id, endpoint, b64url(p), b64url(a), reqLang(request), now()),
+    env.DB.prepare(`DELETE FROM push_subs WHERE user_id = ?1 AND id NOT IN (SELECT id FROM push_subs WHERE user_id = ?1 ORDER BY created_at DESC LIMIT ${PUSH_PER_USER})`).bind(user.id),
+  ]);
+  return json({ ok: true });
+}
+// Body: { endpoint }. Works signed out too (the address is the secret), so signing out can switch it off.
+async function deletePushSub(request, env) {
+  const b = await body(request);
+  if (typeof b.endpoint !== 'string' || !b.endpoint) throw new HttpError(400, 'Missing endpoint');
+  await env.DB.prepare('DELETE FROM push_subs WHERE endpoint = ?').bind(b.endpoint).run();
+  return json({ ok: true });
+}
+// Body: { endpoint? }: a test notification to this device (or all of the account's devices).
+async function testPush(request, env) {
+  const user = requireUser(request);
+  if (!pushOn(env)) throw new HttpError(503, 'Notifications aren’t set up on this site');
+  const b = await body(request);
+  await checkThrottle(env, request, 'push-test', { key: 'u:' + user.id, max: 5, msg: `Too many test notifications. Try again in ${FAIL_WINDOW_MIN} minutes.` });
+  await recordFail(env, request, 'push-test', 'u:' + user.id);
+  const { results: subs } = await env.DB.prepare(`SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id = ?${typeof b.endpoint === 'string' ? ' AND endpoint = ?' : ''}`)
+    .bind(...[user.id, ...(typeof b.endpoint === 'string' ? [b.endpoint] : [])]).all();
+  if (!subs.length) throw new HttpError(404, 'Notifications aren’t on for this device');
+  const sent = await pushSend(env, subs, (s) => s.lang === 'de'
+    ? { kind: 'test', title: 'when-who', body: 'Benachrichtigungen sind an. So sehen neue Chat-Nachrichten aus.', url: '/?account', tag: 'test' }
+    : { kind: 'test', title: 'when-who', body: 'Notifications are on. New chat messages will look like this.', url: '/?account', tag: 'test' });
+  if (!sent) throw new HttpError(502, 'The push service didn’t accept the notification. Turn notifications off and on again.');
+  return json({ ok: true, sent });
+}
+// Body: { muted }. Per person per poll, on the chat_reads row (a new row keeps read_at empty = nothing read yet).
+async function muteChat(request, env, id) {
+  const { user } = await chatAccess(request, env, id);
+  const b = await body(request);
+  const muted = b.muted ? 1 : 0;
+  await env.DB.prepare(`INSERT INTO chat_reads (poll_id, user_id, read_at, muted) VALUES (?, ?, '', ?)
+    ON CONFLICT (poll_id, user_id) DO UPDATE SET muted = excluded.muted`).bind(id, user.id, muted).run();
+  return json({ ok: true, muted: !!muted });
+}
+
 // ---------- external calendar (iCal feed) ----------
 // The page parses the calendar itself; the Worker only fetches the feed (browsers can't, because of CORS).
 // Waiting on the fetch costs no CPU time, so this stays within the Free plan.
@@ -2199,6 +2351,7 @@ async function getPoll(request, env, ctx, url, id) {
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
     const can = !!poll.allow_comments && (admin || !poll.invited_only || out.me.invited); // chat: everyone signed in, or the invited
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
+    if (can && (await env.DB.prepare('SELECT muted FROM chat_reads WHERE poll_id = ? AND user_id = ?').bind(id, user.id).first('muted'))) out.chat.muted = true;
     if (out.chat.unread) out.chat.mentions = (await chatUnread(env, id, user.id, true)) || 0; // unread messages that tag me
     if (can) { // header peek (newest message) and message counts per day / meeting thread
       const [last, refs] = await env.DB.batch([

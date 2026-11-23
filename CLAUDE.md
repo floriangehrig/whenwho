@@ -64,7 +64,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
   Everyone signed in may read and write (invited-only polls: the owner and invited people); guests can't.
   `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls
-  `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails). `chat_reads.read_at` drives unread counts
+  `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails; see **Push notifications**). `chat_reads.read_at` drives unread counts
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
   thread (`d:YYYY-MM-DD` / `m:<meeting id>`), `reactions` (JSON emoji → user ids, sent as counts) via `POST .../chat/:mid/react`,
   `updated_at` makes `?after=` return changed reactions. `GET /api/polls/:id` adds `chat.last` (header peek) and `chat.refs` (thread counts).
@@ -86,6 +86,16 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The Busy ▾ in My answer has two sections: **Own** (my auto calendars + the Share switch) and **Others** (people who share; All / None /
   one by one, picks in localStorage `busyPplOff:<poll>`, `"*"` = None so later sharers stay hidden too); their hours
   show with accent stripes the other way (`obusy` / `.obm`).
+- **Push notifications** (0028, Web Push): `push_subs` = one row per browser that turned on chat notifications (endpoint + p256dh / auth keys,
+  `lang`; max 10 per account). `POST|DELETE /api/me/push`, `POST /api/me/push/test`. Endpoints must be on a known push host (`PUSH_HOST_RE`,
+  the Worker POSTs to them). `postChat` runs `pushChat` in `waitUntil`: every chat member's devices (`CHAT_MEMBERS_SQL` + owner) except the writer
+  and people who muted the poll (`chat_reads.muted`, `PUT /api/polls/:id/chat/mute`, `chat.muted` in `GET /api/polls/:id`), at most `PUSH_MAX`
+  (30) per message (Free plan limits). Payload `{ kind, title, name, body, url, tag, poll, at }`, encrypted with WebCrypto only (RFC 8291 aes128gcm,
+  VAPID RFC 8292); 404/410 deletes the sub. Keys: `VAPID_PUBLIC_KEY` (var) + `VAPID_PRIVATE_KEY` (secret), made by `node scripts/vapid-keys.mjs`;
+  without them `GET /api/config` sends `push: null` and the UI is hidden. Page: `public/sw.js` (service worker, the one extra script file: shows the
+  notification unless a focused tab is on that poll, tap opens `?p=<id>&chat=1`) and `public/manifest.webmanifest` (iPhone: push only from the
+  Home Screen app). `pushEnable` / `pushDisable` / `pushResync` (daily), ask bar at the top of the chat (`pushAskHtml`, ✕ = `pushAsk`, 30 days),
+  🔔/🔕 mute in the chat header (`chatMuteBtn`), Account → Summary → Notifications (`pushSecDraw`, Send a test). Signing out unsubscribes.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

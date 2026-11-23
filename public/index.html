@@ -7,6 +7,7 @@
 <meta name="description" content="Free availability polls: share one link and see when everyone is free. No account needed to answer.">
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B1F3A">
 <script>
 // Light/dark: saved choice ("theme" in localStorage: light / dark / system); light when nothing is saved. Set before the CSS so there is no flash.
@@ -1353,6 +1354,7 @@
   .cd-h .seg button{padding:6px 12px;font-size:13px}
   .cd-grab{display:none}
   .cd-ref:empty{display:none} .cd-ref{padding:8px 16px 0}
+  .chat-ask{display:flex;align-items:center;gap:8px;margin:8px 12px 0;padding:6px 6px 6px 12px;border-radius:12px;background:var(--accent-weak);font-size:.9rem} .chat-ask>svg{flex:none;width:18px;height:18px;color:var(--accent)}
   .cd-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 11px;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);font-size:13px;font-weight:600}
   .chip-x{border:0;background:none;color:inherit;cursor:pointer;padding:2px;line-height:0;border-radius:50%} .chip-x svg{width:14px;height:14px} .chip-x:hover{background:color-mix(in srgb,var(--accent) 15%,transparent)}
   .chatbox{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 12px 12px}
@@ -2275,6 +2277,7 @@ Object.assign(ICON,{
   undo:svgI('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'),
   redo:svgI('<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>'),
   bell:svgI('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2zM10 21h4"/>'),
+  belloff:svgI('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2zM10 21h4M3 3l18 18"/>'),
   search:svgI('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>'),
   upload:svgI('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
   download:svgI('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4.5 15v3a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5v-3"/>'),
@@ -2502,6 +2505,7 @@ function tourSteps(key){
     S('#pf',t('Profile'),t('Your name and picture, shown to others in polls and chats. You can also change your email address here.')),
     S('#calcard',t('Calendars'),t('Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.')),
     S('#ctcard',t('Contacts'),t('Favourites, people from your polls and groups, to add many people to a poll at once.')),
+    S('#pushsec',t('Notifications'),t('Get chat messages as notifications on this device, even when when-who is closed.')),
     S('#datacard',t('Your data'),t('Download everything we store about you, or delete your account.')),end];
   const d=P.data, edit=key!=='answer', man=key==='manage', guest=!ME.user, role=d.role&&d.role!=='owner'?d.role:'';
   const series=d.poll.kind==='series', chatOn=d.poll.allowComments!==false;
@@ -3074,6 +3078,7 @@ function renderPrivacy(){
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
+        t('<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
@@ -3085,6 +3090,7 @@ function renderPrivacy(){
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
         t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations and reminders.'),
+        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
       ]))}
@@ -4113,6 +4119,7 @@ function renderAccount(){
           <div class="stat"><b>${answers}</b><span>${t('answers in current rounds')}</span></div>
           <a class="stat" href="${esc(origin)}"><b>${(ME.answered||[]).length}</b><span>${t('polls answered')}</span></a>
         </div>
+        <div class="section" id="pushsec" hidden></div>
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
@@ -4138,6 +4145,7 @@ function renderAccount(){
     </div></main>${siteFoot()}`;
   renderCalCard(); renderContactsCard();
   // Your data: download a copy (JSON), or delete the account after a code sent to its address.
+  pushSecDraw();
   $('dl_btn').onclick=async e=>{ const btn=e.currentTarget; btn.disabled=true;
     try{ const r=await fetch('/api/me/export',{headers:{'x-lang':LANG}});
       if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(tErr(j.error||'Something went wrong')); }
@@ -7183,8 +7191,9 @@ function chatDock(){
       <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
         <h2 class="cd-t">${ICON.chat}${t('Chat')}</h2>
         ${tip(esc(can?chatTip():t('Here you see who answered and which meetings were set.')+' '+(ME.user?t('Only invited people can chat here.'):t('To chat, sign in.'))),'right')}
-        <span class="ml-auto"></span>${ib('search',t('Search and filter'),`id="chatfindb" data-chatfind aria-expanded="${c.find}" aria-controls="chatfind"`,'sm ghost'+(c.find||c.show!=='all'?' on':''))}${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
+        <span class="ml-auto"></span><span id="chatmuteslot">${chatMuteBtn()}</span>${ib('search',t('Search and filter'),`id="chatfindb" data-chatfind aria-expanded="${c.find}" aria-controls="chatfind"`,'sm ghost'+(c.find||c.show!=='all'?' on':''))}${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
       <div class="chat-find" id="chatfind"${c.find?'':' hidden'}></div>
+      ${pushAskHtml()||'<div id="chatask" hidden></div>'}
       <div class="cd-ref" id="chatref"></div>
       <div id="chatbox" class="chatbox"></div></aside>`;
 }
@@ -7579,6 +7588,106 @@ async function chatReact(mid,e){
   try{ const r=await api('POST',`/polls/${P.id}/chat/${encodeURIComponent(mid)}/react`,{emoji:e},headers()); m.rx=r.message.rx; }
   catch(err){ m.rx=old; toast(err.message); }
   chatDraw(true);
+}
+// ---- chat notifications (Web Push via public/sw.js; the Worker sends them in pushChat) ----
+// The browser asks for permission only after a tap (Turn on in the chat's ask bar or on the Account page).
+// store 'pushOn' = this browser is subscribed for the signed-in account; 'pushAsk' = when the ask bar was dismissed.
+const PUSH={sub:null,ready:null};
+const pushIos=()=>/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const pushStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+// 'off' (not set up / signed out), 'homescreen' (iPhone: only from the Home Screen app), 'unsupported', or the permission.
+function pushAvail(){
+  if(!CONFIG.push||!ME.user) return 'off';
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)) return pushIos()&&!pushStandalone()?'homescreen':'unsupported';
+  return Notification.permission;
+}
+const pushIsOn=()=>pushAvail()==='granted'&&store.get('pushOn',false);
+const b64uBytes=s=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s+'==='.slice((s.length+3)%4)),c=>c.charCodeAt(0)); };
+const pushReg=()=>PUSH.ready||(PUSH.ready=navigator.serviceWorker.register('/sw.js').then(()=>navigator.serviceWorker.ready));
+// Subscribes this browser (asks for permission first) and tells the server. Call from a click.
+async function pushEnable(){
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){ toast(perm==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):t('Notifications stay off.')); pushRedraw(); return false; }
+  try{
+    const r=await pushReg(), key=b64uBytes(CONFIG.push);
+    let sub=await r.pushManager.getSubscription();
+    const same=s=>{ const k=s&&s.options&&s.options.applicationServerKey; return !!k&&new Uint8Array(k).join()===key.join(); };
+    if(sub&&!same(sub)){ await sub.unsubscribe(); sub=null; } // the site's key changed
+    if(!sub) sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
+    const j=sub.toJSON(); await api('POST','/me/push',{endpoint:j.endpoint,keys:j.keys});
+    PUSH.sub=sub; store.set('pushOn',true); store.set('pushSync',isoL(new Date())); pushRedraw(); toast(t('Notifications are on'));
+    return true;
+  }catch(e){ toast(e.message||t('Couldn’t turn on notifications')); pushRedraw(); return false; }
+}
+async function pushDisable(quiet){
+  try{
+    const r=await pushReg(), sub=await r.pushManager.getSubscription();
+    if(sub){ try{ await api('DELETE','/me/push',{endpoint:sub.endpoint}); }catch(e){} await sub.unsubscribe(); }
+  }catch(e){}
+  PUSH.sub=null; store.set('pushOn',false); if(!quiet){ pushRedraw(); toast(t('Notifications are off')); }
+}
+// Once a day: keep the server's copy of this browser's subscription (it may belong to whoever signed in last).
+async function pushResync(){
+  if(!pushIsOn()) return;
+  try{
+    const r=await pushReg(), sub=await r.pushManager.getSubscription();
+    if(!sub){ store.set('pushOn',false); return; }
+    PUSH.sub=sub; if(store.get('pushSync','')===isoL(new Date())) return;
+    const j=sub.toJSON(); await api('POST','/me/push',{endpoint:j.endpoint,keys:j.keys}); store.set('pushSync',isoL(new Date()));
+  }catch(e){}
+}
+// The ask bar at the top of the chat (signed-in people who can chat, until they turn it on or dismiss it for 30 days).
+function pushAskHtml(){
+  const a=pushAvail(), no=store.get('pushAsk','');
+  if(!chatCan()||!(a==='default'||a==='homescreen'||(a==='granted'&&!store.get('pushOn',false)))) return '';
+  if(no&&Date.now()-Date.parse(no)<30*864e5) return '';
+  return `<div class="chat-ask" id="chatask">${ICON.bell}<span class="grow">${a==='homescreen'?t('For notifications, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.'):t('Get notified about new messages?')}</span>${a==='homescreen'?'':`<button type="button" class="btn sm primary" data-pushon>${t('Turn on')}</button>`}${ib('x',t('Not now'),'data-pushno','sm ghost')}</div>`;
+}
+// 🔔 / 🔕 in the chat header: this poll's notifications (only while this browser gets them).
+function chatMuteBtn(){
+  if(!pushIsOn()||!chatCan()) return '';
+  const m=!!(P.data.chat&&P.data.chat.muted);
+  return ib(m?'belloff':'bell',m?t('Notifications for this chat are off. Turn on'):t('Notifications for this chat are on. Mute'),`id="chatmute" data-chatmute aria-pressed="${m}"`,'sm ghost');
+}
+// Redraws the bits that depend on the notification state.
+function pushRedraw(){
+  const ask=$('chatask'), nh=pushAskHtml();
+  if(ask) ask.outerHTML=nh||'<div id="chatask" hidden></div>';
+  const mb=$('chatmute'), slot=$('chatmuteslot'); if(mb) mb.remove(); if(slot) slot.innerHTML=chatMuteBtn();
+  if($('pushsec')) pushSecDraw();
+}
+// Account page: "Chat notifications on this device".
+function pushSecDraw(){
+  const el=$('pushsec'); if(!el) return;
+  const a=pushAvail(), on=pushIsOn();
+  if(a==='off'){ el.hidden=true; return; }
+  const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
+    :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
+  el.hidden=false;
+  el.innerHTML=`<h3>${t('Notifications')}</h3>
+    <div class="row mt-3"><span class="grow">${t('Chat messages on this device')}</span>${tip(t('Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header.'),'left')}
+      ${note?'':`<label class="sw" title="${esc(t('Chat messages on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Chat messages on this device'))}"><span></span></label>`}</div>
+    ${note?`<p class="help m0">${note}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`;
+  const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest&&e.target.closest('[data-pushon],[data-pushno],[data-chatmute],[data-pushtest]'); if(!b) return;
+  const ds=b.dataset;
+  if(ds.pushon!==undefined){ b.disabled=true; await pushEnable(); return; }
+  if(ds.pushno!==undefined){ store.set('pushAsk',new Date().toISOString()); pushRedraw(); return; }
+  if(ds.pushtest!==undefined){ b.disabled=true; try{ const sub=PUSH.sub||(await (await pushReg()).pushManager.getSubscription()); await api('POST','/me/push/test',sub?{endpoint:sub.endpoint}:{}); toast(t('Test sent')); }catch(x){ toast(x.message); } b.disabled=false; return; }
+  if(ds.chatmute!==undefined){ const ch=P.data&&P.data.chat; if(!ch) return; const m=!ch.muted; b.disabled=true;
+    try{ await api('PUT',`/polls/${P.id}/chat/mute`,{muted:m},headers()); ch.muted=m; toast(m?t('This chat is muted'):t('Notifications for this chat are on')); }catch(x){ toast(x.message); }
+    pushRedraw(); }
+});
+// Messages from the service worker: a push for the poll on screen, or a tapped notification.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',e=>{
+    const d=e.data||{}; if(!d.poll||d.poll!==P.id||!P.data) return;
+    if(d.type==='openchat'){ chatSetOpen(true,null); return; }
+    if(d.type==='chat'){ if(chatVisible()){ chatFast(); chatFetch(false); } else if(P.data.chat&&chatCan()) chatUnreadBadges((P.data.chat.unread||0)+1); }
+  });
+  navigator.serviceWorker.startMessages&&navigator.serviceWorker.startMessages();
 }
 // All chat clicks (dock, drawer, peek, 💬 buttons on days and meetings, date chips, chips and menus in messages).
 const CHAT_CLICK='[data-chatopen],[data-chatclose],[data-chatgo],[data-goday],[data-chatdel],[data-chatmenu],[data-chatrx],[data-chatretry],[data-chatreply],[data-chatcopy],[data-chatquote],[data-chatperson],[data-chatmeet],[data-chatatt],[data-chatac],[data-chatattm],[data-chatnoreply],[data-chatfind],[data-chatshow],[data-chatf],[data-chatexp]';
@@ -8099,7 +8208,7 @@ document.addEventListener('click',async e=>{
   const ds=tg.dataset;
   if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setPollTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
-  if(ds.logout!==undefined){ e.preventDefault(); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
+  if(ds.logout!==undefined){ e.preventDefault(); if(store.get('pushOn',false)) await pushDisable(true); try{ await api('POST','/auth/logout',{everywhere:ds.logout==='all'}); }catch(ex){} location.reload(); return; }
   if(ds.recall!==undefined){ recallMine(); return; }
   if(ds.padd!==undefined){ peopleAdd(tg); return; }
   const pp=PEOPLE&&PEOPLE.parts||[];
@@ -8429,12 +8538,14 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     history.replaceState(null,'',`?p=${encodeURIComponent(pid)}`); }
   try{ Object.assign(ME, await api('GET','/me')); }catch(e){}
   if(ME.user){
+    pushResync();
     if(store.get('myPolls',[]).some(p=>p.adminKey)) await claimLocalPolls();
     try{ Object.assign(ME, await api('GET','/me/polls')); }catch(e){}
   }
   if(pid){
     const em=/^#e=([\w-]{1,40})\.([\w-]{1,40})\.([\w-]{8,200})$/.exec(location.hash);
     if(em){ store.set(`resp:${pid}:${em[1]}`,{id:em[2],editKey:em[3]}); history.replaceState(null,'',location.pathname+location.search); }
+    if(qs.has('chat')){ store.set('chatOpen:'+pid,true); qs.delete('chat'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from a notification
     await openPoll(pid); await contactsReturn(qs);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
   } else if(qs.has('account')){ renderAccount(); calReturn(qs); }
@@ -10351,7 +10462,34 @@ function germanText(){ return {
 "First round: {range}. People can answer from {open}.": "Erste Runde: {range}. Antworten ab {open} möglich.",
 "First round: {range}. People can answer from {open}, until {dl}.": "Erste Runde: {range}. Antworten von {open} bis {dl} möglich.",
 "Then a new round every time, on its own.": "Danach startet jede neue Runde von selbst.",
-"Invalid time": "Ungültige Zeit"}; }
+"Invalid time": "Ungültige Zeit",
+"Notifications are blocked. Allow them in your browser’s site settings.": "Benachrichtigungen sind blockiert. Erlaube sie in den Website-Einstellungen deines Browsers.",
+"Notifications stay off.": "Benachrichtigungen bleiben aus.",
+"Notifications are on": "Benachrichtigungen sind an",
+"Notifications are off": "Benachrichtigungen sind aus",
+"Couldn’t turn on notifications": "Benachrichtigungen konnten nicht eingeschaltet werden",
+"For notifications, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.": "Für Benachrichtigungen füge when-who zum Home-Bildschirm hinzu (Teilen → Zum Home-Bildschirm) und öffne es von dort.",
+"Get notified about new messages?": "Bei neuen Nachrichten benachrichtigen?",
+"Turn on": "Einschalten",
+"Notifications for this chat are off. Turn on": "Benachrichtigungen für diesen Chat sind aus. Einschalten",
+"Notifications for this chat are on. Mute": "Benachrichtigungen für diesen Chat sind an. Stummschalten",
+"On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.": "Auf iPhone und iPad füge when-who zum Home-Bildschirm hinzu (Teilen → Zum Home-Bildschirm) und öffne es von dort.",
+"This browser can’t show notifications.": "Dieser Browser kann keine Benachrichtigungen anzeigen.",
+"Notifications": "Benachrichtigungen",
+"Chat messages on this device": "Chat-Nachrichten auf diesem Gerät",
+"Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header.": "Werde benachrichtigt, wenn jemand im Chat einer deiner Umfragen schreibt, auch wenn when-who geschlossen ist. Einen einzelnen Chat schaltest du mit der Glocke oben im Chat stumm.",
+"Send a test": "Test senden",
+"Test sent": "Test gesendet",
+"This chat is muted": "Dieser Chat ist stumm",
+"Notifications for this chat are on": "Benachrichtigungen für diesen Chat sind an",
+"Get chat messages as notifications on this device, even when when-who is closed.": "Chat-Nachrichten als Benachrichtigung auf diesem Gerät, auch wenn when-who geschlossen ist.",
+"<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.": "<b>Benachrichtigungen (nur wenn du sie einschaltest):</b> pro Gerät die Push-Adresse, die uns dein Browser gibt, und ihre Schlüssel, damit neue Chat-Nachrichten dich erreichen, und welche Chats du stummgeschaltet hast. Ausschalten, Abmelden auf dem Gerät oder Löschen deines Kontos entfernt sie.",
+"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
+"This browser’s push service isn’t supported": "Der Push-Dienst dieses Browsers wird nicht unterstützt",
+"Invalid push keys": "Ungültige Push-Schlüssel",
+"Notifications aren’t set up on this site": "Benachrichtigungen sind auf dieser Website nicht eingerichtet",
+"Notifications aren’t on for this device": "Benachrichtigungen sind auf diesem Gerät nicht an",
+"The push service didn’t accept the notification. Turn notifications off and on again.": "Der Push-Dienst hat die Benachrichtigung nicht angenommen. Schalte Benachrichtigungen aus und wieder ein."}; }
 })();
 </script>
 </body>
