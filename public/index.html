@@ -706,7 +706,7 @@
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
   .mfh{cursor:default} .mfh:hover h3{text-decoration:none}
   /* questions tab: cards like meetings (type tile | title + icon buttons, meta, body) */
-  .ws-h .qws-add{margin-left:auto} .ws-h>.tip{position:static}
+  .ws-h .qws-add,.ws-h .qws-ai{margin-left:auto} .ws-h .qws-ai+.qws-add{margin-left:0} .ws-h>.tip{position:static}
   .qlist{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px}
   .qlist.compact{gap:6px}
   .qcard{position:relative;transition:box-shadow .3s} .qcard.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}
@@ -759,7 +759,7 @@
   .qe-cntl{grid-column:1/-1;height:34px}
   .qe-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
   /* form view: You, Send bar, new controls */
-  .qws .ws-h .ws-views{margin-left:auto} .qws .ws-h .ws-views+.qws-add{margin-left:0}
+  .qws .ws-h .ws-views{margin-left:auto} .qws .ws-h .ws-views+.qws-add,.qws .ws-h .ws-views+.qws-ai{margin-left:0}
   .qgap{height:var(--s3)} .qnone{padding:12px 4px}
   .qyou{margin:0 0 10px} .qas{display:flex;align-items:center;gap:6px;margin:0 0 8px} .qas svg{width:14px;height:14px}
   .qsave{margin-top:4px} .qsave .ib .bl{display:none} .qtile .wd{max-width:100%;overflow:hidden;text-overflow:ellipsis}
@@ -4729,13 +4729,13 @@ function renderQuestions(fresh){
   if(!P.qview) P.qview=store.get('qview:'+P.id,'')||(mayFill&&!adm?'fill':'results');
   const view=d.draft?'results':mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${tip(adm?t('A short form for this round: votes (also on places, with suggestions), checkboxes, dropdowns, ratings, text and yes / no. Link a question to the whole poll or to meetings, pick who may answer, and drag to reorder. 🔒 = only you see the answers.'):t('Questions from the organiser, answered separately from your availability. 🔒 = only the organiser sees the answers.'))}${qs.length&&(mayFill||adm)&&!d.draft?seg:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}${qAiOk()?`<div class="menu-sep"></div><button type="button" data-qai>${ICON.spark}<span class="grow">${t('Generate with AI')}</span></button>`:''}</div></details>`:''}</div>`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}${adm&&qAiOk()?`<button type="button" class="btn sm withic qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}</button>`:''}${adm?`<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details>`:''}</div>`;
   const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
     if(aiP){ el.innerHTML=`${head}<div class="mcard">${aiP}</div>`; return; }
     el.innerHTML=`${head}<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.ask}</span><b>${t('No questions yet')}</b>${adm?`<span class="muted small">${t('Ask people for more than the date: where to meet, a plus-one, dietary needs…')}</span>
-      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}<button type="button" class="btn sm withic" data-qprsadd>${ICON.copy}<span>${t('From a preset')}</span></button>${qAiOk()?`<button type="button" class="btn sm withic" data-qai>${ICON.spark}<span>${t('Generate with AI')}</span></button>`:''}</div>`:''}</div></div>`; return; }
+      <div class="qtpls mt-2">${tpl('place','pin',t('Vote on the place'))}${tpl('radio','radio',t('Multiple choice'))}${tpl('rating','star',t('Rating'))}${tpl('long','note',t('Text'))}${tpl('yesno','users',t('Yes / no'))}${tpl('group','note',t('Questionnaire'))}<button type="button" class="btn sm withic" data-qprsadd>${ICON.copy}<span>${t('From a preset')}</span></button></div>`:''}</div></div>`; return; }
   const shown=fill&&!adm?qs.filter(q=>qMayFill(q)||(P.form&&P.form.can&&!P.form.can.has(q.id)&&qAnswers(q))):qs;
   const you=fill&&!ME.user&&!(P.form&&P.form.pid)&&!P.myResp?`<div class="me-box qyou"><div class="me-guest"><label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="fq_name" maxlength="60" placeholder="${t('Your name')}" aria-label="${t('Your name')}" value="${esc(P.qname??(P.mine.name||''))}"></label>${d.poll.requireEmail?`<label class="me-f"><span class="me-ic">${ICON.mail}</span><input type="email" id="fq_email" maxlength="200" placeholder="${t('Email (required)')}" aria-label="${t('Email (required, only the organiser sees it)')}" value="${esc(P.qemail??(P.mine.email||''))}"></label>`:''}</div></div>`
     :fill&&(P.form&&P.form.name||P.mine.name)?`<div class="qas muted small">${ICON.user}<span>${t('Answering as {name}',{name:esc((P.form&&P.form.name)||P.mine.name)})}</span></div>`:'';
@@ -4842,7 +4842,7 @@ function qAiPanel(){
     ${A.asGroup?`<input type="text" id="qai_gname" maxlength="120" value="${esc(A.gname||'')}" placeholder="${t('Questionnaire title, e.g. Travel')}" aria-label="${t('Questionnaire')}">`:''}`:'';
   const n=r?r.questions.length-A.off.size:0;
   return `<div class="aif qai"><div class="patp">
-    <div class="boxh">${ICON.spark}<span>${t('Generate with AI')}</span>${tip(t('Describe what you want to ask. Only this text and the poll’s title are sent to Cloudflare Workers AI, and they aren’t stored. You pick which questions to add and can edit them afterwards.'))}<button type="button" class="qb ml-auto" data-qaiclose title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
+    <div class="boxh">${ICON.spark}<span>${t('Generate with AI')}</span><button type="button" class="qb ml-auto" data-qaiclose title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
     ${r?prev:`<textarea id="qAiText" rows="4" maxlength="500" placeholder="${esc(t('e.g. Dinner after the hike: vote on the restaurant, dietary needs (only I see them), plus-ones, and rate the hike'))}">${esc(A.text||'')}</textarea>`}
     <div class="aif-go">${r?`<button type="button" class="btn sm primary withic" data-qaiadd${n&&!A.busy?'':' disabled'}>${ICON.plus}<span>${n===1?t('Add 1 question'):t('Add {n} questions',{n})}</span></button><button type="button" class="btn sm ghost" data-qaiback>${t('Back')}</button>`
       :`<button type="button" class="btn sm primary withic" data-qaigo${A.busy?' disabled':''}>${ICON.spark}<span>${A.busy?t('Writing…'):t('Generate')}</span></button>`}
@@ -4927,14 +4927,14 @@ function qOpenEditor(q){ P.qai=null; P.qedit=JSON.parse(JSON.stringify({type:'ra
 const qDd=(id,ic,label,inner,cls='')=>`<details class="dd qdd ${cls}" data-qdd="${id}"${P.qdd===id?' open':''}><summary>${ICON[ic]}<span class="qdd-l">${label}</span></summary><div class="ddp menu pickm">${inner}</div></details>`;
 function qEditor(){
   const e=P.qedit, ty=e.type||'radio', ms=inst().meetings, linked=new Set(e.link.ids||[]), choice=Q_CHOICE.has(ty);
-  const tog=(id,on,ic,lbl,tp='')=>`<div class="qetog">${ICON[ic]}<label for="${id}">${lbl}</label>${tp?tip(tp):''}${swc(id,on,lbl)}</div>`;
+  const tog=(id,on,ic,lbl,tp='')=>`<div class="qetog">${ICON[ic]}<label for="${id}">${lbl}</label>${swc(id,on,lbl)}</div>`;
   const typeDd=ty==='group'?'':qDd('type',(Q_KIND[ty]||Q_KIND.radio)[0],t(Q_KIND[ty][1]),Object.entries(Q_KIND).map(([k,[ic,l]])=>pickItem('data-qetype',k,t(l),k===ty,ICON[ic])).join(''),'qetyp');
   const search=(k,n)=>n>6?`<input type="search" class="qdd-s" data-qsearch="${k}" placeholder="${t('Search')}" aria-label="${t('Search')}">`:'';
   const reps=ms.filter(m=>linked.has(m.id)&&m.repeat).length;
   const af=qAfter(e), lms=af?ms.filter(m=>!m.proposed):ms;
   const linkDd=qDd('link',af?'clock':linked.size?'star':'cal',esc(af||linked.size?qLinkText({link:e.link}):t('Whole poll')),`${pickItem('data-qelink','poll',t('Whole poll'),!af&&!linked.size,ICON.cal)}${pickItem('data-qelink','after',t('After each meeting'),af,ICON.clock)}<div class="menu-sep"></div>${af?`<div class="muted small qdd-e">${t('Pick meetings, or none for all of them.')}</div>`:''}${search('link',lms.length)}
     ${lms.length?lms.map(m=>`<label data-qsi="${esc((meetTitle(m)+' '+meetWhen(m)).toLowerCase())}"><input type="checkbox" data-qelm="${m.id}"${linked.has(m.id)?' checked':''}>${ICON[m.proposed?'check':'star']}<span class="minw">${esc(meetTitle(m))} · ${esc(meetWhen(m))}${m.proposed?` <span class="tag">${t('Option')}</span>`:''}${m.repeat?` <span class="tag">${t('Repeats')}</span>`:''}</span></label>`).join(''):`<div class="muted small qdd-e">${t('No meetings yet')}</div>`}
-    ${af?`<div class="menu-sep"></div><div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${tip(t('Earlier meetings close once the next one has happened.'))}${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
+    ${af?`<div class="menu-sep"></div><div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
       :reps?`<div class="menu-sep"></div><div class="qetog">${ICON.repeat}<label for="qe_each">${t('Answer for each date')}</label>${swc('qe_each',!!e.link.each,t('Answer for each date'))}</div>`:''}`);
   const w=e.who.mode, parts=P.qparts||[], pk=new Set(e.who.pids||[]);
   const whoDd=qDd('who',w==='people'?'user':'users',esc(qWhoText({who:e.who})),`${pickItem('data-qewho','all',t('Everyone'),w==='all',ICON.users)}${pickItem('data-qewho','meeting',t('People in the linked meetings'),w==='meeting',ICON.star)}${pickItem('data-qewho','free',t('People free at the linked meetings'),w==='free',ICON.check)}${P.data.draft?'':pickItem('data-qewho','people',t('Pick people…'),w==='people',ICON.user)}
