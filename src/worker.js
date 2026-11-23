@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-Uo7/mwFtJoAVi5Abca3IZPvG3LD4EUEwT/g5qLDTf9U=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-pVj2RKKiL/zJY0QIqzjExhCEYex8EJSMv9gZYNCxLU0=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -168,6 +168,12 @@ async function route(request, env, ctx, url) {
       if (!parts[3] && m === 'POST') return addGroup(request, env);
       if (parts[3] && !parts[4] && m === 'PATCH') return updateGroup(request, env, url, parts[3]);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteGroup(request, env, parts[3]);
+    }
+    if (parts[2] === 'presets') {
+      if (!parts[3] && m === 'GET') return listPresets(request, env);
+      if (!parts[3] && m === 'POST') return savePreset(request, env);
+      if (parts[3] && !parts[4] && m === 'PATCH') return updatePreset(request, env, parts[3]);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deletePreset(request, env, parts[3]);
     }
     if (parts[2] === 'contacts' && parts[3] === 'lookup' && !parts[4] && m === 'POST') return lookupContacts(request, env);
     if (parts[2] === 'contacts' && parts[3] && !parts[4] && m === 'GET') return accountContacts(request, env, parts[3]);
@@ -412,12 +418,14 @@ async function insertInstance(env, poll, seq, fields, notified) {
   if (seq > 0 && fields.questions === undefined) {
     const prev = await env.DB.prepare('SELECT questions FROM instances WHERE poll_id = ? AND seq < ? ORDER BY seq DESC LIMIT 1').bind(poll.id, seq).first('questions');
     // Questions marked repeat (the default) come along with their questionnaires, without links to the old round's meetings.
+    // After-meeting questions stay after-meeting questions (for all meetings of the new round) and keep who.
     const keepWho = (w) => (w && w.mode === 'people' ? w : { mode: !w || w.mode === 'free' || w.mode === 'meeting' ? 'all' : w.mode });
+    const copyLink = (x) => (isAfter(x) ? { link: { to: 'after', ...(x.link.last ? { last: true } : {}) }, who: x.who || { mode: 'meeting' } } : { link: { to: 'poll' }, who: keepWho(x.who) });
     const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false);
     const used = new Set(qs.map((q) => q.grp).filter(Boolean));
     const out = items.filter((x) => (x.type === 'group' ? used.has(x.id) : qs.some((q) => q.id === x.id)))
       .map((x) => (x.type === 'group' ? x : normQ(x)))
-      .map(({ closed, at, ...q }) => ({ ...q, link: { to: 'poll' }, who: keepWho(q.who), at: now() }));
+      .map(({ closed, at, ...q }) => ({ ...q, ...copyLink(q), at: now() }));
     if (out.length) fields = { ...fields, questions: JSON.stringify(out) };
   }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
@@ -866,7 +874,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0024';
+const USER_DATA_REVIEWED = '0025';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -890,6 +898,7 @@ const USER_DATA = {
     del: 'DELETE FROM polls WHERE owner_id = ?' }, // export: polls I own in full, polls I answered for their titles
   favourites: { rows: 'SELECT * FROM favourites WHERE user_id = ?', del: 'DELETE FROM favourites WHERE user_id = ?' },
   contact_groups: { rows: 'SELECT * FROM contact_groups WHERE user_id = ?', del: 'DELETE FROM contact_groups WHERE user_id = ?' },
+  poll_presets: { rows: 'SELECT * FROM poll_presets WHERE user_id = ?', del: 'DELETE FROM poll_presets WHERE user_id = ?' },
   friends: { rows: 'SELECT * FROM friends WHERE from_id = ? OR to_id = ?', del: 'DELETE FROM friends WHERE from_id = ? OR to_id = ?' },
   user_calendars: { rows: 'SELECT * FROM user_calendars WHERE user_id = ?', del: 'DELETE FROM user_calendars WHERE user_id = ?' },
   calendar_accounts: { rows: 'SELECT * FROM calendar_accounts WHERE user_id = ?', del: 'DELETE FROM calendar_accounts WHERE user_id = ?' }, // tokens revoked first
@@ -1188,6 +1197,77 @@ function groupInput(b, partial, user) {
   }
   return out;
 }
+// ---------- poll presets (an account's saved starting points for new polls) ----------
+const MAX_PRESETS = 30, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions'];
+// Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
+function presetQuestions(list) {
+  if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
+  const reset = list.map((x) => {
+    if (!x || typeof x !== 'object') return x;
+    const after = isAfter(x);
+    return { ...x, link: after ? { to: 'after', ...(x.link.last ? { last: true } : {}) } : { to: 'poll' },
+      who: { mode: after && x.who && (x.who.mode === 'meeting' || x.who.mode === 'free') ? x.who.mode : 'all' } };
+  });
+  return validateQuestions(reset, [], [], new Set()).map(({ at, ...q }) => q);
+}
+function presetData(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) throw new HttpError(400, 'Invalid preset');
+  const out = {};
+  for (const k of PRESET_KEYS) if (d[k] !== undefined && d[k] !== null) out[k] = d[k];
+  // Same checks as creating a poll (dates aren't part of a preset).
+  readPollSettings({ ...out, firstStart: out.unit === 'month' ? '2000-01' : '2000-01-03', title: out.title || 'x' }, null);
+  if (out.days !== undefined) out.days = int(out.days, 1, MAX_RANGE_DAYS, 'Days');
+  if (out.questions !== undefined) out.questions = presetQuestions(out.questions);
+  const s = JSON.stringify(out);
+  if (s.length > 64000) throw new HttpError(413, 'This preset is too large');
+  return s;
+}
+async function listPresets(request, env) {
+  const user = requireUser(request);
+  const { results } = await env.DB.prepare('SELECT id, name, icon, data, updated_at FROM poll_presets WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
+  return json({ presets: results.map((r) => ({ id: r.id, name: r.name, icon: r.icon, data: JSON.parse(r.data), updatedAt: r.updated_at })) });
+}
+// POST /api/me/presets { name, icon, data } — saving under a name you already use replaces that preset.
+async function savePreset(request, env) {
+  const user = requireUser(request);
+  const b = await body(request);
+  const name = str(b.name, 60, 'Preset name', true), icon = emojiIcon(b.icon, 'Icon'), data = presetData(b.data), at = now();
+  const old = await env.DB.prepare('SELECT id FROM poll_presets WHERE user_id = ? AND LOWER(name) = ?').bind(user.id, name.toLowerCase()).first('id');
+  if (old) {
+    await env.DB.prepare('UPDATE poll_presets SET name = ?, icon = ?, data = ?, updated_at = ? WHERE id = ?').bind(name, icon, data, at, old).run();
+    return json({ id: old, replaced: true });
+  }
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM poll_presets WHERE user_id = ?').bind(user.id).first('n');
+  if (n >= MAX_PRESETS) throw new HttpError(409, `You can have at most ${MAX_PRESETS} presets`);
+  const id = randomId(12);
+  await env.DB.prepare('INSERT INTO poll_presets (id, user_id, name, icon, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(id, user.id, name, icon, data, at, at).run();
+  return json({ id }, 201);
+}
+async function updatePreset(request, env, pid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(pid)) throw new HttpError(404, 'Preset not found');
+  const b = await body(request), sets = [], vals = [];
+  if (b.name !== undefined) {
+    const name = str(b.name, 60, 'Preset name', true);
+    const clash = await env.DB.prepare('SELECT 1 FROM poll_presets WHERE user_id = ? AND LOWER(name) = ? AND id != ?').bind(user.id, name.toLowerCase(), pid).first();
+    if (clash) throw new HttpError(409, 'You already have a preset with this name');
+    sets.push('name = ?'); vals.push(name);
+  }
+  if (b.icon !== undefined) { sets.push('icon = ?'); vals.push(emojiIcon(b.icon, 'Icon')); }
+  if (b.data !== undefined) { sets.push('data = ?'); vals.push(presetData(b.data)); }
+  sets.push('updated_at = ?'); vals.push(now());
+  const r = await env.DB.prepare(`UPDATE poll_presets SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).bind(...vals, pid, user.id).run();
+  if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Preset not found');
+  return json({ ok: true });
+}
+async function deletePreset(request, env, pid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(pid)) throw new HttpError(404, 'Preset not found');
+  await env.DB.prepare('DELETE FROM poll_presets WHERE id = ? AND user_id = ?').bind(pid, user.id).run();
+  return json({ ok: true });
+}
+
 async function addGroup(request, env) {
   const user = requireUser(request);
   const g = groupInput(await body(request), false, user);
@@ -1969,6 +2049,7 @@ async function createPoll(request, env) {
   p.admin_hash = await sha256('admin:' + secret()); // column is required; admin links are no longer handed out
   p.password_hash = b.password ? await sha256(id + ':pw:' + str(b.password, 100, 'Password')) : null;
   p.created_at = t; p.updated_at = t;
+  const qs = b.questions !== undefined ? presetQuestions(b.questions).map((q) => ({ ...q, at: t })) : []; // from a preset
   let first;
   if (p.kind === 'single') {
     checkRange(b.startDate, b.endDate);
@@ -1983,7 +2064,7 @@ async function createPoll(request, env) {
   await env.DB.prepare(`INSERT INTO polls (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => p[c])).run();
   // The first poll of a series opens right away (it's the period currently due, or the first one if that's later).
   const seq = p.kind === 'series' ? currentSeq(p) : 0;
-  await insertInstance(env, p, seq, first || seriesFields(p, seq), true);
+  await insertInstance(env, p, seq, { ...(first || seriesFields(p, seq)), ...(qs.length ? { questions: JSON.stringify(qs) } : {}) }, true);
   return json({ id }, 201);
 }
 
@@ -2024,6 +2105,17 @@ async function getPoll(request, env, ctx, url, id) {
     if (admin || !poll.hide_results) {
       const { results: fr } = await env.DB.prepare('SELECT f.id, f.participant_id, f.extra, f.updated_at, p.name FROM form_answers f JOIN participants p ON p.id = f.participant_id WHERE f.instance_id = ? ORDER BY f.created_at').bind(sel.id).all();
       out.form.rows = fr.map((r) => ({ id: r.id, pid: r.participant_id, name: r.name, extra: extraFor(r.extra, qs, added, admin), updatedAt: r.updated_at }));
+    }
+  }
+  // The round before: its after-meeting questions about meetings that ended in the last 14 days (for the prompt on open).
+  const prev = all.filter((i) => i.seq < sel.seq).pop();
+  if (prev) {
+    const pq = questionsOf(prev).filter(isAfter), pm = JSON.parse(prev.meetings || '[]'), since = Date.now() - 14 * 86400e3;
+    const recent = pq.filter((q) => afterOccs(q, pm).some((o) => o.end >= since));
+    if (recent.length) {
+      const used = new Set(recent.flatMap((q) => afterOccs(q, pm).map((o) => o.m.id)));
+      out.prevAfter = { iid: prev.id, seq: prev.seq, questions: recent, groups: groupsOf(prev).filter((g) => recent.some((q) => q.grp === g.id)),
+        meetings: pm.filter((m) => used.has(m.id)) };
     }
   }
   if (admin || !poll.hide_results) {
@@ -2916,8 +3008,9 @@ const QGEN_SCHEMA = {
           options: { type: 'array', items: { type: 'string' } },
           required: { type: 'boolean' }, private: { type: 'boolean' }, place: { type: 'boolean' }, add: { type: 'boolean' },
           rating_max: { type: 'integer' }, low: { type: 'string' }, high: { type: 'string' }, count_label: { type: 'string' },
+          after: { type: 'string', enum: ['no', 'each', 'last'] },
         },
-        required: ['type', 'label', 'help', 'options', 'required', 'private', 'place', 'add', 'rating_max', 'low', 'high', 'count_label'],
+        required: ['type', 'label', 'help', 'options', 'required', 'private', 'place', 'add', 'rating_max', 'low', 'high', 'count_label', 'after'],
       },
     },
   },
@@ -2935,6 +3028,7 @@ function qgenPrompt(poll, lang) {
     'Each question: label = the question, short and friendly; help = an optional short note ("" if none); options = choice labels (only for radio / check / select, else []);',
     'required = must be answered (default false); private = only the organiser sees the answers (default false); place = options are places (default false);',
     'rating_max = 5 unless said; low / high = rating labels ("" if none); count_label = "" unless yesno asks for a number.',
+    'after = "no" normally; "each" for feedback asked after every meeting has happened ("how was each rehearsal"); "last" for feedback on only the latest meeting ("rate the last session").',
     'Write 2 to 8 questions unless the text asks for a number. Don\'t ask about dates or times: the poll already does that.',
     'title = a short name for the whole questionnaire (2-4 words); icon = one fitting emoji.',
     `Write everything in the language of the text (it may be ${lang === 'de' ? 'German or English' : 'English or German'}). Answer only with the JSON object.`,
@@ -2970,6 +3064,7 @@ async function questionsFromText(request, env, id, iid) {
       q.rating = { max: Number.isFinite(n) ? Math.min(10, Math.max(3, n)) : 5, lo: line(x.low, 40) || undefined, hi: line(x.high, 40) || undefined };
     }
     if (q.type === 'yesno' && line(x.count_label, 60)) q.count = { label: line(x.count_label, 60), max: 20 };
+    if (x.after === 'each' || x.after === 'last') { q.link = { to: 'after', ...(x.after === 'last' ? { last: true } : {}) }; q.who = { mode: 'meeting' }; }
     out.push(q);
   }
   if (!out.length) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
@@ -3136,11 +3231,63 @@ function onRepeat(m, d) {
   return days >= 0 && days % (7 * m.repeat.every) === 0;
 }
 const MAX_QGROUPS = 15;
+// After-meeting questions (link.to 'after'): asked once per meeting that has ended (each date of a repeating one),
+// answers { "<meeting id>:<YYYY-MM-DD>": value }. No ids = every confirmed meeting of the round.
+// The Worker doesn't know the poll's time zone, so it allows 14 h either way; the page shows the exact ones.
+const isAfter = (q) => !!(q && q.link && q.link.to === 'after');
+const TZ_SLACK = 14 * 3600e3;
+function meetEndMs(m, d) {
+  const base = Date.parse(d + 'T00:00:00Z');
+  if (m.allDay) return Date.parse((m.endDate && !m.repeat ? m.endDate : d) + 'T00:00:00Z') + 86400e3;
+  return base + (m.end || 24) * 3600e3;
+}
+// Occurrences that may have ended by now (newest first): [{ key, m, date, sure }] (sure = ended in every time zone).
+function afterOccs(q, meetings, at = Date.now()) {
+  const ids = q.link.ids && q.link.ids.length ? new Set(q.link.ids) : null, out = [];
+  for (const m of meetings) {
+    if (m.proposed || (ids && !ids.has(m.id))) continue;
+    const dates = [];
+    if (m.repeat) {
+      for (let d = firstOnWeekday(m.repeat.from, wdOf(m.date)), i = 0; i < 520 && (!m.repeat.until || d <= m.repeat.until); i++, d = addDays(d, 7 * m.repeat.every)) {
+        if (meetEndMs(m, d) - TZ_SLACK > at) break;
+        dates.push(d);
+      }
+    } else if (meetEndMs(m, m.date) - TZ_SLACK <= at) dates.push(m.date);
+    for (const d of dates) out.push({ key: m.id + ':' + d, m, date: d, end: meetEndMs(m, d), sure: meetEndMs(m, d) + TZ_SLACK <= at });
+  }
+  out.sort((a, b) => b.end - a.end);
+  if (!q.link.last) return out;
+  const i = out.findIndex((o) => o.sure); // only the latest: nothing older than the newest one that has surely ended
+  return i < 0 ? out : out.slice(0, i + 1);
+}
+// May participant part answer q for this one meeting date?
+function canAnswerAt(q, part, m, d, responses) {
+  const w = q.who || { mode: 'all' };
+  if (w.mode === 'all') return true;
+  if (!part) return false;
+  if (w.mode === 'people') return (w.pids || []).includes(part.id);
+  if (w.mode === 'meeting') return m.participants === 'all' || (Array.isArray(m.participants) && m.participants.some((p) => p.id === part.id));
+  return freeAt(responses, part, m, d);
+}
+function freeAt(responses, part, m, d) {
+  const r = responses.find((x) => x.participant_id === part.id);
+  if (!r) return false;
+  let e; try { e = JSON.parse(r.entries || '{}'); } catch { e = {}; }
+  const v = e[d], ok = (x) => x === 'y' || x === 'i';
+  if (typeof v === 'string') return ok(v);
+  if (!v || typeof v !== 'object') return false;
+  const hs = [...(v.y || []), ...(v.i || [])];
+  return m.allDay ? hs.length > 0 : hs.includes(m.start);
+}
+// Occurrence keys of q this person may answer now.
+const afterOpen = (q, part, meetings, responses, admin) => afterOccs(q, meetings).filter((o) => admin || canAnswerAt(q, part, o.m, o.date, responses)).map((o) => o.key);
 // link / who of a question or questionnaire (meeting ids of this round, participant ids of this poll).
 function linkWho(q, out, meetings, mids, pids) {
-  const ids = q.link && q.link.to === 'meetings' && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
-  out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
-  if (ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
+  const to = q.link && q.link.to;
+  const ids = (to === 'meetings' || to === 'after') && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
+  if (to === 'after') out.link = { to: 'after', ...(ids.length ? { ids } : {}), ...(q.link.last ? { last: true } : {}) };
+  else out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
+  if (to === 'meetings' && ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
   const mode = Q_WHO.includes(q.who && q.who.mode) ? q.who.mode : 'all';
   out.who = { mode };
   if (mode === 'people') {
@@ -3204,20 +3351,11 @@ function canAnswer(q, part, meetings, responses) {
   if (w.mode === 'all') return true;
   if (!part) return false;
   if (w.mode === 'people') return (w.pids || []).includes(part.id);
+  if (isAfter(q)) return true; // checked per meeting (afterOpen)
   const ms = (q.link.ids || []).map((id) => meetings.find((m) => m.id === id)).filter(Boolean);
   if (!ms.length) return true; // nothing linked: everyone
   if (w.mode === 'meeting') return ms.some((m) => m.participants === 'all' || (Array.isArray(m.participants) && m.participants.some((p) => p.id === part.id)));
-  const r = responses.find((x) => x.participant_id === part.id); // free: marked available (or if needed) at the meeting's time
-  if (!r) return false;
-  let e; try { e = JSON.parse(r.entries || '{}'); } catch { e = {}; }
-  const ok = (v) => v === 'y' || v === 'i';
-  return ms.some((m) => {
-    const v = e[m.date];
-    if (typeof v === 'string') return ok(v);
-    if (!v || typeof v !== 'object') return false;
-    const hs = [...(v.y || []), ...(v.i || [])];
-    return m.allDay ? hs.length > 0 : hs.includes(m.start);
-  });
+  return ms.some((m) => freeAt(responses, part, m, m.date)); // free: marked available (or if needed) at the meeting's time
 }
 // Options people suggested in this round: Map question id → [{ id, label }] (from every form answer's `add`).
 async function addedOptions(env, iid, skipId) {
@@ -3249,7 +3387,8 @@ function qValue(q, v, valid) {
 }
 // Checks a person's answers to the round's questions. part = their participant (null = new), old = their saved answers.
 // Questions they may not answer (closed, or not meant for them) keep the old value. needReq: required ones must be answered.
-async function validateExtra(env, raw, inst, { fid = null, part = null, admin = false, old = {}, needReq = true } = {}) {
+// onlyAfter: the round is closed, only after-meeting questions may still change.
+async function validateExtra(env, raw, inst, { fid = null, part = null, admin = false, old = {}, needReq = true, onlyAfter = false } = {}) {
   const qs = questionsOf(inst);
   if (!qs.length) return null;
   if (raw != null && (typeof raw !== 'object' || Array.isArray(raw))) throw new HttpError(400, 'Invalid answers to questions');
@@ -3260,7 +3399,7 @@ async function validateExtra(env, raw, inst, { fid = null, part = null, admin = 
   const added = await addedOptions(env, inst.id, fid);
   const outA = {}, outAdd = {};
   for (const q of qs) {
-    if ((q.closed || !canAnswer(q, part, meetings, responses)) && !admin) {
+    if ((q.closed || (onlyAfter && !isAfter(q)) || !canAnswer(q, part, meetings, responses)) && !admin) {
       if (old.a && old.a[q.id] !== undefined) outA[q.id] = old.a[q.id];
       if (old.add && old.add[q.id]) outAdd[q.id] = old.add[q.id];
       continue;
@@ -3277,7 +3416,17 @@ async function validateExtra(env, raw, inst, { fid = null, part = null, admin = 
       if (mine.length) outAdd[q.id] = mine;
     }
     let v;
-    if (q.link.each) {
+    if (isAfter(q)) { // per meeting date; ones that aren't open (any more) keep their old value
+      const ok = new Set(afterOpen(q, part, meetings, responses, admin)), m = {};
+      const obj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+      for (const [k, pv] of Object.entries(obj(old.a && old.a[q.id]))) if (!ok.has(k)) m[k] = pv;
+      for (const [k, dv] of Object.entries(obj(a[q.id])).slice(0, 200)) {
+        if (!ok.has(k)) continue;
+        const one = qValue(q, dv, valid);
+        if (one !== undefined) m[k] = one;
+      }
+      v = Object.keys(m).length ? m : undefined;
+    } else if (q.link.each) {
       const reps = repeatsOf(q, meetings), src = a[q.id] && typeof a[q.id] === 'object' && !Array.isArray(a[q.id]) ? a[q.id] : {}, m = {};
       for (const [d, dv] of Object.entries(src).slice(0, 60)) {
         if (!reps.some((r) => onRepeat(r, d))) continue;
@@ -3287,7 +3436,7 @@ async function validateExtra(env, raw, inst, { fid = null, part = null, admin = 
       v = Object.keys(m).length ? m : undefined;
     } else v = qValue(q, a[q.id], valid);
     if (v !== undefined) outA[q.id] = v;
-    if (needReq && q.req && !admin && !q.link.each && v === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
+    if (needReq && q.req && !admin && !q.link.each && !isAfter(q) && v === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
   }
   const out = { ...(Object.keys(outA).length ? { a: outA } : {}), ...(Object.keys(outAdd).length ? { add: outAdd } : {}) };
   return Object.keys(out).length ? JSON.stringify(out) : null;
@@ -3298,7 +3447,7 @@ function extraFor(raw, qs, added, full) {
   for (const q of qs) {
     let v = x.a && x.a[q.id];
     if (v === undefined || (!full && q.vis === 'owner')) continue;
-    if (Q_CHOICE.has(q.type) && !q.link.each) { const ok = optionIds(q, added); v = Array.isArray(v) ? v.filter((o) => ok.has(o)) : []; if (!v.length) continue; }
+    if (Q_CHOICE.has(q.type) && !q.link.each && !isAfter(q)) { const ok = optionIds(q, added); v = Array.isArray(v) ? v.filter((o) => ok.has(o)) : []; if (!v.length) continue; }
     a[q.id] = v;
   }
   return Object.keys(a).length ? a : undefined;
@@ -3338,8 +3487,10 @@ async function getForm(request, env, url, id, iid) {
   const qs = questionsOf(inst), meetings = JSON.parse(inst.meetings || '[]');
   const { results: responses } = qs.some((q) => q.who.mode === 'free')
     ? await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(iid).all() : { results: [] };
+  const occ = {}; // after-meeting questions: the meeting dates I may answer now
+  for (const q of qs) if (isAfter(q) && (admin || canAnswer(q, part, meetings, responses))) occ[q.id] = afterOpen(q, part, meetings, responses, admin).slice(0, 60);
   return json({ id: row ? row.id : null, pid: part ? part.id : null, name: part ? part.name : null, extra: row ? parseExtra(row.extra) : {},
-    can: qs.filter((q) => admin || canAnswer(q, part, meetings, responses)).map((q) => q.id) });
+    can: qs.filter((q) => admin || canAnswer(q, part, meetings, responses)).map((q) => q.id), occ });
 }
 // PUT /api/polls/:id/instances/:iid/form { fid?, rid?, name?, email?, extra } — save my answers to the questions.
 async function saveForm(request, env, url, id, iid) {
@@ -3347,7 +3498,9 @@ async function saveForm(request, env, url, id, iid) {
   const admin = await isAdmin(request, poll);
   if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
-  if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
+  // A closed round still takes answers to its after-meeting questions ("How was the last rehearsal?").
+  const onlyAfter = effStatus(inst) !== 'open' && !admin;
+  if (onlyAfter && !questionsOf(inst).some(isAfter)) throw new HttpError(409, 'This poll is closed');
   if (!questionsOf(inst).length) throw new HttpError(400, 'This round has no questions');
   const b = await body(request);
   const user = userOf(request);
@@ -3368,7 +3521,7 @@ async function saveForm(request, env, url, id, iid) {
       if (mail) await linkGuestToAccount(env, id, part.id, mail);
     }
   }
-  const extra = await validateExtra(env, b.extra, inst, { fid: row && row.id, part, admin, old: row ? parseExtra(row.extra) : {} });
+  const extra = await validateExtra(env, b.extra, inst, { fid: row && row.id, part, admin, old: row ? parseExtra(row.extra) : {}, onlyAfter, needReq: !onlyAfter });
   const t = now();
   if (row) await env.DB.prepare('UPDATE form_answers SET extra = ?, updated_at = ? WHERE id = ?').bind(extra, t, row.id).run();
   else {

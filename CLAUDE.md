@@ -102,12 +102,24 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   sends the text and the poll title to Workers AI and returns draft questions in the page's shape (`{ group: {label, icon} | null, questions }`,
   no ids, nothing stored). The page (`qAiPanel`) lists them to pick, optionally as a new questionnaire, and saves with `saveQuestions` (Undo).
   Shares the `AI_PER_DAY` cap.
+  **After-meeting questions**: `link = { to: 'after', ids?, last? }` (no ids = every confirmed meeting of the round) are asked once per
+  meeting that has ended (each date of a repeating one); answers `{ "<meeting id>:<YYYY-MM-DD>": value }`. `last` = only the newest one
+  can be answered (older ones close). The Worker doesn't know the time zone, so `afterOccs` allows 14 h either way (`TZ_SLACK`) and the page
+  shows the exact ones (`qOccs`); `GET .../form` sends `occ` (the dates I may answer, checked per meeting by `canAnswerAt`). They stay
+  answerable in a closed round (`saveForm` `onlyAfter`); series copies keep them as after-questions. On open, `qAfterPrompt` asks the newest
+  unanswered one of the last 14 days in a sheet (Skip = localStorage `qskip:<poll>`); `GET /api/polls/:id` sends `prevAfter` (the round
+  before) so a meeting there opens that round. Ended meetings get a Rate chip; rating results show the average per meeting.
   Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
   (no mic button of our own). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
+- **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 30): `data` = the New poll body without
+  dates or password (`days` = length of a one-off range) plus `questions` (links reset by `presetQuestions`: meetings → whole poll,
+  after-meeting ones kept, `people` → everyone). `GET|POST /api/me/presets` (POST with a name you already use replaces it),
+  `PATCH|DELETE /api/me/presets/:id`. `POST /api/polls` takes `questions` for the first round. The New poll page shows a **Start from** rail
+  (Blank, built-in `builtinPresets()`, then mine with ⋯ Rename / Delete) and **Save as preset**; Settings has a Save as preset row (`presetFromPoll`).
 - **Your data** (Account page, GDPR rights): `GET /api/me/export` = JSON copy of everything about the account (secret columns
   like `*_hash` / tokens stripped; owned polls in full, polls answered by title); `POST /api/me/delete` emails a code (`login_codes` key
   `delete:<user id>`, can't sign in), `POST /api/me/delete/verify` `{ code }` deletes the account, its owned polls (with everyone's answers

@@ -805,6 +805,12 @@
   .mqs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .qchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--sunken);color:var(--ink);font-size:12.5px;font-weight:500}
   .qchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .qchip svg{width:13px;height:13px;flex:none;color:var(--accent)} .qchip:hover{border-color:var(--line-strong)}
+  .qchip.rate b{color:var(--accent-ink);font-weight:650}
+  .qtrend-h{display:flex;align-items:center;gap:5px;margin-top:10px} .qtrend-h svg{width:13px;height:13px}
+  .qtrend .qdrow{grid-template-columns:minmax(64px,auto) 1fr 28px}
+  .qpdlg .dlg-h h2{display:flex;flex-direction:column;gap:1px} .qp-sub{font-size:12.5px;font-weight:500;color:var(--muted)}
+  .qp-ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--sunken);font-size:21px;line-height:1} .qp-ic svg{width:19px;height:19px;color:var(--accent)}
+  .qp-b{gap:14px;padding-top:14px} .qp-q{display:flex;flex-direction:column;gap:8px} .qp-l{display:flex;align-items:center;gap:6px;font-size:14.5px}
   @media (max-width:560px){
     .qlist{padding-bottom:8px}
     /* expanded card: the tile sits beside the title and meta only; options and answers use the full width */
@@ -1467,6 +1473,17 @@
   .sum-list dt{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   .sum-list dd{margin:0;font-size:14px}
   .sum-btn{width:100%;min-height:42px;margin-top:16px;font-size:14.5px}
+  .prs{margin-bottom:var(--s4);padding-top:12px;padding-bottom:12px} .prs-h{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:13.5px}
+  .prs-rail{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:thin}
+  .prs-t{position:relative;flex:none;display:flex;align-items:stretch;border:1px solid var(--line);border-radius:12px;background:var(--card)} .prs-t:hover{border-color:var(--line-strong)}
+  .prs-t.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .prs-b{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border:0;background:none;color:var(--ink);font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;border-radius:12px;white-space:nowrap}
+  .prs-ic{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--sunken);font-size:17px;line-height:1} .prs-ic svg{width:15px;height:15px;color:var(--muted)}
+  .prs-more{align-self:center;margin-right:4px} .prs-more>summary{width:26px;height:26px}
+  .prs-sep{flex:none;width:1px;margin:6px 2px;background:var(--line)}
+  .prs-qs{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 6px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);font-size:13px}
+  .prs-qs>svg{width:15px;height:15px;color:var(--accent);flex:none}
+  .prs-save{width:100%;margin-top:6px;justify-content:center}
   .new-bar{display:none}
   @media (max-width:899px){
     .new-bar{display:flex;align-items:center;gap:12px;position:sticky;bottom:0;z-index:30;margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
@@ -1850,6 +1867,7 @@ function setLang(l){ try{ if(l==='system') localStorage.removeItem('lang'); else
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-setlang]'); if(b){ e.preventDefault(); setLang(b.dataset.setlang); } });
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
+  [/^You can have at most (\d+) presets$/, (m,n)=>`Du kannst höchstens ${n} Vorlagen haben`],
   [/^Up to (\d+) questionnaires per round$/, (m,n)=>`Höchstens ${n} Fragebögen pro Runde`],
   [/^“(.+)” has already answered these questions\. If that's you, open the poll on the device you used, or answer under another name\.$/, (m,n)=>`„${n}“ hat diese Fragen schon beantwortet. Wenn du das bist, öffne die Umfrage auf dem Gerät, mit dem du geantwortet hast, oder antworte unter einem anderen Namen.`],
   [/^Please answer: (.+)$/, (m,q)=>`Bitte beantworte: ${q}`],
@@ -2650,7 +2668,7 @@ function renderHome(){
     </div></main>${siteFoot()}`;
 }
 
-const PRIVACY_UPDATED='2026-11-22';
+const PRIVACY_UPDATED='2026-11-23';
 const siteFoot = () => `<footer class="site-foot"><a href="?imprint">${t('Legal notice')}</a><a href="?privacy">${t('Privacy policy')}</a><a href="?rules">${t('Rules')}</a></footer>`;
 // Shared pieces of the legal pages. Values come from OPERATOR_NAME / OPERATOR_ADDRESS / OPERATOR_PHONE / CONTACT_EMAIL / DPA_NAME (wrangler.toml, via /api/config).
 const legalMail = () => CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
@@ -2711,6 +2729,7 @@ function renderPrivacy(){
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
         t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
+        t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll you save as a starting point for new polls. They contain no dates, people, answers or passwords, and you can delete them on the New poll page.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
@@ -2828,6 +2847,50 @@ function choice(name,opts,cur){
   return `<div class="choice c${opts.length}" role="radiogroup">${opts.map(([v,ti,d])=>`<label class="ch${v===cur?' on':''}"><input type="radio" name="${name}" value="${v}"${v===cur?' checked':''}>
     <span class="ch-t">${ti}</span><span class="ch-d">${d}</span></label>`).join('')}</div>`;
 }
+// ---- Poll presets: built-in starting points and the account's own (GET/POST/PATCH/DELETE /api/me/presets).
+// data = the New poll form's settings (no dates or password; days = length of a one-off range) plus questions.
+function builtinPresets(){ const g=(id,label,icon,last)=>({id,type:'group',label,icon,link:{to:'after',...(last?{last:true}:{})},who:{mode:'meeting'}});
+  const food={type:'short',label:t('Food preferences or allergies'),icon:'🍽️',vis:'owner'};
+  return [
+  {id:'b_reh',icon:'🎸',name:t('Rehearsals'),data:{title:t('Band rehearsals'),kind:'series',unit:'month',every:1,openDays:11,deadlineDays:4,answerMode:'slots',hourStart:18,hourEnd:22,allowComments:true,remindDays:2,icon:'🎸',
+    questions:[g('grpReh1',t('After the rehearsal'),'🎵',true),{type:'rating',label:t('How was the rehearsal?'),icon:'⭐',rating:{max:5},grp:'grpReh1'},{type:'short',label:t('What should we practise next?'),grp:'grpReh1'},
+      {type:'yesno',label:t('Can you bring your gear?'),icon:'🎵'}]}},
+  {id:'b_trip',icon:'🏕️',name:t('Weekend trip'),data:{title:t('Weekend trip'),kind:'single',days:56,answerMode:'days',hourStart:8,hourEnd:24,dayPattern:{wd:[4,5,6]},allowComments:true,remindDays:2,icon:'🏕️',
+    questions:[{type:'radio',label:t('Where to?'),icon:'📍',place:true,add:true,options:[]},{id:'grpTrip1',type:'group',label:t('Travel'),icon:'🚗',link:{to:'poll'},who:{mode:'all'}},
+      {type:'yesno',label:t('Can you drive?'),icon:'🚗',count:{label:t('Free seats'),max:8},grp:'grpTrip1'},{type:'select',label:t('Budget per person'),icon:'💰',options:[{label:'< 100 €'},{label:'100–250 €'},{label:'250–500 €'},{label:'> 500 €'}],grp:'grpTrip1'},food]}},
+  {id:'b_sport',icon:'⚽',name:t('Weekly sport slot'),data:{title:t('Weekly sport'),kind:'weekly',answerMode:'slots',hourStart:17,hourEnd:22,allowComments:true,icon:'⚽',
+    questions:[{type:'rating',label:t('How was the last session?'),icon:'⭐',rating:{max:5},link:{to:'after',last:true},who:{mode:'meeting'}},{type:'yesno',label:t('Can you bring a ball?'),icon:'⚽'}]}},
+  {id:'b_dinner',icon:'🍽️',name:t('Dinner'),data:{title:t('Dinner together'),kind:'single',days:21,answerMode:'slots',hourStart:18,hourEnd:23,allowComments:true,remindDays:2,icon:'🍽️',
+    questions:[{type:'radio',label:t('Where shall we eat?'),icon:'📍',place:true,add:true,options:[]},{type:'yesno',label:t('Bringing someone?'),icon:'👥',count:{label:t('How many?'),max:5}},food]}}]; }
+async function loadPresets(){ if(!ME.user) return []; if(ME.presets) return ME.presets;
+  try{ ME.presets=(await api('GET','/me/presets')).presets; }catch(e){ ME.presets=[]; } return ME.presets; }
+const qCountText=qs=>{ const n=(qs||[]).filter(x=>x.type!=='group').length, g=(qs||[]).length-n; return (n===1?t('1 question'):t('{n} questions',{n}))+(g?` · ${g===1?t('1 questionnaire'):t('{n} questionnaires',{n:g})}`:''); };
+// Save as preset: name (an existing name is replaced), icon from the data. Resolves with the saved preset's id, or null.
+function presetSave(data,name){ return new Promise(res=>{
+  let d=$('prdlg'); if(!d){ d=document.createElement('dialog'); d.id='prdlg'; d.className='dlg prdlg'; d.setAttribute('aria-labelledby','pr_h'); document.body.appendChild(d); d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  const mine=ME.presets||[];
+  d.innerHTML=`<form method="dialog" id="pr_f"><div class="dlg-h"><span class="qp-ic">${data.icon?esc(data.icon):ICON.copy}</span><h2 id="pr_h">${t('Save as preset')}</h2>${pqb('x',t('Close'),'data-prclose=""')}</div>
+    <div class="dlg-b"><input type="text" id="pr_name" maxlength="60" required value="${esc(name||'')}" placeholder="${t('Name, e.g. Band rehearsals')}" aria-label="${t('Name')}" list="pr_names" autocomplete="off">
+      <datalist id="pr_names">${mine.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
+      <div class="muted small" id="pr_hint">${t('Settings and {q}. No dates, people or password.',{q:qCountText(data.questions)})}</div><div class="err" id="pr_err"></div></div>
+    <div class="dlg-f"><span class="grow"></span><button type="button" class="btn ghost" data-prclose>${t('Cancel')}</button><button class="btn primary withic" id="pr_ok">${ICON.check}<span>${t('Save')}</span></button></div></form>`;
+  let done=false; const fin=v=>{ if(done) return; done=true; res(v); };
+  const hint=()=>{ const n=$('pr_name').value.trim().toLowerCase(), x=mine.find(p=>p.name.toLowerCase()===n); $('pr_ok').lastChild.textContent=x?t('Replace'):t('Save'); };
+  $('pr_name').addEventListener('input',hint); hint();
+  d.querySelectorAll('[data-prclose]').forEach(b=>b.addEventListener('click',()=>d.close()));
+  d.addEventListener('close',()=>fin(null),{once:true});
+  $('pr_f').addEventListener('submit',async e=>{ e.preventDefault(); const nm=$('pr_name').value.trim(); if(!nm){ $('pr_name').focus(); return; }
+    $('pr_ok').disabled=true;
+    try{ const r=await api('POST','/me/presets',{name:nm,icon:data.icon||'',data}); ME.presets=null; await loadPresets(); toast(r.replaced?t('Preset replaced'):t('Preset saved')); fin(r.id); d.close(); }
+    catch(ex){ $('pr_err').textContent=ex.message; $('pr_ok').disabled=false; } });
+  if(!d.open) d.showModal(); setTimeout(()=>{ const i=$('pr_name'); i.focus(); i.select(); },30); }); }
+// A poll's settings and the shown round's questions as preset data (Settings → Save as preset).
+function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
+  for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
+  if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(92,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
+  const qs=[...(i.groups||[]),...(i.questions||[])].map(({at,closed,...q})=>q); if(qs.length) out.questions=qs;
+  return out; }
+
 function renderNew(){
   document.title=t('New poll')+' · when-who';
   const band=`<section class="band"><div class="wrap"><div class="eyebrow">${t('New poll')}</div><h1>${t('Create a poll')}</h1>
@@ -2839,7 +2902,7 @@ function renderNew(){
   }
   const mail=CONFIG.emailEnabled, NOPEN={details:1,when:1,answering:1,privacy:1,email:1};
   $app.innerHTML=`${appbar()}${band}
-    <main class="wrap"><form id="f" class="new-grid" novalidate>
+    <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"></div><form id="f" class="new-grid" novalidate>
     <div class="card sform new-form">
     ${sset('details','edit',t('Details'),`
       <div class="ttl-row"><button type="button" class="ttl-ic" data-pktog aria-expanded="false" aria-controls="pkwrap" title="${t('Icon or picture')}" aria-label="${t('Icon or picture')}"><span id="iconTile"></span><span class="ttl-ed">${ICON.edit}</span></button>
@@ -2868,9 +2931,11 @@ function renderNew(){
     <aside class="card new-sum">
       <div class="sum-h"><span id="sumTile"></span><div class="grow"><div class="eyebrow">${t('Preview')}</div><div class="sum-title" id="sumTitle"></div></div></div>
       <dl class="sum-list" id="sumList"></dl>
+      <div id="sumQs"></div>
       <div class="err" id="ferr" role="alert"></div>
       <button class="btn primary sum-btn" type="submit" id="createBtn">${t('Create poll')}</button>
       <p class="help small">${t('Only you can manage the poll. Anyone with the link can answer.')}</p>
+      <button type="button" class="btn sm ghost withic prs-save" id="prSave">${ICON.copy}<span>${t('Save as preset')}</span></button>
     </aside>
     <div class="new-bar"><span class="grow small" id="barTitle"></span><button class="btn primary" type="submit">${t('Create poll')}</button></div>
     </form></main>${siteFoot()}`;
@@ -2910,7 +2975,44 @@ function renderNew(){
     rows.push([t('Access'), priv.join(', ')]);
     if(mail&&$('remind').checked&&$('remindDays').value!=='') rows.push([t('Reminder'), t('{n} days before reply-by',{n:+$('remindDays').value})]);
     $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+    $('sumQs').innerHTML=NP.qs&&NP.qs.length?`<div class="prs-qs">${ICON.ask}<span class="grow">${esc(qCountText(NP.qs))}</span>${pqb('x',t('Don’t add these questions'),'data-prsqx=""')}</div>`:'';
   };
+  // Presets: the rail above the form fills it in (title, settings) and carries the questions along (NP.qs).
+  const NP={pick:'blank',qs:null};
+  const formData=()=>{ const kind=getR('kind'), pv=patValue('np'), pk=pickerValue('new'), d={title:v0('title').trim(),description:v0('desc'),kind,answerMode:getR('ans'),hourStart:pv.hs,hourEnd:pv.he,dayPattern:pv.pat,
+      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||''};
+    if(kind==='series') Object.assign(d,{unit:v0('unit'),every:Math.max(1,+v0('every')||1),openDays:+v0('openDays')||0,deadlineDays:v0('dlDays')===''?null:+v0('dlDays')});
+    if(kind==='single'&&v0('start')&&v0('end')) d.days=Math.max(1,Math.round((new Date(v0('end'))-new Date(v0('start')))/86400e3)+1);
+    if(mail){ d.notifyOpen=kind==='series'&&$('notify').checked; d.remindDays=$('remind').checked&&v0('remindDays')!==''?+v0('remindDays'):null; }
+    if(NP.qs&&NP.qs.length) d.questions=NP.qs; return d; };
+  const v0=id=>$(id).value;
+  const applyPreset=pr=>{ const d=pr?pr.data:{};
+    $('title').value=d.title||''; pickerSetText('new',d.title||''); $('desc').value=d.description||'';
+    const st=PICK.new; st.emoji=d.icon||''; st.data=null; st.img=''; pickerRefresh('new');
+    const kind=d.kind||'single', kr=f.querySelector(`input[name="kind"][value="${kind}"]`); if(kr&&!kr.checked){ kr.checked=true; kr.dispatchEvent(new Event('change',{bubbles:true})); }
+    if(kind==='series'){ if(d.unit&&$('unit').value!==d.unit){ $('unit').value=d.unit; $('unit').dispatchEvent(new Event('change',{bubbles:true})); }
+      $('every').value=d.every||1; $('openDays').value=d.openDays??11; $('dlDays').value=d.deadlineDays??''; }
+    if(kind==='single'){ const s=new Date(); $('start').value=iso(s); $('end').value=iso(new Date(s.getFullYear(),s.getMonth(),s.getDate()+(d.days||14)-1)); $('dl').value=''; dpkSync('rng'); dpkSync('dl'); }
+    const ab=f.querySelector(`[data-for="ans"] [data-sans="${d.answerMode||'both'}"]`); if(ab) ab.click();
+    const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'both')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
+    $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
+    if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
+    NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; sum(); };
+  const railHtml=()=>{ const tile=(p,mine)=>`<div class="prs-t${NP.pick===p.id?' on':''}"><button type="button" class="prs-b" data-prs="${p.id}" aria-pressed="${NP.pick===p.id}" title="${esc(p.data&&p.data.questions?qCountText(p.data.questions):p.name)}"><span class="prs-ic">${p.icon?esc(p.icon):ICON.plus}</span><span class="prs-n">${esc(p.name)}</span></button>${mine?`<details class="dd qmore prs-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm"><button type="button" data-prsren="${p.id}">${ICON.edit}<span class="grow">${t('Rename')}</span></button><button type="button" class="danger" data-prsdel="${p.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details>`:''}</div>`;
+    const mine=ME.presets||[];
+    return `<div class="prs-h"><b>${t('Start from')}</b>${tip(t('A preset fills in the title, the settings and the questions. Save your own from a poll’s Settings or with <b>Save as preset</b> here.'))}</div><div class="prs-rail">${tile({id:'blank',name:t('Blank'),icon:''})}${builtinPresets().map(p=>tile(p)).join('')}${mine.length?'<span class="prs-sep"></span>':''}${mine.map(p=>tile(p,true)).join('')}</div>`; };
+  const rail=()=>{ $('prs').innerHTML=railHtml(); };
+  rail(); loadPresets().then(()=>{ if($('prs')) rail(); });
+  $('prs').addEventListener('click',async e=>{ const b=e.target.closest('[data-prs],[data-prsren],[data-prsdel]'); if(!b) return;
+    if(b.dataset.prs){ const id=b.dataset.prs, pr=id==='blank'?null:[...builtinPresets(),...(ME.presets||[])].find(p=>p.id===id); NP.pick=id; applyPreset(pr); rail(); return; }
+    const p=(ME.presets||[]).find(x=>x.id===(b.dataset.prsren||b.dataset.prsdel)); if(!p) return; b.closest('details').open=false;
+    if(b.dataset.prsren){ const n=prompt(t('New name'),p.name); if(!n||!n.trim()||n.trim()===p.name) return;
+      try{ await api('PATCH','/me/presets/'+p.id,{name:n.trim()}); p.name=n.trim(); rail(); }catch(ex){ toast(ex.message); } return; }
+    if(!confirm(t('Delete the preset “{n}”?',{n:p.name}))) return;
+    try{ await api('DELETE','/me/presets/'+p.id); ME.presets=ME.presets.filter(x=>x.id!==p.id); if(NP.pick===p.id) NP.pick='blank'; rail(); toast(t('Preset deleted')); }catch(ex){ toast(ex.message); } });
+  $('sumQs').addEventListener('click',e=>{ if(e.target.closest('[data-prsqx]')){ NP.qs=null; sum(); } });
+  $('prSave').addEventListener('click',async()=>{ const d=formData(), cur=(ME.presets||[]).find(p=>p.id===NP.pick);
+    const id=await presetSave(d,cur?cur.name:d.title); if(id){ NP.pick=id; rail(); } });
   const f=$('f');
   f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value); sum(); });
   f.addEventListener('change',e=>{ const n=e.target.name||e.target.id;
@@ -2954,6 +3056,7 @@ function renderNew(){
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
       hideResults:$('hide').checked, allowComments:$('n_com').checked, requireEmail:$('n_reqmail').checked, password:v('pw')||undefined };
     if($('n_invonly').checked) body.invitedOnly=true;
+    if(NP.qs&&NP.qs.length) body.questions=NP.qs;
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
     else if(kind==='weekly'){ body.deadline=v('dlw')||null; }
@@ -4213,21 +4316,77 @@ async function loadForm(){
   const st=store.get(formKey(),null), q=new URLSearchParams(); if(st&&st.id) q.set('fid',st.id); if(P.myResp) q.set('rid',P.myResp.id);
   if(st&&st.key) P.form.key=st.key;
   try{ const r=await api('GET',`/polls/${P.id}/instances/${inst().id}/form?${q}`,null,fHeaders());
-    Object.assign(P.form,{id:r.id,pid:r.pid,name:r.name,extra:r.extra||{},can:new Set(r.can)}); }
+    Object.assign(P.form,{id:r.id,pid:r.pid,name:r.name,extra:r.extra||{},can:new Set(r.can),occ:r.occ||{}}); }
   catch(e){}
-  qSaved(); renderQuestions();
+  qSaved(); renderQuestions(); qAfterPrompt();
 }
+// ---- "How was it?": after-meeting questions pop up once a meeting I was in has happened (newest one in the last 14 days).
+// Skipped ones are remembered per poll (localStorage qskip:<poll>). A meeting of the round before opens that round.
+const qSkips=()=>new Set(store.get('qskip:'+P.id,[]));
+function qPromptPick(){ const a=myExtra().a, skip=qSkips(), since=Date.now()-14*86400e3, out=[];
+  for(const q of qList()) if(qAfter(q)&&!q.closed&&qMayFill(q)) for(const o of qOccs(q)) if(o.end>=since&&qOccOpen(q,o.key)&&qEmpty((a[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key)) out.push({q,o});
+  if(!out.length) return null; out.sort((x,y)=>y.o.end-x.o.end);
+  const top=out[0].o; return {o:top,qs:out.filter(x=>x.o.key===top.key).map(x=>x.q)}; }
+async function qAfterPrompt(force){
+  const d=P.data; if(!d||P.qedit||(!force&&P.qprompted&&P.qprompted.has(inst().id))) return;
+  if(!ME.user&&!(P.form&&P.form.id)&&!P.myResp) return; // nobody to ask (guests answer in the tab first)
+  (P.qprompted=P.qprompted||new Set()).add(inst().id);
+  const pick=qPromptPick(); if(pick) return qPromptOpen(pick);
+  const pv=d.prevAfter; if(!pv||!ME.user) return; // the round before: only for accounts (guests' keys are per round)
+  try{ const r=await api('GET',`/polls/${P.id}/instances/${pv.iid}/form`,null,headers()), skip=qSkips(), since=Date.now()-14*86400e3, ex=(r.extra||{}).a||{};
+    for(const q of pv.questions){ if(q.closed||!(r.occ||{})[q.id]) continue;
+      const cur=qList().find(x=>x.id===q.id); if(q.link.last&&cur&&qOccs(cur).length) continue; // a newer one in this round closed it
+      const all=qOccs(q,pv.meetings), os=all.filter((o,i)=>o.end>=since&&r.occ[q.id].includes(o.key)&&(!q.link.last||i===0)&&qEmpty((ex[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key));
+      if(os.length) return qPromptOpen({o:os[0],qs:[q],prev:pv.iid}); } }
+  catch(e){}
+}
+function qPromptOpen(pk){ P.qpk=pk; P.qdate=P.qdate||{}; if(!pk.prev) pk.qs.forEach(q=>P.qdate[q.id]=pk.o.key);
+  let d=$('qpdlg'); if(!d){ d=document.createElement('dialog'); d.id='qpdlg'; d.className='dlg qpdlg'; d.setAttribute('aria-labelledby','qp_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); d.addEventListener('close',()=>{ P.qpk=null; }); }
+  qPromptRender(); if(!d.open) d.showModal(); }
+function qPromptRender(){ const d=$('qpdlg'), pk=P.qpk; if(!d||!pk) return;
+  const g=pk.qs[0].grp&&qGroups().find(x=>x.id===pk.qs[0].grp), ic=(g&&g.icon)||pk.qs[0].icon||'';
+  const body=pk.prev?`<p class="m0">${esc(pk.qs[0].label)}</p>`:pk.qs.map(q=>`<div class="qp-q"><div class="qp-l">${q.icon?`<span class="qemo-s">${esc(q.icon)}</span>`:''}<b>${esc(q.label)}</b>${q.req?'':''}</div>${q.help?`<div class="qhelp">${linkText(q.help)}</div>`:''}${qBody(q,true)}</div>`).join('');
+  const ready=!pk.prev&&pk.qs.some(q=>!qEmpty(qGet(q,myExtra().a)));
+  d.innerHTML=`<div class="dlg-h">${ic?`<span class="qp-ic">${esc(ic)}</span>`:`<span class="qp-ic">${ICON.star}</span>`}<h2 id="qp_h">${g?esc(g.label):t('How was it?')}<span class="qp-sub">${esc(qOccLabel(pk.o))}</span></h2>${pqb('x',t('Close'),'data-qpclose=""')}</div>
+    <div class="dlg-b qp-b">${body}</div>
+    <div class="dlg-f"><button type="button" class="btn ghost" data-qpskip>${t('Skip')}</button><span class="grow"></span>${pk.prev?`<button type="button" class="btn primary withic" data-qpgo>${ICON.ask}<span>${t('Answer')}</span></button>`
+      :`<button type="button" class="btn primary withic" data-qpsend${ready&&!(P.form&&P.form.saving)?'':' disabled'}>${ICON.send}<span>${t('Send')}</span></button>`}</div>`; }
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-qpskip],[data-qpclose],[data-qpsend],[data-qpgo]'); if(!b||!P.qpk) return; const pk=P.qpk, d=$('qpdlg');
+  if(b.dataset.qpskip!==undefined){ const s=qSkips(); pk.qs.forEach(q=>s.add(q.id+'|'+pk.o.key)); store.set('qskip:'+P.id,[...s].slice(-200)); d.close(); return; }
+  if(b.dataset.qpclose!==undefined){ d.close(); return; }
+  if(b.dataset.qpgo!==undefined){ d.close(); await switchInstance(pk.prev); setPollTab('questions'); return; }
+  if(b.dataset.qpsend!==undefined){ await qSend(); if(P.form&&!P.form.dirty) d.close(); }
+});
 // The options I suggested as last saved (the server's list still has them until the next load).
 function qSaved(){ P.qAddWas=new Set(Object.values(myExtra().add).flat().map(o=>o.id)); }
-const qMayFill=q=>editable()&&(!q.closed||P.data.isAdmin)&&(P.data.isAdmin||(P.form&&P.form.can?P.form.can.has(q.id):q.who.mode==='all'));
+// After-meeting questions stay open in a closed round.
+const qMayFill=q=>(editable()||(qAfter(q)&&P.data&&!inviteLock()))&&(!q.closed||P.data.isAdmin)&&(P.data.isAdmin||(P.form&&P.form.can?P.form.can.has(q.id):q.who.mode==='all'));
+// After-meeting questions (link.to 'after'): one answer per meeting that has ended (each date of a repeating one), key "<meeting id>:<date>".
+// No linked meetings = all confirmed meetings of the round. last = only the latest one can be answered.
+const qAfter=q=>!!(q&&q.link&&q.link.to==='after');
+const qPer=q=>!!(q.link.each||qAfter(q));
+function meetEndAt(m,d){ if(m.allDay) return new Date(addDaysL(m.endDate&&!m.repeat?m.endDate:d,1)+'T00:00').getTime(); return new Date(d+'T00:00').getTime()+(m.end||24)*3600e3; }
+// Ended occurrences, newest first (ms = the round's meetings); next = the first one still to come.
+function qOccs(q,ms=inst().meetings){ const ids=q.link.ids&&q.link.ids.length?new Set(q.link.ids):null, now=Date.now(), out=[]; let next=null;
+  for(const m of ms){ if(m.proposed||(ids&&!ids.has(m.id))) continue;
+    const ds=m.repeat?[]:[m.date];
+    if(m.repeat) for(let d=firstOn(m.repeat.from,wdOf(m.date)),i=0;i<520&&(!m.repeat.until||d<=m.repeat.until);i++,d=addDaysL(d,7*m.repeat.every)){ ds.push(d); if(meetEndAt(m,d)>now) break; }
+    for(const d of ds){ const end=meetEndAt(m,d); if(end<=now) out.push({key:m.id+':'+d,m,d,end}); else if(!next||end<next.end) next={m,d,end}; } }
+  out.sort((a,b)=>b.end-a.end); out.next=next; return out; }
+// May I (still) answer q for this meeting date? last: only the newest; the server says which ones are mine (form.occ).
+function qOccOpen(q,key){ const os=qOccs(q); if(!os.some(o=>o.key===key)) return false; if(q.link.last&&os[0].key!==key) return false;
+  if(P.data.isAdmin) return true; const oc=P.form&&P.form.occ; return !oc||!oc[q.id]||oc[q.id].includes(key); }
+const qOccLabel=o=>`${meetTitle(o.m)} · ${dayLabel(o.d)}`;
+function qDateLabel(q,k){ if(!qAfter(q)) return dayLabel(k); const o=qOccs(q).find(x=>x.key===k); return o?qOccLabel(o)+(qOccOpen(q,k)?'':` · ${t('closed')}`):k; }
 // Dates of the repeating meetings a per-date question is linked to: the next 8 from today.
-function qDates(q){ if(!q.link.each) return []; const today=isoL(new Date()), out=new Set();
+function qDates(q){ if(qAfter(q)) return qOccs(q).slice(0,24).map(o=>o.key); if(!q.link.each) return []; const today=isoL(new Date()), out=new Set();
   for(const m of qMeets(q)){ if(!m.repeat) continue; let d=firstOn(m.repeat.from,wdOf(m.date)); const step=7*m.repeat.every;
     while(d<today) d=addDaysL(d,step); for(let i=0;i<8&&(!m.repeat.until||d<=m.repeat.until);i++,d=addDaysL(d,step)) out.add(d); }
   return [...out].sort().slice(0,8); }
 function qDate(q){ const ds=qDates(q); P.qdate=P.qdate||{}; if(!ds.includes(P.qdate[q.id])) P.qdate[q.id]=ds[0]; return P.qdate[q.id]; }
-const qGet=(q,a)=>q.link.each?((a[q.id]||{})[qDate(q)]):a[q.id];
-function qPut(x,q,v){ if(q.link.each){ const m={...(x.a[q.id]||{})}; if(v===undefined) delete m[qDate(q)]; else m[qDate(q)]=v; if(Object.keys(m).length) x.a[q.id]=m; else delete x.a[q.id]; }
+const qGet=(q,a)=>qPer(q)?((a[q.id]||{})[qDate(q)]):a[q.id];
+function qPut(x,q,v){ if(qPer(q)){ const m={...(x.a[q.id]||{})}; if(v===undefined) delete m[qDate(q)]; else m[qDate(q)]=v; if(Object.keys(m).length) x.a[q.id]=m; else delete x.a[q.id]; }
   else if(v===undefined) delete x.a[q.id]; else x.a[q.id]=v; }
 function qOpts(q){
   const mine=(myExtra().add[q.id]||[]), mineIds=new Set(mine.map(o=>o.id)), was=P.qAddWas||new Set(), seen=new Set(), out=[];
@@ -4236,13 +4395,17 @@ function qOpts(q){
   return out;
 }
 const qEmpty=v=>v===undefined||v===''||(Array.isArray(v)&&!v.length);
-const qAnswered=(q,a)=>q.link.each?!!(a[q.id]&&Object.keys(a[q.id]).length):!qEmpty(a[q.id]);
+const qAnswered=(q,a)=>qAfter(q)?qOccs(q).filter(o=>qOccOpen(q,o.key)).every(o=>!qEmpty((a[q.id]||{})[o.key]))
+  :q.link.each?!!(a[q.id]&&Object.keys(a[q.id]).length):!qEmpty(a[q.id]);
 const qOpenN=()=>qList().filter(q=>qMayFill(q)&&!qAnswered(q,myExtra().a)).length;
 // Everyone's answers to q (for its picked date) — null when this person can't see them.
 function qAnswers(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!P.data.isAdmin)) return null;
-  return rows.map(r=>({name:r.name||t('Someone'),v:q.link.each?((r.extra||{})[q.id]||{})[qDate(q)]:(r.extra||{})[q.id],me:!!(P.form&&r.pid===P.form.pid)})).filter(x=>!qEmpty(x.v)); }
+  return rows.map(r=>({name:r.name||t('Someone'),v:qPer(q)?((r.extra||{})[q.id]||{})[qDate(q)]:(r.extra||{})[q.id],me:!!(P.form&&r.pid===P.form.pid)})).filter(x=>!qEmpty(x.v)); }
+// Rating of an after-meeting question: the average per meeting, newest first (null when I can't see answers).
+function qTrend(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!P.data.isAdmin)) return null;
+  return qOccs(q).slice(0,8).map(o=>{ const vs=rows.map(r=>+(((r.extra||{})[q.id]||{})[o.key])).filter(v=>v>0); return {o,n:vs.length,avg:vs.length?vs.reduce((s,v)=>s+v,0)/vs.length:0}; }).filter(x=>x.n); }
 function qTally(q){ const as=qAnswers(q); if(!as) return null; const m=new Map(); for(const o of qOpts(q)) m.set(o.id,[]); as.forEach(x=>(Array.isArray(x.v)?x.v:[]).forEach(id=>m.has(id)&&m.get(id).push(x.name))); return m; }
-const qLinked=mid=>qList().filter(q=>(q.link.ids||[]).includes(mid));
+const qLinked=mid=>qList().filter(q=>!qAfter(q)&&(q.link.ids||[]).includes(mid));
 function qTop(q){ const tl=Q_CHOICE.has(q.type)&&qTally(q); if(!tl) return null; let best=null,n=0; for(const o of qOpts(q)){ const k=tl.get(o.id).length; if(k>n){ n=k; best=o; } } return best?{o:best,n}:null; }
 const Q_TILE={radio:'Choice',check:'Multi',select:'List',rating:'Stars',short:'Text',long:'Text',yesno:'Yes/no'};
 const qGroups=()=>inst().groups||[];
@@ -4253,7 +4416,10 @@ function qTile(q){ const grp=q.type==='group', ic=grp?'note':q.place?'pin':(Q_KI
   return `<div class="mtile qtile${q.icon?' emo':''}" aria-hidden="true">${q.icon?`<span class="qemo">${esc(q.icon)}</span>`:ICON[ic]}<span class="wd">${t(l)}</span>${q.vis==='owner'?`<span class="qcorner">${ICON.lock}</span>`:''}</div>`; }
 // Short summary of who may answer / what it's about (chips under the title).
 function qWhoText(q){ const w=q.who||{mode:'all'}; return w.mode==='people'?t('{n} people',{n:(w.pids||[]).length}):w.mode==='meeting'?t('People in the meeting'):w.mode==='free'?t('People free then'):t('Everyone'); }
-function qLinkText(q){ const ms=qMeets(q); return !ms.length?t('Whole poll'):ms.length===1?`${meetTitle(ms[0])} · ${meetWhen(ms[0])}`:t('{n} meetings',{n:ms.length}); }
+function qLinkText(q){ const ms=qMeets(q);
+  if(qAfter(q)){ const b=q.link.last?t('After the latest meeting'):t('After each meeting'); return !ms.length?b:ms.length===1?`${b} · ${meetTitle(ms[0])}`:`${b} · ${t('{n} meetings',{n:ms.length})}`; }
+  return !ms.length?t('Whole poll'):ms.length===1?`${meetTitle(ms[0])} · ${meetWhen(ms[0])}`:t('{n} meetings',{n:ms.length}); }
+const qLinkChip=q=>qAfter(q)?`<span>${ICON.clock}<span>${esc(qLinkText(q))}</span></span>`:qMeets(q).length?`<a href="#" data-qmeet="${qMeets(q)[0].id}">${ICON[qMeets(q)[0].proposed?'check':'star']}<span>${esc(qLinkText(q))}</span></a>`:`<span>${ICON.cal}<span>${t('Whole poll')}</span></span>`;
 function qSummary(q){
   const as=qAnswers(q), v=qGet(q,myExtra().a);
   if(Q_CHOICE.has(q.type)){ const tp=qTop(q); if(tp) return `${esc(tp.o.label)} · ${tp.n}`; return t('{n} options',{n:qOpts(q).length}); }
@@ -4263,7 +4429,7 @@ function qSummary(q){
 }
 // The controls of one question. fill = I answer it (sent with Send); else the results.
 function qBody(q,fill){
-  const adm=P.data.isAdmin, v=qGet(q,myExtra().a), can=fill&&qMayFill(q), dis=can?'':' disabled', at=`data-qid="${q.id}"`;
+  const adm=P.data.isAdmin, v=qGet(q,myExtra().a), can=fill&&qMayFill(q)&&(!qAfter(q)||qOccOpen(q,qDate(q))), dis=can?'':' disabled', at=`data-qid="${q.id}"`;
   if(Q_CHOICE.has(q.type)){
     const opts=qOpts(q), mine=new Set(Array.isArray(v)?v:[]);
     if(fill&&q.type==='select') return `<select class="qsel" data-qsel="${q.id}"${dis}><option value="">${t('Choose…')}</option>${opts.map(o=>`<option value="${o.id}"${mine.has(o.id)?' selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
@@ -4281,10 +4447,12 @@ function qBody(q,fill){
   }
   if(q.type==='rating'){ const max=q.rating.max, lab=`${q.rating.lo?`<span>${esc(q.rating.lo)}</span>`:'<span></span>'}${q.rating.hi?`<span>${esc(q.rating.hi)}</span>`:''}`;
     if(fill) return `<div class="qrate"><div class="qstars" role="radiogroup" aria-label="${esc(q.label)}">${Array.from({length:max},(_,i)=>`<button type="button" class="qstar${v>=i+1?' on':''}" data-qrate="${q.id}" data-v="${i+1}" role="radio" aria-checked="${v===i+1}" aria-label="${i+1}"${dis}>${ICON.star}</button>`).join('')}</div>${q.rating.lo||q.rating.hi?`<div class="qrate-l">${lab}</div>`:''}</div>`;
-    const as=qAnswers(q); if(!as) return ''; if(!as.length) return `<div class="muted small">${t('No answers yet')}</div>`;
+    const as=qAnswers(q); if(!as) return '';
+    const tr=qAfter(q)?qTrend(q):null, trend=tr&&tr.length>1?`<div class="qdist qtrend" aria-label="${t('Average per meeting')}">${tr.map(x=>`<div class="qdrow" title="${esc(qOccLabel(x.o))} · ${t('{n} answers',{n:x.n})}"><span>${esc(dayLabel(x.o.d))}</span><span class="qdbar"><i style="width:${Math.round(x.avg/max*100)}%"></i></span><span>${x.avg.toFixed(1)}</span></div>`).join('')}</div>`:'';
+    if(!as.length) return `<div class="muted small">${t('No answers yet')}</div>${trend}`;
     const cnt=Array.from({length:max},(_,i)=>as.filter(x=>+x.v===i+1)), mx=Math.max(1,...cnt.map(c=>c.length)), avg=as.reduce((s,x)=>s+(+x.v||0),0)/as.length;
     return `<div class="qravg"><b>${avg.toFixed(1)}</b><span class="qstars sm">${Array.from({length:max},(_,i)=>`<span class="qstar${avg>=i+.5?' on':''}">${ICON.star}</span>`).join('')}</span><span class="muted small">${t('{n} answers',{n:as.length})}</span></div>
-      <div class="qdist">${cnt.map((c,i)=>`<div class="qdrow" title="${esc(c.map(x=>x.name).join(', '))}"><span>${i+1}</span><span class="qdbar"><i style="width:${Math.round(c.length/mx*100)}%"></i></span><span>${c.length}</span></div>`).reverse().join('')}</div>`; }
+      <div class="qdist">${cnt.map((c,i)=>`<div class="qdrow" title="${esc(c.map(x=>x.name).join(', '))}"><span>${i+1}</span><span class="qdbar"><i style="width:${Math.round(c.length/mx*100)}%"></i></span><span>${c.length}</span></div>`).reverse().join('')}</div>${trend?`<div class="qtrend-h muted small">${ICON.clock}<span>${t('Average per meeting')}</span></div>${trend}`:''}`; }
   if(q.type==='short'||q.type==='long'){
     if(fill) return q.type==='short'?`<input type="text" class="qshort" data-qtext="${q.id}" maxlength="120" value="${esc(v||'')}" placeholder="${t('Your answer')}"${dis}>`
       :`<textarea class="qtext" id="qt_${q.id}" data-qtext="${q.id}" maxlength="1000" rows="2" placeholder="${t('Your answer')}"${dis}>${esc(v||'')}</textarea>`;
@@ -4308,16 +4476,18 @@ function qCard(q,fill){
       <div class="menu-sep"></div><button type="button" class="danger" data-qrm="${q.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details></span>`:'';
   const title=`<div class="mtitle">${esc(q.label)}${q.req?`<span class="qreq" title="${t('Required')}">*</span>`:''}${q.closed?` <span class="tag x">${t('closed')}</span>`:''}</div>`;
   if(fold) return `<div class="meet qcard fold" id="q_${q.id}" data-qcard="${q.id}">${qTile(q)}<div class="mbody"><div class="mhead"><button type="button" class="qfoldb" data-qopen="${q.id}" aria-expanded="false">${title}<span class="qsum">${qSummary(q)}</span></button>${acts}</div></div></div>`;
-  const ds=qDates(q), dsel=ds.length?`<select class="qdsel" data-qdate="${q.id}" aria-label="${t('Date')}">${ds.map(x=>`<option value="${x}"${x===qDate(q)?' selected':''}>${esc(dayLabel(x))}</option>`).join('')}</select>`:'';
+  const ds=qDates(q), dsel=ds.length?`<select class="qdsel" data-qdate="${q.id}" aria-label="${qAfter(q)?t('Meeting'):t('Date')}">${ds.map(x=>`<option value="${x}"${x===qDate(q)?' selected':''}>${esc(qDateLabel(q,x))}</option>`).join('')}</select>`:'';
+  const nx=qAfter(q)&&!ds.length?qOccs(q).next:null; // nothing has happened yet
+  const wait=qAfter(q)&&!ds.length?`<div class="qro">${ICON.clock}<span>${nx?t('Opens after {m}',{m:esc(qOccLabel(nx))}):t('Opens after the meeting.')}</span></div>`:'';
   const inh=q.grp&&!q.own&&qGroups().some(g=>g.id===q.grp); // Applies to / Who come from the questionnaire (shown on it)
-  const chips=[inh?'':qMeets(q).length?`<a href="#" data-qmeet="${qMeets(q)[0].id}">${ICON[qMeets(q)[0].proposed?'check':'star']}<span>${esc(qLinkText(q))}</span></a>`:`<span>${ICON.cal}<span>${t('Whole poll')}</span></span>`,
+  const chips=[inh?'':qLinkChip(q),
     q.link.each?`<span>${ICON.repeat}<span>${t('Each date')}</span></span>`:'',
     !inh&&q.who.mode!=='all'?`<span>${ICON[q.who.mode==='people'?'user':'users']}<span>${esc(qWhoText(q))}</span></span>`:'',
     !fill&&as&&n?`<span>${ICON.check}<span>${t('{a}/{b} answered',{a:as.length,b:n})}</span></span>`:'',
     q.vis==='owner'?`<span>${ICON.lock}<span>${adm?t('Only you see the answers'):t('Only the organiser sees the answers')}</span></span>`:''].filter(Boolean).join('');
   const ro=fill&&!qMayFill(q)?`<div class="qro">${ICON.lock}<span>${q.closed?t('Answers are closed.'):t('This question is for other people.')}</span></div>`:'';
   return `<div class="meet qcard${q.closed?' closed':''}" id="q_${q.id}" data-qcard="${q.id}">${qTile(q)}<div class="mbody"><div class="mhead">${title}${acts}</div>
-    <div class="mmeta">${chips}</div>${q.help?`<div class="qhelp">${linkText(q.help)}</div>`:''}${dsel?`<div class="qdrow-h">${ICON.cal}${dsel}</div>`:''}${ro||qBody(q,fill)}</div></div>`;
+    <div class="mmeta">${chips}</div>${q.help?`<div class="qhelp">${linkText(q.help)}</div>`:''}${dsel?`<div class="qdrow-h">${ICON[qAfter(q)?'clock':'cal']}${dsel}</div>`:''}${ro||wait||qBody(q,fill)}</div></div>`;
 }
 // The Questions tab: header (Fill in / Results, + Ask), "You" for guests, cards, the form's Send bar.
 function renderQuestions(fresh){
@@ -4354,7 +4524,7 @@ function renderQuestions(fresh){
 const qCardOrEd=(q,fill)=>P.qedit&&!P.qedit.isNew&&P.qedit.id===q.id?qEditor():qCard(q,fill);
 // Applies to / Who chips (questions with their own settings, questionnaires).
 function qLwChips(x){ const ms=qMeets(x);
-  return [ms.length?`<a href="#" data-qmeet="${ms[0].id}">${ICON[ms[0].proposed?'check':'star']}<span>${esc(qLinkText(x))}</span></a>`:`<span>${ICON.cal}<span>${t('Whole poll')}</span></span>`,
+  return [qLinkChip(x),
     x.link.each?`<span>${ICON.repeat}<span>${t('Each date')}</span></span>`:'',
     x.who.mode!=='all'?`<span>${ICON[x.who.mode==='people'?'user':'users']}<span>${esc(qWhoText(x))}</span></span>`:''].filter(Boolean).join(''); }
 // A questionnaire: header (icon, title, progress, actions, collapse) and its questions.
@@ -4373,13 +4543,16 @@ function qGroupCard(g,qs,fill){
   return `<section class="qgroup${col?' col':''}${done1?' done':''}" id="qg_${g.id}" data-qgcard="${g.id}"><div class="qg-h">${qTile(g)}<button type="button" class="qg-t" data-qgtog="${g.id}" aria-expanded="${!col}"><b>${esc(g.label)}</b><span class="qg-sub">${done1?ICON.check:''}${sub}</span></button>${acts}<button type="button" class="qb qg-chev" data-qgtog="${g.id}" aria-label="${col?t('Show'):t('Hide')}">${ICON.chevd}</button></div>
     ${col&&!newQ?'':`<div class="qg-b">${g.help?`<div class="qhelp">${linkText(g.help)}</div>`:''}<div class="mmeta">${qLwChips(g)}</div><div class="qlist">${qs.map(q=>qCardOrEd(q,fill)).join('')}${newQ}${!qs.length&&!newQ?`<div class="muted small qnone">${t('No questions in it yet.')}</div>`:''}</div>${adm&&!newQ?`<button type="button" class="btn sm ghost withic qg-add" data-qgadd="${g.id}">${ICON.plus}<span>${t('Question')}</span></button>`:''}</div>`}</section>`;
 }
-function qMeetChips(m){ const qs=qLinked(m.id); if(!qs.length) return '';
-  return `<div class="mqs">${qs.map(q=>{ const tp=qTop(q); return `<a href="#" class="qchip" data-qgo="${q.id}">${ICON.ask}<span>${esc(q.label)}${tp?` · ${esc(tp.o.label)} (${tp.n})`:''}</span></a>`; }).join('')}</div>`; }
+function qMeetChips(m){ const qs=qLinked(m.id);
+  // After-meeting questions about this meeting once it has happened: "Rate" jumps to its newest date.
+  const af=qList().filter(q=>qAfter(q)&&!(q.link.ids&&q.link.ids.length&&!q.link.ids.includes(m.id))).map(q=>({q,o:qOccs(q).find(o=>o.m.id===m.id)})).filter(x=>x.o);
+  if(!qs.length&&!af.length) return '';
+  return `<div class="mqs">${af.map(({q,o})=>`<a href="#" class="qchip rate" data-qgo="${q.id}" data-k="${o.key}">${ICON[q.type==='rating'?'star':'ask']}<span>${esc(q.label)}${qMayFill(q)&&qOccOpen(q,o.key)&&qEmpty((myExtra().a[q.id]||{})[o.key])?` · <b>${q.type==='rating'?t('Rate'):t('Answer')}</b>`:''}</span></a>`).join('')}${qs.map(q=>{ const tp=qTop(q); return `<a href="#" class="qchip" data-qgo="${q.id}">${ICON.ask}<span>${esc(q.label)}${tp?` · ${esc(tp.o.label)} (${tp.n})`:''}</span></a>`; }).join('')}</div>`; }
 // ---- sending my answers ----
-function qChange(fn){ const x=JSON.parse(JSON.stringify(myExtra())); fn(x); P.form.extra=x; P.form.dirty=true; renderQuestions(); }
+function qChange(fn){ const x=JSON.parse(JSON.stringify(myExtra())); fn(x); P.form.extra=x; P.form.dirty=true; renderQuestions(); qPromptRender(); }
 async function qSend(){
   if(!P.form||P.form.saving) return;
-  const miss=!P.data.isAdmin&&qList().find(q=>q.req&&qMayFill(q)&&!q.link.each&&!qAnswered(q,myExtra().a));
+  const miss=!P.data.isAdmin&&qList().find(q=>q.req&&qMayFill(q)&&!qPer(q)&&!qAnswered(q,myExtra().a));
   if(miss){ toast(t('Please answer: {q}',{q:miss.label})); const c=$('q_'+miss.id); if(c){ c.scrollIntoView({block:'center',behavior:'smooth'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'),1200); } return; }
   const guest=!ME.user&&!P.form.pid&&!P.myResp, name=guest?(($('fq_name')||{}).value||'').trim():'';
   if(guest&&!name){ toast(t('Enter your name first')); const n=$('fq_name'); if(n) n.focus(); return; }
@@ -4495,9 +4668,11 @@ function qEditor(){
   const typeDd=ty==='group'?'':qDd('type',(Q_KIND[ty]||Q_KIND.radio)[0],t(Q_KIND[ty][1]),Object.entries(Q_KIND).map(([k,[ic,l]])=>pickItem('data-qetype',k,t(l),k===ty,ICON[ic])).join(''),'qetyp');
   const search=(k,n)=>n>6?`<input type="search" class="qdd-s" data-qsearch="${k}" placeholder="${t('Search')}" aria-label="${t('Search')}">`:'';
   const reps=ms.filter(m=>linked.has(m.id)&&m.repeat).length;
-  const linkDd=qDd('link',linked.size?'star':'cal',esc(linked.size?qLinkText({link:e.link}):t('Whole poll')),`${pickItem('data-qelink','poll',t('Whole poll'),!linked.size,ICON.cal)}<div class="menu-sep"></div>${search('link',ms.length)}
-    ${ms.length?ms.map(m=>`<label data-qsi="${esc((meetTitle(m)+' '+meetWhen(m)).toLowerCase())}"><input type="checkbox" data-qelm="${m.id}"${linked.has(m.id)?' checked':''}>${ICON[m.proposed?'check':'star']}<span class="minw">${esc(meetTitle(m))} · ${esc(meetWhen(m))}${m.proposed?` <span class="tag">${t('Option')}</span>`:''}${m.repeat?` <span class="tag">${t('Repeats')}</span>`:''}</span></label>`).join(''):`<div class="muted small qdd-e">${t('No meetings yet')}</div>`}
-    ${reps?`<div class="menu-sep"></div><div class="qetog">${ICON.repeat}<label for="qe_each">${t('Answer for each date')}</label>${swc('qe_each',!!e.link.each,t('Answer for each date'))}</div>`:''}`);
+  const af=qAfter(e), lms=af?ms.filter(m=>!m.proposed):ms;
+  const linkDd=qDd('link',af?'clock':linked.size?'star':'cal',esc(af||linked.size?qLinkText({link:e.link}):t('Whole poll')),`${pickItem('data-qelink','poll',t('Whole poll'),!af&&!linked.size,ICON.cal)}${pickItem('data-qelink','after',t('After each meeting'),af,ICON.clock)}<div class="menu-sep"></div>${af?`<div class="muted small qdd-e">${t('Pick meetings, or none for all of them.')}</div>`:''}${search('link',lms.length)}
+    ${lms.length?lms.map(m=>`<label data-qsi="${esc((meetTitle(m)+' '+meetWhen(m)).toLowerCase())}"><input type="checkbox" data-qelm="${m.id}"${linked.has(m.id)?' checked':''}>${ICON[m.proposed?'check':'star']}<span class="minw">${esc(meetTitle(m))} · ${esc(meetWhen(m))}${m.proposed?` <span class="tag">${t('Option')}</span>`:''}${m.repeat?` <span class="tag">${t('Repeats')}</span>`:''}</span></label>`).join(''):`<div class="muted small qdd-e">${t('No meetings yet')}</div>`}
+    ${af?`<div class="menu-sep"></div><div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${tip(t('Earlier meetings close once the next one has happened.'))}${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
+      :reps?`<div class="menu-sep"></div><div class="qetog">${ICON.repeat}<label for="qe_each">${t('Answer for each date')}</label>${swc('qe_each',!!e.link.each,t('Answer for each date'))}</div>`:''}`);
   const w=e.who.mode, parts=P.qparts||[], pk=new Set(e.who.pids||[]);
   const whoDd=qDd('who',w==='people'?'user':'users',esc(qWhoText({who:e.who})),`${pickItem('data-qewho','all',t('Everyone'),w==='all',ICON.users)}${pickItem('data-qewho','meeting',t('People in the linked meetings'),w==='meeting',ICON.star)}${pickItem('data-qewho','free',t('People free at the linked meetings'),w==='free',ICON.check)}${pickItem('data-qewho','people',t('Pick people…'),w==='people',ICON.user)}
     ${w==='people'?`<div class="menu-sep"></div>${P.qparts?`${search('who',parts.length)}<div class="ddb"><button type="button" class="btn" data-qepall="1">${t('All')}</button><button type="button" class="btn" data-qepall="0">${t('None')}</button></div>${parts.map(p=>`<label data-qsi="${esc(p.name.toLowerCase())}"><input type="checkbox" data-qep="${p.id}"${pk.has(p.id)?' checked':''}><span class="minw">${esc(p.name)}</span></label>`).join('')||`<div class="muted small qdd-e">${t('No people yet')}</div>`}`:`<div class="muted small qdd-e">${t('Loading…')}</div>`}`:''}`);
@@ -4536,6 +4711,7 @@ function qeRead(){ const e=P.qedit, v=id=>$(id)?$(id).value:undefined, c=id=>$(i
   if($('qe_rmax')) e.rating={max:+v('qe_rmax'),lo:v('qe_rlo').trim(),hi:v('qe_rhi').trim()};
   if($('qe_cnt')) e.count=c('qe_cnt')?{label:(v('qe_cntl')??(e.count&&e.count.label)??'').trim(),max:20}:null;
   if($('qe_each')) e.link.each=c('qe_each');
+  if($('qe_last')) e.link.last=c('qe_last');
   if($('qe_rep')) e.repeat=c('qe_rep');
   if($('qe_own')) e.own=c('qe_own');
   e.req=c('qe_req'); e.vis=c('qe_priv')?'owner':'all';
@@ -4624,6 +4800,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.qmv&&q){ const i=qs.indexOf(q); qMove(i,i+(+ds.d)); return; }
   if(ds.qdup&&q){ const i=qs.indexOf(q), c={...JSON.parse(JSON.stringify(q)),id:undefined,at:undefined,label:q.label+' '+t('(copy)'),options:(q.options||[]).map(o=>({label:o.label}))}; const l=[...qs]; l.splice(i+1,0,c); saveQuestions(l); return; }
   if(ds.qetype){ qeRead(); P.qedit.type=ds.qetype; if(ds.qetype==='rating'&&!P.qedit.rating) P.qedit.rating={max:5}; P.qdd=null; qeRerender(); return; }
+  if(ds.qelink==='after'){ qeRead(); const l=P.qedit.link; P.qedit.link={to:'after',...(l.ids&&l.ids.length?{ids:l.ids}:{}),...(l.last?{last:true}:{})}; if(P.qedit.who.mode==='all') P.qedit.who={mode:'meeting'}; qeRerender(); return; }
   if(ds.qelink){ qeRead(); P.qedit.link={to:'poll'}; if(P.qedit.who.mode==='meeting'||P.qedit.who.mode==='free') P.qedit.who={mode:'all'}; P.qdd=null; qeRerender(); return; }
   if(ds.qewho){ qeRead(); P.qedit.who={mode:ds.qewho,...(ds.qewho==='people'?{pids:P.qedit.who.pids||[]}:{})}; if(ds.qewho!=='people') P.qdd=null; else qLoadParts(); qeRerender(); return; }
   if(ds.qepall){ qeRead(); P.qedit.who.pids=ds.qepall==='1'?(P.qparts||[]).map(p=>p.id):[]; qeRerender(); return; }
@@ -4631,7 +4808,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.qeoadd!==undefined){ qeRead(); const id=qNewId(); (P.qedit.options=P.qedit.options||[]).push({id,label:''}); qeRerender('qeo_'+id); return; }
   if(ds.qeorm){ qeRead(); P.qedit.options=(P.qedit.options||[]).filter(o=>o.id!==ds.qeorm); qeRerender(); return; }
   if(ds.qask){ e.preventDefault(); qOpenEditor({...Q_TPL.place(),link:{to:'meetings',ids:[ds.qask]}}); return; }
-  if(ds.qgo){ e.preventDefault(); setPollTab('questions'); if(P.qfold) P.qopen=ds.qgo; renderQuestions();
+  if(ds.qgo){ e.preventDefault(); if(ds.k){ P.qdate=P.qdate||{}; P.qdate[ds.qgo]=ds.k; } setPollTab('questions'); if(P.qfold) P.qopen=ds.qgo; renderQuestions();
     const el=$('q_'+ds.qgo); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); } return; }
   if(ds.qmeet){ e.preventDefault(); setPollTab('meetings'); const m=document.querySelector(`#meetings [data-mtg="${ds.qmeet}"]`); if(m) m.scrollIntoView({block:'center',behavior:'smooth'}); return; }
   if(ds.qsend!==undefined){ qSend(); return; }
@@ -4640,10 +4817,11 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
 // Checkboxes inside the popups and editor switches.
 document.addEventListener('change',e=>{ const x=e.target; if(!P.data) return;
   if(x.dataset.qelm){ qeRead(); const s=new Set(P.qedit.link.ids||[]); x.checked?s.add(x.dataset.qelm):s.delete(x.dataset.qelm);
+    if(qAfter(P.qedit)){ P.qedit.link={to:'after',...(s.size?{ids:[...s]}:{}),...(P.qedit.link.last?{last:true}:{})}; qeRerender(); return; }
     P.qedit.link=s.size?{to:'meetings',ids:[...s],each:P.qedit.link.each}:{to:'poll'}; if(!s.size&&(P.qedit.who.mode==='meeting'||P.qedit.who.mode==='free')) P.qedit.who={mode:'all'}; qeRerender(); return; }
   if(x.dataset.qep){ const s=new Set(P.qedit.who.pids||[]); x.checked?s.add(x.dataset.qep):s.delete(x.dataset.qep); qeRead(); P.qedit.who.pids=[...s];
     const sm=document.querySelector('[data-qdd="who"] .qdd-l'); if(sm) sm.textContent=qWhoText({who:P.qedit.who}); return; }
-  if(['qe_place','qe_cnt','qe_priv','qe_each','qe_own'].includes(x.id)){ qeRead(); qeRerender(); return; }
+  if(['qe_place','qe_cnt','qe_priv','qe_each','qe_own','qe_last'].includes(x.id)){ qeRead(); qeRerender(); return; }
   if(x.dataset.qsel){ const q=qList().find(z=>z.id===x.dataset.qsel); qChange(y=>qPut(y,q,x.value?[x.value]:undefined)); return; }
   if(x.dataset.qdate){ P.qdate[x.dataset.qdate]=x.value; renderQuestions(); return; }
 });
@@ -4669,7 +4847,8 @@ document.addEventListener('submit',e=>{ if(e.target.id!=='qeForm') return; e.pre
 // Text answers: kept as you type (sent with Send).
 document.addEventListener('input',e=>{ const x=e.target; if(!x.dataset||!x.dataset.qtext||!P.form) return; if(x.tagName==='TEXTAREA') growTa(x);
   const q=qList().find(z=>z.id===x.dataset.qtext), v=x.value; const y=JSON.parse(JSON.stringify(myExtra())); qPut(y,q,v.trim()?v:undefined); P.form.extra=y;
-  if(!P.form.dirty){ P.form.dirty=true; renderQuestions(); } });
+  if(!P.form.dirty){ P.form.dirty=true; renderQuestions(); }
+  const sb=P.qpk&&document.querySelector('[data-qpsend]'); if(sb) sb.disabled=!P.qpk.qs.some(z=>!qEmpty(qGet(z,myExtra().a))); });
 document.addEventListener('input',e=>{ if(e.target.id==='fq_name') P.qname=e.target.value; if(e.target.id==='fq_email') P.qemail=e.target.value; });
 // "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
 function mailAllPanel(){
@@ -6810,6 +6989,8 @@ function adminPanes(){
       d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:'')}
     <div class="err" id="serr"></div>
     <div class="savebar setbar"><span class="grow"></span><button class="btn primary withic">${ICON.check}<span>${t('Save<span class="bl"> settings</span>')}</span></button></div></form>
+    <div class="card dz-row prs-row"><span class="sic" style="--c:var(--accent)">${ICON.copy}</span><span class="row tight grow"><b>${t('Preset')}</b>${tip(t('Save this poll’s settings and this round’s questions to start new polls from them (New poll → Start from). No dates, people or password.'))}</span>
+      ${ib('copy',t('Save as preset'),'id="savePreset"','sm',t('Save'))}</div>
     <div class="card danger-zone dz-row"><span class="sic" style="--c:#e05252">${ICON.trash}</span><span class="row tight grow"><b>${t('Danger zone')}</b>${tip(series?t('Deletes the whole series, all its rounds and every answer. This can’t be undone.'):t('Deletes this poll and every answer. This can’t be undone.'))}</span>
       ${ib('trash',series?t('Delete whole series'):t('Delete poll'),'id="delPoll"','danger keep sm',t('Delete'))}</div></div>`;
 }
@@ -7188,6 +7369,7 @@ function wireAdmin(){
       if(b.answerMode==='slots') P.mode='slots'; else if(b.answerMode==='days') P.mode='days';
       toast(t('Settings saved')); await loadPoll(false);
     }catch(ex){ err.textContent=ex.message; } };
+  $('savePreset').onclick=async()=>{ await loadPresets(); const d=presetFromPoll(); await presetSave(d,d.title); };
   $('delPoll').onclick=async()=>{
     if(!confirm(p.kind==='series'?t('Delete this whole series (all its polls) and all answers? This can’t be undone.'):t('Delete this poll and all answers? This can’t be undone.'))) return;
     try{ await api('DELETE',`/polls/${P.id}`,null,headers()); location.href=origin; }
@@ -7543,6 +7725,60 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll you save as a starting point for new polls. They contain no dates, people, answers or passwords, and you can delete them on the New poll page.": "<b>Vorlagen (nur wenn du eine speicherst):</b> Name, Symbol, Einstellungen und Fragen einer Umfrage, die du als Ausgangspunkt für neue Umfragen speicherst. Sie enthalten keine Daten, Personen, Antworten oder Passwörter, und du kannst sie auf der Seite Neue Umfrage löschen.",
+"1 questionnaire": "1 Fragebogen",
+"{n} questionnaires": "{n} Fragebögen",
+"A preset fills in the title, the settings and the questions. Save your own from a poll’s Settings or with <b>Save as preset</b> here.": "Eine Vorlage füllt Titel, Einstellungen und Fragen aus. Eigene speicherst du in den Einstellungen einer Umfrage oder hier mit <b>Als Vorlage speichern</b>.",
+"After each meeting": "Nach jedem Termin",
+"After the latest meeting": "Nach dem letzten Termin",
+"After the rehearsal": "Nach der Probe",
+"Answer": "Antworten",
+"Average per meeting": "Durchschnitt pro Termin",
+"Band rehearsals": "Bandproben",
+"Blank": "Leer",
+"Bringing someone?": "Bringst du jemanden mit?",
+"Budget per person": "Budget pro Person",
+"Can you bring a ball?": "Kannst du einen Ball mitbringen?",
+"Can you bring your gear?": "Kannst du deine Ausrüstung mitbringen?",
+"Can you drive?": "Kannst du fahren?",
+"Delete the preset “{n}”?": "Die Vorlage „{n}“ löschen?",
+"Dinner": "Essen",
+"Dinner together": "Gemeinsam essen",
+"Don’t add these questions": "Diese Fragen nicht übernehmen",
+"Earlier meetings close once the next one has happened.": "Frühere Termine schließen, sobald der nächste stattgefunden hat.",
+"Food preferences or allergies": "Essenswünsche oder Allergien",
+"Free seats": "Freie Plätze",
+"How was it?": "Wie war’s?",
+"How was the last session?": "Wie war das letzte Training?",
+"How was the rehearsal?": "Wie war die Probe?",
+"Name, e.g. Band rehearsals": "Name, z. B. Bandproben",
+"New name": "Neuer Name",
+"Only the latest meeting": "Nur der letzte Termin",
+"Opens after the meeting.": "Öffnet nach dem Termin.",
+"Opens after {m}": "Öffnet nach {m}",
+"Pick meetings, or none for all of them.": "Termine wählen, oder keinen für alle.",
+"Preset": "Vorlage",
+"Preset deleted": "Vorlage gelöscht",
+"Preset replaced": "Vorlage ersetzt",
+"Preset saved": "Vorlage gespeichert",
+"Rate": "Bewerten",
+"Rehearsals": "Proben",
+"Replace": "Ersetzen",
+"Save as preset": "Als Vorlage speichern",
+"Save this poll’s settings and this round’s questions to start new polls from them (New poll → Start from). No dates, people or password.": "Speichert die Einstellungen dieser Umfrage und die Fragen dieser Runde, um neue Umfragen damit zu starten (Neue Umfrage → Starten mit). Ohne Daten, Personen oder Passwort.",
+"Settings and {q}. No dates, people or password.": "Einstellungen und {q}. Ohne Daten, Personen oder Passwort.",
+"Skip": "Überspringen",
+"Start from": "Starten mit",
+"Travel": "Anreise",
+"Weekend trip": "Wochenendausflug",
+"Weekly sport": "Wöchentlicher Sport",
+"Weekly sport slot": "Wöchentlicher Sporttermin",
+"What should we practise next?": "Was sollen wir als Nächstes üben?",
+"Where shall we eat?": "Wo wollen wir essen?",
+"Where to?": "Wohin?",
+"You already have a preset with this name": "Du hast schon eine Vorlage mit diesem Namen",
+"This preset is too large": "Diese Vorlage ist zu groß",
+"Preset not found": "Vorlage nicht gefunden",
 "Move to": "Verschieben nach",
 "No questionnaire": "Kein Fragebogen",
 "Questionnaire": "Fragebogen",
