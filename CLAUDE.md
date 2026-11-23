@@ -166,6 +166,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   element isn't visible are skipped (so no AI / chat / closed round just shortens it). Shown once per tour (localStorage `tour`, a higher
   level marks the lower ones seen), started by `tourAuto()` after the page is drawn; replay with the ? button in the app bar (`tourButton`)
   or Take the tour in the account menu. When you add a main feature, add a step for it.
+  Demo steps (`demo`, people who can answer): a fake finger (`tourPtr`, `demoKit`) paints days (`demoDays`), shows tap vs range
+  (`demoRange`) and fine-tunes hours (`demoHours`) on My answer; `tourDemoSnap` / `tourDemoRestore` put the answer, mode, brush and
+  undo history back when the demo steps end, nothing is saved. The answer brush always starts in tap mode (range isn't remembered).
 - **Undo / redo** (page only): two histories in `HIST`, `ans` (My answer: marks + Quick fill layers) and `plan` (planner drafts + Suggest dates).
   `histTick()` runs at the start of every `renderBody()` and pushes the last snapshot when the state changed, so any edit path is covered
   without hooks (one drag = one step; name/comment typing isn't tracked). ↶ / ↷ in one small grey box (`histSeg`, `.hseg`; My answer adds its ✕ Clear there) and ⌘Z / ⌘⇧Z / Ctrl+Y

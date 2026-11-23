@@ -1666,6 +1666,10 @@
   .hseg a{display:inline-flex;align-items:center;justify-content:center;height:26px;width:28px;border-radius:7px;color:var(--muted);transition:background .12s,color .12s} .hseg a:hover{color:var(--ink)} .hseg a svg{width:15px;height:15px}
   .hseg{padding:2px} .hseg button,.tbar .seg.hseg button,.ws-tools.tbar .seg.hseg button{height:26px;width:28px;min-width:0;padding:0;justify-content:center}
   .hseg button svg{width:15px;height:15px} .hseg button:disabled{opacity:.35;cursor:default} .hseg button:disabled:hover{color:var(--muted)}
+  /* answer toolbar: brush · fill tools (✨ ⚡) · undo/redo are grey groups of one height */
+  .ws-tools.tbar>.seg{height:38px;align-items:center} .ws-tools.tbar>.seg.hseg button{height:100%}
+  .tseg button{position:relative} .tseg button svg{width:16px;height:16px}
+  .tseg .badge{position:absolute;top:-7px;right:-7px;min-width:17px;height:17px;padding:0 4px;font-size:10.5px;box-shadow:0 0 0 2px var(--card)}
   .hseg .hx{color:var(--no)} .hseg .hx:hover{color:var(--no);background:var(--no-bg)}
   /* planner "Pick the times" header: title, ⓘ, ↶↷, ✨, ⚡ in one row on a 360px phone */
   @media (max-width:420px){ #mplan .sech{gap:4px} #mplan .sech-a{gap:4px} #mplan .sech>.tip{width:22px} #mplan .sech>h3{min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -1856,7 +1860,8 @@
     .ws-tools.tbar .seg.brush button{width:24px;min-width:24px;padding:0} .ws-tools.tbar .seg.brush button.amode{width:22px;min-width:22px}
     .ws-tools.tbar .brush .asep{margin:6px 1px}
     .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:28px;min-width:28px}
-    .ws-tools.tbar .seg.hseg button{width:22px}
+    .ws-tools.tbar .seg.hseg button{width:22px} .ws-tools.tbar .seg.tseg button{width:28px}
+    .ws-tools.tbar>.seg{height:34px}
   }
   .langb{font-weight:650;letter-spacing:.3px;min-width:36px;justify-content:center;gap:5px}
   .langb svg,.themeb svg{width:17px;height:17px;flex:none}
@@ -1884,6 +1889,11 @@
   .tour-b .tour-x{position:absolute;top:8px;right:8px;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer}
   .tour-b .tour-x:hover{background:var(--sunken)} .tour-b .tour-x svg{width:16px;height:16px}
   .tour-f{display:flex;align-items:center;gap:8px;margin-top:14px}
+  .tour-ptr{position:fixed;z-index:203;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.55);border:2.5px solid var(--accent);box-shadow:0 2px 10px rgba(6,12,26,.35);transition:left .32s ease,top .32s ease,transform .12s}
+  .tour-ptr.down{transform:scale(.8);background:color-mix(in srgb,var(--accent) 35%,transparent)}
+  .tour-ptr.tap::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--accent);animation:tourtap .45s ease-out forwards}
+  @keyframes tourtap{from{transform:scale(.6);opacity:1}to{transform:scale(2.1);opacity:0}}
+  @media (prefers-reduced-motion:reduce){ .tour-ptr{transition:none} .tour-ptr.tap::after{animation:none} }
   .tour-b.center{top:50%!important;left:50%!important;transform:translate(-50%,-50%)}
   @media (max-width:560px){ .tour-b:not(.center){left:12px!important;right:12px;width:auto;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom))} }
 </style>
@@ -2414,7 +2424,7 @@ document.addEventListener('themechange',syncTheme); syncTheme();
 // questions editor), 'manage' (admins and the owner: everything), 'home', 'new', 'account'. Steps are { sel, title, body, go, when };
 // go() opens the right tab first, steps whose element isn't there (no AI, no chat, closed round …) are skipped.
 // Shown once per tour (localStorage `tour`), replayed with the ? button in the app bar.
-const TOUR={on:false,steps:[],i:0,key:'',back:null,dir:1,auto:false};
+const TOUR={on:false,steps:[],i:0,key:'',back:null,dir:1,auto:false,demoId:0,snap:null,also:null};
 const TOUR_LV={answer:['answer'],edit:['answer','edit'],manage:['answer','edit','manage']};
 function tourKey(){
   const qs=new URLSearchParams(location.search);
@@ -2461,8 +2471,13 @@ function tourSteps(key){
     S('[data-istatus]',t('Close or reopen'),t('Closing stops new answers. Reopen it any time.'),{when:()=>edit}),
     S('.atabs',t('Sections'),edit?t('Availability, Meetings, Questions, People and Settings: everything about this poll is in these tabs.'):t('Answer in Availability, see the planned meetings and fill in the organiser’s questions.')),
     S('#wsme',t('You'),guest?t('Enter your name (and, if you like, your email). No account needed.'):t('You answer as your account, so your answer follows you to every device.'),{go:tgView('mine')}),
-    S('.ws-tools .brush,.brush',t('Mark when you can'),t('Pick a colour (available, if needed, maybe), then tap or drag across the days or hours. Blank means not available.'),{go:tgView('mine')}),
-    S('.iseg:not(.brush)',t('Days or hours'),t('Answer for whole days, or switch to hours to mark only certain times.'),{go:tgView('mine')}),
+    // Live demos on My answer (marks are put back afterwards, nothing is saved).
+    S('#dgrid',t('Days for the broad picture'),t('Pick a colour (available, if needed, maybe), then tap the days you can make, or drag across several. Tap a day again with the same colour to clear it. Blank means not available.'),
+      {also:'.ws-tools.tbar',go:tgDemo('days'),demo:demoDays,when:()=>editable()&&ansMode()!=='slots'}),
+    S('.brush',t('Tap or range'),t('<b>Tap</b> (the default) marks one by one: tap, or drag across several. <b>Range</b>: tap the first and the last day, and everything between is filled.'),
+      {also:'#dgrid',go:tgDemo('days'),demo:demoRange,when:()=>editable()}),
+    S('#grid',t('Hours to fine-tune'),t('Switch to hours to mark only certain times of a day: drag down over the hours you can make. Tap a day’s name to mark the whole day.'),
+      {also:'.iseg:not(.brush)',go:tgDemo('slots'),demo:demoHours,when:()=>editable()&&ansMode()!=='days'}),
     S('[data-qf]',t('Quick fill'),t('Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.'),{go:tgView('mine')}),
     S('[data-ai]',t('Fill with AI'),t('Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.'),{go:tgView('mine')}),
     S('[data-hint]',t('See the others'),t('Show where the others are free while you answer, to find a time that suits everyone.'),{go:tgView('mine')}),
@@ -2493,6 +2508,57 @@ function tourSteps(key){
     S('.su-btn',t('Create an account (optional)'),t('Your answers follow you to every device, and you can make polls of your own.'),{when:()=>guest}),
     end];
 }
+// ---- tour demos: a fake finger paints a few marks on My answer; everything is put back when the demo steps end ----
+const tsleep=ms=>new Promise(r=>setTimeout(r,ms));
+const tourRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function tourDemoSnap(){ if(!TOUR.snap) TOUR.snap={e:P.mine.entries,mode:P.mode,brush:P.brush,ar:P.arange,an:P.aanchor,dirty:P.dirty}; }
+function tourDemoRestore(){ const s=TOUR.snap; tourPtr(null); if(!s) return; TOUR.snap=null;
+  Object.assign(P,{mode:s.mode,brush:s.brush,arange:s.ar,aanchor:s.an,dirty:s.dirty}); P.mine.entries=s.e; histReset(); renderBody(); }
+// go() of a demo step: My answer in that mode, the answer as it was, Available, tap mode.
+const tgDemo=mode=>()=>{ tgView('mine')(); tourDemoSnap();
+  Object.assign(P,{mode:ansMode()==='both'?mode:P.mode,brush:'y',arange:false,aanchor:null}); P.mine.entries=TOUR.snap.e; renderBody(); };
+function tourPtr(el,down){ let p=$('tourptr'); if(!el){ if(p) p.remove(); return; }
+  if(!p){ document.body.insertAdjacentHTML('beforeend','<div class="tour-ptr" id="tourptr" aria-hidden="true"></div>'); p=$('tourptr'); }
+  const r=el.getBoundingClientRect(); p.style.left=Math.round(r.left+r.width/2)+'px'; p.style.top=Math.round(r.top+r.height/2)+'px'; p.classList.toggle('down',!!down); }
+function tourTap(){ const p=$('tourptr'); if(!p) return; p.classList.remove('tap'); void p.offsetWidth; p.classList.add('tap'); }
+// Helpers the demos share. alive() turns false when the step is left; w() then stops the demo before it paints again.
+function demoKit(alive){
+  const w=async ms=>{ await tsleep(tourRM()?Math.min(ms,150):ms); if(!alive()) throw 'tour'; };
+  const to=async(el,ms=420,down)=>{ tourInView(el); tourPlace(); tourPtr(el,down); await w(ms); };
+  const press=async(sel,on)=>{ const b=document.querySelector(sel); if(!b) return; await to(b); tourTap(); on(); await w(250); };
+  const brush=v=>press(`.brush [data-brush="${v}"]`,()=>{ P.brush=v; document.querySelectorAll('.brush [data-brush]').forEach(x=>x.classList.toggle('on',x.dataset.brush===v)); });
+  const mode=r=>press(`.brush [data-arange="${r?1:0}"]`,()=>{ P.arange=r; document.querySelectorAll('.brush [data-arange]').forEach(x=>{ const on=x.dataset.arange===(r?'1':'0'); x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); });
+  const days=()=>[...document.querySelectorAll('#dgrid .day[data-day]')].filter(tourVis);
+  const dayPaint=(el,v)=>{ const k=el.dataset.day; setEntry(k,v); const st=statusOf(P.mine.entries[k],k); el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls); };
+  return {w,to,brush,mode,days,dayPaint};
+}
+async function demoDays(alive){
+  const K=demoKit(alive), c=K.days(); if(!c.length) return;
+  await K.w(500); await K.brush('y');
+  for(const el of [c[0],c[2],c[3]].filter(Boolean)){ await K.to(el); tourTap(); K.dayPaint(el,'y'); await K.w(250); }
+  const run=c.slice(5,8); if(run.length){ await K.to(run[0],420,true); for(const el of run){ await K.to(el,180,true); K.dayPaint(el,'y'); } await K.w(200); }
+  const ifn=c[9]||c[c.length-1]; await K.brush('i'); await K.to(ifn); tourTap(); K.dayPaint(ifn,'i'); await K.w(600); tourPtr(null);
+}
+async function demoRange(alive){
+  const K=demoKit(alive), c=K.days(); if(c.length<3) return;
+  const a=c[Math.min(2,c.length-3)], z=c[Math.min(7,c.length-1)];
+  await K.w(500); await K.mode(true); await K.w(250);
+  await K.to(a); tourTap(); a.classList.add('da'); await K.w(450);
+  await K.to(z); tourTap(); a.classList.remove('da');
+  const lo=a.dataset.day, hi=z.dataset.day; c.filter(x=>x.dataset.day>=lo&&x.dataset.day<=hi).forEach(x=>K.dayPaint(x,'y'));
+  await K.w(900); await K.mode(false); await K.w(400); tourPtr(null);
+}
+async function demoHours(alive){
+  const K=demoKit(alive), all=[...document.querySelectorAll('#grid .slot[data-k]')].filter(tourVis); if(!all.length) return;
+  const ks=[...new Set(all.map(x=>x.dataset.k))], k=ks[Math.min(1,ks.length-1)];
+  const col=all.filter(x=>x.dataset.k===k).sort((x,y)=>x.dataset.h-y.dataset.h);
+  let run=col.filter(x=>+x.dataset.h>=18&&+x.dataset.h<21); if(run.length<2) run=col.slice(-3);
+  const paint=(el,v)=>{ const map=hourMap(P.mine.entries[k],k); map.set(+el.dataset.h,v); setEntry(k,fromMap(map,k)); ['y','i','m'].forEach(s=>el.classList.toggle('s'+s,s===v)); };
+  await K.w(500); await K.brush('y');
+  await K.to(run[0],420,true); for(const el of run){ await K.to(el,220,true); paint(el,'y'); } await K.w(300);
+  const before=col[col.indexOf(run[0])-2]; if(before){ await K.brush('i'); await K.to(before); tourTap(); paint(before,'i'); }
+  await K.w(700); tourPtr(null);
+}
 function tourStart(key,auto){
   key=key||tourKey(); if(!key||TOUR.on) return;
   const steps=tourSteps(key).filter(s=>!s.when||s.when()); if(!steps.length) return;
@@ -2506,12 +2572,13 @@ function tourStart(key,auto){
 async function tourShow(i,dir){
   const n=TOUR.steps.length; if(i<0) i=0;
   if(i>=n){ tourEnd(); return; }
-  const s=TOUR.steps[i]; TOUR.i=i; TOUR.dir=dir;
+  const s=TOUR.steps[i]; TOUR.i=i; TOUR.dir=dir; const did=++TOUR.demoId;
+  tourPtr(null); if(!s.demo) tourDemoRestore();
   try{ if(s.go) s.go(); }catch(e){}
   let el=null;
   if(s.sel){ for(let k=0;k<12;k++){ el=[...document.querySelectorAll(s.sel)].find(tourVis); if(el) break; await new Promise(r=>setTimeout(r,100)); if(!TOUR.on||TOUR.i!==i) return; }
     if(!el){ if(dir<0&&i===0) return tourShow(0,1); return tourShow(i+dir,dir); } }
-  TOUR.el=el;
+  TOUR.el=el; TOUR.also=s.also?[...document.querySelectorAll(s.also)].find(tourVis)||null:null;
   const b=$('tourb'); if(!b) return;
   const first=i===0, last=i===n-1;
   b.classList.toggle('center',!el);
@@ -2519,28 +2586,46 @@ async function tourShow(i,dir){
     <h3 id="tourt">${esc(s.title)}</h3><p>${s.body}</p>
     <div class="tour-f">${first?`<span class="grow"></span>`:`<span class="grow"></span><button type="button" class="btn sm ghost" data-tourgo="-1">${t('Back')}</button>`}
       ${first?`<button type="button" class="btn sm ghost" data-tourgo="x">${t('Not now')}</button>`:''}
+      ${s.demo&&el?`<button type="button" class="btn sm ghost withic" data-tourgo="r" title="${t('Show again')}" aria-label="${t('Show again')}">${ICON.redo}</button>`:''}
       <button type="button" class="btn sm primary" data-tourgo="1">${first?t('Show me'):last?t('Done'):t('Next')}</button></div>`;
   $('tourov').classList.toggle('dim',!el); $('tourhole').hidden=!el;
-  if(el){ const r=el.getBoundingClientRect(), tall=r.height>innerHeight*.55;
-    el.scrollIntoView({block:tall?'start':'center',inline:'nearest'});
-    if(matchMedia('(max-width:560px)').matches){ const r2=el.getBoundingClientRect(), room=innerHeight-b.offsetHeight-24; if(!tall&&r2.bottom>room) window.scrollBy(0,r2.bottom-room); } }
+  if(el&&TOUR.also){ const up=TOUR.also.getBoundingClientRect().top<el.getBoundingClientRect().top?TOUR.also:el; // demos: start with the toolbar at the top
+    tourInView(up,'start'); }
+  else if(el){ const r=el.getBoundingClientRect(), tall=r.height>innerHeight*.55;
+    tourInView(el,tall?'start':'center'); }
   tourPlace(); const nb=b.querySelector('[data-tourgo="1"]'); if(nb) nb.focus({preventScroll:true});
+  if(s.demo&&el) s.demo(()=>TOUR.on&&TOUR.demoId===did).catch(()=>{});
+}
+// Scroll so el is visible below the sticky app bar (and above the bubble on phones): 'start', 'center' or just enough.
+function tourInView(el,mode){
+  const ab=document.querySelector('.appbar'), top=(ab?ab.getBoundingClientRect().bottom:0)+12, r=el.getBoundingClientRect(), b=$('tourb');
+  const bot=innerHeight-(matchMedia('(max-width:560px)').matches&&b&&!b.classList.contains('center')?b.offsetHeight+24:12);
+  if(mode==='start') window.scrollBy(0,r.top-top);
+  else if(mode==='center') window.scrollBy(0,(r.top+r.bottom)/2-(top+bot)/2);
+  else if(r.top<top) window.scrollBy(0,r.top-top);
+  else if(r.bottom>bot) window.scrollBy(0,Math.min(r.bottom-bot,r.top-top));
 }
 function tourPlace(){
   if(!TOUR.on) return; const b=$('tourb'), h=$('tourhole'), el=TOUR.el; if(!b||!h) return;
   if(!el||!b.classList||b.classList.contains('center')) return;
   if(!el.isConnected){ const s=TOUR.steps[TOUR.i]; const nx=s&&[...document.querySelectorAll(s.sel)].find(tourVis); if(!nx) return; TOUR.el=nx; return tourPlace(); }
-  const r=el.getBoundingClientRect(), H=innerHeight, W=document.documentElement.clientWidth, pad=6;
+  // The hole covers the element and, for demos, the toolbar that goes with it (TOUR.also).
+  const r0=el.getBoundingClientRect(), a=TOUR.also&&TOUR.also.isConnected?TOUR.also.getBoundingClientRect():null;
+  const r=a?{left:Math.min(r0.left,a.left),top:Math.min(r0.top,a.top),right:Math.max(r0.right,a.right),bottom:Math.max(r0.bottom,a.bottom)}:{left:r0.left,top:r0.top,right:r0.right,bottom:r0.bottom};
+  r.width=r.right-r.left; r.height=r.bottom-r.top;
+  const H=innerHeight, W=document.documentElement.clientWidth, pad=6;
   const top=Math.max(r.top-pad,4), bot=Math.min(r.bottom+pad,H-4), left=Math.max(r.left-pad,4), right=Math.min(r.right+pad,W-4);
   Object.assign(h.style,{top:top+'px',left:left+'px',width:Math.max(right-left,0)+'px',height:Math.max(bot-top,0)+'px'});
   if(matchMedia('(max-width:560px)').matches){ b.style.top=''; b.style.left=''; return; }
   const bw=b.offsetWidth, bh=b.offsetHeight;
+  const fits=H-bot>=bh+16||top>=bh+16, s=TOUR.steps[TOUR.i];
   let y=H-bot>=bh+16?bot+10:top>=bh+16?top-10-bh:H-bh-12;
-  let x=Math.min(Math.max(r.left+r.width/2-bw/2,12),W-bw-12);
+  // No room above or below: demos keep their finger on the left of the grid, so the bubble goes bottom right.
+  let x=!fits&&s&&s.demo?W-bw-16:Math.min(Math.max(r.left+r.width/2-bw/2,12),W-bw-12);
   b.style.top=y+'px'; b.style.left=x+'px';
 }
 function tourEnd(){
-  if(!TOUR.on) return; TOUR.on=false; TOUR.el=null;
+  if(!TOUR.on) return; TOUR.demoId++; tourDemoRestore(); TOUR.on=false; TOUR.el=null; TOUR.also=null;
   ['tourov','tourhole','tourb'].forEach(id=>{ const x=$(id); if(x) x.remove(); });
   const bk=TOUR.back; TOUR.back=null;
   if(bk&&P.data){ try{ if(bk.msub&&P.msub!==bk.msub&&P.data.isAdmin) setMsub(bk.msub,false); if(P.atab!==bk.atab) setPollTab(bk.atab); if(P.tab!==bk.tab){ P.tab=bk.tab; } renderBody(); }catch(e){} }
@@ -2555,7 +2640,7 @@ function tourAuto(){
 }
 document.addEventListener('click',e=>{
   const g=e.target.closest&&e.target.closest('[data-tourgo]');
-  if(g){ e.preventDefault(); const v=g.dataset.tourgo; if(v==='x') tourEnd(); else tourShow(TOUR.i+(+v),+v); return; }
+  if(g){ e.preventDefault(); const v=g.dataset.tourgo; if(v==='x') tourEnd(); else if(v==='r') tourShow(TOUR.i,TOUR.dir); else tourShow(TOUR.i+(+v),+v); return; }
   const b=e.target.closest&&e.target.closest('[data-tour]');
   if(b){ e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; tourStart(); }
 });
@@ -4045,7 +4130,7 @@ function renderAccount(){
 // ================= POLL =================
 const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null, myResp:null,
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, dirty:false, saving:false,
-  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), arange:!!store.get('arange',0), aanchor:null, panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
+  hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), arange:false, aanchor:null, panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
 
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
@@ -5501,7 +5586,7 @@ function renderMine(el){
   const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
-  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','tap',t('Single: tap or drag')],['1','brush',P.mode==='slots'?t('One range: tap the first and the last hour'):t('One range: tap the first and the last day')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
+  const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','tap',P.mode==='slots'?t('Tap: mark hours one by one (tap or drag)'):t('Tap: mark days one by one (tap or drag)')],['1','brush',P.mode==='slots'?t('Range: tap the first and the last hour, everything between is filled'):t('Range: tap the first and the last day, everything between is filled')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
       return `<button type="button" class="amode${on?' on':''}" data-arange="${v}" aria-pressed="${on}" title="${lb}" aria-label="${lb}">${ICON[ic]}</button>`; }).join('')}<span class="asep" aria-hidden="true"></span>${[['y','yes',t('Available')],['i','ifn',t('If needed')],['m','maybe',t('Maybe')]].map(([b,c,lb])=>
       `<button data-brush="${b}" class="${P.brush===b?'on':''}" title="${lb}" aria-label="${lb}"><span class="dot" style="--c:var(--${c})"></span><span class="bl">${lb}</span></button>`).join('')}
       <button data-brush="x" class="${P.brush==='x'?'on':''}" title="${t('Not available')}" aria-label="${t('Not available')}"><span class="dot gry" style="--c:var(--empty)"></span><span class="bl">${t('Not available')}</span></button></div>`;
@@ -5521,9 +5606,9 @@ function renderMine(el){
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
-  const qfIc=`<button type="button" class="btn sm withic ib${qfN?' badgeb':''} ${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
+  const qfIc=`<button type="button" class="${qfN?'badgeb ':''}${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
   const clrL=qfN?t('Clear my own marks'):t('Clear all'), clrIc=`<button type="button" class="hx" data-bulk="clear" title="${esc(clrL)}" aria-label="${esc(clrL)}">${ICON.x}</button>`;
-  const aiIc=aiOk()?`<button type="button" class="btn sm withic ib ${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill with AI'))}" aria-label="${esc(t('Fill with AI'))}">${ICON.spark}</button>`:'';
+  const aiIc=aiOk()?`<button type="button" class="${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill with AI'))}" aria-label="${esc(t('Fill with AI'))}">${ICON.spark}</button>`:'';
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${am!=='days'?' '+t('On days with only some hours, the line shows your day from 0 to 24 h.'):''}${on?` ${t('3/5 = how many of the {n} others are free at the best time.',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
@@ -5536,7 +5621,7 @@ function renderMine(el){
   else { wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); real=wks[P.week].filter(Boolean);
     if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`; }
-  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc}${qfIc}${editable()?histSeg('ans',clrIc):''}`,'tbar')}${aiFill()}${quickFill()}`;
+  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span><div class="seg iseg hseg tseg" role="group" aria-label="${t('Fill tools')}">${aiIc}${qfIc}</div>${editable()?histSeg('ans',clrIc):''}`,'tbar')}${aiFill()}${quickFill()}`;
   h+=`<div class="calsec">${secH('cal',t('Calendar'),{tip:helpTxt})}`;
   h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
   // Legend above the grid: colours, then only the markers this view can show right now.
@@ -7901,7 +7986,7 @@ document.addEventListener('click',async e=>{
   if(ds.tab){ if(tg.disabled) return; P.tab=ds.tab; P.aanchor=null; store.set('view:'+P.id,P.tab); renderBody(); return; }
   if(ds.mode){ P.mode=ds.mode; P.aanchor=null; renderBody(); return; }
   if(ds.brush){ P.brush=ds.brush; renderBody(); return; }
-  if(ds.arange){ P.arange=ds.arange==='1'; P.aanchor=null; store.set('arange',P.arange?1:0); renderBody(); return; }
+  if(ds.arange){ P.arange=ds.arange==='1'; P.aanchor=null; renderBody(); return; } // not remembered: every visit starts in tap mode
   if(ds.wk){ P.week+=+ds.wk; renderBody(); return; }
   if(ds.mon){ P.month+=+ds.mon; renderBody(); return; }
   if(ds.schedule){ scheduleDay(ds.schedule); return; }
@@ -8202,6 +8287,18 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"Fill tools": "Ausfüll-Werkzeuge",
+"Tap: mark days one by one (tap or drag)": "Tippen: Tage einzeln markieren (tippen oder ziehen)",
+"Tap: mark hours one by one (tap or drag)": "Tippen: Stunden einzeln markieren (tippen oder ziehen)",
+"Range: tap the first and the last day, everything between is filled": "Bereich: ersten und letzten Tag antippen, alles dazwischen wird ausgefüllt",
+"Range: tap the first and the last hour, everything between is filled": "Bereich: erste und letzte Stunde antippen, alles dazwischen wird ausgefüllt",
+"Days for the broad picture": "Tage für den groben Überblick",
+"Pick a colour (available, if needed, maybe), then tap the days you can make, or drag across several. Tap a day again with the same colour to clear it. Blank means not available.": "Wähle eine Farbe (verfügbar, wenn nötig, vielleicht) und tippe die Tage an, an denen du kannst, oder ziehe über mehrere. Nochmal mit derselben Farbe antippen löscht den Tag. Leer heißt: nicht verfügbar.",
+"Tap or range": "Tippen oder Bereich",
+"<b>Tap</b> (the default) marks one by one: tap, or drag across several. <b>Range</b>: tap the first and the last day, and everything between is filled.": "<b>Tippen</b> (Standard) markiert einzeln: antippen oder über mehrere ziehen. <b>Bereich</b>: ersten und letzten Tag antippen, und alles dazwischen wird ausgefüllt.",
+"Hours to fine-tune": "Stunden zum Feinabstimmen",
+"Switch to hours to mark only certain times of a day: drag down over the hours you can make. Tap a day’s name to mark the whole day.": "Wechsle zu Stunden, um nur bestimmte Zeiten eines Tages zu markieren: Zieh über die Stunden, in denen du kannst. Tippe auf den Namen eines Tages, um den ganzen Tag zu markieren.",
+"Show again": "Nochmal zeigen",
 "Guided tour": "Rundgang",
 "Take the tour": "Rundgang starten",
 "That’s it!": "Das war’s!",
@@ -8240,9 +8337,6 @@ function germanText(){ return {
 "Answer in Availability, see the planned meetings and fill in the organiser’s questions.": "Antworte unter Verfügbarkeit, sieh dir die geplanten Treffen an und beantworte die Fragen der Organisator*in.",
 "Enter your name (and, if you like, your email). No account needed.": "Gib deinen Namen ein (und wenn du willst, deine E-Mail). Kein Konto nötig.",
 "You answer as your account, so your answer follows you to every device.": "Du antwortest mit deinem Konto, so ist deine Antwort auf jedem Gerät dabei.",
-"Mark when you can": "Markiere, wann du kannst",
-"Pick a colour (available, if needed, maybe), then tap or drag across the days or hours. Blank means not available.": "Wähle eine Farbe (verfügbar, wenn nötig, vielleicht) und tippe oder ziehe über die Tage oder Stunden. Leer heißt: nicht verfügbar.",
-"Answer for whole days, or switch to hours to mark only certain times.": "Antworte für ganze Tage oder wechsle zu Stunden, um nur bestimmte Zeiten zu markieren.",
 "Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.": "Fülle viele Tage auf einmal mit Regeln, etwa „jeden Werktag ab 18 Uhr“. Deine eigenen Markierungen bleiben obenauf.",
 "Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.": "Oder schreib (oder diktiere) einfach, wann du Zeit hast, etwa „am Wochenende, nicht vor 10“, und deine Antwort wird ausgefüllt.",
 "See the others": "Die anderen sehen",
@@ -9679,9 +9773,6 @@ function germanText(){ return {
 "Suggest": "Vorschlagen",
 "Off": "Aus",
 "Options": "Optionen",
-"Single: tap or drag": "Einzeln: tippen oder ziehen",
-"One range: tap the first and the last day": "Ein Bereich: ersten und letzten Tag antippen",
-"One range: tap the first and the last hour": "Ein Bereich: erste und letzte Stunde antippen",
 "Close multi-edit": "Mehrfachbearbeitung schließen",
 "hours apart": "Std. Abstand",
 "Hours between start times": "Stunden zwischen den Startzeiten",
