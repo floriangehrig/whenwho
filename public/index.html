@@ -719,13 +719,13 @@
   .qlist.compact{gap:6px}
   .qcard{position:relative;transition:box-shadow .3s} .qcard.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent)}
   .qcard.closed .qopts,.qcard.closed .qyn{opacity:.7}
-  .qtile{position:relative;gap:3px;padding:9px 0 7px} .qtile>svg{width:22px;height:22px} .qtile .wd{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
+  .qtile{position:relative;gap:3px;padding:0;height:48px;justify-content:center} .qcard .mbody>.mmeta{margin-top:-4px;margin-bottom:4px} .qtile>svg{width:22px;height:22px} .qtile .wd{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
   .qcorner{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--card);box-shadow:0 0 0 1px var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)} .qcorner svg{width:11px;height:11px}
   .qreq{margin-left:3px;color:var(--no,#d64545);font-weight:800}
   .qcard .mtitle .tag{vertical-align:2px;font-size:11px}
   .qcard .mmeta a{color:var(--muted)} .qcard .mmeta a:hover{color:var(--accent-ink)}
   .qhelp{font-size:13.5px;color:var(--ink-2)}
-  .qcard.fold{align-items:center;gap:10px;padding:7px 8px} .qcard.fold .qtile{width:42px;padding:5px 0 4px} .qcard.fold .qtile .wd{display:none} .qcard.fold .qtile>svg{width:18px;height:18px}
+  .qcard.fold{align-items:center;gap:10px;padding:7px 8px} .qcard.fold .qtile{width:42px;height:36px;padding:0} .qcard.fold .qtile .wd{display:none} .qcard.fold .qtile>svg{width:18px;height:18px}
   .qcard.fold .mhead{align-items:center} .qfoldb{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:10px;padding:4px 0;background:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
   .qfoldb .mtitle{flex:0 1 auto;padding:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .qsum{flex:1 1 auto;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -837,7 +837,7 @@
     /* expanded card: the tile sits beside the title and meta only; options and answers use the full width */
     .qcard:not(.fold){display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start;padding:12px 10px 12px 10px}
     .qcard:not(.fold) .mbody{display:contents} .qcard:not(.fold) .mbody>*{grid-column:1/-1}
-    .qcard:not(.fold) .qtile{grid-column:1;grid-row:1/3;width:44px;padding:6px 0 5px} .qcard:not(.fold) .qtile .wd{font-size:9.5px} .qcard:not(.fold) .qtile>svg{width:18px;height:18px}
+    .qcard:not(.fold) .qtile{grid-column:1;grid-row:1/3;align-self:start;width:44px;height:44px;padding:0} .qcard:not(.fold) .qtile .wd{font-size:9.5px} .qcard:not(.fold) .qtile>svg{width:18px;height:18px}
     .qcard:not(.fold) .mbody>.mhead{grid-column:2;grid-row:1} .qcard:not(.fold) .mbody>.mmeta{grid-column:2;grid-row:2}
     .qcard .mmeta{flex-direction:column;gap:3px;font-size:13px}
     .qcard .mtitle{font-size:15px;padding-top:2px}
@@ -848,7 +848,17 @@
     .ws-h .qws-add .bl{display:none} .qws .ws-h{flex-wrap:wrap} .qws .ws-h .ws-views{margin-left:0;order:3;flex-basis:100%} .qws .ws-h .ws-views button{flex:1 1 0;justify-content:center}
     .qe-pick{grid-template-columns:minmax(0,1fr)} .qe-top{flex-wrap:wrap} .qe-top .qetyp{flex:1 1 100%} .qe-top .qetyp>summary{width:100%}
     .qstar{width:34px;height:34px} .qe-pick .qdd .ddp,.qe-top .qdd .ddp{left:0;right:0;min-width:0;max-width:none}
+    /* a questionnaire is a section, not a box: a tinted banner, then its questions at full width along a thin accent rail */
+    .qgroup{border:0;border-radius:0;background:none;box-shadow:none}
+    .qg-h{border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--card));box-shadow:var(--shadow-sm)}
+    .qg-b{margin:10px 0 0 -10px;padding:2px 0 2px 8px;border-left:2px solid color-mix(in srgb,var(--accent) 35%,transparent)} /* the rail sits in the card's side padding: questions keep the full width */
+    .qg-b .qcard:not(.fold) .qtile{width:36px;height:36px} .qg-b .qcard:not(.fold) .qtile.emo .qemo{font-size:19px}
+    /* fewer buttons in headers: Edit is the ⋯ menu's first item, Move up / down replace dragging */
+    .qcard .qgrip,.qgroup .qgrip,.qcard .macts>[data-qedit],.qg-h .macts>[data-qgedit]{display:none}
   }
+  @media (min-width:561px){ .qm-mob{display:none!important} }
+  .qg-prog{display:block;width:min(160px,100%);height:4px;margin-top:4px;border-radius:2px;background:color-mix(in srgb,var(--accent) 15%,var(--sunken));overflow:hidden}
+  .qg-prog i{display:block;width:var(--p);height:100%;border-radius:inherit;background:var(--yes)}
   /* Section toolbar above votes + scheduled: Select and Collapse act on both */
   .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)}
   .mcard>.msec-h+.vpanel{margin-top:0}
@@ -4909,7 +4919,7 @@ const qgcSet=()=>new Set(store.get('qgc:'+P.id,[])); // collapsed questionnaires
 // Default icons offered in the icon picker (any emoji can be typed too).
 const Q_ICONS=['📍','🍽️','🍕','☕','🍷','🎂','🎁','🚗','🚆','✈️','🏨','⛺','🧳','🏃','⚽','🎵','🎉','📅','⏰','👥','🙋','👶','🐶','💬','📝','📋','✅','❓','⭐','💡','💰','🧾'];
 function qTile(q){ const grp=q.type==='group', ic=grp?'note':q.place?'pin':(Q_KIND[q.type]||Q_KIND.radio)[0], l=grp?'Form':q.place?'Place':Q_TILE[q.type]||'Choice';
-  return `<div class="mtile qtile${q.icon?' emo':''}" aria-hidden="true">${q.icon?`<span class="qemo">${esc(q.icon)}</span>`:ICON[ic]}<span class="wd">${t(l)}</span>${q.vis==='owner'?`<span class="qcorner">${ICON.lock}</span>`:''}</div>`; }
+  return `<div class="mtile qtile${q.icon?' emo':''}" title="${t(l)}">${q.icon?`<span class="qemo">${esc(q.icon)}</span>`:ICON[ic]}${q.vis==='owner'?`<span class="qcorner">${ICON.lock}</span>`:''}</div>`; }
 // Short summary of who may answer / what it's about (chips under the title).
 function qWhoText(q){ const w=q.who||{mode:'all'}; return w.mode==='people'?t('{n} people',{n:(w.pids||[]).length}):w.mode==='meeting'?t('People in the meeting'):w.mode==='free'?t('People free then'):t('Everyone'); }
 function qLinkText(q){ const ms=qMeets(q);
@@ -4966,6 +4976,7 @@ function qCard(q,fill){
   const d=P.data, adm=d.isAdmin, fold=!fill&&!!P.qfold&&P.qopen!==q.id, as=qAnswers(q), n=((d.form||{}).rows||[]).length;
   const acts=adm?`<span class="macts"><button type="button" class="qb qgrip" data-qgrip="${q.id}" title="${t('Drag to reorder')}" aria-label="${t('Drag to reorder')}">${ICON.grip}</button><button type="button" class="qb" data-qedit="${q.id}" title="${t('Edit question')}" aria-label="${t('Edit question')}">${ICON.edit}</button>
     <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
+      <button type="button" class="qm-mob" data-qedit="${q.id}">${ICON.edit}<span class="grow">${t('Edit question')}</span></button>
       <button type="button" data-qmv="${q.id}" data-d="-1">${ICON.up}<span class="grow">${t('Move up')}</span></button><button type="button" data-qmv="${q.id}" data-d="1">${ICON.down}<span class="grow">${t('Move down')}</span></button>
       <button type="button" data-qdup="${q.id}">${ICON.copy}<span class="grow">${t('Duplicate')}</span></button><button type="button" data-qprsq="${q.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button>${P.data.draft?'':`<button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>`}
       ${qGroups().length?`<div class="menu-sep"></div><div class="qm-h">${t('Move to')}</div>${q.grp?`<button type="button" data-qmvto="${q.id}" data-g="">${ICON.x}<span class="grow">${t('No questionnaire')}</span></button>`:''}${qGroups().filter(g=>g.id!==q.grp).map(g=>`<button type="button" data-qmvto="${q.id}" data-g="${g.id}">${g.icon?`<span class="qemo-s">${esc(g.icon)}</span>`:ICON.note}<span class="grow">${esc(g.label)}</span></button>`).join('')}`:''}
@@ -5031,13 +5042,14 @@ function qGroupCard(g,qs,fill){
   const sub=fill&&mine.length?t('{a}/{b} answered',{a:done,b:mine.length}):qs.length===1?t('1 question'):t('{n} questions',{n:qs.length});
   const acts=adm?`<span class="macts"><button type="button" class="qb qgrip" data-qggrip="${g.id}" title="${t('Drag to reorder')}" aria-label="${t('Drag to reorder')}">${ICON.grip}</button><button type="button" class="qb" data-qgedit="${g.id}" title="${t('Edit questionnaire')}" aria-label="${t('Edit questionnaire')}">${ICON.edit}</button>
     <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
+      <button type="button" class="qm-mob" data-qgedit="${g.id}">${ICON.edit}<span class="grow">${t('Edit questionnaire')}</span></button>
       <button type="button" data-qgadd="${g.id}">${ICON.plus}<span class="grow">${t('Add a question')}</span></button>
       <button type="button" data-qprsg="${g.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button>
       <button type="button" data-qgmv="${g.id}" data-d="-1">${ICON.up}<span class="grow">${t('Move up')}</span></button><button type="button" data-qgmv="${g.id}" data-d="1">${ICON.down}<span class="grow">${t('Move down')}</span></button>
       <div class="menu-sep"></div><button type="button" data-qgrm="${g.id}">${ICON.x}<span class="grow">${t('Ungroup (keep questions)')}</span></button><button type="button" class="danger" data-qgrmall="${g.id}">${ICON.trash}<span class="grow">${t('Delete with its questions')}</span></button></div></details></span>`:'';
   const newQ=P.qedit&&P.qedit.isNew&&P.qedit.type!=='group'&&P.qedit.grp===g.id?qEditor():'';
   const done1=fill&&mine.length&&done===mine.length;
-  return `<section class="qgroup${col?' col':''}${done1?' done':''}" id="qg_${g.id}" data-qgcard="${g.id}"><div class="qg-h">${qTile(g)}<button type="button" class="qg-t" data-qgtog="${g.id}" aria-expanded="${!col}"><b>${esc(g.label)}</b><span class="qg-sub">${done1?ICON.check:''}${sub}</span></button>${acts}<button type="button" class="qb qg-chev" data-qgtog="${g.id}" aria-label="${col?t('Show'):t('Hide')}">${ICON.chevd}</button></div>
+  return `<section class="qgroup${col?' col':''}${done1?' done':''}" id="qg_${g.id}" data-qgcard="${g.id}"><div class="qg-h">${qTile(g)}<button type="button" class="qg-t" data-qgtog="${g.id}" aria-expanded="${!col}"><b>${esc(g.label)}</b><span class="qg-sub">${done1?ICON.check:''}${sub}</span>${fill&&mine.length?`<span class="qg-prog" style="--p:${Math.round(done/mine.length*100)}%"><i></i></span>`:''}</button>${acts}<button type="button" class="qb qg-chev" data-qgtog="${g.id}" aria-label="${col?t('Show'):t('Hide')}">${ICON.chevd}</button></div>
     ${col&&!newQ?'':`<div class="qg-b">${g.help?`<div class="qhelp">${linkText(g.help)}</div>`:''}<div class="mmeta">${qLwChips(g)}</div><div class="qlist">${qs.map(q=>qCardOrEd(q,fill)).join('')}${newQ}${!qs.length&&!newQ?`<div class="muted small qnone">${t('No questions in it yet.')}</div>`:''}</div>${adm&&!newQ?`<button type="button" class="btn sm ghost withic qg-add" data-qgadd="${g.id}">${ICON.plus}<span>${t('Question')}</span></button>`:''}</div>`}</section>`;
 }
 function qMeetChips(m){ const qs=qLinked(m.id);
