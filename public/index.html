@@ -1473,17 +1473,39 @@
   .sum-list dt{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
   .sum-list dd{margin:0;font-size:14px}
   .sum-btn{width:100%;min-height:42px;margin-top:16px;font-size:14.5px}
-  .prs{margin-bottom:var(--s4);padding-top:12px;padding-bottom:12px} .prs-h{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:13.5px}
-  .prs-rail{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:thin}
-  .prs-t{position:relative;flex:none;display:flex;align-items:stretch;border:1px solid var(--line);border-radius:12px;background:var(--card)} .prs-t:hover{border-color:var(--line-strong)}
-  .prs-t.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
-  .prs-b{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border:0;background:none;color:var(--ink);font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;border-radius:12px;white-space:nowrap}
-  .prs-ic{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--sunken);font-size:17px;line-height:1} .prs-ic svg{width:15px;height:15px;color:var(--muted)}
-  .prs-more{align-self:center;margin-right:4px} .prs-more>summary{width:26px;height:26px}
-  .prs-sep{flex:none;width:1px;margin:6px 2px;background:var(--line)}
-  .prs-qs{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 6px 8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);font-size:13px}
-  .prs-qs>svg{width:15px;height:15px;color:var(--accent);flex:none}
+  .prs{margin-bottom:var(--s4);padding:0;overflow:hidden}
+  .prs-field{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+  .prs-field:hover{background:var(--sunken)} .prs-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .prs-tx b{font-size:15px} .prs-l{font-size:11.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .prs-s{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prs-go{flex:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:550;color:var(--accent-ink)} .prs-go svg{width:14px;height:14px}
+  .prs-ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--sunken);font-size:20px;line-height:1} .prs-ic svg{width:17px;height:17px;color:var(--muted)}
+  .prs-qs{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);font-size:13px}
+  .prs-qs>summary{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;cursor:pointer;list-style:none} .prs-qs>summary::-webkit-details-marker{display:none}
+  .prs-qs>summary>svg{width:15px;height:15px;color:var(--accent);flex:none} .prs-qs .ps-chev svg{width:14px;height:14px;color:var(--muted)} .prs-qs[open] .ps-chev{transform:rotate(180deg)}
+  .prs-qs ul{margin:0;padding:2px 12px 8px 12px;list-style:none;display:flex;flex-direction:column;gap:3px;color:var(--ink-2)} .prs-qs li i{font-style:normal;margin-right:5px}
   .prs-save{width:100%;margin-top:6px;justify-content:center}
+  .pr-g{display:flex;align-items:center;gap:8px} .pr-g svg{width:16px;height:16px;color:var(--muted);flex:none} .pr-g input{flex:1}
+  .prspick{width:min(580px,calc(100vw - 32px));height:min(720px,calc(100dvh - 48px));display:none;flex-direction:column} .prspick[open]{display:flex}
+  .ps-top{display:flex;flex-direction:column;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .ps-s{display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)} .ps-s svg{width:16px;height:16px;color:var(--muted);flex:none}
+  .ps-s input{flex:1;border:0;background:none;padding:9px 0;min-width:0;outline:0;box-shadow:none} .ps-s:focus-within{border-color:var(--accent)}
+  .ps-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px} .ps-cats::-webkit-scrollbar{display:none}
+  .ps-cat{flex:none;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink-2);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+  .ps-cat.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ps-list{flex:1;overflow-y:auto;padding:6px 8px calc(12px + env(safe-area-inset-bottom));overscroll-behavior:contain}
+  .ps-gh{display:flex;align-items:center;gap:8px;width:100%;padding:12px 8px 6px;border:0;background:none;color:var(--ink);font:inherit;font-size:13px;cursor:pointer;position:sticky;top:-6px;background:var(--card);z-index:1}
+  .ps-gh b{flex:1;text-align:left} .ps-n{color:var(--muted);font-size:12px} .ps-chev{display:inline-flex;transition:transform .15s} .ps-chev svg{width:15px;height:15px;color:var(--muted)}
+  .ps-g.col .ps-gh .ps-chev{transform:rotate(-90deg)}
+  .ps-row{border-radius:12px;outline:0} .ps-row:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+  .ps-main{display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 8px;border-radius:12px;cursor:pointer} .ps-main:hover{background:var(--sunken)}
+  .ps-row.open{background:var(--sunken)} .ps-row.open .ps-main .ps-chev{transform:rotate(180deg)} .ps-row .prs-ic{width:36px;height:36px;background:var(--card);border:1px solid var(--line)}
+  .ps-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px} .ps-tx b{font-size:14.5px} .ps-tx span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ps-cur svg{width:17px;height:17px;color:var(--accent)} .ps-more>summary{width:28px;height:28px}
+  .ps-prev{display:flex;flex-direction:column;gap:10px;padding:0 10px 10px 56px}
+  .ps-qs{display:flex;flex-wrap:wrap;gap:5px} .ps-q{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ps-q i{font-style:normal}
+  .ps-act{display:flex;align-items:center;gap:10px} .ps-none{padding:24px 12px;text-align:center}
+  @media (max-width:560px){ .prspick{height:88dvh} .ps-prev{padding-left:10px} .prs-go{padding:6px 8px} .prs-go{font-size:0;gap:0} .prs-go svg{width:16px;height:16px} }
   .new-bar{display:none}
   @media (max-width:899px){
     .new-bar{display:flex;align-items:center;gap:12px;position:sticky;bottom:0;z-index:30;margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
@@ -2849,29 +2871,89 @@ function choice(name,opts,cur){
 }
 // ---- Poll presets: built-in starting points and the account's own (GET/POST/PATCH/DELETE /api/me/presets).
 // data = the New poll form's settings (no dates or password; days = length of a one-off range) plus questions.
-function builtinPresets(){ const g=(id,label,icon,last)=>({id,type:'group',label,icon,link:{to:'after',...(last?{last:true}:{})},who:{mode:'meeting'}});
-  const food={type:'short',label:t('Food preferences or allergies'),icon:'🍽️',vis:'owner'};
+// The built-in presets, by group (PRESET_CATS). Builders keep the questions short: QB.place / pick / yn / text / long / rate / after / grp / priv.
+const PRESET_CATS=()=>[['friends','🎉',t('Friends & family')],['trips','🧳',t('Trips & outings')],['sports','⚽',t('Sports & hobbies')],['work','💼',t('Work & school')],['clubs','🤝',t('Clubs & volunteering')]];
+const QB={
+  place:(label,o={})=>({type:'radio',label,icon:'📍',place:true,add:true,options:[],...o}),
+  pick:(type,label,opts,o={})=>({type,label,options:opts.map(l=>({label:l})),...o}),
+  yn:(label,cnt,max=20,o={})=>({type:'yesno',label,...(cnt?{count:{label:cnt,max}}:{}),...o}),
+  text:(label,o={})=>({type:'short',label,...o}),
+  long:(label,o={})=>({type:'long',label,...o}),
+  rate:(label,o={})=>({type:'rating',label,icon:'⭐',rating:{max:5,...(o.lo?{lo:o.lo}:{}),...(o.hi?{hi:o.hi}:{})},...(o.grp?{grp:o.grp}:{})}),
+  after:(q,last=true)=>({...q,link:{to:'after',...(last?{last:true}:{})},who:{mode:'meeting'}}),
+  grp:(id,label,icon,after)=>({id,type:'group',label,icon,...(after?{link:{to:'after',last:true},who:{mode:'meeting'}}:{link:{to:'poll'},who:{mode:'all'}})}),
+  priv:q=>({...q,vis:'owner'}),
+};
+function builtinPresets(){
+  const food=()=>QB.priv(QB.text(t('Food preferences or allergies'),{icon:'🍽️'}));
+  const one=(days,ans,hs,he,wd,o={})=>({kind:'single',days,answerMode:ans,hourStart:hs,hourEnd:he,...(wd?{dayPattern:{wd}}:{}),allowComments:true,remindDays:2,...o});
+  const ser=(unit,ans,hs,he,wd,o={})=>({kind:'series',unit,every:1,openDays:unit==='week'?6:11,deadlineDays:unit==='week'?2:4,answerMode:ans,hourStart:hs,hourEnd:he,...(wd?{dayPattern:{wd}}:{}),allowComments:true,remindDays:1,...o});
+  const wk=(hs,he,wd,o={})=>({kind:'weekly',answerMode:'slots',hourStart:hs,hourEnd:he,...(wd?{dayPattern:{wd}}:{}),allowComments:true,...o});
+  const WE=[5,6], WD=[0,1,2,3,4], P=(cat,id,icon,name,title,data,questions)=>({id,cat,icon,name,data:{title,icon,...data,questions}});
   return [
-  {id:'b_reh',icon:'🎸',name:t('Rehearsals'),data:{title:t('Band rehearsals'),kind:'series',unit:'month',every:1,openDays:11,deadlineDays:4,answerMode:'slots',hourStart:18,hourEnd:22,allowComments:true,remindDays:2,icon:'🎸',
-    questions:[g('grpReh1',t('After the rehearsal'),'🎵',true),{type:'rating',label:t('How was the rehearsal?'),icon:'⭐',rating:{max:5},grp:'grpReh1'},{type:'short',label:t('What should we practise next?'),grp:'grpReh1'},
-      {type:'yesno',label:t('Can you bring your gear?'),icon:'🎵'}]}},
-  {id:'b_trip',icon:'🏕️',name:t('Weekend trip'),data:{title:t('Weekend trip'),kind:'single',days:56,answerMode:'days',hourStart:8,hourEnd:24,dayPattern:{wd:[4,5,6]},allowComments:true,remindDays:2,icon:'🏕️',
-    questions:[{type:'radio',label:t('Where to?'),icon:'📍',place:true,add:true,options:[]},{id:'grpTrip1',type:'group',label:t('Travel'),icon:'🚗',link:{to:'poll'},who:{mode:'all'}},
-      {type:'yesno',label:t('Can you drive?'),icon:'🚗',count:{label:t('Free seats'),max:8},grp:'grpTrip1'},{type:'select',label:t('Budget per person'),icon:'💰',options:[{label:'< 100 €'},{label:'100–250 €'},{label:'250–500 €'},{label:'> 500 €'}],grp:'grpTrip1'},food]}},
-  {id:'b_sport',icon:'⚽',name:t('Weekly sport slot'),data:{title:t('Weekly sport'),kind:'weekly',answerMode:'slots',hourStart:17,hourEnd:22,allowComments:true,icon:'⚽',
-    questions:[{type:'rating',label:t('How was the last session?'),icon:'⭐',rating:{max:5},link:{to:'after',last:true},who:{mode:'meeting'}},{type:'yesno',label:t('Can you bring a ball?'),icon:'⚽'}]}},
-  {id:'b_dinner',icon:'🍽️',name:t('Dinner'),data:{title:t('Dinner together'),kind:'single',days:21,answerMode:'slots',hourStart:18,hourEnd:23,allowComments:true,remindDays:2,icon:'🍽️',
-    questions:[{type:'radio',label:t('Where shall we eat?'),icon:'📍',place:true,add:true,options:[]},{type:'yesno',label:t('Bringing someone?'),icon:'👥',count:{label:t('How many?'),max:5}},food]}}]; }
+  // Friends & family
+  P('friends','b_dinner','🍽️',t('Dinner'),t('Dinner together'),one(21,'slots',18,23),
+    [QB.place(t('Where shall we eat?')),QB.yn(t('Bringing someone?'),t('How many?'),5,{icon:'👥'}),food()]),
+  P('friends','b_bday','🎂',t('Birthday party'),t('Birthday party'),one(28,'slots',16,24,[4,5,6]),
+    [QB.yn(t('Bringing someone?'),t('How many?'),5,{icon:'👥'}),QB.yn(t('Chip in for a joint present?'),t('How much (€)?'),99,{icon:'🎁'}),QB.text(t('Music wishes'),{icon:'🎵'}),food()]),
+  P('friends','b_games','🎲',t('Game night'),t('Game night'),one(21,'slots',17,24),
+    [QB.pick('check',t('Which games?'),[t('Board games'),t('Card games'),t('Video games')],{icon:'🎲',add:true}),QB.place(t('Who hosts? (place)'),{icon:'🏠'}),QB.yn(t('Can you bring snacks?'),'',20,{icon:'🍕'})]),
+  P('friends','b_movie','🎬',t('Movie night'),t('Movie night'),one(14,'slots',17,24),
+    [QB.pick('radio',t('Which film?'),[],{icon:'🎬',add:true}),QB.pick('radio',t('Cinema or at home?'),[t('Cinema'),t('At home')],{icon:'🏠'}),QB.yn(t('Can you bring snacks?'),'',20,{icon:'🍿'})]),
+  P('friends','b_family','👨‍👩‍👧',t('Family get-together'),t('Family get-together'),one(42,'days',8,24,WE),
+    [QB.place(t('Where shall we meet?')),QB.yn(t('Staying overnight?'),t('How many people?'),10,{icon:'🛏️'}),QB.yn(t('Bringing a dish?'),'',20,{icon:'🥗'}),food()]),
+  // Trips & outings
+  P('trips','b_trip','🏕️',t('Weekend trip'),t('Weekend trip'),one(56,'days',8,24,[4,5,6]),
+    [QB.place(t('Where to?')),QB.grp('grpTrip1',t('Travel'),'🚗'),QB.yn(t('Can you drive?'),t('Free seats'),8,{icon:'🚗',grp:'grpTrip1'}),
+     QB.pick('select',t('Budget per person'),['< 100 €','100–250 €','250–500 €','> 500 €'],{icon:'💰',grp:'grpTrip1'}),food()]),
+  P('trips','b_holiday','🏖️',t('Holiday'),t('Holiday together'),one(92,'days',8,24),
+    [QB.place(t('Where shall we go?'),{icon:'✈️'}),QB.pick('select',t('Budget per person'),['< 500 €','500–1000 €','1000–2000 €','> 2000 €'],{icon:'💰'}),
+     QB.pick('radio',t('Where to stay?'),[t('Hotel'),t('Holiday flat'),t('Camping')],{icon:'🏨',add:true}),QB.pick('select',t('How many nights?'),['2–3','4–7','8–14'],{icon:'📅'})]),
+  P('trips','b_hike','🥾',t('Day hike'),t('Day hike'),one(42,'days',8,24,WE),
+    [QB.place(t('Which route?'),{icon:'🥾'}),QB.pick('radio',t('How hard may it be?'),[t('Easy'),t('Medium'),t('Hard')],{icon:'⛰️'}),QB.yn(t('Can you drive?'),t('Free seats'),8,{icon:'🚗'}),QB.yn(t('Bringing food for everyone?'),'',20,{icon:'🥪'})]),
+  P('trips','b_fest','🎟️',t('Concert / festival'),t('Concert'),one(60,'days',8,24),
+    [QB.yn(t('Do you have a ticket?'),t('How many?'),10,{icon:'🎟️'}),QB.yn(t('Travel together?'),t('Free seats'),8,{icon:'🚆'}),QB.yn(t('Camping?'),'',20,{icon:'⛺'})]),
+  // Sports & hobbies
+  P('sports','b_sport','⚽',t('Weekly sport slot'),t('Weekly sport'),wk(17,22),
+    [QB.after(QB.rate(t('How was the last session?'))),QB.yn(t('Can you bring a ball?'),'',20,{icon:'⚽'})]),
+  P('sports','b_run','🏃',t('Running group'),t('Running group'),wk(6,21),
+    [QB.pick('select',t('Your pace'),[t('< 5 min/km'),t('5–6 min/km'),t('6–7 min/km'),t('> 7 min/km')],{icon:'🏃'}),QB.pick('radio',t('Distance'),['5 km','10 km','15+ km'],{icon:'📍'}),QB.after(QB.rate(t('How was the last run?')))]),
+  P('sports','b_reh','🎸',t('Band rehearsals'),t('Band rehearsals'),ser('month','slots',18,22),
+    [QB.grp('grpReh1',t('After the rehearsal'),'🎵',true),QB.rate(t('How was the rehearsal?'),{grp:'grpReh1'}),QB.text(t('What should we practise next?'),{grp:'grpReh1'}),
+     QB.yn(t('Can you bring your gear?'),'',20,{icon:'🎵'})]),
+  P('sports','b_book','📚',t('Book club'),t('Book club'),ser('month','slots',18,23),
+    [QB.pick('radio',t('Which book next?'),[],{icon:'📚',add:true}),QB.yn(t('Have you finished the book?'),'',20,{icon:'✅'}),QB.after(QB.rate(t('How was the last meeting?')))]),
+  // Work & school
+  P('work','b_team','💼',t('Team meeting'),t('Team meeting'),ser('week','slots',9,17,WD,{remindDays:null}),
+    [QB.long(t('Topics for the agenda'),{icon:'📝'}),QB.pick('radio',t('In the office or remote?'),[t('In the office'),t('Remote')],{icon:'🏢'}),QB.after(QB.rate(t('How useful was the last meeting?')))]),
+  P('work','b_offsite','🧭',t('Workshop / offsite'),t('Team offsite'),one(60,'days',8,24,WD),
+    [QB.pick('check',t('Which topics matter most to you?'),[],{icon:'💡',add:true}),QB.yn(t('Do you need a place to stay?'),'',20,{icon:'🏨'}),food(),
+     QB.priv(QB.text(t('Accessibility needs'),{icon:'♿'}))]),
+  P('work','b_study','🎓',t('Study group'),t('Study group'),ser('week','slots',16,22),
+    [QB.text(t('Topic for next time'),{icon:'📝'}),QB.place(t('Where shall we meet?')),QB.after(QB.rate(t('How helpful was the last session?')))]),
+  P('work','b_lunch','🥗',t('Lunch with colleagues'),t('Lunch together'),one(14,'slots',11,14,WD),
+    [QB.place(t('Where shall we eat?'),{icon:'🍽️'}),QB.pick('radio',t('Budget'),['< 10 €','10–20 €','> 20 €'],{icon:'💰'})]),
+  // Clubs & volunteering
+  P('clubs','b_club','🤝',t('Club meeting'),t('Club meeting'),ser('month','slots',18,22),
+    [QB.long(t('Items for the agenda'),{icon:'📝'}),QB.pick('radio',t('How will you take part?'),[t('In person'),t('Online')],{icon:'🙋'}),QB.pick('radio',t('Who takes the minutes?'),[],{icon:'🧾',add:true})]),
+  P('clubs','b_volunteer','🙋',t('Volunteer shifts'),t('Volunteer shifts'),one(30,'slots',8,22),
+    [QB.pick('check',t('Which tasks can you do?'),[t('Setting up'),t('Bar / food'),t('Cash desk'),t('Clearing up')],{icon:'✅',add:true}),QB.pick('select',t('How many hours?'),['1–2','3–4','5+'],{icon:'⏰'}),
+     QB.priv(QB.pick('select',t('T-shirt size'),['S','M','L','XL','XXL'],{icon:'👕'}))]),
+  P('clubs','b_kids','🧸',t('Playdates & carpool'),t('Kids’ playdates'),wk(13,19,WD),
+    [QB.yn(t('Can you drive?'),t('Free seats'),8,{icon:'🚗'}),QB.place(t('Pick-up place'),{add:true}),QB.priv(QB.text(t('Allergies or things to know'),{icon:'🧸'}))]),
+  ]; }
 async function loadPresets(){ if(!ME.user) return []; if(ME.presets) return ME.presets;
   try{ ME.presets=(await api('GET','/me/presets')).presets; }catch(e){ ME.presets=[]; } return ME.presets; }
 const qCountText=qs=>{ const n=(qs||[]).filter(x=>x.type!=='group').length, g=(qs||[]).length-n; return (n===1?t('1 question'):t('{n} questions',{n}))+(g?` · ${g===1?t('1 questionnaire'):t('{n} questionnaires',{n:g})}`:''); };
 // Save as preset: name (an existing name is replaced), icon from the data. Resolves with the saved preset's id, or null.
-function presetSave(data,name){ return new Promise(res=>{
+function presetSave(data,name,folder=''){ return new Promise(res=>{
   let d=$('prdlg'); if(!d){ d=document.createElement('dialog'); d.id='prdlg'; d.className='dlg prdlg'; d.setAttribute('aria-labelledby','pr_h'); document.body.appendChild(d); d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
   const mine=ME.presets||[];
   d.innerHTML=`<form method="dialog" id="pr_f"><div class="dlg-h"><span class="qp-ic">${data.icon?esc(data.icon):ICON.copy}</span><h2 id="pr_h">${t('Save as preset')}</h2>${pqb('x',t('Close'),'data-prclose=""')}</div>
     <div class="dlg-b"><input type="text" id="pr_name" maxlength="60" required value="${esc(name||'')}" placeholder="${t('Name, e.g. Band rehearsals')}" aria-label="${t('Name')}" list="pr_names" autocomplete="off">
       <datalist id="pr_names">${mine.map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
+      <label class="pr-g">${ICON.note}<input type="text" id="pr_folder" maxlength="40" value="${esc(folder)}" placeholder="${t('Group: My presets')}" aria-label="${t('Group')}" list="pr_folders" autocomplete="off"></label>
+      <datalist id="pr_folders">${[...new Set(mine.map(myFolder).filter(Boolean))].map(f=>`<option value="${esc(f)}">`).join('')}</datalist>
       <div class="muted small" id="pr_hint">${t('Settings and {q}. No dates, people or password.',{q:qCountText(data.questions)})}</div><div class="err" id="pr_err"></div></div>
     <div class="dlg-f"><span class="grow"></span><button type="button" class="btn ghost" data-prclose>${t('Cancel')}</button><button class="btn primary withic" id="pr_ok">${ICON.check}<span>${t('Save')}</span></button></div></form>`;
   let done=false; const fin=v=>{ if(done) return; done=true; res(v); };
@@ -2881,9 +2963,74 @@ function presetSave(data,name){ return new Promise(res=>{
   d.addEventListener('close',()=>fin(null),{once:true});
   $('pr_f').addEventListener('submit',async e=>{ e.preventDefault(); const nm=$('pr_name').value.trim(); if(!nm){ $('pr_name').focus(); return; }
     $('pr_ok').disabled=true;
-    try{ const r=await api('POST','/me/presets',{name:nm,icon:data.icon||'',data}); ME.presets=null; await loadPresets(); toast(r.replaced?t('Preset replaced'):t('Preset saved')); fin(r.id); d.close(); }
+    const fo=$('pr_folder').value.trim();
+    try{ const r=await api('POST','/me/presets',{name:nm,icon:data.icon||'',data:{...data,folder:fo||undefined}}); ME.presets=null; await loadPresets(); toast(r.replaced?t('Preset replaced'):t('Preset saved')); fin(r.id); d.close(); }
     catch(ex){ $('pr_err').textContent=ex.message; $('pr_ok').disabled=false; } });
   if(!d.open) d.showModal(); setTimeout(()=>{ const i=$('pr_name'); i.focus(); i.select(); },30); }); }
+// ---- The preset picker: search, group chips and a grouped list (built-in groups, then my own groups = data.folder).
+// One dialog (centred on desktop, bottom sheet on phones). ctx = { cur: chosen id, apply(preset|null), changed() }.
+function presetSummary(p){ const d=(p&&p.data)||{}, k=d.kind;
+  const a=k==='series'?(d.unit==='week'?(d.every>1?t('Every {n} weeks',{n:d.every}):t('Every week')):(d.every>1?t('Every {n} months',{n:d.every}):t('Every month'))):k==='weekly'?t('Weekly schedule'):t('One-off');
+  const b={days:t('Whole days'),slots:t('Time slots'),both:t('Whole days or time slots')}[d.answerMode||'both'];
+  return [a,b,d.questions&&d.questions.length?qCountText(d.questions):''].filter(Boolean).join(' · '); }
+const myFolder=p=>(p.data&&p.data.folder)||'';
+function prsGroups(){ const b=builtinPresets(), mine=ME.presets||[];
+  const gs=PRESET_CATS().map(([key,icon,label])=>({key,icon,label,items:b.filter(p=>p.cat===key)}));
+  const fs=[...new Set(mine.map(myFolder))].sort((x,y)=>!x?-1:!y?1:x.localeCompare(y));
+  for(const f of fs) gs.push({key:'mine:'+f,icon:'⭐',label:f||t('My presets'),mine:true,items:mine.filter(p=>myFolder(p)===f)});
+  return gs; }
+const prsFind=id=>id==='blank'?null:[...builtinPresets(),...(ME.presets||[])].find(p=>p.id===id)||null;
+const PK={q:'',cat:'all',open:null,ctx:null};
+function prsOpen(ctx){ PK.ctx=ctx; PK.q=''; PK.open=ctx.cur&&ctx.cur!=='blank'?ctx.cur:null;
+  let d=$('psdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='psdlg'; d.className='dlg prspick'; d.setAttribute('aria-labelledby','ps_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); });
+    d.addEventListener('input',e=>{ if(e.target.id==='ps_q'){ PK.q=e.target.value; prsList(); } });
+    d.addEventListener('click',prsClick); d.addEventListener('dblclick',e=>{ const r=e.target.closest('[data-psrow]'); if(r&&!e.target.closest('details,button')) prsUse(r.dataset.psrow); });
+    d.addEventListener('keydown',prsKey); }
+  d.innerHTML=`<div class="dlg-h"><span class="qp-ic">${ICON.copy}</span><h2 id="ps_h">${t('Start from')}</h2>${pqb('x',t('Close'),'data-psclose=""')}</div>
+    <div class="ps-top"><label class="ps-s">${ICON.search||''}<input type="search" id="ps_q" placeholder="${t('Search presets')}" aria-label="${t('Search presets')}" autocomplete="off"></label><div class="ps-cats" id="ps_cats" role="tablist"></div></div>
+    <div class="ps-list" id="ps_list" role="listbox" aria-labelledby="ps_h"></div>`;
+  prsList(); if(!d.open) d.showModal();
+  requestAnimationFrame(()=>{ const c=d.querySelector('.ps-row.cur'); if(c) c.scrollIntoView({block:'center'}); if(!matchMedia('(pointer:coarse)').matches) $('ps_q').focus(); }); }
+function prsList(){ const L=$('ps_list'); if(!L) return; const gs=prsGroups(), q=PK.q.trim().toLowerCase(), shut=new Set(store.get('prsc',[])), hasMine=gs.some(g=>g.mine);
+  if(PK.cat==='mine'&&!hasMine) PK.cat='all';
+  const chip=(k,ic,l)=>`<button type="button" class="ps-cat${PK.cat===k?' on':''}" data-pscat="${k}" role="tab" aria-selected="${PK.cat===k}">${ic?`<span>${ic}</span>`:''}${esc(l)}</button>`;
+  $('ps_cats').innerHTML=chip('all','',t('All'))+(hasMine?chip('mine','⭐',t('Mine')):'')+PRESET_CATS().map(([k,ic,l])=>chip(k,ic,l)).join('');
+  const hit=(p,g)=>!q||[p.name,g.label,...((p.data&&p.data.questions)||[]).map(x=>x.label)].some(x=>String(x||'').toLowerCase().includes(q));
+  const row=(p,mine)=>{ const id=p?p.id:'blank', open=PK.open===id&&p, cur=PK.ctx&&PK.ctx.cur===id, qs=p&&p.data.questions?p.data.questions.filter(x=>x.type!=='group'):[];
+    const menu=mine?`<details class="dd qmore ps-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm"><button type="button" data-psren="${id}">${ICON.edit}<span class="grow">${t('Rename')}</span></button><button type="button" data-psmove="${id}">${ICON.note}<span class="grow">${t('Move to group')}</span></button><button type="button" class="danger" data-psdel="${id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details>`:'';
+    return `<div class="ps-row${open?' open':''}${cur?' cur':''}" data-psrow="${id}" tabindex="0" role="option" aria-selected="${!!cur}" aria-expanded="${!!open}"><div class="ps-main"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.plus}</span>
+      <span class="ps-tx"><b>${esc(p?p.name:t('Blank'))}</b><span>${esc(p?presetSummary(p):t('Start with an empty poll'))}</span></span>${cur?`<span class="ps-cur">${ICON.check}</span>`:''}${menu}${p?`<span class="ps-chev">${ICON.chevd}</span>`:''}</div>
+      ${open?`<div class="ps-prev">${qs.length?`<div class="ps-qs">${qs.map(x=>`<span class="ps-q">${x.icon?`<i>${esc(x.icon)}</i>`:''}${esc(x.label)}</span>`).join('')}</div>`:`<div class="muted small">${t('No questions')}</div>`}
+        <div class="ps-act"><span class="muted small grow">${t('Fills in the title, settings and questions.')}</span><button type="button" class="btn sm primary withic" data-psuse="${id}">${ICON.check}<span>${t('Use')}</span></button></div></div>`:''}</div>`; };
+  let h=!q&&PK.cat==='all'?row(null):'', n=0;
+  for(const g of gs){ if(PK.cat!=='all'&&!(PK.cat==='mine'?g.mine:g.key===PK.cat)) continue;
+    const its=g.items.filter(p=>hit(p,g)); if(!its.length) continue; n+=its.length;
+    const col=!q&&shut.has(g.key);
+    h+=`<div class="ps-g${col?' col':''}"><button type="button" class="ps-gh" data-psgrp="${esc(g.key)}" aria-expanded="${!col}"><span>${g.icon}</span><b>${esc(g.label)}</b><span class="ps-n">${its.length}</span><span class="ps-chev">${ICON.chevd}</span></button>${col?'':its.map(p=>row(p,g.mine)).join('')}</div>`; }
+  L.innerHTML=h+(q&&!n?`<div class="muted small ps-none">${t('No presets found.')}</div>`:''); }
+function prsUse(id){ const c=PK.ctx; if(!c) return; c.cur=id; c.apply(prsFind(id)); $('psdlg').close(); }
+async function prsClick(e){ const b=e.target.closest('[data-psclose],[data-pscat],[data-psgrp],[data-psuse],[data-psren],[data-psmove],[data-psdel],[data-psrow]'); if(!b) return;
+  const ds=b.dataset, d=$('psdlg');
+  if(ds.psclose!==undefined){ d.close(); return; }
+  if(ds.pscat){ PK.cat=ds.pscat; prsList(); return; }
+  if(ds.psgrp){ const s=new Set(store.get('prsc',[])); s.has(ds.psgrp)?s.delete(ds.psgrp):s.add(ds.psgrp); store.set('prsc',[...s]); prsList(); return; }
+  if(ds.psuse){ prsUse(ds.psuse); return; }
+  const pid=ds.psren||ds.psmove||ds.psdel;
+  if(pid){ const p=(ME.presets||[]).find(x=>x.id===pid); if(!p) return; const det=b.closest('details'); if(det) det.open=false;
+    try{
+      if(ds.psren){ const n=prompt(t('New name'),p.name); if(!n||!n.trim()||n.trim()===p.name) return; await api('PATCH','/me/presets/'+p.id,{name:n.trim()}); p.name=n.trim(); }
+      else if(ds.psmove){ const n=prompt(t('Group (empty = My presets)'),myFolder(p)); if(n===null) return; await api('PATCH','/me/presets/'+p.id,{folder:n.trim()}); p.data={...p.data,folder:n.trim()||undefined}; }
+      else { if(!confirm(t('Delete the preset “{n}”?',{n:p.name}))) return; await api('DELETE','/me/presets/'+p.id); ME.presets=ME.presets.filter(x=>x.id!==p.id); if(PK.ctx&&PK.ctx.cur===p.id) PK.ctx.cur='blank'; toast(t('Preset deleted')); }
+    }catch(ex){ toast(ex.message); return; }
+    prsList(); if(PK.ctx&&PK.ctx.changed) PK.ctx.changed(); return; }
+  if(ds.psrow&&!e.target.closest('details')){ const id=ds.psrow; if(id==='blank'){ prsUse(id); return; } PK.open=PK.open===id?null:id; prsList(); const r=d.querySelector(`[data-psrow="${id}"]`); if(r){ r.focus({preventScroll:true}); r.scrollIntoView({block:'nearest'}); } }
+}
+function prsKey(e){ const r=e.target.closest&&e.target.closest('[data-psrow]');
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ const rows=[...document.querySelectorAll('#ps_list [data-psrow]')]; if(!rows.length) return; e.preventDefault();
+    const i=r?rows.indexOf(r):-1, n=rows[Math.max(0,Math.min(rows.length-1,i+(e.key==='ArrowDown'?1:-1)))]; n.focus(); n.scrollIntoView({block:'nearest'}); return; }
+  if(e.key==='Enter'&&r&&e.target===r){ e.preventDefault(); const id=r.dataset.psrow; if(id==='blank'||PK.open===id) prsUse(id); else { PK.open=id; prsList(); const x=document.querySelector(`[data-psrow="${id}"]`); if(x) x.focus(); } } }
 // A poll's settings and the shown round's questions as preset data (Settings → Save as preset).
 function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
@@ -2975,7 +3122,8 @@ function renderNew(){
     rows.push([t('Access'), priv.join(', ')]);
     if(mail&&$('remind').checked&&$('remindDays').value!=='') rows.push([t('Reminder'), t('{n} days before reply-by',{n:+$('remindDays').value})]);
     $('sumList').innerHTML=rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
-    $('sumQs').innerHTML=NP.qs&&NP.qs.length?`<div class="prs-qs">${ICON.ask}<span class="grow">${esc(qCountText(NP.qs))}</span>${pqb('x',t('Don’t add these questions'),'data-prsqx=""')}</div>`:'';
+    const qn=(NP.qs||[]).filter(x=>x.type!=='group');
+    $('sumQs').innerHTML=NP.qs&&NP.qs.length?`<details class="prs-qs"${NP.qsOpen?' open':''}><summary>${ICON.ask}<span class="grow">${esc(qCountText(NP.qs))}</span>${pqb('x',t('Don’t add these questions'),'data-prsqx=""')}<span class="ps-chev">${ICON.chevd}</span></summary><ul>${qn.map(x=>`<li>${x.icon?`<i>${esc(x.icon)}</i>`:''}${esc(x.label)}</li>`).join('')}</ul></details>`:'';
   };
   // Presets: the rail above the form fills it in (title, settings) and carries the questions along (NP.qs).
   const NP={pick:'blank',qs:null};
@@ -2998,21 +3146,15 @@ function renderNew(){
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
     if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
     NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; sum(); };
-  const railHtml=()=>{ const tile=(p,mine)=>`<div class="prs-t${NP.pick===p.id?' on':''}"><button type="button" class="prs-b" data-prs="${p.id}" aria-pressed="${NP.pick===p.id}" title="${esc(p.data&&p.data.questions?qCountText(p.data.questions):p.name)}"><span class="prs-ic">${p.icon?esc(p.icon):ICON.plus}</span><span class="prs-n">${esc(p.name)}</span></button>${mine?`<details class="dd qmore prs-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm"><button type="button" data-prsren="${p.id}">${ICON.edit}<span class="grow">${t('Rename')}</span></button><button type="button" class="danger" data-prsdel="${p.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details>`:''}</div>`;
-    const mine=ME.presets||[];
-    return `<div class="prs-h"><b>${t('Start from')}</b>${tip(t('A preset fills in the title, the settings and the questions. Save your own from a poll’s Settings or with <b>Save as preset</b> here.'))}</div><div class="prs-rail">${tile({id:'blank',name:t('Blank'),icon:''})}${builtinPresets().map(p=>tile(p)).join('')}${mine.length?'<span class="prs-sep"></span>':''}${mine.map(p=>tile(p,true)).join('')}</div>`; };
-  const rail=()=>{ $('prs').innerHTML=railHtml(); };
-  rail(); loadPresets().then(()=>{ if($('prs')) rail(); });
-  $('prs').addEventListener('click',async e=>{ const b=e.target.closest('[data-prs],[data-prsren],[data-prsdel]'); if(!b) return;
-    if(b.dataset.prs){ const id=b.dataset.prs, pr=id==='blank'?null:[...builtinPresets(),...(ME.presets||[])].find(p=>p.id===id); NP.pick=id; applyPreset(pr); rail(); return; }
-    const p=(ME.presets||[]).find(x=>x.id===(b.dataset.prsren||b.dataset.prsdel)); if(!p) return; b.closest('details').open=false;
-    if(b.dataset.prsren){ const n=prompt(t('New name'),p.name); if(!n||!n.trim()||n.trim()===p.name) return;
-      try{ await api('PATCH','/me/presets/'+p.id,{name:n.trim()}); p.name=n.trim(); rail(); }catch(ex){ toast(ex.message); } return; }
-    if(!confirm(t('Delete the preset “{n}”?',{n:p.name}))) return;
-    try{ await api('DELETE','/me/presets/'+p.id); ME.presets=ME.presets.filter(x=>x.id!==p.id); if(NP.pick===p.id) NP.pick='blank'; rail(); toast(t('Preset deleted')); }catch(ex){ toast(ex.message); } });
-  $('sumQs').addEventListener('click',e=>{ if(e.target.closest('[data-prsqx]')){ NP.qs=null; sum(); } });
+  const field=()=>{ const p=prsFind(NP.pick);
+    $('prs').innerHTML=`<button type="button" class="prs-field" id="prsBtn" aria-haspopup="dialog"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.copy}</span><span class="prs-tx"><span class="prs-l">${t('Start from')}</span><b>${esc(p?p.name:t('Blank'))}</b><span class="prs-s">${esc(p?presetSummary(p):t('{n} presets: dinner, trips, sport, team meetings…',{n:builtinPresets().length+(ME.presets||[]).length}))}</span></span><span class="prs-go">${t('Change')}${ICON.chevd}</span></button>`; };
+  field(); loadPresets().then(()=>{ if($('prs')) field(); });
+  const ctx={get cur(){ return NP.pick; }, set cur(v){ NP.pick=v; }, apply:pr=>{ applyPreset(pr); field(); }, changed:()=>{ if(!prsFind(NP.pick)) NP.pick='blank'; field(); }};
+  $('prs').addEventListener('click',async e=>{ if(!e.target.closest('#prsBtn')) return; await loadPresets(); prsOpen(ctx); });
+  $('sumQs').addEventListener('click',e=>{ if(e.target.closest('[data-prsqx]')){ e.preventDefault(); NP.qs=null; sum(); } });
+  $('sumQs').addEventListener('toggle',e=>{ NP.qsOpen=e.target.open; },true);
   $('prSave').addEventListener('click',async()=>{ const d=formData(), cur=(ME.presets||[]).find(p=>p.id===NP.pick);
-    const id=await presetSave(d,cur?cur.name:d.title); if(id){ NP.pick=id; rail(); } });
+    const id=await presetSave(d,cur?cur.name:d.title,cur?myFolder(cur):''); if(id){ NP.pick=id; field(); } });
   const f=$('f');
   f.addEventListener('input',e=>{ $('ferr').textContent=''; if(e.target.id==='title') pickerSetText('new',e.target.value); sum(); });
   f.addEventListener('change',e=>{ const n=e.target.name||e.target.id;
@@ -7725,6 +7867,109 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"5–6 min/km": "5–6 min/km",
+"6–7 min/km": "6–7 min/km",
+"< 5 min/km": "< 5 min/km",
+"> 7 min/km": "> 7 min/km",
+"Accessibility needs": "Barrierefreiheit: was brauchst du?",
+"Allergies or things to know": "Allergien oder Wichtiges zu wissen",
+"At home": "Zu Hause",
+"Bar / food": "Bar / Essen",
+"Birthday party": "Geburtstagsfeier",
+"Board games": "Brettspiele",
+"Book club": "Buchclub",
+"Bringing a dish?": "Bringst du etwas zu essen mit?",
+"Bringing food for everyone?": "Bringst du Essen für alle mit?",
+"Budget": "Budget",
+"Camping": "Camping",
+"Camping?": "Zelten?",
+"Can you bring snacks?": "Kannst du Snacks mitbringen?",
+"Card games": "Kartenspiele",
+"Cash desk": "Kasse",
+"Chip in for a joint present?": "Beim gemeinsamen Geschenk mitmachen?",
+"Cinema": "Kino",
+"Cinema or at home?": "Kino oder zu Hause?",
+"Clearing up": "Aufräumen",
+"Club meeting": "Vereinstreffen",
+"Clubs & volunteering": "Vereine & Ehrenamt",
+"Concert": "Konzert",
+"Concert / festival": "Konzert / Festival",
+"Day hike": "Tageswanderung",
+"Distance": "Strecke",
+"Do you have a ticket?": "Hast du ein Ticket?",
+"Do you need a place to stay?": "Brauchst du eine Unterkunft?",
+"Easy": "Leicht",
+"Family get-together": "Familientreffen",
+"Fills in the title, settings and questions.": "Füllt Titel, Einstellungen und Fragen aus.",
+"Friends & family": "Freunde & Familie",
+"Game night": "Spieleabend",
+"Group (empty = My presets)": "Gruppe (leer = Meine Vorlagen)",
+"Group: My presets": "Gruppe: Meine Vorlagen",
+"Hard": "Schwer",
+"Have you finished the book?": "Hast du das Buch durch?",
+"Holiday": "Urlaub",
+"Holiday flat": "Ferienwohnung",
+"Holiday together": "Gemeinsamer Urlaub",
+"Hotel": "Hotel",
+"How hard may it be?": "Wie anspruchsvoll darf es sein?",
+"How helpful was the last session?": "Wie hilfreich war das letzte Treffen?",
+"How many hours?": "Wie viele Stunden?",
+"How many nights?": "Wie viele Nächte?",
+"How many people?": "Wie viele Personen?",
+"How much (€)?": "Wie viel (€)?",
+"How useful was the last meeting?": "Wie nützlich war das letzte Meeting?",
+"How was the last meeting?": "Wie war das letzte Treffen?",
+"How was the last run?": "Wie war der letzte Lauf?",
+"How will you take part?": "Wie nimmst du teil?",
+"In person": "Vor Ort",
+"In the office": "Im Büro",
+"In the office or remote?": "Im Büro oder remote?",
+"Items for the agenda": "Punkte für die Tagesordnung",
+"Kids’ playdates": "Spielverabredungen",
+"Lunch together": "Gemeinsam Mittag essen",
+"Lunch with colleagues": "Mittagessen mit Kollegen",
+"Medium": "Mittel",
+"Mine": "Meine",
+"Move to group": "In Gruppe verschieben",
+"Movie night": "Filmabend",
+"Music wishes": "Musikwünsche",
+"My presets": "Meine Vorlagen",
+"No presets found.": "Keine Vorlagen gefunden.",
+"No questions": "Keine Fragen",
+"Online": "Online",
+"Pick-up place": "Abholort",
+"Playdates & carpool": "Spielen & Fahrgemeinschaft",
+"Remote": "Remote",
+"Running group": "Lauftreff",
+"Search presets": "Vorlagen suchen",
+"Setting up": "Aufbauen",
+"Sports & hobbies": "Sport & Hobbys",
+"Start with an empty poll": "Mit einer leeren Umfrage starten",
+"Staying overnight?": "Übernachtest du?",
+"Study group": "Lerngruppe",
+"T-shirt size": "T-Shirt-Größe",
+"Team meeting": "Team-Meeting",
+"Team offsite": "Team-Offsite",
+"Topic for next time": "Thema fürs nächste Mal",
+"Topics for the agenda": "Themen für die Agenda",
+"Travel together?": "Gemeinsam anreisen?",
+"Trips & outings": "Reisen & Ausflüge",
+"Video games": "Videospiele",
+"Volunteer shifts": "Helferschichten",
+"Where shall we go?": "Wohin soll es gehen?",
+"Where to stay?": "Wo übernachten?",
+"Which book next?": "Welches Buch als Nächstes?",
+"Which film?": "Welcher Film?",
+"Which games?": "Welche Spiele?",
+"Which route?": "Welche Route?",
+"Which tasks can you do?": "Welche Aufgaben kannst du übernehmen?",
+"Which topics matter most to you?": "Welche Themen sind dir am wichtigsten?",
+"Who hosts? (place)": "Wer ist Gastgeber? (Ort)",
+"Who takes the minutes?": "Wer schreibt Protokoll?",
+"Work & school": "Arbeit & Schule",
+"Workshop / offsite": "Workshop / Offsite",
+"Your pace": "Dein Tempo",
+"{n} presets: dinner, trips, sport, team meetings…": "{n} Vorlagen: Essen, Ausflüge, Sport, Team-Meetings…",
 "<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll you save as a starting point for new polls. They contain no dates, people, answers or passwords, and you can delete them on the New poll page.": "<b>Vorlagen (nur wenn du eine speicherst):</b> Name, Symbol, Einstellungen und Fragen einer Umfrage, die du als Ausgangspunkt für neue Umfragen speicherst. Sie enthalten keine Daten, Personen, Antworten oder Passwörter, und du kannst sie auf der Seite Neue Umfrage löschen.",
 "1 questionnaire": "1 Fragebogen",
 "{n} questionnaires": "{n} Fragebögen",

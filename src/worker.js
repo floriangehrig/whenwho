@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-pVj2RKKiL/zJY0QIqzjExhCEYex8EJSMv9gZYNCxLU0=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-MjXb14u2VgEhjLcj3kCHGgb947c34V8dJcpzEj0NwuE=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1199,7 +1199,7 @@ function groupInput(b, partial, user) {
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
 const MAX_PRESETS = 30, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
-  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions'];
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
   if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
@@ -1218,6 +1218,7 @@ function presetData(d) {
   // Same checks as creating a poll (dates aren't part of a preset).
   readPollSettings({ ...out, firstStart: out.unit === 'month' ? '2000-01' : '2000-01-03', title: out.title || 'x' }, null);
   if (out.days !== undefined) out.days = int(out.days, 1, MAX_RANGE_DAYS, 'Days');
+  if (out.folder !== undefined) { out.folder = str(out.folder, 40, 'Group').trim(); if (!out.folder) delete out.folder; } // the picker's group for my presets
   if (out.questions !== undefined) out.questions = presetQuestions(out.questions);
   const s = JSON.stringify(out);
   if (s.length > 64000) throw new HttpError(413, 'This preset is too large');
@@ -1256,6 +1257,11 @@ async function updatePreset(request, env, pid) {
   }
   if (b.icon !== undefined) { sets.push('icon = ?'); vals.push(emojiIcon(b.icon, 'Icon')); }
   if (b.data !== undefined) { sets.push('data = ?'); vals.push(presetData(b.data)); }
+  else if (b.folder !== undefined) { // move to another group: only the folder changes
+    const old = await env.DB.prepare('SELECT data FROM poll_presets WHERE id = ? AND user_id = ?').bind(pid, user.id).first('data');
+    if (!old) throw new HttpError(404, 'Preset not found');
+    sets.push('data = ?'); vals.push(presetData({ ...JSON.parse(old), folder: b.folder || undefined }));
+  }
   sets.push('updated_at = ?'); vals.push(now());
   const r = await env.DB.prepare(`UPDATE poll_presets SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).bind(...vals, pid, user.id).run();
   if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Preset not found');

@@ -118,8 +118,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 30): `data` = the New poll body without
   dates or password (`days` = length of a one-off range) plus `questions` (links reset by `presetQuestions`: meetings → whole poll,
   after-meeting ones kept, `people` → everyone). `GET|POST /api/me/presets` (POST with a name you already use replaces it),
-  `PATCH|DELETE /api/me/presets/:id`. `POST /api/polls` takes `questions` for the first round. The New poll page shows a **Start from** rail
-  (Blank, built-in `builtinPresets()`, then mine with ⋯ Rename / Delete) and **Save as preset**; Settings has a Save as preset row (`presetFromPoll`).
+  `PATCH|DELETE /api/me/presets/:id` (PATCH `{ folder }` moves one to another group). `POST /api/polls` takes `questions` for the first round.
+  Built-in presets: `builtinPresets()` (about 20, each with fitting questions; built with the `QB` helpers), grouped by `PRESET_CATS`;
+  my own are grouped by `data.folder` (empty = My presets). The New poll page shows a **Start from** field that opens the picker
+  (`prsOpen`, dialog `#psdlg`, classes `ps-*`: search, group chips, collapsible groups in localStorage `prsc`, tap a row to preview its
+  questions, Use / double-click / Enter; ⋯ Rename / Move to group / Delete on mine) and **Save as preset** (name + group); Settings has a
+  Save as preset row (`presetFromPoll`).
 - **Your data** (Account page, GDPR rights): `GET /api/me/export` = JSON copy of everything about the account (secret columns
   like `*_hash` / tokens stripped; owned polls in full, polls answered by title); `POST /api/me/delete` emails a code (`login_codes` key
   `delete:<user id>`, can't sign in), `POST /api/me/delete/verify` `{ code }` deletes the account, its owned polls (with everyone's answers
