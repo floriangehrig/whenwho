@@ -7708,7 +7708,7 @@ document.addEventListener('click',async e=>{
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
   if(ds.isave!==undefined){ e.preventDefault(); saveRoundEdit(); return; }
   if(ds.sroundgo!==undefined){ e.preventDefault(); const dd=tg.closest('details'); if(dd) dd.open=false; goRounds(); return; }
-  if(ds.istatus){ try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?t('Poll closed'):t('Poll reopened')); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
+  if(ds.istatus){ if(!confirm(ds.to==='closed'?t('Close this poll? People can no longer answer until you reopen it.'):t('Reopen this poll? People can answer again.'))) return; try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?t('Poll closed'):t('Poll reopened')); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
   if(ds.idel){ const x=P.data.instances.find(y=>y.id===ds.idel);
     if(!confirm(t('Delete the poll for {label} and its {n}? This can’t be undone.',{label:instLabel(x),n:plural(x.responses,t('answer'),t('answers'))}))) return;
     try{ await api('DELETE',`/polls/${P.id}/instances/${ds.idel}`,null,headers()); if(P.iid===ds.idel) P.iid=null; toast(t('Deleted')); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
@@ -9761,6 +9761,8 @@ function germanText(){ return {
 "Messages": "Nachrichten",
 "Organiser": "Organisator*in",
 "Delete message": "Nachricht löschen",
+"Close this poll? People can no longer answer until you reopen it.": "Diese Umfrage schließen? Bis du sie wieder öffnest, kann niemand mehr antworten.",
+"Reopen this poll? People can answer again.": "Diese Umfrage wieder öffnen? Dann kann wieder geantwortet werden.",
 "Delete this message?": "Diese Nachricht löschen?",
 "Write a message…": "Nachricht schreiben…",
 "No messages yet. Say hi!": "Noch keine Nachrichten. Sag hallo!",
