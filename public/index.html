@@ -686,7 +686,7 @@
   .dvote>svg{width:16px;height:16px;flex:none;color:var(--muted)} .dvote.on>svg{color:var(--accent)}
   .dvote-l{min-width:0;margin:0;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
   .dvote>.tip{position:static} .dvote>.sw{margin-left:auto}
-  .mcal{display:flex;gap:6px}
+  .mcal.seg{flex:none} .mcal+.btn{margin-left:6px}
   .mm-list{gap:6px 14px;padding-top:6px}
   .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
   .mm-p.off{opacity:.5;cursor:default}
@@ -823,8 +823,7 @@
     .qstar{width:34px;height:34px} .qe-pick .qdd .ddp,.qe-top .qdd .ddp{left:0;right:0;min-width:0;max-width:none}
   }
   /* Section toolbar above votes + scheduled: Select and Collapse act on both */
-  .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)} .msec-h .qb{color:var(--accent-ink)}
-  .msec-h .qb[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 12%,var(--card))}
+  .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)}
   .mcard>.msec-h+.vpanel{margin-top:0}
   /* Options title sits right on the vote box; "Vote on a date" is a slim tinted strip at the box's top */
   .mcard>.mopt .mfold{padding-bottom:2px}
@@ -963,7 +962,7 @@
     .mcard:not(.selecting) .mlist:not(.compact) .mfoot{margin-top:2px;padding-top:8px}
     /* the Options / Scheduled headers fit one row: tighter icon buttons */
     .mcard>.card-h{gap:2px;flex-wrap:nowrap} .mcard>.card-h .mfold{margin-right:6px} .mcard>.card-h .mfold h3{white-space:nowrap}
-    .mcard>.card-h .mcal{gap:0} .mcard>.card-h :is(.btn.ib,.qb){width:32px;min-width:32px;padding:0;justify-content:center} .mcard>.card-h .btn.ib .bl{display:none} }
+    .mcard>.card-h .btn.ib{width:32px;min-width:32px;padding:0;justify-content:center} .mcard>.card-h .btn.ib .bl{display:none} }
   /* group view */
   .day.heat.hot{background:color-mix(in srgb,var(--yes) var(--h),var(--card));border-color:color-mix(in srgb,var(--yes) 55%,transparent)}
   .day.heat.allfree{background:var(--yes);border-color:color-mix(in srgb,var(--yes) 70%,#000)} .day.heat.allfree .n,.day.heat.allfree .t,.day.heat.allfree .t .om{color:#fff}
@@ -1410,7 +1409,6 @@
   .chat-list mark{background:color-mix(in srgb,var(--maybe) 55%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
   .ubadge svg{width:12px;height:12px}
-  @media (max-width:560px){ .mcard .card-h .mcal{margin-left:0} }
 
   /* ---------- new poll page ---------- */
   .btn.withic svg{width:16px;height:16px;flex:none}
@@ -1615,6 +1613,7 @@
   .brush .segl{display:inline-flex;align-items:center;padding:0 4px 0 6px;color:var(--muted)} .brush .segl svg{width:16px;height:16px}
   .seg.brush button.amode{min-width:26px;width:26px;padding:0;color:var(--muted)} .seg.brush button.amode svg{width:15px;height:15px}
   .seg.brush button.amode.on{color:var(--ink);background:var(--card);box-shadow:var(--shadow-sm),0 0 0 1px var(--line)}
+  .hseg a{display:inline-flex;align-items:center;justify-content:center;height:26px;width:28px;border-radius:7px;color:var(--muted);transition:background .12s,color .12s} .hseg a:hover{color:var(--ink)} .hseg a svg{width:15px;height:15px}
   .hseg{padding:2px} .hseg button,.tbar .seg.hseg button,.ws-tools.tbar .seg.hseg button{height:26px;width:28px;min-width:0;padding:0;justify-content:center}
   .hseg button svg{width:15px;height:15px} .hseg button:disabled{opacity:.35;cursor:default} .hseg button:disabled:hover{color:var(--muted)}
   .hseg .hx{color:var(--no)} .hseg .hx:hover{color:var(--no);background:var(--no-bg)}
@@ -4138,13 +4137,15 @@ function renderMeetings(listOnly){
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${sel?'':qMeetChips(m)}</div></div>`; };
-  const cal=`<span class="mcal">${ibl('rss',t('Subscribe'),sub,'sm ghost','',t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sel?'':qb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+qb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}${ibl('download',t('Download all'),icsUrl(null,true),'sm ghost')}</span>`;
+  const sb=(attr,v,ic,label)=>`<button type="button" ${attr}="${v}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
+  const sa=(href,ic,label,tl=label)=>`<a href="${esc(href)}" title="${tl}" aria-label="${label}">${ICON[ic]}</a>`;
+  const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sa(icsUrl(null,true),'download',t('Download all'))}${sel?'':sb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+sb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</div>`;
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
   const vote=props.length?`<div class="card-h mopt"><div class="mfold mfh">${ICON.check}<h3 class="mfl">${t('Options')}</h3><span class="count">${props.length}</span></div></div>${votePanel(props,fold,sel?props.map(card).join(''):null)}`:'';
   // Section toolbar (top right): Select (organiser) and Collapse, both for votes and scheduled meetings.
   const foldL=fold?t('Show meeting details'):t('Compact view');
   const selL=sel?t('Close multi-edit'):t('Select several meetings to edit, move or delete them together');
-  const top=`<div class="msec-h">${adm?`<button type="button" class="qb" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="qb" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div>`;
+  const top=`<div class="msec-h"><div class="seg iseg hseg mview" role="group" aria-label="${t('View')}">${adm?`<button type="button" class="${sel?'on':''}" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="${fold?'on':''}" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div></div>`;
   const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${adm&&!sel?mailAll:''}</div>`;
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); const vl=$('vlist'); if(vl) vl.innerHTML=props.map(card).join(''); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
@@ -8819,6 +8820,7 @@ function germanText(){ return {
 "Use saved": "Gespeicherten nutzen",
 "Use the note icon on a draft to add text for just that meeting, below this one.": "Mit dem Notiz-Symbol an einem Entwurf fügst du Text nur für diesen Termin hinzu, unter diesem hier.",
 "View": "Ansicht",
+"Calendar & sharing": "Kalender & Teilen",
 "We sent a code to <b class=\"si_to\"></b>. It’s valid for 10 minutes.": "Wir haben einen Code an <b class=\"si_to\"></b> geschickt. Er gilt 10 Minuten.",
 "Weekdays": "Werktage",
 "Weekends": "Wochenenden",
