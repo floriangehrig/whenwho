@@ -1760,6 +1760,7 @@
   details.sset[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
   details.sset .sx{display:inline-flex;gap:6px;color:var(--muted)} details.sset .sx svg{width:15px;height:15px}
   details.sset[open] .sx{display:none}
+  .srounds-h{margin-bottom:var(--s2)} .srounds{margin:0 0 var(--s3)} .srounds-sub{font-size:13.5px;margin:var(--s3) 0 var(--s2);color:var(--muted)}
   .sset-b{padding:0 2px 16px} .sset-b>.field:first-child,.sset-b>.row:first-child{margin-top:0}
   .iconpk>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-size:14px;font-weight:600} .iconpk>summary::-webkit-details-marker{display:none}
   .iconpk>summary .tile{width:40px;height:40px;flex:none} .iconpk>summary .btn{margin-left:auto} .iconpk[open]>summary{margin-bottom:10px}
@@ -3911,7 +3912,7 @@ function roundChip(d,i){
   const lbl=`${ICON.cal}<span>${esc(instLabel(i))}</span>`;
   if(d.poll.kind!=='series'||!d.instances||d.instances.length<2) return `<span class="chip">${lbl}</span>`;
   const items=[...d.instances].reverse().map(x=>pickItem('data-hinst',x.id,`${esc(instLabel(x))} <span class="tag ${x.status==='open'?'y':'x'}">${x.status==='open'?t('open'):t('closed')}</span>`,x.id===i.id)).join('');
-  const all=pollTabList().some(x=>x[0]==='rounds')?`<div class="menu-sep"></div><button type="button" role="menuitem" data-atab="rounds"><span class="grow">${t('All rounds')}</span></button>`:'';
+  const all=d.isAdmin?`<div class="menu-sep"></div><button type="button" role="menuitem" data-sroundgo><span class="grow">${t('All rounds')}</span></button>`:'';
   return `<details class="dd pickdd instdd" id="instdd"><summary class="chip" title="${t('Switch round')}" aria-label="${t('Switch round')}: ${esc(instLabel(i))}">${lbl}</summary><div class="ddp menu pickm" role="menu">${items}${all}</div></details>`;
 }
 function renderHeader(){
@@ -3919,7 +3920,7 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span>${d.isAdmin?(i.manualStatus==='open'?pqb('lock',t('Close poll'),`data-istatus="${i.id}" data-to="closed"`):pqb('unlock',t('Reopen poll'),`data-istatus="${i.id}" data-to="open"`)):''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta">${roundChip(d,i)}${pollTabList().some(x=>x[0]==='rounds')&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-atab="rounds">${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+    <div class="meta">${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip" title="${t('Answer by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.clock}<span><span class="bl">${t('Answer by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip" title="${n} ${n===1?t('response'):t('responses')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('response'):t('responses')}</span></span></span>`):''}${p.hasPassword&&d.isAdmin?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
@@ -3967,7 +3968,7 @@ function renderBodyInner(b){
   saveBar();
 }
 
-// ---- series (Rounds tab; read-only for everyone but the organiser) ----
+// ---- series (Settings → Rounds, organiser only; everyone else switches rounds with the header's round chip) ----
 function renderSeries(){
   const el=$('series'); if(!el) return;
   const d=P.data, p=d.poll, cur=inst(), adm=d.isAdmin;
@@ -3978,19 +3979,21 @@ function renderSeries(){
       ${adm?`${x.manualStatus==='open'?ib('lock',t('Close'),`data-istatus="${x.id}" data-to="closed"`):ib('unlock',t('Reopen'),`data-istatus="${x.id}" data-to="open"`)}
       ${ib('edit',t('Edit'),`data-iedit="${x.id}"`)}
       ${d.instances.length>1?ib('trash',t('Delete'),`data-idel="${x.id}"`,'danger'):''}`:''}</span>
-      ${adm&&P.iedit===x.id?`<form class="sched full" id="ieditForm">
+      ${adm&&P.iedit===x.id?`<div class="sched full" id="ieditForm">
         <div class="dates-row">${isWeekly()?'':`<div class="field"><label for="dpkb_ie">${t('Dates')}</label>${dpk('ie',{mode:'range',a:'ie_s',b:'ie_e',va:x.startDate,vb:x.endDate,title:t('Pick dates'),empty:t('Pick a date range')})}</div>`}
         <div class="field"><label for="dpkb_ied">${t('Reply by')}</label>${dpk('ied',{mode:'single',a:'ie_d',va:x.deadline||'',icon:ICON.clock,title:t('Reply by'),empty:t('No deadline'),ctx:()=>$('ie_s')?[$('ie_s').value,$('ie_e').value]:['','']})}</div></div>
         <div class="field"><label>${t('Note shown at the top of this poll')}</label><textarea id="ie_n" maxlength="1000">${esc(x.note)}</textarea></div>
-        <div class="row mt-3"><button class="btn primary">${t('Save')}</button><button type="button" class="btn" data-iedit="">${t('Cancel')}</button></div></form>`:''}
+        <div class="row mt-3"><button type="button" class="btn primary" data-isave>${t('Save')}</button><button type="button" class="btn" data-iedit="">${t('Cancel')}</button></div></div>`:''}
     </li>`).join('');
-  el.innerHTML = `<div class="card"><div class="card-h"><h2>${t('Rounds')}</h2><span class="muted small">${p.every>1?t(p.unit==='month'?'every {n} months':'every {n} weeks',{n:p.every}):t(p.unit==='month'?'every month':'every week')}</span>
-      ${adm?ib('next',t('Open next round now'),'data-nextinst','',t('Next round')):''}</div>
+  // Lives inside the Settings <form>, so every button is type=button and the round editor is a <div> saved by [data-isave].
+  el.innerHTML = `<div class="row tight srounds-h"><span class="grow muted small">${p.every>1?t(p.unit==='month'?'every {n} months':'every {n} weeks',{n:p.every}):t(p.unit==='month'?'every month':'every week')}</span>
+      ${adm?ib('next',t('Open next round now'),'data-nextinst','sm',t('Next round')):''}</div>
       ${d.next?`<p class="help">${t('Next: <b>{range}</b> opens automatically on {date}. The share link always shows the newest open round.',{range:esc(rangeLabel(p.unit,d.next.startDate,d.next.endDate)),date:esc(dayLabel(d.next.opens))})}</p>`:''}
-      <ul class="list">${rows}</ul></div>`;
-  const f=$('ieditForm'); if(f) f.onsubmit=async e=>{ e.preventDefault();
-    try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{...(isWeekly()?{}:{startDate:$('ie_s').value,endDate:$('ie_e').value}),deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
-      P.iedit=null; toast(t('Saved')); await loadPoll(false); }catch(ex){ toast(ex.message); } };
+      <ul class="list srounds">${rows}</ul>`;
+}
+async function saveRoundEdit(){
+  try{ await api('PATCH',`/polls/${P.id}/instances/${P.iedit}`,{...(isWeekly()?{}:{startDate:$('ie_s').value,endDate:$('ie_e').value}),deadline:$('ie_d').value||null,note:$('ie_n').value},headers());
+    P.iedit=null; toast(t('Saved')); await loadPoll(false); }catch(ex){ toast(ex.message); }
 }
 
 // ---- meetings ----
@@ -6740,17 +6743,18 @@ document.addEventListener('click',e=>{
 
 // ---- admin ----
 // The organiser gets one row of section tabs; "Answers" is the regular poll view, the rest are separate panes.
-// Only a series gets a "Rounds" tab; a single or weekly poll has one round, edited under Settings → Dates.
-// Everyone else gets the same row without Settings: Rounds only when there is more than one to pick from,
+// A series' rounds are managed under Settings → Rounds; a single or weekly poll's one round under Settings → Dates.
+// Everyone else gets the same row without Settings (they switch rounds with the header's round chip),
 // People only when the poll shows answers (the Worker then sends `people`).
-const pollTabList = () => { const d=P.data, series=d.poll.kind==='series';
+const pollTabList = () => { const d=P.data;
   const qs=d.isAdmin||qList().length?[['questions',t('Questions')]]:[];
-  if(d.isAdmin) return [['answers',t('Availability')],['meetings',t('Meetings')],...qs,...(series?[['rounds',t('Rounds')]]:[]),['people',t('People')],['settings',t('Settings')]];
-  return [['answers',t('Availability')],['meetings',t('Meetings')],...qs,...(series&&d.instances.length>1?[['rounds',t('Rounds')]]:[]),...(d.people?[['people',t('People')]]:[])]; };
-const TAB_ICON = {answers:'cal',meetings:'star',questions:'ask',rounds:'repeat',chat:'chat',people:'users',settings:'gear'};
+  if(d.isAdmin) return [['answers',t('Availability')],['meetings',t('Meetings')],...qs,['people',t('People')],['settings',t('Settings')]];
+  return [['answers',t('Availability')],['meetings',t('Meetings')],...qs,...(d.people?[['people',t('People')]]:[])]; };
+const TAB_ICON = {answers:'cal',meetings:'star',questions:'ask',chat:'chat',people:'users',settings:'gear'};
 function pollTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
-  if(!pollTabList().some(x=>x[0]===P.atab)) P.atab='answers'; // e.g. a remembered "rounds" tab on a non-series poll
+  if(P.atab==='rounds'){ P.atab=P.data.isAdmin?'settings':'answers'; if(P.data.isAdmin) (P.setOpen||(P.setOpen={details:true})).rounds=true; } // the old Rounds tab
+  if(!pollTabList().some(x=>x[0]===P.atab)) P.atab='answers';
   return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='questions'?(n=>`<span class="count" id="qtabn"${n?'':' hidden'}>${n}</span>`)(P.data.isAdmin?qList().length:qOpenN()):''}</button>`).join('')}</nav>`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
@@ -6782,7 +6786,6 @@ function adminPanes(){
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   <div id="pane-questions" class="${hid('questions')}"><div class="card ws mws qws"><div id="questions"></div></div></div>
-    ${series?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
   <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for the whole series.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card sform"><div class="card-h"><h2>${t('Settings')}</h2></div>
@@ -6809,12 +6812,11 @@ function adminPanes(){
     <div class="card danger-zone dz-row"><span class="sic" style="--c:#e05252">${ICON.trash}</span><span class="row tight grow"><b>${t('Danger zone')}</b>${tip(series?t('Deletes the whole series, all its rounds and every answer. This can’t be undone.'):t('Deletes this poll and every answer. This can’t be undone.'))}</span>
       ${ib('trash',series?t('Delete whole series'):t('Delete poll'),'id="delPoll"','danger keep sm',t('Delete'))}</div></div>`;
 }
-// Everyone else's panes behind the same tab row: meetings (list + voting), rounds to pick from, who is in the poll.
+// Everyone else's panes behind the same tab row: meetings (list + voting), questions, who is in the poll.
 function viewerPanes(){
   const d=P.data, tabs=pollTabList().map(x=>x[0]), hid=k=>P.atab===k?'':'hide';
   return `<div id="pane-meetings" class="${hid('meetings')}"><div class="card ws mws"><div class="ws-h"><h2>${t('Meetings')}</h2></div><div id="meetings"></div></div></div>
   ${tabs.includes('questions')?`<div id="pane-questions" class="${hid('questions')}"><div class="card ws mws qws"><div id="questions"></div></div></div>`:''}
-  ${tabs.includes('rounds')?`<div id="pane-rounds" class="${hid('rounds')}"><div id="series"></div></div>`:''}
   ${tabs.includes('people')?`<div id="pane-people" class="${hid('people')}"><div class="card ppl">${viewerPeople()}</div></div>`:''}`;
 }
 // Read-only People: names from `people` (GET /api/polls/:id) and whether they answered this round.
@@ -6883,10 +6885,21 @@ function sset(k,icon,title,body,extra='',open=null){
   return `<details class="section sset" ${open?'data-nset':'data-sset'}="${k}"${o[k]?' open':''}><summary><span class="sic" style="--c:${SSET_C[k]||'var(--accent)'}">${ICON[icon]}</span><span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
 }
 document.addEventListener('toggle',e=>{ const k=e.target.dataset&&e.target.dataset.sset; if(k) (P.setOpen||(P.setOpen={}))[k]=e.target.open; },true);
-// Settings → Schedule for new rounds (series): when a round opens and its reply-by, in days before it starts.
+// Settings → Rounds (series): the rounds (view, close / reopen, edit, delete, open the next one; `renderSeries` fills #series)
+// and the schedule for new rounds: when a round opens and its reply-by, in days before it starts.
 function roundsSection(p){
-  return sset('rounds','repeat',t('Schedule for new rounds'),
-    `<div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil in the Rounds tab. To change how often it repeats, create a new series.'))}</div>`);
+  const n=P.data.instances.length, open=P.data.instances.filter(x=>x.status==='open').length;
+  return sset('rounds','repeat',t('Rounds'),
+    `<div id="series"></div>
+    <h3 class="srounds-sub">${t('Schedule for new rounds')}</h3>
+    <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</div>`,
+    `<span class="muted small">${n===1?t('1 round'):t('{n} rounds',{n})}${open?` · ${t('{n} open',{n:open})}`:''}</span>`);
+}
+// Header links to the rounds (organiser): open Settings with the Rounds section unfolded.
+function goRounds(){
+  (P.setOpen||(P.setOpen={details:true})).rounds=true; setPollTab('settings');
+  const d=document.querySelector('[data-sset="rounds"]'); if(!d) return; d.open=true;
+  requestAnimationFrame(()=>window.scrollTo({top:d.getBoundingClientRect().top+window.scrollY-70,behavior:'smooth'})); // 70 = sticky app bar
 }
 // Settings → Dates (single and weekly polls): the one round's dates, reply-by date, note and open/closed state.
 function datesSection(){
@@ -7182,7 +7195,7 @@ function wireAdmin(){
 
 // ---- events ----
 document.addEventListener('click',async e=>{
-  const tg=e.target.closest('[data-prange],[data-arange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
+  const tg=e.target.closest('[data-prange],[data-arange],[data-copy],[data-forget],[data-tab],[data-mode],[data-brush],[data-wk],[data-mon],[data-bulk],[data-ov],[data-delresp],[data-schedule],[data-clearrange],[data-mail],[data-copyinvite],[data-delmeet],[data-sendinvite],[data-inst],[data-istatus],[data-iedit],[data-isave],[data-sroundgo],[data-idel],[data-nextinst],[data-whoall],[data-whonone],[data-pwk],[data-pview],[data-pday],[data-deldraft],[data-ddesc],[data-mdesc],[data-mdescsave],[data-mdesccancel],[data-suggest],[data-savedrafts],[data-cleardrafts],[data-logout],[data-recall],[data-pedit],[data-psave],[data-pcancel],[data-pdel],[data-padd],[data-pinvite],[data-premind],[data-pmailsel],[data-pmailapp],[data-pselnone],[data-atab]'); if(!tg) return;
   const ds=tg.dataset;
   if(ds.atab){ e.preventDefault(); if(ds.msubgo) setMsub(ds.msubgo,false); setPollTab(ds.atab); if(ds.msubgo&&P.atab==='meetings') renderBody(); return; }
   if(ds.copy!==undefined){ e.preventDefault(); copy(ds.copy); return; }
@@ -7207,6 +7220,8 @@ document.addEventListener('click',async e=>{
   if(ds.forget){ store.set('myPolls',store.get('myPolls',[]).filter(x=>x.id!==ds.forget)); renderHome(); return; }
   if(ds.inst){ P.atab='answers'; store.set('atab:'+P.id,'answers'); switchInstance(ds.inst); return; }
   if(ds.iedit!==undefined){ e.preventDefault(); P.iedit=ds.iedit||null; renderSeries(); return; }
+  if(ds.isave!==undefined){ e.preventDefault(); saveRoundEdit(); return; }
+  if(ds.sroundgo!==undefined){ e.preventDefault(); const dd=tg.closest('details'); if(dd) dd.open=false; goRounds(); return; }
   if(ds.istatus){ try{ await api('PATCH',`/polls/${P.id}/instances/${ds.istatus}`,{status:ds.to},headers()); toast(ds.to==='closed'?t('Poll closed'):t('Poll reopened')); await loadPoll(false); }catch(ex){ toast(ex.message); } return; }
   if(ds.idel){ const x=P.data.instances.find(y=>y.id===ds.idel);
     if(!confirm(t('Delete the poll for {label} and its {n}? This can’t be undone.',{label:instLabel(x),n:plural(x.responses,t('answer'),t('answers'))}))) return;
@@ -8063,7 +8078,10 @@ function germanText(){ return {
 "Anyone with the link can answer, no account needed.": "Alle mit dem Link können antworten, ohne Konto.",
 "Anything people should know": "Was die Leute wissen sollten",
 "Anything that applies just to this date": "Alles, was nur für diesen Tag gilt",
-"Applies to rounds opened from now on. To change the dates of an existing round, use the pencil in the Rounds tab. To change how often it repeats, create a new series.": "Gilt für Runden, die ab jetzt öffnen. Die Daten einer bestehenden Runde änderst du mit dem Stift im Tab Runden. Um die Wiederholung zu ändern, erstelle eine neue Serie.",
+"Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.": "Gilt für Runden, die ab jetzt öffnen. Die Daten einer bestehenden Runde änderst du oben mit dem Stift. Um die Wiederholung zu ändern, erstelle eine neue Serie.",
+"1 round": "1 Runde",
+"{n} rounds": "{n} Runden",
+"{n} open": "{n} offen",
 "Apply": "Anwenden",
 "Ask about whole days, or let people paint the exact hours they're free.": "Frag nach ganzen Tagen oder lass die Leute genau die Stunden markieren, in denen sie frei sind.",
 "At most 200 addresses at once": "Höchstens 200 Adressen auf einmal",
