@@ -668,24 +668,37 @@
   /* scheduled meetings strip */
   /* voting on proposed meetings */
   .vpanel{margin-top:var(--s4);border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 3%,var(--card))}
-  .mcard>.vpanel{margin:0 0 var(--s4)}
   .vpanel-h{position:relative;display:flex;align-items:center;gap:8px;padding:10px 12px 0 16px} .vpanel-h>.tip{position:static} /* bubble lines up with the header, so it stays on screen */
-  .vpanel.folded .vpanel-h{padding-bottom:10px}
   .vpanel-h h3{flex:1 1 auto;margin:0;min-width:0}
   .mcard .card-h .mfold{flex:1 1 auto}
   .vpanel-h h3{display:flex;align-items:center;gap:6px;color:var(--accent-ink)}
   .vpanel-h h3 svg{width:18px;height:18px;flex:none} .vtally .tag svg{width:13px;height:13px}
-  .vpanel>.muted{padding:4px 16px 0}
   .meet.prop .mtile{background:transparent;border:1.5px dashed color-mix(in srgb,var(--accent) 50%,var(--line))}
   .meet.prop.voted{border-color:color-mix(in srgb,var(--yes) 55%,var(--line))}
   .vtally{display:inline-flex;align-items:center;gap:6px;flex:none}
   .vtop{font-size:11.5px;font-weight:700;color:var(--accent-ink);white-space:nowrap}
-  .vbtn.on{background:color-mix(in srgb,var(--yes) 18%,var(--card));border-color:color-mix(in srgb,var(--yes) 55%,var(--line))}
+  .mcard>.vpanel{margin:0 0 var(--s3)} .vpanel{border-style:solid;border-color:color-mix(in srgb,var(--accent) 26%,var(--line))}
+  .vpanel-h{padding:8px 6px 6px 14px;gap:6px} .vpanel-h h3 .vt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vpanel-h .dd{margin:0;flex:none} .vpanel-h .count{flex:none}
+  .vmode{flex:none;padding:2px 8px;border-radius:999px;background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line);font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .vopts{margin:0;padding:0 8px 8px;gap:6px}
+  .vopt{flex-wrap:wrap;min-height:50px;padding:0 4px 0 2px}
+  .vopt>.vpick{flex:1 1 0;gap:10px;padding:6px 4px 6px 6px} .vadm{display:inline-flex} .vadm-m{display:none;margin:0}
+  .vopt .mtile{width:40px;padding:3px 0 4px;border-radius:8px;background:color-mix(in srgb,var(--card) 70%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,var(--line))}
+  .vopt .mtile .dn{font-size:16px;margin:0} .vopt .mtile .mo,.vopt .mtile .wd{font-size:9.5px}
+  .vopt.on .mtile{background:var(--accent-weak)}
+  .vwhen{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .vtm{font-weight:650;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .vtm b{margin-right:6px}
+  .vsub{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;white-space:nowrap;font-size:12.5px;color:var(--muted)} .vsub svg{width:12px;height:12px;flex:none} .vsub span{min-width:0;overflow:hidden;text-overflow:ellipsis} .vsub>span{display:inline-flex;align-items:center;gap:4px} .vsub>span+span::before{content:'·';opacity:.6;padding:0 2px} .vloc{flex:0 1 auto} .vwho{flex:0 2 auto}
+  .vacts{flex:none;display:inline-flex;align-items:center;margin-left:2px} .vacts:empty{display:none}
+  .vmore{flex:1 1 100%;display:flex;flex-direction:column;gap:6px;padding:0 8px 8px 36px} .vmore:empty{display:none} .vnote{font-size:13px;color:var(--ink-2);overflow-wrap:anywhere}
   .dvote{position:relative;display:flex;align-items:center;gap:6px;flex:1 1 220px;min-width:0;padding:0 8px 0 12px;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);transition:background .15s,border-color .15s}
   .dvote.on{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--card))}
   .dvote>svg{width:16px;height:16px;flex:none;color:var(--muted)} .dvote.on>svg{color:var(--accent)}
   .dvote-l{min-width:0;margin:0;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
   .dvote>.tip{position:static} .dvote>.sw{margin-left:auto}
+  .dvote2{gap:8px;padding:4px 8px} .dvote2 .dsel{flex:1 1 auto;min-width:0;max-width:100%}
+  .dvone{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13.5px;font-weight:600;white-space:nowrap;cursor:pointer} .dvone input{margin:0}
   .mcal.seg{flex:none} .mcal+.btn{margin-left:6px}
   .mm-list{gap:6px 14px;padding-top:6px}
   .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
@@ -831,13 +844,9 @@
   /* Section toolbar above votes + scheduled: Select and Collapse act on both */
   .msec-h{display:flex;justify-content:flex-end;gap:4px;margin:var(--s3) 0 var(--s2)}
   .mcard>.msec-h+.vpanel{margin-top:0}
+  .mcard>.mbatch+.card-h{margin-top:16px}
   /* Options title sits right on the vote box; "Vote on a date" is a slim tinted strip at the box's top */
-  .mcard>.mopt .mfold{padding-bottom:2px}
-  .mcard>.mopt+.vpanel>.vpanel-h{padding:6px 10px 6px 14px;background:color-mix(in srgb,var(--accent) 8%,var(--card));border-bottom:1px dashed color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:var(--r-lg) var(--r-lg) 0 0}
-  .mcard>.mopt+.vpanel>.vpanel-h h3{font-size:13px;font-weight:600;color:var(--accent-ink)} .mcard>.mopt+.vpanel>.vpanel-h h3>svg{display:none}
-  .mcard>.mopt+.vpanel>.muted{padding-top:8px}
   .mcard>.mopt+.vpanel{margin-top:10px} .mcard>.mbatch+.card-h{margin-top:16px}
-  .vpanel .mlist.compact .vacts{gap:6px;align-items:center} .vpanel .mlist.compact .vbtn{min-height:30px;padding-block:0}
   .mfold{gap:6px} .mfold>svg,.vpanel-h h3 svg{width:17px;height:17px;flex:none;color:var(--accent)} .mfold h3{margin:0;font-size:15px;white-space:nowrap}
   .vpanel-h h3{font-size:15px;color:var(--ink)}
   .mfold:hover h3{text-decoration:underline;text-underline-offset:3px}
@@ -958,9 +967,7 @@
     .mcard:not(.selecting) .mlist:not(.compact) :is(.mhead,.tm){grid-column:2}
     .mcard:not(.selecting) .mlist:not(.compact) .mhead{grid-row:1;align-self:start}
     .macts{gap:0} .macts .qb{width:30px} .mcard .vpanel .mlist.mlist{padding:6px 6px 8px;gap:6px}
-    .vpanel-h{gap:2px;padding:8px 6px 0 12px} .vpanel-h .mfold{margin-right:4px} .vpanel-h .mfold{min-width:0;overflow:hidden} .vpanel-h h3{white-space:nowrap;min-width:0} .vpanel-h h3 .count{flex:none} .vpanel-h [data-vend]{flex:none;width:32px;min-width:32px;padding:0;justify-content:center} .vpanel-h [data-vend] .bl{display:none}
-    .mcard .vpanel .mfoot{gap:6px} .mcard .vpanel .vtally{margin-left:auto} .mcard .vpanel .vtop{display:none} .mcard .vpanel .mfoot>.btn{min-height:38px;margin:0}
-    .vpanel .mlist.compact .mhead{flex-wrap:wrap} .vpanel .mlist.compact .mmeta{flex:1 1 100%} .vpanel .mlist.compact .vacts{flex:1 1 100%;justify-content:flex-start} .vpanel .mlist.compact .vtally{margin-right:auto}
+    .vopts{padding:0 6px 6px} .vpanel-h{padding:6px 4px 4px 12px} .vopt .mtile{width:36px} .vopt .mtile .wd{display:none} .vpick{gap:8px} .vacts .qb{width:30px;height:30px} .vmore{padding-left:8px} .vadm{display:none} .vadm-m{display:block} .vloc+.vwho{display:none}
     .mcard:not(.selecting) .mlist:not(.compact) .mtitle{padding-top:0;font-size:15px}
     .mcard:not(.selecting) .mlist:not(.compact) .tm{grid-row:2;align-self:start;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
     .mcard:not(.selecting) .mlist:not(.compact) .mmeta>:not(.tm){font-size:13.5px;color:var(--muted)}
@@ -4386,60 +4393,85 @@ function renderMeetings(listOnly){
   const sa=(href,ic,label,tl=label)=>`<a href="${esc(href)}" title="${tl}" aria-label="${label}">${ICON[ic]}</a>`;
   const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sa(icsUrl(null,true),'download',t('Download all'))}${sel?'':sb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+sb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</div>`;
   const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
-  const vote=props.length?`<div class="card-h mopt"><div class="mfold mfh">${ICON.check}<h3 class="mfl">${t('Options')}</h3><span class="count">${props.length}</span></div></div>${votePanel(props,fold,sel?props.map(card).join(''):null)}`:'';
+  const groups=voteGroups(), vote=groups.map(g=>votePanel(g,fold,sel?g.opts.map(card).join(''):null)).join('');
   // Section toolbar (top right): Select (organiser) and Collapse, both for votes and scheduled meetings.
   const foldL=fold?t('Show meeting details'):t('Compact view');
   const selL=sel?t('Close multi-edit'):t('Select several meetings to edit, move or delete them together');
   const top=`<div class="msec-h"><div class="seg iseg hseg mview" role="group" aria-label="${t('View')}">${adm?`<button type="button" class="${sel?'on':''}" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="${fold?'on':''}" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div></div>`;
   const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${adm&&!sel?mailAll:''}</div>`;
-  if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); const vl=$('vlist'); if(vl) vl.innerHTML=props.map(card).join(''); syncBatchBar(pv,nSel,all.length); return; }
+  if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); document.querySelectorAll('[data-vlist]').forEach(vl=>{ const g=groups.find(x=>vgKey(x)===vl.dataset.vlist); if(g) vl.innerHTML=g.opts.map(card).join(''); }); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
   el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&adm&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
   if(sel){ syncBatchBar(pv,nSel,all.length); const ta=$('mb_desc'); if(ta&&ta.value) growTa(ta); }
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; batchPreview(0); });
 }
-// Proposed meetings: everyone who answered ticks the ones that suit them; the organiser confirms one.
-// fold = compact rows; selRows = the options as selectable cards (organiser's Select mode).
-function votePanel(props,fold,selRows){
-  const d=P.data, adm=d.isAdmin, mine=myVotes(), canVote=!!P.myResp;
-  const counts=props.map(m=>{ const v=votersOf(m); return v?v.length:null; }), top=Math.max(0,...counts.map(n=>n||0));
-  const voted=d.responses?d.responses.filter(r=>(r.votes||[]).length).length:null, total=d.responses?d.responses.length:null;
-  const rows=props.map((m,i)=>{ const on=mine.has(m.id), n=counts[i], vs=votersOf(m), inv=invited(m).length;
-    const where=m.location?`<span>${ICON.pin}<span>${esc(m.location)}</span></span>`:'';
-    const tally=n==null?'':`<span class="tag ${n&&n===top?'y':''}" title="${esc(vs.length?vs.map(r=>r.name).join(', '):t('No votes yet'))}">${ICON.check}${n}${adm?`/${inv}`:''}</span>${n&&n===top?`<span class="vtop">${t('Most votes')}</span>`:''}`;
-    const tog=`<button type="button" class="btn sm withic vbtn${on?' on':''}" data-vote="${m.id}" aria-pressed="${on}" ${canVote?'':'disabled'} title="${esc(canVote?(on?t('Remove your vote'):t('Vote for this option')):t('Send your answer to vote.'))}">${ICON.check}<span>${on?t('Suits me'):t('Vote')}</span></button>`;
-    const acts=`<span class="macts">${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span>`;
-    if(fold){ const cf=adm?`<button type="button" class="qb" data-mconfirm="${m.id}" title="${t('Confirm')}" aria-label="${t('Confirm')}">${ICON.star}</button>`:'';
-      return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}</div><span class="macts vacts">${tog}<span class="vtally">${tally}</span>${cf}${chatRefBtn('m:'+m.id)}${adm?`<button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button>`:''}</span></div></div></div>`; }
-    const foot=`<div class="mfoot">${adm?`<button type="button" class="btn sm primary withic" data-mconfirm="${m.id}">${ICON.star}<span>${t('Confirm')}</span></button>`:''}${tog}<span class="vtally">${tally}</span></div>`;
-    return `<div class="meet prop${on?' voted':''}" data-mtg="${m.id}">${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts}</div>
-      <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>${qMeetChips(m)}${foot}</div></div>`; }).join('');
-  const help=adm?t('People who answered tick the options that suit them. Confirm each one you want as a meeting, then End vote to remove the rest.')
-    :t('Tick every option that suits you. The organiser then confirms the ones that work.');
-  return `<div class="vpanel"><div class="vpanel-h"><h3>${ICON.check}${t('Vote on a date')}${voted!=null?`<span class="count" title="${t('People who voted')}">${voted}/${total}</span>`:`<span class="count">${props.length}</span>`}</h3>${selRows!=null?'':tip(help)}${adm&&selRows==null?`<button type="button" class="btn sm ghost withic" data-vend title="${t('Remove the options that are still open; confirmed meetings stay')}" aria-label="${t('End vote')}">${ICON.x}<span class="bl">${t('End vote')}</span></button>`:''}</div>
-    ${selRows!=null?`<div class="mlist${fold?' compact':''}" id="vlist">${selRows}</div>`:`${canVote?'':`<div class="muted small">${t('Send your answer to vote.')}</div>`}<div class="mlist${fold?' compact':''}">${rows}</div>`}</div>`;
+// Proposed meetings, one panel per vote (m.vote; '' = options from before votes had ids). Everyone who answered ticks
+// the options that suit them (m.one = pick one); the organiser confirms the ones that work.
+// fold = no second line; selRows = the options as selectable cards (organiser's Select mode).
+const vgKey=g=>g.id||'_', vgOf=k=>voteGroups().find(g=>vgKey(g)===k);
+function voteGroups(){ const map=new Map();
+  for(const m of proposals()){ const k=m.vote||''; if(!map.has(k)) map.set(k,{id:k,one:false,opts:[]}); const g=map.get(k); g.opts.push(m); if(m.one) g.one=true; }
+  return [...map.values()].map(g=>({...g,title:g.opts[0].title||P.data.poll.title})); }
+function votePanel(g,fold,selRows){
+  const d=P.data, adm=d.isAdmin, mine=myVotes(), canVote=!!P.myResp, key=vgKey(g), ids=new Set(g.opts.map(m=>m.id));
+  const counts=g.opts.map(m=>{ const v=votersOf(m); return v?v.length:null; }), top=Math.max(0,...counts.map(n=>n||0));
+  const voters=d.responses?d.responses.filter(r=>(r.votes||[]).some(x=>ids.has(x))):null, total=d.responses?d.responses.length:null;
+  const base=Math.max(1,total||0); // bar = share of everyone who answered
+  const rows=g.opts.map((m,i)=>{ const on=mine.has(m.id), n=counts[i], vs=votersOf(m), lead=!!n&&n===top;
+    const tm=m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`;
+    const own=m.title&&m.title!==g.title?`<b>${esc(m.title)}</b>`:'';
+    const sub=(m.location?`<span class="vloc">${ICON.pin}<span>${esc(m.location)}</span></span>`:'')+(fold?'':`<span class="vwho">${ICON.users}<span>${esc(whoText(m))}</span></span>`);
+    const label=canVote?(on?t('Remove your vote'):g.one?t('Pick this option'):t('Vote for this option')):t('Send your answer to vote.');
+    const cnt=n==null?'':`<span class="qn${lead?' lead':''}" title="${esc(vs.length?vs.map(r=>r.name).join(', '):t('No votes yet'))}">${n}</span>`;
+    // Organiser: ★ confirm and 🗑 remove as icons; on phones they fold into ⋯ so the row stays one line.
+    const acts=`<span class="vacts">${chatRefBtn('m:'+m.id)}${adm?`<span class="vadm"><button type="button" class="qb" data-mconfirm="${m.id}" title="${t('Confirm as a meeting')}" aria-label="${t('Confirm as a meeting')}">${ICON.star}</button><button type="button" class="qb danger" data-delmeet="${m.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.trash}</button></span>
+      <details class="dd qmore vadm-m"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm"><button type="button" data-mconfirm="${m.id}">${ICON.star}<span class="grow">${t('Confirm as a meeting')}</span></button><button type="button" class="danger" data-delmeet="${m.id}">${ICON.trash}<span class="grow">${t('Remove option')}</span></button></div></details>`:''}</span>`;
+    const more=fold?'':(m.note?`<div class="vnote">${linkText(m.note)}</div>`:'')+qMeetChips(m);
+    return `<div class="qopt vopt${on?' on':''}${lead?' lead':''}" style="--p:${n?Math.round(n/base*100):0}%" data-mtg="${m.id}">
+      <button type="button" class="qpick vpick" data-vote="${m.id}" role="${g.one?'radio':'checkbox'}" aria-checked="${on}"${canVote?'':' disabled'} title="${esc(label)}">
+        <span class="qmark ${g.one?'dot':'box'}">${on?ICON.check:''}</span>${dateTile(m)}<span class="vwhen"><span class="vtm">${own}${esc(tm)}</span>${sub?`<span class="vsub">${sub}</span>`:''}</span></button>${cnt}${acts}${more?`<div class="vmore">${more}</div>`:''}</div>`; }).join('');
+  const help=(g.one?t('Pick the one option that suits you best.'):t('Tick every option that suits you.'))+' '+(adm?t('Confirm (★) the ones you want as meetings, then end the vote to remove the rest.'):t('The organiser then confirms the ones that work.'))+(canVote?'':' '+t('Send your answer to vote.'));
+  const menu=adm&&selRows==null?`<details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
+    <button type="button" data-vone="${key}">${ICON[g.one?'check':'radio']}<span class="grow">${g.one?t('Let people pick several'):t('Let people pick only one')}</span></button>
+    <button type="button" data-vren="${key}">${ICON.edit}<span class="grow">${t('Rename')}</span></button>
+    <button type="button" class="danger" data-vend="${key}" title="${t('Remove the options that are still open; confirmed meetings stay')}">${ICON.x}<span class="grow">${t('End vote')}</span></button></div></details>`:'';
+  return `<div class="vpanel" data-vg="${key}"><div class="vpanel-h"><h3>${ICON.check}<span class="vt">${esc(g.title)}</span><span class="count" title="${voters?t('People who voted'):t('Options')}">${voters?`${voters.length}/${total}`:g.opts.length}</span></h3><span class="vmode">${g.one?t('Pick one'):t('Pick any')}</span>${selRows!=null?'':tip(help)}${menu}</div>
+    ${selRows!=null?`<div class="mlist${fold?' compact':''}" data-vlist="${key}">${selRows}</div>`:`<div class="qopts vopts">${rows}</div>`}</div>`;
 }
 async function toggleVote(id,btn){
-  const cur=myVotes(); cur.has(id)?cur.delete(id):cur.add(id); btn.disabled=true;
+  const cur=myVotes(), m=proposals().find(x=>x.id===id); if(!m) return;
+  if(cur.has(id)) cur.delete(id);
+  else { if(m.one) proposals().forEach(x=>{ if((x.vote||'')===(m.vote||'')) cur.delete(x.id); }); cur.add(id); }
+  btn.disabled=true;
   try{ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}/votes`,{votes:[...cur]},headers());
     P.myVotes=r.votes; const x=(P.data.responses||[]).find(y=>y.id===P.myResp.id); if(x) x.votes=r.votes; renderMeetings(); }
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
-// Confirm makes one option a meeting; the others stay up for a vote (several can be confirmed). End vote removes the rest.
+// Confirm makes one option a meeting; the others stay up for a vote (several can be confirmed). End vote removes the rest of that vote.
 async function confirmProposal(id,btn){
   btn.disabled=true;
-  if(await saveMeetings(inst().meetings.map(m=>m.id===id?{...m,proposed:false,at:undefined}:m))) toast(t('Meeting confirmed'));
+  if(await saveMeetings(inst().meetings.map(m=>m.id===id?{...m,proposed:false,at:undefined,vote:undefined,one:undefined}:m))) toast(t('Meeting confirmed'));
   else btn.disabled=false;
 }
-async function endVote(btn){
-  const n=proposals().length; if(!n) return;
-  if(!confirm(n===1?t('End the vote? The open option is removed.'):t('End the vote? The {n} open options are removed.',{n}))) return;
+const inVote=(m,g)=>m.proposed&&(m.vote||'')===g.id;
+async function endVote(k,btn){
+  const g=vgOf(k); if(!g) return; const n=g.opts.length;
+  if(!confirm(n===1?t('End the vote “{title}”? The open option is removed.',{title:g.title}):t('End the vote “{title}”? The {n} open options are removed.',{title:g.title,n}))) return;
   btn.disabled=true;
-  if(await saveMeetings(confirmedMeetings())) toast(t('Vote ended')); else btn.disabled=false;
+  if(await saveMeetings(inst().meetings.filter(m=>!inVote(m,g)))) toast(t('Vote ended')); else btn.disabled=false;
 }
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[data-mconfirm],[data-vend]'); if(!b||!P.data) return;
+async function voteSetting(k,f){
+  const g=vgOf(k); if(!g) return;
+  if(f==='one'){ if(await saveMeetings(inst().meetings.map(m=>inVote(m,g)?{...m,one:!g.one||undefined}:m))) toast(g.one?t('People can pick several options'):t('People can pick only one option')); return; }
+  const v=prompt(t('Name of the vote'),g.title); if(v==null||!v.trim()||v.trim()===g.title) return;
+  saveMeetings(inst().meetings.map(m=>inVote(m,g)?{...m,title:v.trim().slice(0,120)}:m));
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-vote],[data-mconfirm],[data-vend],[data-vone],[data-vren]'); if(!b||!P.data) return;
   if(b.dataset.vote){ if(P.myResp) toggleVote(b.dataset.vote,b); return; }
-  if(b.dataset.vend!==undefined){ endVote(b); return; }
+  const dd=b.closest('details'); if(dd) dd.open=false;
+  if(b.dataset.vend!==undefined){ endVote(b.dataset.vend,b); return; }
+  if(b.dataset.vone!==undefined){ voteSetting(b.dataset.vone,'one'); return; }
+  if(b.dataset.vren!==undefined){ voteSetting(b.dataset.vren,'name'); return; }
   confirmProposal(b.dataset.mconfirm,b); });
 // ---- questions (instance.questions): a small form per round, answered apart from the availability (…/instances/:iid/form).
 // P.form = { id, key, pid, name, extra: { a, add }, can: Set of question ids I may answer, dirty, saving } (guests keep id + key
@@ -6257,13 +6289,25 @@ function draftTray(){
       ${repeatFields()}
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
       <div class="err" id="dm_err"></div>
-      <div class="dfoot">${n>1?`<div class="dvote${P.dvote?' on':''}">${ICON.users}<label class="dvote-l" for="dvote_cb">${t('Let people vote')}</label>${tip(t('Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm the ones you want.'))}<label class="sw"><input type="checkbox" id="dvote_cb" data-dvote${P.dvote?' checked':''}><span></span></label></div>`:''}<button class="btn primary withic" data-savedrafts>${ICON.check}${n>1&&P.dvote?t('Propose {n} options',{n}):n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
+      <div class="dfoot">${dvoteBox(n)}<button class="btn primary withic" data-savedrafts>${ICON.check}${dvoteOn(n)?(n===1?t('Propose 1 option'):t('Propose {n} options',{n})):n===1?t('Create {n} meeting',{n:1}):t('Create {n} meetings',{n})}</button></div></div></div>`;
+}
+// "Let people vote": a new vote (pick one or several) or more options for an open one (P.dvoteTo = vote key, '' = new).
+const dvoteTo=n=>{ const gs=voteGroups(); if(P.dvoteTo&&gs.some(g=>vgKey(g)===P.dvoteTo)) return P.dvoteTo; return n>1||!gs.length?'':vgKey(gs[0]); };
+const dvoteOn=n=>!!P.dvote&&(n>1||!!voteGroups().length);
+function dvoteBox(n){
+  const gs=voteGroups(); if(n<2&&!gs.length) return '';
+  const to=dvoteTo(n), on=dvoteOn(n);
+  const opts=(n>1?`<option value=""${to?'':' selected'}>${t('New vote')}</option>`:'')+gs.map(g=>`<option value="${vgKey(g)}"${to===vgKey(g)?' selected':''}>${esc(t('Add to “{title}”',{title:g.title}))}</option>`).join('');
+  return `<div class="dvote${on?' on':''}">${ICON.users}<label class="dvote-l" for="dvote_cb">${t('Let people vote')}</label>${tip(t('Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them (or picks one), then you confirm the ones you want. Each new vote gets its own panel.'))}<label class="sw"><input type="checkbox" id="dvote_cb" data-dvote${on?' checked':''}><span></span></label></div>${on?`<div class="dvote dvote2 on"><select class="dsel" data-dvto aria-label="${t('Which vote')}">${opts}</select>${to?'':`<label class="dvone"><input type="checkbox" data-dvone${P.dvoteOne?' checked':''}><span>${t('Pick one')}</span></label>${tip(t('People pick only one option instead of every option that suits them.'))}`}</div>`:''}`;
 }
 function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
   [['dm_title','title'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
   document.querySelectorAll('[data-dvote]').forEach(cb=>cb.onchange=()=>{ P.dvote=cb.checked; renderBody(); });
+  document.querySelectorAll('[data-dvone]').forEach(cb=>cb.onchange=()=>{ P.dvoteOne=cb.checked; });
+  document.querySelectorAll('[data-dvto]').forEach(sl=>sl.onchange=()=>{ P.dvoteTo=sl.value; const g=sl.value&&vgOf(sl.value);
+    if(g&&(!dm.title.trim()||dm.title===P.data.poll.title)) dm.title=g.title===P.data.poll.title?dm.title:g.title; renderBody(); });
   document.querySelectorAll('[data-ddtext]').forEach(ta=>ta.oninput=()=>{ find(ta.dataset.ddtext).note=ta.value; });
   document.querySelectorAll('[data-dall]').forEach(cb=>cb.onclick=()=>{ const x=find(cb.dataset.dall), r=hourMode()?dayRange(x.date):null;
     if(r){ x.allDay=false; delete x.endDate; x.start=r[0]; x.end=r[1]; renderBody(); return; }
@@ -6533,12 +6577,13 @@ async function saveDrafts(btn){
   if(!P.drafts.length) return;
   if(ms.length+P.drafts.length>100){ err.textContent=t('A poll can have at most 100 meetings ({n} already scheduled).',{n:ms.length}); return; }
   const rv=repeatValue(err); if(!rv) return;
-  const vote=P.dvote&&P.drafts.length>1;
-  const list=P.drafts.map(x=>{ const m={date:x.date, ...(x.allDay&&x.endDate?{endDate:x.endDate}:{}), allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true}:{})};
+  const vote=dvoteOn(P.drafts.length), to=vote&&dvoteTo(P.drafts.length), g=to&&vgOf(to);
+  const vk=g?{vote:g.id||undefined,one:g.one||undefined}:{vote:(Math.random().toString(36).slice(2)+'00000000').slice(0,8),one:P.dvoteOne||undefined};
+  const list=P.drafts.map(x=>{ const m={date:x.date, ...(x.allDay&&x.endDate?{endDate:x.endDate}:{}), allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true,...vk}:{})};
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length;
-  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; setMsub('list',false); renderBody(); toast(vote?t('{n} options up for a vote',{n}):n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
+  if(await saveMeetings([...ms, ...list])){ P.drafts=[]; P.dvoteTo=''; setMsub('list',false); renderBody(); toast(vote?(g?t('Added to “{title}”',{title:g.title}):t('{n} options up for a vote',{n})):n===1?t('{n} meeting created',{n}):t('{n} meetings created',{n})); }
   else btn.disabled=false;
 }
 
@@ -8376,6 +8421,28 @@ function germanText(){ return {
 "Let people vote": "Abstimmen lassen",
 "Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them, then you confirm the ones you want.": "Stelle diese Zeiten zur Abstimmung, statt alle anzulegen. Alle, die geantwortet haben, haken die passenden ab, dann bestätigst du die gewünschten.",
 "Propose {n} options": "{n} Optionen vorschlagen",
+"Propose 1 option": "1 Option vorschlagen",
+"Pick this option": "Diese Option wählen",
+"Confirm as a meeting": "Als Termin bestätigen",
+"Pick the one option that suits you best.": "Wähle die Option, die dir am besten passt.",
+"Tick every option that suits you.": "Hake jede Option ab, die dir passt.",
+"Confirm (★) the ones you want as meetings, then end the vote to remove the rest.": "Bestätige (★) die gewünschten als Termine und beende dann die Abstimmung, um den Rest zu entfernen.",
+"The organiser then confirms the ones that work.": "Die Organisation bestätigt dann die passenden.",
+"Let people pick several": "Mehrere wählen lassen",
+"Let people pick only one": "Nur eine wählen lassen",
+"Pick one": "Eine wählen",
+"Pick any": "Beliebig viele",
+"End the vote “{title}”? The open option is removed.": "Abstimmung „{title}“ beenden? Die offene Option wird entfernt.",
+"End the vote “{title}”? The {n} open options are removed.": "Abstimmung „{title}“ beenden? Die {n} offenen Optionen werden entfernt.",
+"People can pick several options": "Man kann jetzt mehrere Optionen wählen",
+"People can pick only one option": "Man kann jetzt nur eine Option wählen",
+"Name of the vote": "Name der Abstimmung",
+"New vote": "Neue Abstimmung",
+"Add to “{title}”": "Zu „{title}“ hinzufügen",
+"Added to “{title}”": "Zu „{title}“ hinzugefügt",
+"Which vote": "Welche Abstimmung",
+"Put these times up for a vote instead of creating them all. Everyone who answered ticks the ones that suit them (or picks one), then you confirm the ones you want. Each new vote gets its own panel.": "Stelle diese Zeiten zur Abstimmung, statt alle anzulegen. Alle, die geantwortet haben, haken die passenden ab (oder wählen eine), dann bestätigst du die gewünschten. Jede neue Abstimmung bekommt ein eigenes Feld.",
+"People pick only one option instead of every option that suits them.": "Man wählt nur eine Option statt aller, die passen.",
 "{n} to vote on": "{n} zur Abstimmung",
 "Invalid votes": "Ungültige Stimmen",
 "That option is no longer up for a vote": "Über diese Option wird nicht mehr abgestimmt",

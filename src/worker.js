@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-MjXb14u2VgEhjLcj3kCHGgb947c34V8dJcpzEj0NwuE=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-MKYnukjOfkZU7B89JwRPtcmGLi3a9sLtAHjrMCTeFlY=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -579,6 +579,9 @@ function validateMeetings(list, poll, old = []) {
       at: !mt.proposed && wasProposed.has(mt.id) ? now() // a proposal that was just confirmed
         : typeof mt.at === 'string' && /^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(mt.at) ? mt.at : known.has(mt.id) ? undefined : now(), // when it was added (activity feed)
       proposed: mt.proposed ? true : undefined, // put up for a vote (responses.votes); not in .ics or emails until confirmed
+      // vote = which vote it belongs to (several per round), one = pick-one vote; only on proposals
+      vote: mt.proposed && /^[A-Za-z0-9]{4,20}$/.test(mt.vote || '') ? mt.vote : undefined,
+      one: mt.proposed && mt.one ? true : undefined,
       ...(repeat ? { repeat } : {}),
     };
     // endDate: last day of a multi-day all-day meeting (trip, offsite, holiday); one-off meetings only.
@@ -3189,7 +3192,10 @@ async function voteMeetings(request, env, id, rid) {
   const props = proposedIds(inst);
   if (!Array.isArray(b.votes) || b.votes.length > MAX_MEETINGS) throw new HttpError(400, 'Invalid votes');
   if (b.votes.some((x) => typeof x !== 'string' || !props.has(x))) throw new HttpError(400, 'That option is no longer up for a vote');
-  const votes = [...new Set(b.votes)];
+  // Pick-one votes keep only the last option the person sent for that vote (older picks may predate the switch).
+  const grp = new Map(JSON.parse(inst.meetings || '[]').filter((x) => x.proposed && x.one).map((x) => [x.id, x.vote || '']));
+  const seen = new Set();
+  const votes = [...new Set(b.votes)].reverse().filter((x) => { if (!grp.has(x)) return true; const g = grp.get(x); if (seen.has(g)) return false; seen.add(g); return true; }).reverse();
   await env.DB.prepare('UPDATE responses SET votes = ? WHERE id = ?').bind(votes.length ? JSON.stringify(votes) : null, r.id).run();
   return json({ ok: true, votes });
 }
