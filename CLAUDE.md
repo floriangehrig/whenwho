@@ -113,6 +113,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   notification unless a focused tab is on that poll, tap opens `?p=<id>&chat=1`) and `public/manifest.webmanifest` (iPhone: push only from the
   Home Screen app). `pushEnable` / `pushDisable` / `pushResync` (daily), ask bar at the top of the chat (`pushAskHtml`, ✕ = `pushAsk`, 30 days),
   🔔/🔕 mute in the chat header (`chatMuteBtn`), Account → Summary → Notifications (`pushSecDraw`, Send a test). Signing out unsubscribes.
+  **Add to Home Screen guide** (`hsOpen(os)`, dialog `#hsdlg`, classes `hs-*`): an animated drawn phone (iPhone Safari / Android Chrome, picked by UA, switchable)
+  where a fake finger taps each step; autoplays (not with reduced motion), tap the phone / ‹ › / dots to step. Opened by `data-hsopen` buttons: Show me how
+  next to the homescreen hints (chat ask bar, `ntDevice`, `pushSecDraw`), the account menu on phones not running it standalone (`hsCan`), and a `home` tour step.
+  Android also gets Install now when Chrome fired `beforeinstallprompt` (`HS.bip`).
 - **Notifications** (0029 `answer_watch`, 0032 prefs + `poll_events`): what people are told about, per type: `chat` (`'all'|'mentions'|'off'`),
   `answers`, `votes`, `qanswers` (these three only for people who can see the answers), `meetings`, `questions`, `rounds`, each `{ p: push, e: email }`.
   Effective prefs (`ntRow`): the poll's override (`answer_watch.prefs`, set with the 🔔 button in the poll header, dialog `ntOpen`, `PUT /api/polls/:id/notify

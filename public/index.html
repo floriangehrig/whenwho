@@ -1975,6 +1975,83 @@
   @media (prefers-reduced-motion:reduce){ .tour-ptr{transition:none} .tour-ptr.tap::after{animation:none} }
   .tour-b.center{top:50%!important;left:50%!important;transform:translate(-50%,-50%)}
   @media (max-width:560px){ .tour-b:not(.center){left:12px!important;right:12px;width:auto;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom))} }
+  /* Add to Home Screen walkthrough (hsOpen): a drawn phone, light inside in both themes */
+  @media (min-width:561px){ .hsdlg{width:400px} }
+  .hs-b{align-items:center;gap:10px;border-bottom:0}
+  .hs-stage{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+  @media (max-height:760px){ .hs-stage{zoom:.84} } @media (max-height:640px){ .hs-stage{zoom:.7} }
+  .hs-ph{width:212px;height:436px;border-radius:34px;background:#0b0d12;padding:9px;box-shadow:0 10px 30px rgba(6,12,26,.3),inset 0 0 0 2px #2a2f3a;display:flex;flex-direction:column;position:relative;font-family:inherit;color:#0F172A}
+  .hs-ph::before{content:"";position:absolute;inset:9px;border-radius:26px;background:#fff;transition:background .35s}
+  .hs-sb{position:relative;z-index:9;height:24px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:10px;font-weight:700;color:#0F172A;transition:color .3s}
+  .hs-isl{position:absolute;left:50%;top:5px;width:62px;height:17px;margin-left:-31px;border-radius:10px;background:#0b0d12}
+  .hs-sbi{display:flex;gap:3px} .hs-sbi i{width:12px;height:7px;border-radius:2px;background:currentColor;opacity:.85} .hs-sbi i:first-child{width:9px}
+  .hs-scr{position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden;border-radius:0 0 26px 26px;background:#fff}
+  .hs-nav{position:absolute;left:0;right:0;bottom:13px;z-index:9;display:flex;justify-content:center;pointer-events:none} .hs-nav i{width:70px;height:4px;border-radius:3px;background:#0F172A;opacity:.75;transition:background .3s}
+  .hs-page{flex:1;display:flex;flex-direction:column;min-height:0}
+  .hs-pbar{display:flex;align-items:center;gap:6px;padding:7px 10px;background:#0B1F3A;color:#fff;font-size:11px;font-weight:700} .hs-pbar img{width:16px;height:16px}
+  .hs-pbody{padding:10px;display:flex;flex-direction:column;gap:7px}
+  .hs-ln{display:block;height:7px;border-radius:4px;background:#E2E8F0} .hs-ln.w70{width:70%;height:10px;background:#CBD5E1} .hs-ln.w45{width:45%} .hs-ln.w60{width:60%} .hs-ln.w35{width:35%}
+  .hs-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:4px 0} .hs-cal i{aspect-ratio:1;border-radius:5px;background:#EDF1F7} .hs-cal i.y{background:#22C55E} .hs-cal i.m{background:#FACC15}
+  .hs-url{display:block;font-size:10.5px;color:#334155;background:#EEF1F5;border-radius:10px;padding:6px 10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hs-ib{display:grid;place-items:center;border-radius:8px;transition:background .12s,transform .12s} .hs-ib svg{width:18px;height:18px}
+  .hs-ph .press{background:rgba(37,99,235,.18)!important;transform:scale(.94)}
+  /* iPhone: Safari's bar at the bottom */
+  .hs-bar{padding:6px 8px 22px;background:#F8FAFC;border-top:1px solid #E2E8F0;display:flex;flex-direction:column;gap:5px}
+  .hs-tools{display:flex;justify-content:space-around;color:#2563EB} .hs-tools>span{width:30px;height:28px;display:grid;place-items:center} .hs-tools svg{width:18px;height:18px}
+  .hs-dim{position:absolute;inset:0;z-index:3;background:rgba(6,12,26,.35);opacity:0;pointer-events:none;transition:opacity .3s}
+  .hs-scr[data-v="sheet"] .hs-dim,.and .hs-scr[data-v="add"] .hs-dim{opacity:1}
+  .hs-sheet{position:absolute;left:0;right:0;bottom:0;z-index:4;background:#F2F2F7;border-radius:14px 14px 0 0;padding:8px 8px 24px;transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .hs-scr[data-v="sheet"] .hs-sheet{transform:none}
+  .hs-sh-h,.hs-row{display:flex;align-items:center;gap:8px;padding:4px 4px 8px} .hs-sh-h img,.hs-row img{width:30px;height:30px;border-radius:7px;background:#0B1F3A;padding:4px}
+  .hs-sh-h b,.hs-row b{display:block;font-size:11px} .hs-sh-h span,.hs-row span{display:block;font-size:9.5px;color:#64748B}
+  .hs-list{display:flex;flex-direction:column;background:#fff;border-radius:10px;overflow:hidden}
+  .hs-list span{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px 10px;font-size:10.5px;border-bottom:1px solid #EEF1F5;transition:background .12s,transform .12s} .hs-list span:last-child{border:0}
+  .hs-list svg,.hs-menu svg{width:14px;height:14px;flex:none}
+  .hs-list .hl,.hs-menu .hl{font-weight:700}
+  .hs-addv{position:absolute;inset:0;z-index:5;background:#F2F2F7;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1);padding:4px 10px}
+  .hs-scr[data-v="add"] .hs-addv{transform:none}
+  .hs-addh{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;padding:6px 0 12px;color:#2563EB} .hs-addh b{flex:1;min-width:0;text-align:center;color:#0F172A;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px} .hs-addh>span{flex:none}
+  .hs-addh .pri{font-weight:700;padding:3px 6px;border-radius:6px;transition:background .12s,transform .12s}
+  .hs-addv .hs-row{background:#fff;border-radius:10px;padding:8px}
+  .hs-tog{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:10px;padding:8px;margin-top:8px;font-size:10.5px}
+  .hs-tog i{width:28px;height:17px;border-radius:9px;background:#22C55E;position:relative} .hs-tog i::after{content:"";position:absolute;right:2px;top:2px;width:13px;height:13px;border-radius:50%;background:#fff}
+  /* Android: Chrome's bar at the top, menu, install dialog */
+  .hs-top{display:flex;align-items:center;gap:6px;padding:4px 6px 6px;background:#F8FAFC;border-bottom:1px solid #E2E8F0} .hs-top .hs-url{flex:1;text-align:left} .hs-top .hs-ib{width:26px;height:26px;color:#334155}
+  .hs-menu{position:absolute;top:4px;right:6px;z-index:4;width:150px;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(6,12,26,.25);padding:4px 0;display:flex;flex-direction:column;opacity:0;transform:scale(.85);transform-origin:top right;pointer-events:none;transition:opacity .2s,transform .25s}
+  .hs-scr[data-v="menu"] .hs-menu{opacity:1;transform:none}
+  .hs-menu span{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:10.5px;transition:background .12s,transform .12s}
+  .hs-dlgm{position:absolute;left:14px;right:14px;top:34%;z-index:5;background:#fff;border-radius:16px;padding:12px;opacity:0;transform:scale(.9);transition:opacity .2s,transform .25s}
+  .and .hs-scr[data-v="add"] .hs-dlgm{opacity:1;transform:none} .hs-dlgm>b{display:block;font-size:12px;margin-bottom:8px}
+  .hs-btns{display:flex;justify-content:flex-end;gap:4px;font-size:10.5px;font-weight:700;color:#2563EB} .hs-btns span{padding:5px 8px;border-radius:14px;transition:background .12s,transform .12s} .hs-btns .pri{background:#2563EB;color:#fff}
+  /* Home Screen and the app opened from it */
+  .hs-home{position:absolute;inset:0;z-index:7;padding:12px 12px 20px;background:linear-gradient(160deg,#3B5BDB,#7048E8 55%,#E8590C);display:flex;flex-direction:column;justify-content:space-between;opacity:0;pointer-events:none;transition:opacity .35s}
+  .hs-scr[data-v="home"] .hs-home,.hs-scr[data-v="app"] .hs-home{opacity:1}
+  .hs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 8px}
+  .hs-app{display:flex;flex-direction:column;align-items:center;gap:3px} .hs-app i{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.35);display:grid;place-items:center;transition:transform .12s}
+  .hs-app b{width:26px;height:4px;border-radius:2px;background:rgba(255,255,255,.55)}
+  .hs-app.c1 i{background:#FFD43B} .hs-app.c2 i{background:#69DB7C} .hs-app.c3 i{background:#fff} .hs-app.c4 i{background:#FF8787} .hs-app.c5 i{background:#74C0FC}
+  .hs-app.me i{background:#0B1F3A} .hs-app.me img{width:26px;height:26px} .hs-app.me b{width:auto;height:auto;background:none;font-size:8.5px;font-weight:600;color:#fff;white-space:nowrap}
+  .hs-app.me.press{background:none!important} .hs-app.me.press i{transform:scale(.88)}
+  .hs-scr[data-v="home"] .hs-app.me{animation:hspop .5s .3s cubic-bezier(.3,1.6,.5,1) both}
+  @keyframes hspop{from{transform:scale(0);opacity:0}to{transform:none;opacity:1}}
+  .hs-dock{display:flex;justify-content:space-around;padding:8px;border-radius:18px;background:rgba(255,255,255,.25)} .hs-dock i{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.55)}
+  .hs-run{position:absolute;inset:0;z-index:8;background:#0B1F3A;display:flex;flex-direction:column;opacity:0;transform:scale(.15);transform-origin:80% 22%;pointer-events:none;transition:opacity .25s,transform .4s cubic-bezier(.2,.8,.2,1)}
+  .hs-run .hs-page{background:#fff}
+  .hs-scr[data-v="app"] .hs-run{opacity:1;transform:none}
+  .hs-ph:has(.hs-scr[data-v="home"])::before{background:#3B5BDB} .hs-ph:has(.hs-scr[data-v="app"])::before{background:#0B1F3A}
+  .hs-ph:has(.hs-scr[data-v="home"]) .hs-sb,.hs-ph:has(.hs-scr[data-v="app"]) .hs-sb{color:#fff} .hs-ph:has(.hs-scr[data-v="home"]) .hs-nav i{background:#fff}
+  .hs-note{position:absolute;left:8px;right:8px;top:6px;display:flex;gap:8px;align-items:center;padding:8px;border-radius:14px;background:rgba(248,250,252,.96);box-shadow:0 6px 18px rgba(6,12,26,.25);transform:translateY(-140%);opacity:0;transition:transform .45s cubic-bezier(.2,.8,.2,1) .8s,opacity .3s .8s}
+  .hs-note img{width:24px;height:24px;border-radius:6px;background:#0B1F3A;padding:3px} .hs-note b{display:block;font-size:10px} .hs-note span{display:block;font-size:9.5px;color:#475569}
+  .hs-scr[data-v="app"] .hs-note{transform:none;opacity:1}
+  .hs-ptr{position:absolute;z-index:10;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.55);border:2.5px solid var(--accent);box-shadow:0 2px 10px rgba(6,12,26,.35);transition:left .45s ease,top .45s ease,transform .12s,opacity .25s}
+  .hs-ptr.off{opacity:0} .hs-ptr.down{transform:scale(.8);background:color-mix(in srgb,var(--accent) 35%,transparent)}
+  .hs-ptr.tap::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--accent);animation:tourtap .45s ease-out forwards}
+  .hs-cap{margin:0;min-height:3em;display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.45;color:var(--ink-2);width:100%}
+  .hs-n{flex:none;font-size:11.5px;font-weight:700;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:8px;padding:2px 6px;margin-top:1px}
+  .hs-ctl{display:flex;align-items:center;gap:4px} .hs-pv{width:34px;padding:0;justify-content:center} .hs-pv svg{width:16px;height:16px}
+  .hs-dots{display:flex;gap:6px;padding:0 6px} .hs-dots button{width:8px;height:8px;padding:0;border:0;border-radius:4px;background:var(--line-strong);cursor:pointer;transition:width .2s,background .2s}
+  .hs-dots button.on{width:20px;background:var(--accent)}
+  @media (prefers-reduced-motion:reduce){ .hsdlg [class^="hs-"],.hsdlg [class*=" hs-"]{transition:none!important;animation:none!important} .hs-ptr.tap::after{animation:none} }
 </style>
 </head>
 <body>
@@ -2527,7 +2604,8 @@ function tourSteps(key){
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
-    S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),end];
+    S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),
+    S('details.me',t('Add to Home Screen'),t('Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.'),{when:()=>hsCan()}),end];
   if(key==='new') return [
     S(null,t('Create a poll'),t('A quick look at the New poll page.')),
     S('#prs',t('Start from'),t('Start from a ready-made preset (with fitting questions) or one you saved, or start empty.')),
@@ -2889,7 +2967,7 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}
+    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}${hsCan()?`<a href="#" data-hsopen>${t('Add to Home Screen')}</a>`:''}
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -4757,6 +4835,7 @@ function ntDevice(){
   if(pushIsOn()) return `<p class="help m0 ntdev">${ICON.check}${t('Notifications are on for this device.')}</p>`;
   const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
     :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
+  if(a==='homescreen') return `<div class="row ntdev"><span class="grow help m0">${note}</span><button type="button" class="btn sm withic" data-hsopen>${ICON.tap}<span>${t('Show me how')}</span></button></div>`;
   return note?`<p class="help m0 ntdev">${note}</p>`:`<div class="row ntdev"><span class="grow help m0">${t('Notifications are off on this device.')}</span><button type="button" class="btn sm primary withic" data-pushon>${ICON.bell}<span>${t('Turn on')}</span></button></div>`;
 }
 function ntOpen(){
@@ -7953,7 +8032,7 @@ function pushAskHtml(){
   const a=pushAvail(), no=store.get('pushAsk','');
   if(!chatCan()||!(a==='default'||a==='homescreen'||(a==='granted'&&!store.get('pushOn',false)))) return '';
   if(no&&Date.now()-Date.parse(no)<30*864e5) return '';
-  return `<div class="chat-ask" id="chatask">${ICON.bell}<span class="grow">${a==='homescreen'?t('For notifications, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.'):t('Get notified about new messages?')}</span>${a==='homescreen'?'':`<button type="button" class="btn sm primary" data-pushon>${t('Turn on')}</button>`}${ib('x',t('Not now'),'data-pushno','sm ghost')}</div>`;
+  return `<div class="chat-ask" id="chatask">${ICON.bell}<span class="grow">${a==='homescreen'?t('For notifications, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.'):t('Get notified about new messages?')}</span>${a==='homescreen'?`<button type="button" class="btn sm primary" data-hsopen>${t('Show me how')}</button>`:`<button type="button" class="btn sm primary" data-pushon>${t('Turn on')}</button>`}${ib('x',t('Not now'),'data-pushno','sm ghost')}</div>`;
 }
 // 🔔 / 🔕 in the chat header: this poll's notifications (only while this browser gets them).
 function chatMuteBtn(){
@@ -7968,6 +8047,121 @@ function pushRedraw(){
   const mb=$('chatmute'), slot=$('chatmuteslot'); if(mb) mb.remove(); if(slot) slot.innerHTML=chatMuteBtn();
   if($('pushsec')) pushSecDraw();
 }
+// ---- "Add to Home Screen" walkthrough: an animated phone shows where to tap (iPhone Safari / Android Chrome) ----
+// hsOpen(os) opens it; a fake finger moves and taps each step, autoplaying (not with reduced motion); tap the phone or ‹ › to step.
+const HS={os:'ios',i:0,play:true,tm:[],bip:null};
+const hsAndroid=()=>/Android/i.test(navigator.userAgent);
+// Phones that can add the site and aren't already running it from the Home Screen.
+const hsCan=()=>(pushIos()||hsAndroid())&&!pushStandalone();
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); HS.bip=e; });
+window.addEventListener('appinstalled',()=>{ HS.bip=null; });
+const HSI={
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 11H6v10h12V11h-2"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>',
+  fwd:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3zM21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></svg>',
+  tabs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="13" height="13" rx="2"/><path d="M8 4h11a2 2 0 0 1 2 2v11"/></svg>',
+  dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  addsq:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'};
+// Steps: v = what the phone shows, at = what the finger taps (null = no tap), cap = caption.
+function hsSteps(os){
+  if(os==='android') return [
+    {v:'page',at:'[data-hst="menu"]',cap:t('In Chrome, tap the ⋮ menu at the top right.')},
+    {v:'menu',at:'[data-hst="add"]',cap:t('Tap <b>Add to Home screen</b> (some phones say <b>Install app</b>).')},
+    {v:'add',at:'[data-hst="ok"]',cap:t('Tap <b>Install</b> (or <b>Add</b>).')},
+    {v:'home',at:'[data-hst="icon"]',cap:t('when-who is now on your Home screen. Open it from there.')},
+    {v:'app',at:null,cap:t('It opens like an app, and can show notifications.')}];
+  return [
+    {v:'page',at:'[data-hst="share"]',cap:t('In Safari, tap the Share button. On newer iPhones, tap ⋯ first, then Share.')},
+    {v:'sheet',at:'[data-hst="add"]',cap:t('Scroll down and tap <b>Add to Home Screen</b>.')},
+    {v:'add',at:'[data-hst="ok"]',cap:t('Leave <b>Open as Web App</b> on and tap <b>Add</b>.')},
+    {v:'home',at:'[data-hst="icon"]',cap:t('when-who is now on your Home Screen. Always open it from there.')},
+    {v:'app',at:null,cap:t('It opens like an app, and can show notifications.')}];
+}
+// The drawn phone (labels in the phone's own words, so people find the same text on theirs).
+function hsPhone(os){
+  const host=esc(location.host||'when-who'), logo='<img src="/logo.svg" alt="">';
+  const page=`<div class="hs-page"><div class="hs-pbar">${logo}<span>when-who</span></div>
+    <div class="hs-pbody"><i class="hs-ln w70"></i><i class="hs-ln w45"></i>
+      <div class="hs-cal">${Array.from({length:21},(_,k)=>`<i class="${[1,2,4,8,9,10,15,16].includes(k)?'y':k===11||k===17?'m':''}"></i>`).join('')}</div>
+      <i class="hs-ln w60"></i><i class="hs-ln w35"></i></div></div>`;
+  const home=`<div class="hs-home"><div class="hs-grid">${Array.from({length:11},(_,k)=>`<span class="hs-app c${k%6}"><i></i><b></b></span>`).join('')}
+      <span class="hs-app me" data-hst="icon"><i>${logo}</i><b>when-who</b></span></div><div class="hs-dock">${'<i></i>'.repeat(4)}</div></div>`;
+  const app=`<div class="hs-run">${page}<div class="hs-note">${logo}<div><b>when-who</b><span>${t('Anna: Friday works for me!')}</span></div></div></div>`;
+  if(os==='android') return `<div class="hs-ph and"><div class="hs-sb"><span>9:41</span><span class="hs-sbi"><i></i><i></i></span></div>
+    <div class="hs-scr"><div class="hs-top"><span class="hs-url">${host}</span><span class="hs-ib" data-hst="menu">${HSI.dots}</span></div>${page}
+      <div class="hs-menu">${['New tab','History','Downloads','Share…'].map(x=>`<span>${esc(t(x))}</span>`).join('')}<span class="hl" data-hst="add">${HSI.addsq}${t('Add to Home screen')}</span><span>${t('Settings')}</span></div>
+      <div class="hs-dim"></div><div class="hs-dlgm"><b>${t('Install app')}</b><div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>
+        <div class="hs-btns"><span>${t('Cancel')}</span><span class="pri" data-hst="ok">${t('Install')}</span></div></div>
+      ${home}${app}</div><div class="hs-nav"><i></i></div></div>`;
+  return `<div class="hs-ph ios"><div class="hs-sb"><span>9:41</span><span class="hs-isl"></span><span class="hs-sbi"><i></i><i></i></span></div>
+    <div class="hs-scr">${page}<div class="hs-bar"><span class="hs-url">${host}</span>
+        <div class="hs-tools"><span>${HSI.back}</span><span>${HSI.fwd}</span><span class="hs-ib" data-hst="share">${HSI.share}</span><span>${HSI.book}</span><span>${HSI.tabs}</span></div></div>
+      <div class="hs-dim"></div><div class="hs-sheet"><div class="hs-sh-h">${logo}<div><b>when-who</b><span>${host}</span></div></div>
+        <div class="hs-list"><span>${t('Copy')}</span><span>${t('Add to Reading List')}</span><span>${t('Add Bookmark')}</span><span>${t('Add to Favourites')}</span>
+          <span class="hl" data-hst="add">${t('Add to Home Screen')}${HSI.addsq}</span><span>${t('Find on Page')}</span></div></div>
+      <div class="hs-addv"><div class="hs-addh"><span>${t('Cancel')}</span><b>${t('Add to Home Screen')}</b><span class="pri" data-hst="ok">${t('Add')}</span></div>
+        <div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>
+        <div class="hs-tog"><span>${t('Open as Web App')}</span><i></i></div></div>
+      ${home}${app}</div><div class="hs-nav"><i></i></div></div>`;
+}
+function hsOpen(os){
+  HS.os=os||(hsAndroid()?'android':'ios'); HS.i=0; HS.play=!tourRM();
+  let d=$('hsdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='hsdlg'; d.className='dlg hsdlg'; d.setAttribute('aria-labelledby','hs_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{
+      if(e.target===d||e.target.closest('[data-hsclose]')){ d.close(); return; }
+      const o=e.target.closest('[data-hsos]'); if(o){ HS.os=o.dataset.hsos; HS.i=0; hsDraw(); return; }
+      const g=e.target.closest('[data-hsgo]'); if(g){ HS.play=false; hsShow(g.dataset.hsgo==='p'?HS.i-1:g.dataset.hsgo==='n'?HS.i+1:+g.dataset.hsgo); return; }
+      if(e.target.closest('[data-hsplay]')){ HS.play=!HS.play; hsShow(HS.play&&HS.i===hsSteps(HS.os).length-1?0:HS.i); return; }
+      if(e.target.closest('[data-hsinst]')&&HS.bip){ const p=HS.bip; HS.bip=null; p.prompt(); p.userChoice.then(c=>{ if(c&&c.outcome==='accepted') d.close(); else hsDraw(); }).catch(()=>{}); return; }
+      if(e.target.closest('.hs-stage')){ HS.play=false; hsShow(HS.i+1); }
+    });
+    d.addEventListener('keydown',e=>{ if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); HS.play=false; hsShow(HS.i+(e.key==='ArrowRight'?1:-1)); } });
+    d.addEventListener('close',hsStop); }
+  hsDraw(); if(!d.open) d.showModal();
+  if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+}
+function hsDraw(){
+  const d=$('hsdlg'); if(!d) return; const n=hsSteps(HS.os).length;
+  d.innerHTML=`<div class="dlg-h"><h2 id="hs_h">${t('Add to Home Screen')}</h2>${ib('x',t('Close'),'data-hsclose','sm ghost')}</div>
+    <div class="dlg-b hs-b"><div class="seg" role="group" aria-label="${esc(t('Phone'))}">${[['ios','iPhone'],['android','Android']].map(([k,l])=>`<button type="button" data-hsos="${k}" class="${HS.os===k?'on':''}" aria-pressed="${HS.os===k}">${l}</button>`).join('')}</div>
+      <div class="hs-stage" role="img" aria-label="${esc(t('Animation: where to tap on the phone'))}">${hsPhone(HS.os)}<div class="hs-ptr off" aria-hidden="true"></div></div>
+      <p class="hs-cap" aria-live="polite"><span class="hs-n"></span><span class="hs-t"></span></p>
+      <div class="hs-ctl"><button type="button" class="btn sm ghost hs-pv" data-hsgo="p" aria-label="${esc(t('Back'))}">${HSI.back}</button>
+        <div class="hs-dots">${Array.from({length:n},(_,k)=>`<button type="button" data-hsgo="${k}" aria-label="${esc(t('Step {n}',{n:k+1}))}"></button>`).join('')}</div>
+        <button type="button" class="btn sm ghost hs-pv" data-hsgo="n" aria-label="${esc(t('Next'))}">${HSI.fwd}</button>
+        <button type="button" class="btn sm ghost hs-pv" data-hsplay></button></div>
+      ${HS.os==='android'&&HS.bip&&hsAndroid()?`<button type="button" class="btn primary withic" data-hsinst>${ICON.download}<span>${t('Install now')}</span></button>`:''}</div>`;
+  hsShow(HS.i);
+}
+function hsStop(){ HS.tm.forEach(clearTimeout); HS.tm=[]; }
+function hsShow(i){
+  const d=$('hsdlg'); if(!d) return; const S=hsSteps(HS.os), n=S.length; hsStop();
+  i=(i+n)%n; HS.i=i; const s=S[i], scr=d.querySelector('.hs-scr'), st=d.querySelector('.hs-stage'), ptr=d.querySelector('.hs-ptr');
+  scr.dataset.v=s.v; d.querySelectorAll('.press').forEach(x=>x.classList.remove('press'));
+  d.querySelector('.hs-n').textContent=`${i+1}/${n}`; d.querySelector('.hs-t').innerHTML=s.cap;
+  d.querySelectorAll('.hs-dots button').forEach((b,k)=>b.classList.toggle('on',k===i));
+  const pb=d.querySelector('[data-hsplay]'); pb.innerHTML=HS.play?HSI.pause:HSI.play; pb.setAttribute('aria-label',HS.play?t('Pause'):t('Play'));
+  const later=(ms,f)=>HS.tm.push(setTimeout(f,tourRM()?Math.min(ms,60):ms));
+  ptr.classList.remove('tap','down');
+  if(!s.at){ ptr.classList.add('off'); }
+  // Wait for the view's slide-in, then move the finger onto the target and tap it.
+  else later(450,()=>{ const el=scr.querySelector(s.at); if(!el) return;
+    // Measured again just before the tap (the view may still be sliding in).
+    const aim=()=>{ const a=st.getBoundingClientRect(), r=el.getBoundingClientRect(), z=parseFloat(getComputedStyle(st).zoom)||1;
+      ptr.style.left=Math.round((r.left-a.left+r.width/2)/z)+'px'; ptr.style.top=Math.round((r.top-a.top+r.height/2)/z)+'px'; };
+    aim(); ptr.classList.remove('off'); later(450,aim);
+    later(850,()=>{ ptr.classList.add('down'); el.classList.add('press'); void ptr.offsetWidth; ptr.classList.add('tap');
+      later(220,()=>{ ptr.classList.remove('down'); el.classList.remove('press'); }); }); });
+  if(HS.play&&!tourRM()) later(i===n-1?3600:2500,()=>hsShow(i+1));
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-hsopen]'); if(!b) return;
+  e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; hsOpen(b.dataset.hsopen||'');
+});
 // Account page: "Chat notifications on this device".
 function pushSecDraw(){
   const el=$('pushsec'); if(!el) return;
@@ -7980,7 +8174,7 @@ function pushSecDraw(){
   el.innerHTML=`<h3 id="notifications">${t('Notifications')}</h3>
     ${a==='off'?'':`<div class="row mt-3"><span class="grow">${t('Notifications on this device')}</span>${tip(t('Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.'),'left')}
       ${note?'':`<label class="sw" title="${esc(t('Notifications on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Notifications on this device'))}"><span></span></label>`}</div>
-    ${note?`<p class="help m0">${note}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
+    ${note?`<p class="help m0">${note}</p>${a==='homescreen'?`<div class="row mt-3"><button type="button" class="btn sm withic" data-hsopen>${ICON.tap}<span>${t('Show me how')}</span></button></div>`:''}`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
     ${ntAcctHtml()}`;
   const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
   if(location.hash==='#notifications'&&NTA.prefs&&!NTA.scrolled){ NTA.scrolled=1; el.scrollIntoView({block:'start',behavior:'smooth'}); }
@@ -11009,7 +11203,36 @@ function germanText(){ return {
 "Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.": "Bekomm Benachrichtigungen von when-who auf diesem Gerät, auch wenn es geschlossen ist. Was du bekommst, legst du unten fest und je Umfrage mit der Glocke oben in der Umfrage.",
 "Choose what you’re notified about in this poll, right away or in an hourly email: chat, answers, meetings, questions and more.": "Wähle, worüber du in dieser Umfrage benachrichtigt wirst, sofort oder in einer stündlichen E-Mail: Chat, Antworten, Termine, Fragen und mehr.",
 "Invalid notification settings": "Ungültige Benachrichtigungs-Einstellungen",
-"Mentions": "Erwähnungen"}; }
+"Mentions": "Erwähnungen",
+"In Chrome, tap the ⋮ menu at the top right.": "Tippe in Chrome oben rechts auf das ⋮-Menü.",
+"Tap <b>Add to Home screen</b> (some phones say <b>Install app</b>).": "Tippe auf <b>Zum Startbildschirm hinzufügen</b> (auf manchen Handys <b>App installieren</b>).",
+"Tap <b>Install</b> (or <b>Add</b>).": "Tippe auf <b>Installieren</b> (oder <b>Hinzufügen</b>).",
+"when-who is now on your Home screen. Open it from there.": "when-who ist jetzt auf deinem Startbildschirm. Öffne es von dort.",
+"It opens like an app, and can show notifications.": "Es öffnet sich wie eine App und kann Benachrichtigungen zeigen.",
+"In Safari, tap the Share button. On newer iPhones, tap ⋯ first, then Share.": "Tippe in Safari auf „Teilen“. Auf neueren iPhones zuerst auf ⋯, dann auf „Teilen“.",
+"Scroll down and tap <b>Add to Home Screen</b>.": "Scrolle nach unten und tippe auf <b>Zum Home-Bildschirm</b>.",
+"Leave <b>Open as Web App</b> on and tap <b>Add</b>.": "Lass <b>Als Web-App öffnen</b> an und tippe auf <b>Hinzufügen</b>.",
+"when-who is now on your Home Screen. Always open it from there.": "when-who ist jetzt auf deinem Home-Bildschirm. Öffne es immer von dort.",
+"Anna: Friday works for me!": "Anna: Freitag passt mir!",
+"New tab": "Neuer Tab",
+"History": "Verlauf",
+"Downloads": "Downloads",
+"Add to Home screen": "Zum Startbildschirm hinzufügen",
+"Install app": "App installieren",
+"Install": "Installieren",
+"Add to Reading List": "Zur Leseliste hinzufügen",
+"Add Bookmark": "Lesezeichen hinzufügen",
+"Add to Favourites": "Zu Favoriten hinzufügen",
+"Add to Home Screen": "Zum Home-Bildschirm",
+"Find on Page": "Auf der Seite suchen",
+"Open as Web App": "Als Web-App öffnen",
+"Animation: where to tap on the phone": "Animation: wo du auf dem Handy tippst",
+"Step {n}": "Schritt {n}",
+"Install now": "Jetzt installieren",
+"Pause": "Pause",
+"Play": "Abspielen",
+"Show me how": "Zeig mir, wie",
+"Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.": "Öffne when-who wie eine App, mit Benachrichtigungen: Kontomenü → Zum Home-Bildschirm zeigt dir, wie."}; }
 })();
 </script>
 </body>
