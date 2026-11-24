@@ -99,6 +99,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   notification unless a focused tab is on that poll, tap opens `?p=<id>&chat=1`) and `public/manifest.webmanifest` (iPhone: push only from the
   Home Screen app). `pushEnable` / `pushDisable` / `pushResync` (daily), ask bar at the top of the chat (`pushAskHtml`, ✕ = `pushAsk`, 30 days),
   🔔/🔕 mute in the chat header (`chatMuteBtn`), Account → Summary → Notifications (`pushSecDraw`, Send a test). Signing out unsubscribes.
+- **Answer notifications** (0029, `answer_watch`, one row per person per poll, deleted when both off): "Notify me when someone answers",
+  for signed-in people who can see the answers (`watchAllowed`: organisers, or answers not hidden and, invited-only, in the poll). `PUT /api/polls/:id/watch
+  { email, push }`; `GET /api/polls/:id` sends `me.watch` only to those allowed (the page's 🔔 chip in the header, `watchChip` / `watchMenu`).
+  `push` = Web Push right away (`pushAnswer`, kind `answer`, from `createResponse` and `updateResponse`; a changed answer only if it last changed
+  `ANSWER_PUSH_GAP` (10 min) ago). `email` = hourly digest in the cron (`answerDigests`, `sent_at` = cutoff, `DIGESTS_PER_RUN`), sent from "when-who"
+  to the watcher only (not via `sendMail`, so no owner copy and no owner quota). The watcher's own answers are left out.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

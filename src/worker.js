@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-NiWcTgdEbyWqLFoZpnhwoWGTYz069SJQ7/qmcxwtwg4=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-tRGBp5P+E9zxbeAar+CfZJXApsatRXTBkb8b/zBH+Bw=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -212,6 +212,7 @@ async function route(request, env, ctx, url) {
   if (a === 'image' && m === 'GET') return pollImage(request, env, url, id);
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
+  if (a === 'watch' && !b && m === 'PUT') return setWatch(request, env, id);
   if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
   if (a === 'chat') {
     if (!b && m === 'GET') return listChat(request, env, url, id);
@@ -236,7 +237,7 @@ async function route(request, env, ctx, url) {
     if (!b && m === 'POST') return createNextInstance(request, env, ctx, url, id);
     if (b && !c && m === 'PATCH') return updateInstance(request, env, id, b);
     if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
-    if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, id, b);
+    if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, ctx, id, b);
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
     if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
     if (b && c === 'questions-text' && !d && m === 'POST') return questionsFromText(request, env, id, b);
@@ -250,7 +251,7 @@ async function route(request, env, ctx, url) {
   if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
   if (a === 'responses' && b) {
     if (m === 'GET') return getOwnResponse(request, env, id, b);
-    if (m === 'PUT') return updateResponse(request, env, id, b);
+    if (m === 'PUT') return updateResponse(request, env, ctx, id, b);
     if (m === 'DELETE') return deleteResponse(request, env, id, b);
   }
   throw new HttpError(404, 'Not found');
@@ -910,7 +911,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0028';
+const USER_DATA_REVIEWED = '0029';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -928,6 +929,8 @@ const USER_DATA = {
     del: `DELETE FROM messages WHERE user_id = ? OR poll_id IN (${OWNED})` }, // my reactions on others' messages: dropReactions()
   chat_reads: { rows: 'SELECT * FROM chat_reads WHERE user_id = ?',
     del: `DELETE FROM chat_reads WHERE user_id = ? OR poll_id IN (${OWNED})` },
+  answer_watch: { rows: 'SELECT * FROM answer_watch WHERE user_id = ?',
+    del: `DELETE FROM answer_watch WHERE user_id = ? OR poll_id IN (${OWNED})` }, // "notify me when someone answers" switches
   instances: { rows: `SELECT * FROM instances WHERE poll_id IN (${OWNED})`,
     del: `DELETE FROM instances WHERE poll_id IN (${OWNED})` },
   polls: { rows: `SELECT * FROM polls WHERE owner_id = ? OR id IN (SELECT poll_id FROM participants WHERE user_id = ?)`,
@@ -2353,6 +2356,10 @@ async function getPoll(request, env, ctx, url, id) {
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
     // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
+    if (admin || (!poll.hide_results && (!poll.invited_only || part))) { // "notify me when someone answers" (answer_watch)
+      const w = await env.DB.prepare('SELECT email, push FROM answer_watch WHERE poll_id = ? AND user_id = ?').bind(id, user.id).first();
+      out.me.watch = { email: !!(w && w.email), push: !!(w && w.push) };
+    }
     const can = !!poll.allow_comments && (admin || !poll.invited_only || out.me.invited); // chat: everyone signed in, or the invited
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
     if (can && (await env.DB.prepare('SELECT muted FROM chat_reads WHERE poll_id = ? AND user_id = ?').bind(id, user.id).first('muted'))) out.chat.muted = true;
@@ -2401,7 +2408,7 @@ async function deletePoll(request, env, id) {
   return json({ ok: true });
 }
 // Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
-const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups']
+const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups', 'answer_watch']
   .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
   .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
 
@@ -2902,6 +2909,84 @@ async function sendPollInvite(env, url, poll, user, emails, pids, { again, messa
 
 // Who gets series emails: everyone in the poll's participant list who has an email address, not only last round's answers.
 // Accounts: the account's email. Guests who answered: the email on their latest answer (removing it there stops the emails).
+// ---------- answer notifications ("notify me when someone answers", answer_watch, 0029) ----------
+// Per person per poll, for signed-in people who can see the answers: email = an hourly digest (cron), push = right away.
+const ANSWER_PUSH_GAP = 10 * 60000; // a changed answer pushes again only if it last changed this long ago (autosaves)
+const DIGESTS_PER_RUN = 40;         // emails per hourly run (Resend free tier: 100 a day for the whole site)
+// May this account follow the poll's answers? Organisers (any role) always; others when answers aren't hidden
+// (invited-only polls: only people in the poll).
+async function watchAllowed(env, poll, uid) {
+  if (poll.owner_id === uid) return true;
+  const p = await env.DB.prepare('SELECT role FROM participants WHERE poll_id = ? AND user_id = ? LIMIT 1').bind(poll.id, uid).first();
+  if (p && POLL_ROLES.includes(p.role)) return true;
+  return !poll.hide_results && (!poll.invited_only || !!p);
+}
+// PUT /api/polls/:id/watch { email, push }: both off deletes the row.
+async function setWatch(request, env, id) {
+  const user = requireUser(request);
+  const poll = await loadPoll(env, id);
+  await checkPassword(env, request, poll);
+  if (!(await watchAllowed(env, poll, user.id))) throw new HttpError(403, 'Only people who can see the answers can get notified about them.');
+  const b = await body(request);
+  const mail = b.email ? 1 : 0, push = b.push ? 1 : 0;
+  if (!mail && !push) await env.DB.prepare('DELETE FROM answer_watch WHERE poll_id = ? AND user_id = ?').bind(id, user.id).run();
+  else await env.DB.prepare(`INSERT INTO answer_watch (poll_id, user_id, email, push, sent_at) VALUES (?1, ?2, ?3, ?4, ?5)
+    ON CONFLICT (poll_id, user_id) DO UPDATE SET email = excluded.email, push = excluded.push,
+      sent_at = CASE WHEN answer_watch.email = 0 THEN excluded.sent_at ELSE answer_watch.sent_at END`).bind(id, user.id, mail, push, now()).run();
+  return json({ ok: true, watch: { email: !!mail, push: !!push } });
+}
+// Someone answered (isNew) or changed their answer: push to the devices of everyone following the poll, except them.
+async function pushAnswer(env, poll, name, isNew, actorId) {
+  if (!pushOn(env)) return;
+  const { results: ws } = await env.DB.prepare('SELECT user_id FROM answer_watch WHERE poll_id = ? AND push = 1 AND user_id != ?').bind(poll.id, actorId || '').all();
+  const ok = [];
+  for (const w of ws) if (await watchAllowed(env, poll, w.user_id)) ok.push(w.user_id);
+  if (!ok.length) return;
+  const { results: subs } = await env.DB.prepare(`SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id IN (${ok.map(() => '?').join(',')})
+    ORDER BY created_at DESC LIMIT ?`).bind(...ok, PUSH_MAX).all();
+  const who = String(name || '?').slice(0, 60), tag = 'ans-' + poll.id;
+  await pushSend(env, subs, (s) => ({ kind: 'answer', title: String(poll.title || '').slice(0, 120), tag, poll: poll.id, url: `/?p=${poll.id}`, at: now(),
+    body: s.lang === 'de' ? (isNew ? `${who} hat geantwortet` : `${who} hat die Antwort geändert`) : (isNew ? `${who} answered` : `${who} changed their answer`) }), tag);
+}
+// Hourly: one email per follower with the answers given or changed since the last one (their own left out).
+async function answerDigests(env) {
+  if (!emailEnabled(env)) return;
+  const base = siteUrl(env); if (!base) return;
+  const { results: due } = await env.DB.prepare(
+    `SELECT w.poll_id, w.user_id, w.sent_at, u.email FROM answer_watch w JOIN users u ON u.id = w.user_id
+     WHERE w.email = 1 AND EXISTS (SELECT 1 FROM responses r LEFT JOIN participants p ON p.id = r.participant_id
+       WHERE r.poll_id = w.poll_id AND r.updated_at > w.sent_at AND (p.user_id IS NULL OR p.user_id != w.user_id))
+     LIMIT ?`).bind(DIGESTS_PER_RUN).all();
+  for (const w of due) {
+    try {
+      const poll = await env.DB.prepare('SELECT * FROM polls WHERE id = ?').bind(w.poll_id).first();
+      if (!poll || !(await watchAllowed(env, poll, w.user_id))) { // can't see the answers any more: stop following
+        await env.DB.prepare('UPDATE answer_watch SET email = 0 WHERE poll_id = ? AND user_id = ?').bind(w.poll_id, w.user_id).run();
+        continue;
+      }
+      const { results: rs } = await env.DB.prepare(
+        `SELECT r.name, r.created_at, r.updated_at, i.start_date, i.end_date FROM responses r JOIN instances i ON i.id = r.instance_id
+         LEFT JOIN participants p ON p.id = r.participant_id
+         WHERE r.poll_id = ? AND r.updated_at > ? AND (p.user_id IS NULL OR p.user_id != ?) ORDER BY r.updated_at LIMIT 200`).bind(poll.id, w.sent_at, w.user_id).all();
+      if (!rs.length) continue;
+      const de = poll.lang === 'de', series = poll.kind === 'series';
+      const line = (r) => `• ${r.name}: ${r.created_at > w.sent_at ? (de ? 'hat geantwortet' : 'answered') : (de ? 'hat die Antwort geändert' : 'changed their answer')}`
+        + (series ? ` (${periodText(poll, r)})` : '');
+      const n = rs.length, allNew = rs.every((r) => r.created_at > w.sent_at);
+      const subject = `${poll.title}: ` + (de ? (allNew ? (n === 1 ? 'eine neue Antwort' : n + ' neue Antworten') : (n === 1 ? 'eine geänderte Antwort' : n + ' neue oder geänderte Antworten'))
+        : (allNew ? (n === 1 ? '1 new answer' : n + ' new answers') : (n === 1 ? '1 changed answer' : n + ' new or changed answers')));
+      const link = `${base}/?p=${poll.id}`;
+      const text = (de ? `Seit der letzten E-Mail in „${poll.title}“:` : `Since the last email in “${poll.title}”:`) + '\n\n' + rs.map(line).join('\n')
+        + `\n\n${link}\n\n—\n` + (de ? 'Du bekommst diese E-Mail, weil du für diese Umfrage „Bei neuen Antworten benachrichtigen“ eingeschaltet hast. Ausschalten: die Glocke 🔔 oben in der Umfrage.'
+          : 'You’re getting this because you turned on “Notify me when someone answers” for this poll. To turn it off, use the bell 🔔 at the top of the poll.');
+      const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
+        { preheader: subject, button: { href: link, label: de ? 'Umfrage öffnen' : 'Open poll' }, site: base, lang: langOf(poll.lang) });
+      await sendEmail(env, { fromName: 'when-who', to: [w.email], subject, text, html });
+      await env.DB.prepare('UPDATE answer_watch SET sent_at = ? WHERE poll_id = ? AND user_id = ?').bind(rs[rs.length - 1].updated_at, poll.id, w.user_id).run();
+    } catch (e) { console.error('digest', w.poll_id, e); }
+  }
+}
+
 // Guests who never answered (added by the owner in Participants): the email the owner gave them.
 // Skips anyone who already answered `inst`.
 async function participantEmails(env, poll, inst) {
@@ -2952,6 +3037,7 @@ async function runScheduled(env) {
     ]);
   } catch (e) { console.error('cleanup', e); }
   if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
+  try { await answerDigests(env); } catch (e) { console.error('digest', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
   for (const poll of polls) {
@@ -3357,7 +3443,7 @@ async function questionsFromText(request, env, id, iid) {
   return json({ group: title ? { label: title, icon: icon(r.icon) } : null, questions: out });
 }
 
-async function createResponse(request, env, id, iid) {
+async function createResponse(request, env, ctx, id, iid) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, env, poll, 'manage');
   if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
@@ -3409,6 +3495,7 @@ async function createResponse(request, env, id, iid) {
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
   if (fill) await env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid).run(); // column from migration 0015
+  ctx.waitUntil(pushAnswer(env, poll, part.name, true, user && user.id).catch((e) => console.error(e)));
   return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
@@ -3832,7 +3919,7 @@ async function deleteForm(request, env, url, id, iid) {
   await env.DB.prepare('DELETE FROM form_answers WHERE id = ?').bind(row.id).run();
   return json({ ok: true });
 }
-async function updateResponse(request, env, id, rid) {
+async function updateResponse(request, env, ctx, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
@@ -3892,6 +3979,9 @@ async function updateResponse(request, env, id, rid) {
   if (fill !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
+  // Watchers get a push for a changed answer, but not for every autosave: only if it last changed 10+ minutes ago.
+  if ((entries !== r.entries || comment !== r.comment) && !(Date.now() - Date.parse(r.updated_at) < ANSWER_PUSH_GAP))
+    ctx.waitUntil(pushAnswer(env, poll, name, false, user && user.id).catch((e) => console.error(e)));
   return json({ ok: true, name });
 }
 async function deleteResponse(request, env, id, rid) {

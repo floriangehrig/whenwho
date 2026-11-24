@@ -1280,6 +1280,8 @@
   .pgrid :is(.slot,.hd).dp:not(.dr,.da){background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
   .pgrid .hd{position:relative}
   :is(.pgrid .slot,.pgrid .hd,#pcal .day)[data-dn]::after{content:attr(data-dn);position:absolute;top:1px;right:1px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--accent);color:#fff;font:700 9px/13px system-ui,sans-serif;text-align:center;pointer-events:none}
+  .watchm{min-width:260px} .watchr{display:flex;align-items:center;gap:8px;min-height:38px;padding:2px 6px} .watchr>svg{width:16px;height:16px;flex:none;color:var(--accent)} .watchr>.tip{position:static} .watchn{padding:4px 6px}
+  .watchchip{cursor:pointer;font-family:inherit} .watchchip:hover,.watchchip.on{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);color:#fff}
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
   .dmenu .dm-h{padding:4px 8px 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
   .dmenu .dm-r{display:flex;align-items:center;gap:8px;padding:2px 2px 2px 8px;border-radius:10px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -2513,6 +2515,7 @@ function tourSteps(key){
     S(null,t('Welcome to when-who'),edit?t('A quick look at everything you can do in this poll, from answering to planning meetings.'):t('Three quick steps to answer this poll.'),{go:tgView(editable()?'mine':'group'),basic:1}),
     S('#hdr .meta',t('This poll'),(series?t('The dates of this round, the deadline and how many people answered. Tap the date to switch between rounds.'):t('The dates, the deadline and how many people answered.'))+(role?' '+t('Your role: {role}.',{role:esc(roleName(role))})+' '+esc(roleHelp(role)):'')),
     S('.pshare',t('Share the link'),t('Send this link to everyone who should answer: copy it or share it straight to WhatsApp or email.'),{when:()=>edit}),
+    S('#watchchip',t('Get notified'),t('Get an email or a notification when someone answers or changes their answer. Everyone who can see the answers can switch it on for themselves.')),
     S('[data-istatus]',t('Close or reopen'),t('Closing stops new answers. Reopen it any time.'),{when:()=>edit}),
     S('.atabs',t('Sections'),edit?t('Availability, Meetings, Questions, People and Settings: everything about this poll is in these tabs.'):t('Answer in Availability, see the planned meetings and fill in the organiser’s questions.')),
     S('#wsme',t('You'),guest?t('Enter your name (and, if you like, your email). No account needed.'):t('You answer as your account, so your answer follows you to every device.'),{go:tgView('mine'),basic:1}),
@@ -3014,7 +3017,7 @@ function renderHome(){
     </div></main>${siteFoot()}`;
 }
 
-const PRIVACY_UPDATED='2026-11-23';
+const PRIVACY_UPDATED='2026-11-24';
 const siteFoot = () => `<footer class="site-foot"><a href="?imprint">${t('Legal notice')}</a><a href="?privacy">${t('Privacy policy')}</a><a href="?rules">${t('Rules')}</a></footer>`;
 // Shared pieces of the legal pages. Values come from OPERATOR_NAME / OPERATOR_ADDRESS / OPERATOR_PHONE / CONTACT_EMAIL / DPA_NAME (wrangler.toml, via /api/config).
 const legalMail = () => CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
@@ -3079,6 +3082,7 @@ function renderPrivacy(){
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.'),
+        t('<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
@@ -3089,8 +3093,8 @@ function renderPrivacy(){
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
         t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.'),
-        t('<b>Resend</b>: sends sign-in codes, invitations and reminders.'),
-        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) to your device. They are encrypted end to end, so the push service can’t read them.'),
+        t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the answer summaries you asked for.'),
+        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and, if you asked for them, new answers (poll title and the person’s name) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
       ]))}
@@ -4571,7 +4575,7 @@ function renderHeader(){
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span>${d.isAdmin?(()=>{ const sr=p.kind==='series', cl=i.manualStatus==='open', lb=cl?(sr?t('Close this round'):t('Close poll')):(sr?t('Reopen this round'):t('Reopen poll'));
       return `<button type="button" class="stbtn" data-istatus="${i.id}" data-to="${cl?'closed':'open'}" title="${esc(lb)}">${ICON[cl?'lock':'unlock']}<span>${cl?t('Close'):t('Reopen')}</span></button>`; })():''}</div>
     <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta">${d.role&&d.role!=='owner'?`<span class="chip" title="${esc(t('Your role in this poll')+': '+roleHelp(d.role))}">${ICON[ROLE_IC[d.role]]}<span>${esc(roleName(d.role))}</span></span>`:''}${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+    <div class="meta">${watchChip(d)}${d.role&&d.role!=='owner'?`<span class="chip" title="${esc(t('Your role in this poll')+': '+roleHelp(d.role))}">${ICON[ROLE_IC[d.role]]}<span>${esc(roleName(d.role))}</span></span>`:''}${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip keepl" title="${t('Reply by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.deadline}<span><span class="bl">${t('Reply by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip keepl" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip keepl" title="${n} ${n===1?t('answer'):t('answers')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('answer'):t('answers')}</span></span></span>`):''}${p.hasPassword&&canManage()?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
@@ -4580,6 +4584,48 @@ function renderHeader(){
     ${p.hideResults&&!canSee()?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
   renderMeetings(); renderQuestions();
 }
+// "Notify me when someone answers" (answer_watch): a chip in the header for signed-in people who can see the answers
+// (me.watch from GET /api/polls/:id). Email = at most one summary an hour; push = right away on devices with notifications on.
+function watchChip(d){
+  const w=d.me&&d.me.watch; if(!w) return '';
+  const on=w.email||w.push, lb=on?t('You get notified about new answers'):t('Get notified when someone answers');
+  return `<button type="button" class="chip watchchip${on?' on':''}" id="watchchip" data-watch aria-haspopup="true" title="${esc(lb)}" aria-label="${esc(lb)}">${ICON[on?'bell':'belloff']}<span class="bl">${on?t('Notifying you'):t('Notify me')}</span></button>`;
+}
+function watchMenu(){
+  closeDraftMenu();
+  const d=P.data, w=d.me&&d.me.watch, chip=$('watchchip'); if(!w||!chip) return;
+  const a=pushAvail(), pushNote=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
+    :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
+  const row=(id,ic,label,help,on)=>`<div class="dm-r watchr">${ICON[ic]}<span class="grow">${label}</span>${tip(help,'left')}<label class="sw" title="${esc(label)}"><input type="checkbox" id="${id}"${on?' checked':''} aria-label="${esc(label)}"><span></span></label></div>`;
+  const el=document.createElement('div'); el.id='dmenu'; el.className='dmenu watchm'; el.setAttribute('role','dialog'); el.setAttribute('aria-label',t('When someone answers'));
+  el.innerHTML=`<div class="dm-h">${t('When someone answers')}</div>`
+    +(d.emailEnabled?row('watch_em','mail',t('Email'),t('At most one email an hour, listing who answered or changed their answer.'),w.email):'')
+    +(a==='off'?'':(!pushNote||w.push?row('watch_pu','bell',t('Notification'),t('Right away, on your devices where notifications are on (this one is switched on when you tap here).'),w.push):'')
+      +(pushNote?`<p class="help m0 watchn">${pushNote}</p>`:''));
+  if(!el.querySelector('input')) el.innerHTML+=`<p class="help m0 watchn">${t('Email and notifications aren’t available here.')}</p>`;
+  el.dataset.y=scrollY; document.body.appendChild(el);
+  if(matchMedia('(max-width:620px)').matches) el.classList.add('sheet');
+  else { const r=chip.getBoundingClientRect(), wd=el.offsetWidth;
+    el.style.left=Math.max(8,Math.min(innerWidth-wd-8,r.left))+'px'; el.style.top=(r.bottom+6)+'px'; }
+  el.onchange=async e=>{
+    const cb=e.target; if(!cb.matches('input[type=checkbox]')) return;
+    const next={email:!!w.email,push:!!w.push};
+    if(cb.id==='watch_em') next.email=cb.checked;
+    if(cb.id==='watch_pu'){
+      next.push=cb.checked;
+      if(cb.checked&&!pushIsOn()&&pushAvail()!=='denied'&&pushAvail()!=='unsupported'&&pushAvail()!=='homescreen'){ cb.disabled=true; const ok=await pushEnable(); cb.disabled=false; if(!ok){ cb.checked=false; return; } }
+    }
+    cb.disabled=true;
+    try{ const r=await api('PUT',`/polls/${P.id}/watch`,next,headers()); d.me.watch=r.watch;
+      toast(r.watch.email||r.watch.push?t('You’ll be notified when someone answers'):t('No more notifications about answers')); }
+    catch(x){ cb.checked=!cb.checked; toast(x.message); }
+    cb.disabled=false;
+    const nc=document.createElement('div'); nc.innerHTML=watchChip(d); const old=$('watchchip'); if(old&&nc.firstElementChild) old.replaceWith(nc.firstElementChild);
+  };
+  el.onclick=e=>e.stopPropagation();
+  const f=el.querySelector('input'); if(f&&!TOUCH) f.focus({preventScroll:true});
+}
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-watch]'); if(!b) return; e.preventDefault(); if($('dmenu')&&$('dmenu').classList.contains('watchm')) closeDraftMenu(); else watchMenu(); });
 // The share link with Copy and Share / WhatsApp / email buttons, under the poll header.
 function shareRow(p,i){
   const link=shareLink(p.id), info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
@@ -7670,7 +7716,7 @@ function pushSecDraw(){
     :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
   el.hidden=false;
   el.innerHTML=`<h3>${t('Notifications')}</h3>
-    <div class="row mt-3"><span class="grow">${t('Chat messages on this device')}</span>${tip(t('Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header.'),'left')}
+    <div class="row mt-3"><span class="grow">${t('Chat messages on this device')}</span>${tip(t('Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header. For new answers, use the bell at the top of a poll.'),'left')}
       ${note?'':`<label class="sw" title="${esc(t('Chat messages on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Chat messages on this device'))}"><span></span></label>`}</div>
     ${note?`<p class="help m0">${note}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`;
   const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
@@ -7690,6 +7736,7 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',e=>{
     const d=e.data||{}; if(!d.poll||d.poll!==P.id||!P.data) return;
     if(d.type==='openchat'){ chatSetOpen(true,null); return; }
+    if(d.type==='answer'){ if(!$('dmenu')&&!document.querySelector('dialog[open]')) loadPoll(); return; }
     if(d.type==='chat'){ if(chatVisible()){ chatFast(); chatFetch(false); } else if(P.data.chat&&chatCan()) chatUnreadBadges((P.data.chat.unread||0)+1); }
   });
   navigator.serviceWorker.startMessages&&navigator.serviceWorker.startMessages();
@@ -9291,7 +9338,7 @@ function germanText(){ return {
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
 "You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.": "Du kannst die Verbindung jederzeit auf deiner Kontoseite trennen. Dabei werden die gespeicherten Tokens gelöscht und Google wird gebeten, den Zugriff zu widerrufen. Du kannst den Zugriff auch in deinen Google- oder Microsoft-Kontoeinstellungen entfernen.",
 "Services we use": "Dienste, die wir nutzen",
-"<b>Resend</b>: sends sign-in codes, invitations and reminders.": "<b>Resend</b>: verschickt Anmeldecodes, Einladungen und Erinnerungen.",
+"<b>Resend</b>: sends sign-in codes, invitations, reminders and the answer summaries you asked for.": "<b>Resend</b>: verschickt Anmeldecodes, Einladungen, Erinnerungen und die Zusammenfassungen neuer Antworten, die du eingeschaltet hast.",
 "<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.": "<b>Photon (komoot)</b>: schlägt Orte vor, wenn du einen Ort eintippst. Gesendet wird nur, was du in dieses Feld tippst.",
 "How long we keep it": "Wie lange wir Daten aufbewahren",
 "Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. A poll with no activity for 12 months (no answers, changes or chat messages, and its last day has passed) is deleted automatically with everything in it. Its owner gets an email 14 days before and can keep it by opening it. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.": "Umfragen und Antworten bleiben gespeichert, bis die Person, der die Umfrage gehört, sie löscht. Dabei werden auch alle Antworten und Nachrichten gelöscht. Eine Umfrage ohne Aktivität seit 12 Monaten (keine Antworten, Änderungen oder Chat-Nachrichten, und ihr letzter Tag ist vorbei) wird automatisch mit allem darin gelöscht. Die Person, der sie gehört, bekommt 14 Tage vorher eine E-Mail und kann sie behalten, indem sie sie öffnet. Kalender bleiben, bis du sie entfernst oder trennst. Dein Konto bleibt, bis du uns bittest, es zu löschen.",
@@ -10482,19 +10529,34 @@ function germanText(){ return {
 "This browser can’t show notifications.": "Dieser Browser kann keine Benachrichtigungen anzeigen.",
 "Notifications": "Benachrichtigungen",
 "Chat messages on this device": "Chat-Nachrichten auf diesem Gerät",
-"Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header.": "Werde benachrichtigt, wenn jemand im Chat einer deiner Umfragen schreibt, auch wenn when-who geschlossen ist. Einen einzelnen Chat schaltest du mit der Glocke oben im Chat stumm.",
+"Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header. For new answers, use the bell at the top of a poll.": "Werde benachrichtigt, wenn jemand im Chat einer deiner Umfragen schreibt, auch wenn when-who geschlossen ist. Einen einzelnen Chat schaltest du mit der Glocke oben im Chat stumm. Für neue Antworten nutze die Glocke oben in einer Umfrage.",
 "Send a test": "Test senden",
 "Test sent": "Test gesendet",
 "This chat is muted": "Dieser Chat ist stumm",
 "Notifications for this chat are on": "Benachrichtigungen für diesen Chat sind an",
 "Get chat messages as notifications on this device, even when when-who is closed.": "Chat-Nachrichten als Benachrichtigung auf diesem Gerät, auch wenn when-who geschlossen ist.",
 "<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.": "<b>Benachrichtigungen (nur wenn du sie einschaltest):</b> pro Gerät die Push-Adresse, die uns dein Browser gibt, und ihre Schlüssel, damit neue Chat-Nachrichten dich erreichen, und welche Chats du stummgeschaltet hast. Ausschalten, Abmelden auf dem Gerät oder Löschen deines Kontos entfernt sie.",
-"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
+"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and, if you asked for them, new answers (poll title and the person’s name) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) und, wenn du sie eingeschaltet hast, neue Antworten (Titel der Umfrage und Name der Person) auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
 "This browser’s push service isn’t supported": "Der Push-Dienst dieses Browsers wird nicht unterstützt",
 "Invalid push keys": "Ungültige Push-Schlüssel",
 "Notifications aren’t set up on this site": "Benachrichtigungen sind auf dieser Website nicht eingerichtet",
 "Notifications aren’t on for this device": "Benachrichtigungen sind auf diesem Gerät nicht an",
-"The push service didn’t accept the notification. Turn notifications off and on again.": "Der Push-Dienst hat die Benachrichtigung nicht angenommen. Schalte Benachrichtigungen aus und wieder ein."}; }
+"The push service didn’t accept the notification. Turn notifications off and on again.": "Der Push-Dienst hat die Benachrichtigung nicht angenommen. Schalte Benachrichtigungen aus und wieder ein.",
+"You get notified about new answers": "Du wirst bei neuen Antworten benachrichtigt",
+"Get notified when someone answers": "Benachrichtigen, wenn jemand antwortet",
+"Notifying you": "Benachrichtigung an",
+"Notify me": "Benachrichtigen",
+"When someone answers": "Wenn jemand antwortet",
+"At most one email an hour, listing who answered or changed their answer.": "Höchstens eine E-Mail pro Stunde, mit allen, die geantwortet oder ihre Antwort geändert haben.",
+"Notification": "Benachrichtigung",
+"Right away, on your devices where notifications are on (this one is switched on when you tap here).": "Sofort, auf deinen Geräten mit eingeschalteten Benachrichtigungen (dieses wird eingeschaltet, wenn du hier tippst).",
+"Email and notifications aren’t available here.": "E-Mails und Benachrichtigungen sind hier nicht verfügbar.",
+"You’ll be notified when someone answers": "Du wirst benachrichtigt, wenn jemand antwortet",
+"No more notifications about answers": "Keine Benachrichtigungen mehr zu Antworten",
+"Get notified": "Benachrichtigt werden",
+"Get an email or a notification when someone answers or changes their answer. Everyone who can see the answers can switch it on for themselves.": "Bekomm eine E-Mail oder Benachrichtigung, wenn jemand antwortet oder die Antwort ändert. Alle, die die Antworten sehen können, können das für sich einschalten.",
+"<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.": "<b>Benachrichtigungen zu Antworten (nur wenn du sie für eine Umfrage einschaltest):</b> dass du eine E-Mail und/oder Benachrichtigung bekommen möchtest, wenn jemand in dieser Umfrage antwortet, und wann die letzte E-Mail verschickt wurde. Die E-Mail nennt die Namen der Personen, die geantwortet oder ihre Antwort geändert haben. Ausschalten kannst du sie mit der Glocke oben in der Umfrage.",
+"Only people who can see the answers can get notified about them.": "Nur wer die Antworten sehen kann, kann über sie benachrichtigt werden."}; }
 })();
 </script>
 </body>
