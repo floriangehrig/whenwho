@@ -264,6 +264,7 @@
   .qfl{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:4px;counter-reset:qf}
   .qfl-r{display:flex;align-items:center;gap:6px;min-width:0;padding:4px 4px 4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);}
   .qfl-r.pop{animation:chipIn .16s ease-out}
+  .patp.idle>.pat-row{opacity:.45}
   .qfl-r.drag{opacity:.45}
   .qfl-r.dropb{box-shadow:0 -2px 0 var(--accent)} .qfl-r.dropa{box-shadow:0 2px 0 var(--accent)}
   .qfl-r.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
@@ -2303,25 +2304,30 @@ function patternPicker(id,{pat=null,hs=0,he=24,hmin=0,hmax=24,hours=true,keep=fa
     // Multi: a list of rules (periods) that add up, like Quick fill's list. The fields are the rule being built
     // (st.edit = index of the selected rule, edited live by the fields, or -1 = the fields build a new one for Add).
     // It starts with "Every day" selected, so the fields change it straight away.
+    // Rules switched off (eye) are kept as pat.paused: saved with the poll, but they offer nothing.
     if(multi){ const st=PAT[id], ps=pat&&pat.periods, all=[0,1,2,3,4,5,6];
-      st.periods=ps&&ps.length?ps.map(x=>({wd:new Set(x.wd||all), dom:x.dom?[...x.dom]:['',''], hs:x.hs, he:x.he}))
+      const mk=(x,off)=>Object.assign({wd:new Set(x.wd||all), dom:x.dom?[...x.dom]:['',''], hs:x.hs??hs, he:x.he??he}, off?{off:true}:{});
+      st.periods=ps&&ps.length?ps.map(x=>mk(x))
         :[{wd:new Set(pat&&pat.wd?pat.wd:all), dom:pat&&pat.dom?[...pat.dom]:['',''], hs, he}];
+      if(pat&&Array.isArray(pat.paused)) st.periods.push(...pat.paused.slice(0,PAT_MAX-st.periods.length).map(x=>mk(x,true)));
       st.dhs=hs; st.dhe=he; st.empty=true; patSelect(st,0); } }
   else Object.assign(PAT[id],{hmin,hmax,hours,noDom});
-  return `<div class="patp" id="pat_${id}">${patInner(id)}</div>`;
+  return `<div class="patp${patIdle(PAT[id])?' idle':''}" id="pat_${id}">${patInner(id)}</div>`;
 }
+// A rule list with no rule selected: the fields have nothing to change, so they're dimmed.
+const patIdle = st => !!(st&&st.multi&&!(st.edit>=0&&st.periods[st.edit]));
 function patInner(id){
   const st=PAT[id], opt=(lo,hi,cur)=>{ let o=''; for(let h=lo;h<=hi;h++) o+=`<option value="${h}" ${h===cur?'selected':''}>${hh24(h)}</option>`; return o; };
   const ev=st.hmax-st.hmin>=4&&st.hmin<=18&&st.hmax>=22, fr=st.hmin<=17&&st.hmax>17;
   const pre=(v,l,on)=>`<button type="button" data-patpre="${id}" data-v="${v}" class="${on?'on':''}" aria-pressed="${!!on}">${esc(l)}</button>`;
-  const wk=[...st.wd].sort().join(''), dm=st.dom.map(x=>x===''?'':+x).join('-');
+  const wk=[...st.wd].sort().join(''), dm=st.dom.map(x=>x===''?'':+x).join('-'), ia=patIdle(st)?' inert':'';
   // daysRow (optional): replaces the weekday row, given a function that draws it with a label (e.g. Quick Suggest's Weekdays | Dates).
-  const wdRow=(l,c='')=>`<div class="pat-row${c}"><span class="pat-l">${l}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
+  const wdRow=(l,c='')=>`<div class="pat-row${c}"${ia}><span class="pat-l">${l}</span><div class="wdchips" role="group" aria-label="${t('Weekdays')}">${WD.map((w,i)=>`<button type="button" class="wdc${st.wd.has(i)?' on':''}" data-patwd="${id}" data-i="${i}" aria-pressed="${st.wd.has(i)}">${w.slice(0,2)}</button>`).join('')}</div>
       <span class="pat-pre">${pre('all',t('Every day'),wk==='0123456')}${pre('wk',t('Weekdays'),wk==='01234')}${pre('we',t('Weekends'),wk==='56')}</span></div>`;
   return `${st.title?`<div class="boxh">${st.title}</div>`:''}${st.daysRow?st.daysRow(wdRow):wdRow(t('Days'))}
-    <div class="pat-row${st.noDom?' hide':''}"><span class="pat-l">${t('Dates')}</span><span class="pat-in"><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">–<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"></span>
+    <div class="pat-row${st.noDom?' hide':''}"${ia}><span class="pat-l">${t('Dates')}</span><span class="pat-in"><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="1" value="${st.dom[0]}" data-patdom="${id}" data-i="0" aria-label="${t('First day of the month')}">–<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" class="num-sm dom-in" placeholder="31" value="${st.dom[1]}" data-patdom="${id}" data-i="1" aria-label="${t('Last day of the month')}"></span>
       <span class="pat-pre">${pre('d1','1–15',dm==='1-15')}${pre('d2','16–31',dm==='16-31')}</span>${tip(t('Only these days of each month (1–31). Leave empty for every day.'))}</div>
-    <div class="pat-row${st.hours?'':' hide'}" data-pathours><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
+    <div class="pat-row${st.hours?'':' hide'}" data-pathours${ia}><span class="pat-l">${t('Time')}</span><span class="pat-in"><select class="inline" data-patfrom="${id}" aria-label="${t('From')}">${opt(st.hmin,st.hmax-1,st.hs)}</select> ${t('to')}
       <select class="inline" data-patto="${id}" aria-label="${t('To')}">${opt(st.hmin+1,st.hmax,st.he)}</select></span>
       <span class="pat-pre">${pre('allday',t('All day'),st.hs<=st.hmin&&st.he>=st.hmax)}${ev?pre('eve',t('Evening 18–22'),st.hs===18&&st.he===22):''}${fr?pre('from17',t('From 17:00'),st.hs===17&&st.he>=st.hmax&&st.hmin<17):''}</span></div>
     ${st.extraRow?st.extraRow():''}${st.noSum&&!st.actHtml?'':`<div class="pat-act">${st.noSum?'':`<div class="pat-sum${st.sumHtml||st.multi?' pat-chips':''}" id="patsum_${id}">${patSumHtml(id)}</div>`}${st.actHtml?st.actHtml():''}</div>`}`;
@@ -2338,40 +2344,37 @@ function patOne(st,x){
   const pat=(wd.length&&wd.length<7)||dom?{wd:wd.length&&wd.length<7?wd:null,dom}:null;
   return {pat, empty:!wd.length, hs:x.hs, he:x.he};
 }
-const patKey=(st,x)=>{ const v=patOne(st,x); return JSON.stringify([v.pat,st.hours?[v.hs,v.he]:0]); };
-// The rules that will be saved: the list, plus the rule being built when it has days (Create / Save adds it, or updates the one being edited).
-function patEffective(st){
-  const ps=st.periods.slice(), d=patCopy(st);
-  if(!d.wd.size) return ps;
-  if(st.edit>=0&&st.edit<ps.length) ps[st.edit]=d;
-  else if(ps.length<PAT_MAX&&!ps.some(x=>patKey(st,x)===patKey(st,d))) ps.push(d);
-  return ps;
-}
-// All rules as one value: {pat:{wd,dom,periods}, hs:min, he:max} (wd/dom = the union). One rule = a plain pattern.
+// All rules as one value: {pat:{wd,dom,periods,paused?}, hs:min, he:max} (wd/dom = the union of the rules that are on).
+// One rule on = a plain pattern. Rules without days are left out; switched-off ones go to paused (kept, offer nothing).
 function patMulti(st){
-  const vs=patEffective(st).filter(x=>x.wd.size).map(x=>patOne(st,x));
-  if(!vs.length) return {pat:null, empty:true, none:true, hs:st.dhs, he:st.dhe};
-  if(vs.length===1) return vs[0];
-  const hrs=st.hours, periods=vs.map(v=>({wd:v.pat&&v.pat.wd||null, dom:v.pat&&v.pat.dom||null, hs:hrs?v.hs:st.hmin, he:hrs?v.he:st.hmax}));
+  const hrs=st.hours, per=v=>({wd:v.pat&&v.pat.wd||null, dom:v.pat&&v.pat.dom||null, hs:hrs?v.hs:st.hmin, he:hrs?v.he:st.hmax});
+  const vs=st.periods.filter(x=>x.wd.size&&!x.off).map(x=>patOne(st,x)), paused=st.periods.filter(x=>x.wd.size&&x.off).map(x=>per(patOne(st,x)));
+  if(!vs.length) return {pat:null, empty:true, none:true, allOff:paused.length>0, hs:st.dhs, he:st.dhe};
+  const pz=o=>paused.length?Object.assign(o||{wd:null,dom:null},{paused}):o;
+  if(vs.length===1) return Object.assign({},vs[0],{pat:pz(vs[0].pat&&{...vs[0].pat})});
+  const periods=vs.map(per);
   const wd=periods.some(x=>!x.wd)?null:[...new Set(periods.flatMap(x=>x.wd))].sort((a,b)=>a-b);
   const dom=periods.some(x=>!x.dom)?null:[Math.min(...periods.map(x=>x.dom[0])),Math.max(...periods.map(x=>x.dom[1]))];
-  return {pat:{wd:wd&&wd.length<7?wd:null, dom:dom&&!(dom[0]===1&&dom[1]===31)?dom:null, periods}, empty:false,
+  return {pat:pz({wd:wd&&wd.length<7?wd:null, dom:dom&&!(dom[0]===1&&dom[1]===31)?dom:null, periods}), empty:false,
     hs:Math.min(...periods.map(x=>x.hs)), he:Math.max(...periods.map(x=>x.he))};
 }
+// Why a rule list gives nothing to save.
+const patEmptyMsg = id => patValue(id).allOff?t('Switch on at least one rule.'):PAT[id].periods&&PAT[id].periods.length?t('Pick at least one day.'):t('Add at least one rule.');
 // Text for a value: "Weekdays · 17:00–22:00; Weekends · 10:00–22:00".
 function patLabel(v,o={}){ return v.pat&&v.pat.periods?v.pat.periods.map(x=>patText(x.wd||x.dom?x:null,x.hs,x.he,o)).join('; '):patText(v.pat,v.hs,v.he,o); }
-// The list of rules: click one to change it with the fields above (live); Add starts a new one.
-// With none selected the fields build a draft (dashed) that Add puts in the list.
+// The list of rules: click one to select it and change it with the fields above (live), click it again to unselect.
+// Add puts a new empty rule in the list (selected); the eye switches a rule off without removing it.
 function patRules(id){
   const st=PAT[id], o={allDayFrom:st.hmin,allDayTo:st.hmax,hours:st.hours}, rs=st.periods, ed=st.edit>=0&&st.edit<rs.length?st.edit:(st.edit=-1);
-  const d=patOne(st,st), full=rs.length>=PAT_MAX;
+  const full=rs.length>=PAT_MAX;
   let h='<div class="qf-draft">';
-  h+=`<button type="button" class="btn sm primary withic" data-patadd="${id}" ${(ed<0&&d.empty)||full?'disabled':''} title="${esc(full?t('At most {n} rules',{n:PAT_MAX}):ed<0?(d.empty?t('Pick days to add a rule'):t('Add this rule')):t('Add another rule'))}">${ICON.plus}<span>${t('Add')}</span></button>`;
+  h+=`<button type="button" class="btn sm primary withic" data-patadd="${id}" ${full?'disabled':''} title="${esc(full?t('At most {n} rules',{n:PAT_MAX}):t('Add another rule'))}">${ICON.plus}<span>${t('Add')}</span></button>`;
+  if(rs.length&&ed<0) h+=`<span class="muted small">${t('Select a rule to change it.')}</span>`;
   h+='</div>';
   if(!rs.length) h+=`<span class="muted small">${t('Add at least one rule.')}</span>`;
   else h+=`<ol class="qfl">${rs.map((x,i)=>{ const v=patOne(st,x), tx=v.empty?t('Pick at least one day.'):patText(v.pat,v.hs,v.he,o);
-    return `<li class="qfl-r sel${i===ed?' cur':''}" data-pati="${i}" data-pat="${id}" tabindex="0" role="button" aria-pressed="${i===ed}" title="${esc(t('Click to change'))}"><span class="qfl-t"><span${v.empty?' class="muted"':''}>${esc(tx)}</span></span>
-      <span class="qfl-a">${pqb('x',t('Remove'),`data-patrl="del" data-pat="${id}" data-i="${i}"`)}</span></li>`; }).join('')}</ol>`;
+    return `<li class="qfl-r sel${x.off?' off':''}${i===ed?' cur':''}${x===st.pop&&Date.now()-st.popAt<600?' pop':''}" data-pati="${i}" data-pat="${id}" tabindex="0" role="button" aria-pressed="${i===ed}" title="${esc(i===ed?t('Click to unselect'):t('Click to change'))}"><span class="qfl-t"><span${v.empty?' class="muted"':''}>${esc(tx)}</span></span>
+      <span class="qfl-a">${pqb(x.off?'eyeoff':'eye',x.off?t('Switch on'):t('Switch off'),`data-patrl="off" data-pat="${id}" data-i="${i}"`)}${pqb('x',t('Remove'),`data-patrl="del" data-pat="${id}" data-i="${i}"`)}</span></li>`; }).join('')}</ol>`;
   const v=patMulti(st), c=!v.empty&&st.count?st.count(v):'';
   return h+(c?`<span class="muted small">${esc(c)}</span>`:'');
 }
@@ -2398,18 +2401,21 @@ function patSummary(id){
 }
 function patSelect(st,i){ const x=st.periods[i]; if(!x){ st.edit=-1; patResetDraft(st); return; }
   st.edit=i; st.wd=new Set(x.wd); st.dom=[...x.dom]; st.hs=Math.max(st.hmin,x.hs); st.he=Math.min(st.hmax,x.he); }
-function patRefresh(id,full){ const st=PAT[id]; if(st&&st.multi&&st.edit>=0&&st.periods[st.edit]) st.periods[st.edit]=patCopy(st); // the selected rule follows the fields
-  const el=$('pat_'+id); if(!el) return; if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.innerHTML=patSumHtml(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
+function patRefresh(id,full){ const st=PAT[id]; if(st&&st.multi&&st.edit>=0&&st.periods[st.edit]) Object.assign(st.periods[st.edit],patCopy(st)); // the selected rule follows the fields
+  const el=$('pat_'+id); if(!el) return; el.classList.toggle('idle',patIdle(st)); if(full) el.innerHTML=patInner(id); else { const s=$('patsum_'+id); if(s) s.innerHTML=patSumHtml(id); } el.dispatchEvent(new Event('patchange',{bubbles:true})); }
 function patShowHours(id,on){ if(!PAT[id]) return; PAT[id].hours=on; const r=$('pat_'+id)?.querySelector('[data-pathours]'); if(r) r.classList.toggle('hide',!on); patRefresh(id); }
 document.addEventListener('click',e=>{
   const pa=e.target.closest('[data-patadd]'), pr=e.target.closest('[data-patrl]');
   if(pa||pr){ const id=pa?pa.dataset.patadd:pr.dataset.pat, st=PAT[id]; if(!st||!st.multi) return;
-    if(pa){ if(st.edit>=0){ st.edit=-1; patResetDraft(st); } // a rule is selected: start a new one
-      else { if(!st.wd.size||st.periods.length>=PAT_MAX) return; st.periods.push(patCopy(st)); patSelect(st,st.periods.length-1); } }
-    else { const i=+pr.dataset.i; st.periods.splice(i,1); if(st.edit===i) patSelect(st,Math.min(i,st.periods.length-1)); else if(st.edit>i) st.edit--; }
+    if(pa){ if(st.periods.length>=PAT_MAX) return; // a new empty rule, selected: the fields fill it in
+      const x={wd:new Set(), dom:['',''], hs:st.dhs??st.hmin, he:st.dhe??st.hmax}; st.periods.push(x); patSelect(st,st.periods.length-1); st.pop=x; st.popAt=Date.now(); }
+    else { const i=+pr.dataset.i, x=st.periods[i]; if(!x) return;
+      if(pr.dataset.patrl==='off'){ if(x.off) delete x.off; else x.off=true; }
+      else { st.periods.splice(i,1); if(st.edit===i) patSelect(st,-1); else if(st.edit>i) st.edit--; } }
     patRefresh(id,true); return; }
   const pl=e.target.closest('[data-pati]');
-  if(pl&&!e.target.closest('button')){ const id=pl.dataset.pat, st=PAT[id]; if(!st||!st.multi) return; patSelect(st,+pl.dataset.pati); patRefresh(id,true); return; }
+  if(pl&&!e.target.closest('button')){ const id=pl.dataset.pat, st=PAT[id], i=+pl.dataset.pati; if(!st||!st.multi) return;
+    patSelect(st,st.edit===i?-1:i); patRefresh(id,true); $('pat_'+id)?.querySelector(`[data-pati="${i}"]`)?.focus(); return; }
   const c=e.target.closest('[data-patwd]'), p=e.target.closest('[data-patpre]'); if(!c&&!p) return;
   if(c){ const st=PAT[c.dataset.patwd], i=+c.dataset.i; st.wd.has(i)?st.wd.delete(i):st.wd.add(i); c.classList.toggle('on',st.wd.has(i)); c.setAttribute('aria-pressed',st.wd.has(i)); patRefresh(c.dataset.patwd); return; }
   const id=p.dataset.patpre, st=PAT[id], v=p.dataset.v;
@@ -2418,6 +2424,7 @@ document.addEventListener('click',e=>{
   if(v==='allday'){ st.hs=st.hmin; st.he=st.hmax; } if(v==='eve'){ st.hs=18; st.he=22; } if(v==='from17'){ st.hs=17; st.he=st.hmax; }
   patRefresh(id,true);
 });
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-pati]')){ e.preventDefault(); e.target.click(); } });
 document.addEventListener('input',e=>{
   const t=e.target; if(!t.dataset) return;
   if(t.dataset.patdom){ let c=t.value.replace(/\D/g,'').slice(0,2); if(c.length===2||c==='0') c=String(Math.min(31,Math.max(1,+c)));   // digits only, 1–31
@@ -3661,9 +3668,14 @@ function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   const qs=[...(i.groups||[]),...(i.questions||[])].map(({at,closed,...q})=>q); if(qs.length) out.questions=qs;
   return out; }
 
-function renderNew(){
-  document.title=t('New poll')+' · when-who';
-  const band=`<section class="band"><div class="wrap"><div class="eyebrow">${t('New poll')}</div><h1>${t('Create a poll')}</h1>
+// edit = {id, kind, snap}: back from "Poll created" (browser Back): the form as it was sent, and saving changes that poll.
+function renderNew({edit=null}={}){
+  if(edit&&!ME.user) edit=null;
+  delete PAT.np; // drawn again (Back): its count() belonged to the old form
+  document.title=(edit?t('Edit your new poll'):t('New poll'))+' · when-who';
+  const band=edit?`<section class="band"><div class="wrap"><div class="eyebrow">${t('Poll created')}</div><h1>${t('Edit your new poll')}</h1>
+    <p class="lead">${t('Change anything, then save. The link stays the same.')}</p></div></section>`
+    :`<section class="band"><div class="wrap"><div class="eyebrow">${t('New poll')}</div><h1>${t('Create a poll')}</h1>
     <p class="lead">${t("Pick the dates, choose how people answer, then share the link. Answering doesn't need an account.")}</p></div></section>`;
   // Signed out: the form works; Create asks for the email (a code, no password) and creates the poll right after.
   const pend=ME.user&&pendingPoll();
@@ -3709,11 +3721,11 @@ function renderNew(){
       <dl class="sum-list" id="sumList"></dl>
       <div id="sumQs"></div>
       <div class="err" id="ferr" role="alert"></div>
-      <button class="btn primary sum-btn" type="submit" id="createBtn">${t('Create poll')}</button>
+      <button class="btn primary sum-btn" type="submit" id="createBtn">${edit?t('Save changes'):t('Create poll')}</button>
       <p class="help small">${ME.user?t('Only you can manage the poll. Anyone with the link can answer.'):t('Next we email you a 6-digit code, so only you can manage the poll. No password. People answering need no account.')}</p>
       ${ME.user?`<button type="button" class="btn sm ghost withic prs-save" id="prSave">${ICON.copy}<span>${t('Save as preset')}</span></button>`:''}
     </aside>
-    <div class="new-bar"><span class="grow small" id="barTitle"></span><button class="btn primary" type="submit">${t('Create poll')}</button></div>
+    <div class="new-bar"><span class="grow small" id="barTitle"></span><button class="btn primary" type="submit">${edit?t('Save changes'):t('Create poll')}</button></div>
     </form></main>${siteFoot()}`;
 
   const today=new Date(), iso=isoL;
@@ -3852,7 +3864,26 @@ function renderNew(){
   f.addEventListener('input',e=>{ if(['start','end','every','first'].includes(e.target.id)) patRefresh('np'); });
   f.addEventListener('change',e=>{ if(e.target.id==='unit') patRefresh('np'); });
   patRefresh('np');
+  if(edit) aiRestore(edit.snap);
   sum(); $('title').focus();
+  // Saving from the edit form: settings and the round's dates go to the existing poll. Kind and a series' schedule
+  // can't change on a poll, so changing them makes a new one (after asking) and deletes the first.
+  const npUpdate=async body=>{ const o=edit.snap.d, kind=body.kind;
+    const same=kind===edit.kind&&(kind!=='series'||(o.unit===body.unit&&o.every===body.every&&edit.snap.first===body.firstStart));
+    if(!same){ if(!confirm(t('This makes a new poll with a new link. The old link stops working.'))) return false;
+      try{ await api('DELETE','/polls/'+encodeURIComponent(edit.id)); }catch(e){ if(e.status!==404) throw e; } return null; }
+    const s={title:body.title, description:body.description, answerMode:body.answerMode, hourStart:body.hourStart, hourEnd:body.hourEnd, dayPattern:body.dayPattern,
+      hideResults:body.hideResults, allowComments:body.allowComments, requireEmail:body.requireEmail, invitedOnly:!!body.invitedOnly, password:body.password||null,
+      meetLocation:body.meetLocation, meetNote:body.meetNote, meetQuestions:body.meetQuestions||[], icon:body.icon||'', image:body.image||null};
+    if(kind==='series') Object.assign(s,{openDays:body.openDays, deadlineDays:body.deadlineDays});
+    if(mail) Object.assign(s,{notifyOpen:body.notifyOpen, remindDays:body.remindDays});
+    try{ await api('PATCH','/polls/'+encodeURIComponent(edit.id),s); }catch(e){ if(e.status===404) return null; throw e; }
+    const g=await api('GET','/polls/'+encodeURIComponent(edit.id)), u={};
+    if(kind==='single') Object.assign(u,{startDate:body.startDate, endDate:body.endDate, deadline:body.deadline});
+    if(kind==='weekly') u.deadline=body.deadline;
+    if(JSON.stringify(body.questions||[])!==JSON.stringify(o.questions||[])) u.questions=body.questions||[];
+    if(g.instance&&Object.keys(u).length) await api('PATCH',`/polls/${encodeURIComponent(edit.id)}/instances/${encodeURIComponent(g.instance.id)}`,u);
+    return edit.id; };
 
   f.onsubmit=async e=>{
     e.preventDefault(); const v=id=>$(id).value, err=$('ferr'); err.textContent='';
@@ -3865,7 +3896,7 @@ function renderNew(){
         if(v('end')<v('start')) return fail(t('The last day is before the first day.'),'end');
         if(v('dl')&&v('dl')>v('end')) return fail(t('The reply-by date is after the last day.'),'dl');
       } else if(kind==='series'&&!v('first')) return fail(t('Pick when the first round starts.'),'first');
-      const pv=patValue('np'); if(pv.empty) return fail(t('Add at least one rule.'));
+      const pv=patValue('np'); if(pv.empty) return fail(patEmptyMsg('np'));
       if(kind==='single'&&!daysIn(v('start'),v('end'),pv.pat)) return fail(t('None of the days in this range match the chosen days.'));
       return true; };
     if(!check()) return;
@@ -3883,9 +3914,14 @@ function renderNew(){
       else err.textContent=t('Sign in first: the picture is too big to keep while you sign in.'); return; }
     const btns=f.querySelectorAll('button[type=submit]'); btns.forEach(b=>b.disabled=true);
     try{
-      const r=await api('POST','/polls',body);
-      if(body.password) store.set('pw:'+r.id, body.password);
-      renderCreated(r.id, body, kind);
+      let id=edit?await npUpdate(body):null;
+      if(id===false){ btns.forEach(b=>b.disabled=false); return; }
+      if(!id) id=(await api('POST','/polls',body)).id;
+      if(body.password) store.set('pw:'+id, body.password); else store.del('pw:'+id);
+      // Browser Back from "Poll created" comes back to this form, filled in, to change the poll (popstate below).
+      history.replaceState({np:{id,kind,snap:aiSnap()}},'','?new');
+      history.pushState({created:{id,body,kind}},'','?p='+encodeURIComponent(id)); NAV_AT=location.search;
+      renderCreated(id, body, kind); window.scrollTo(0,0);
       try{ ME.polls=(await api('GET','/me/polls')).polls; }catch(e){}
     }catch(ex){ err.textContent=ex.message; btns.forEach(b=>b.disabled=false); }
   };
@@ -9161,7 +9197,7 @@ function wireAdmin(){
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const man=canManage();
-    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; } if(man){ const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; } if(man){ const pv=patValue('sp'); if(pv.empty){ toast(patEmptyMsg('sp')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     if(man){ const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image; }
     if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
     if(man&&P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
@@ -9509,6 +9545,14 @@ document.addEventListener('keydown',e=>{
 });
 const hashPigeon=()=>{ if(location.hash==='#pigeon') Pigeon.open(); };
 window.addEventListener('hashchange',hashPigeon); hashPigeon();
+// The New poll form and "Poll created" are drawn without reloading (history entries with state); any other Back / Forward
+// to a different address loads that page.
+let NAV_AT=location.search;
+window.addEventListener('popstate',e=>{ const s=e.state;
+  if(s&&s.np&&new URLSearchParams(location.search).has('new')){ NAV_AT=location.search; renderNew({edit:s.np}); window.scrollTo(0,0); return; }
+  if(s&&s.created){ NAV_AT=location.search; renderCreated(s.created.id,s.created.body,s.created.kind); window.scrollTo(0,0); return; }
+  if(location.search!==NAV_AT) location.reload();
+});
 window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.form.dirty)){ e.preventDefault(); e.returnValue=''; } });
 
 // ---- boot ----
@@ -9536,7 +9580,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
   } else if(qs.has('connect')) renderConnect(qs.get('connect'));
   else if(qs.has('account')){ renderAccount(); calReturn(qs); }
-  else if(qs.has('new')) renderNew();
+  else if(qs.has('new')) renderNew({edit:history.state&&history.state.np||null});
   else if(qs.has('privacy')) renderPrivacy();
   else if(qs.has('imprint')) renderImprint();
   else if(qs.has('rules')) renderRules();
@@ -10828,6 +10872,13 @@ function germanText(){ return {
 "Move up": "Nach oben",
 "Move down": "Nach unten",
 "Switch on": "Einschalten",
+"Switch on at least one rule.": "Schalte mindestens eine Regel ein.",
+"Select a rule to change it.": "Wähle eine Regel, um sie zu ändern.",
+"Click to unselect": "Klicken zum Abwählen",
+"Edit your new poll": "Neue Umfrage bearbeiten",
+"Change anything, then save. The link stays the same.": "Ändere, was du willst, und speichere. Der Link bleibt gleich.",
+"Save changes": "Änderungen speichern",
+"This makes a new poll with a new link. The old link stops working.": "Dadurch entsteht eine neue Umfrage mit neuem Link. Der alte Link funktioniert dann nicht mehr.",
 "Switch off": "Ausschalten",
 "Remove all Quick fill rules?": "Alle Regeln für Schnell ausfüllen entfernen?",
 "Keys: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> brush · <kbd>+</kbd> add rule": "Tasten: <kbd>A</kbd> <kbd>I</kbd> <kbd>M</kbd> <kbd>C</kbd> Pinsel · <kbd>+</kbd> Regel hinzufügen",

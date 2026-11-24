@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-yI131ka1ZOADK1m/8pCOn7orMZUn2Whdd8aXiLXiKQo=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-wKYcyhEK3rrKGsiIjwl0x9/4DFmvNP3/SMEkE0Q6m+0=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -373,16 +373,28 @@ function parseDays(v) {
   }
   return wd || dom ? { wd, dom } : null;
 }
+// paused: rules the organiser switched off. Kept with the pattern so the page can show them again; nothing that
+// decides which days or hours are offered reads them.
+function parsePeriod(x) {
+  if (!x || typeof x !== 'object') throw new HttpError(400, 'Invalid day pattern');
+  const d = parseDays(x) || { wd: null, dom: null };
+  const hs = int(x.hs, 0, 23, 'First hour'), he = int(x.he, 1, 24, 'Last hour');
+  if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
+  return { wd: d.wd, dom: d.dom, hs, he };
+}
 function parsePattern(v) {
+  const pat = parseActivePattern(v);
+  if (!v || typeof v !== 'object' || v.paused == null) return pat;
+  const n = v.periods == null ? 1 : v.periods.length;
+  if (!Array.isArray(v.paused) || n + v.paused.length > MAX_PERIODS) throw new HttpError(400, `Add 1 to ${MAX_PERIODS} periods`);
+  if (!v.paused.length) return pat;
+  return { ...(pat || { wd: null, dom: null }), paused: v.paused.map(parsePeriod) };
+}
+function parseActivePattern(v) {
   const base = parseDays(v);
   if (!v || typeof v !== 'object' || v.periods == null) return base;
   if (!Array.isArray(v.periods) || !v.periods.length || v.periods.length > MAX_PERIODS) throw new HttpError(400, `Add 1 to ${MAX_PERIODS} periods`);
-  const periods = v.periods.map((x) => {
-    const d = parseDays(x) || { wd: null, dom: null };
-    const hs = int(x.hs, 0, 23, 'First hour'), he = int(x.he, 1, 24, 'Last hour');
-    if (he <= hs) throw new HttpError(400, 'The last hour must be after the first hour');
-    return { wd: d.wd, dom: d.dom, hs, he };
-  });
+  const periods = v.periods.map(parsePeriod);
   const allWd = periods.some((p) => !p.wd), allDom = periods.some((p) => !p.dom);
   const wd = allWd ? null : [...new Set(periods.flatMap((p) => p.wd))].sort((a, b) => a - b);
   const dom = allDom ? null : [Math.min(...periods.map((p) => p.dom[0])), Math.max(...periods.map((p) => p.dom[1]))];
@@ -2333,7 +2345,7 @@ function readPollSettings(b, existing) {
     let pat = parsePattern(b.dayPattern);
     if (pat && pat.periods) {
       const ps = pat.periods;
-      if (ps.length === 1) pat = ps[0].wd || ps[0].dom ? { wd: ps[0].wd, dom: ps[0].dom } : null;
+      if (ps.length === 1) pat = ps[0].wd || ps[0].dom || pat.paused ? { wd: ps[0].wd, dom: ps[0].dom, ...(pat.paused ? { paused: pat.paused } : {}) } : null;
       p.hour_start = Math.min(...ps.map((x) => x.hs)); p.hour_end = Math.max(...ps.map((x) => x.he));
     }
     p.day_pattern = pat ? JSON.stringify(pat) : null;
@@ -4095,7 +4107,7 @@ const HELP_SCHEMA = {
 };
 const HELP_DOC = `when-who is a free website for availability polls ("when is everyone free?") and for planning the meetings that follow.
 
-POLLS. New poll (button on the home page). Kinds: One-off (one date range, e.g. a trip), Recurring (a new round every week or month, e.g. a monthly club night; earlier answers and the chat are kept together; rounds are listed in Settings → Rounds, others switch rounds with the round chip in the header) and Weekly schedule (a typical week, to find a regular weekly slot). People answer by whole days, by hours, or both. Start from: pick a ready-made preset (about 20 kinds, with fitting questions) or one of your own; "Describe it" lets AI fill the form from a sentence. Save as preset keeps settings for next time. Optional: reply-by date (deadline), poll password, Only invited people can answer, Hide answers from respondents, Chat on/off, an emoji or picture icon. You need to sign in to create and manage polls; answering works without an account.
+POLLS. New poll (button on the home page). Which days and times: a list of rules that add up (e.g. weekdays 17–22 and weekends 10–22); Add puts a new empty rule in the list, click a rule to select it and change it (click again to unselect), the eye switches a rule off without deleting it. After Create poll, the browser's Back button goes back to the form to change the poll (same link). Kinds: One-off (one date range, e.g. a trip), Recurring (a new round every week or month, e.g. a monthly club night; earlier answers and the chat are kept together; rounds are listed in Settings → Rounds, others switch rounds with the round chip in the header) and Weekly schedule (a typical week, to find a regular weekly slot). People answer by whole days, by hours, or both. Start from: pick a ready-made preset (about 20 kinds, with fitting questions) or one of your own; "Describe it" lets AI fill the form from a sentence. Save as preset keeps settings for next time. Optional: reply-by date (deadline), poll password, Only invited people can answer, Hide answers from respondents, Chat on/off, an emoji or picture icon. You need to sign in to create and manage polls; answering works without an account.
 
 SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes). There is no password.
 
