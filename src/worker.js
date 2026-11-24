@@ -64,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-oUVGCZjxFWlFUuY2n+re5IeGZehfLuOZt5uN3+Epj6s=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-SMDYXVdCfUVtVJrGgDyW+WMlmMgX1pzuH5+3epJ+KcE=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -154,7 +154,8 @@ async function route(request, env, ctx, url) {
     if (!parts[2] && m === 'PATCH') return updateProfile(request, env);
     if (parts[2] === 'email' && !parts[3] && m === 'POST') return sendEmailChangeCode(request, env, url);
     if (parts[2] === 'email' && parts[3] === 'verify' && !parts[4] && m === 'POST') return verifyEmailChange(request, env, url);
-    if (parts[2] === 'polls' && m === 'GET') return myPolls(request, env);
+    if (parts[2] === 'polls' && !parts[3] && m === 'GET') return myPolls(request, env);
+    if (parts[2] === 'polls' && parts[3] && parts[4] === 'hidden' && !parts[5] && m === 'PUT') return setPollHidden(request, env, parts[3]);
     if (parts[2] === 'export' && !parts[3] && m === 'GET') return exportMe(request, env);
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
@@ -941,7 +942,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0033';
+const USER_DATA_REVIEWED = '0034';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -965,6 +966,8 @@ const USER_DATA = {
     del: `DELETE FROM poll_events WHERE actor_id = ? OR poll_id IN (${OWNED})` }, // 3-day log of what happened, for notifications
   instances: { rows: `SELECT * FROM instances WHERE poll_id IN (${OWNED})`,
     del: `DELETE FROM instances WHERE poll_id IN (${OWNED})` },
+  poll_hidden: { rows: 'SELECT * FROM poll_hidden WHERE user_id = ?',
+    del: `DELETE FROM poll_hidden WHERE user_id = ? OR poll_id IN (${OWNED})` }, // polls I hid from my overview
   polls: { rows: `SELECT * FROM polls WHERE owner_id = ? OR id IN (SELECT poll_id FROM participants WHERE user_id = ?)`,
     del: 'DELETE FROM polls WHERE owner_id = ?' }, // export: polls I own in full, polls I answered for their titles
   favourites: { rows: 'SELECT * FROM favourites WHERE user_id = ?', del: 'DELETE FROM favourites WHERE user_id = ?' },
@@ -2221,14 +2224,27 @@ async function myPolls(request, env) {
        AND m.poll_id IN (SELECT id FROM polls WHERE allow_comments = 1)
      GROUP BY m.poll_id`).bind(user.id).all();
   const unread = Object.fromEntries(ur.map((r) => [r.poll_id, r.n]));
+  const { results: hid } = await env.DB.prepare('SELECT poll_id FROM poll_hidden WHERE user_id = ?').bind(user.id).all();
+  const hidden = new Set(hid.map((r) => r.poll_id)), hd = (p) => (hidden.has(p.id) ? { hidden: true } : {});
   const current = (p) => (p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
     status: effStatus({ status: p.status, end_date: p.end_date }) } : null);
   return json({
     polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at, unread: unread[p.id] || 0,
-      current: current(p) })),
+      current: current(p), ...hd(p) })),
     answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last,
-      ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p) })),
+      ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p), ...hd(p) })),
   });
+}
+// Hide a poll from (or show it again on) my overview. Only polls I own or am in; nothing else changes.
+async function setPollHidden(request, env, id) {
+  const user = requireUser(request);
+  const b = await body(request);
+  const mine = await env.DB.prepare('SELECT 1 FROM polls WHERE id = ?1 AND (owner_id = ?2 OR id IN (SELECT poll_id FROM participants WHERE user_id = ?2))')
+    .bind(id, user.id).first();
+  if (!mine) throw new HttpError(404, 'Poll not found');
+  if (b.hidden) await env.DB.prepare('INSERT OR REPLACE INTO poll_hidden (user_id, poll_id, at) VALUES (?, ?, ?)').bind(user.id, id, new Date().toISOString()).run();
+  else await env.DB.prepare('DELETE FROM poll_hidden WHERE user_id = ? AND poll_id = ?').bind(user.id, id).run();
+  return json({ ok: true, hidden: !!b.hidden });
 }
 // Move a poll that was only reachable by its (old) admin link into the signed-in account.
 async function claimPoll(request, env, id) {
@@ -2473,7 +2489,7 @@ async function deletePoll(request, env, id) {
   return json({ ok: true });
 }
 // Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
-const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups', 'answer_watch', 'poll_events']
+const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups', 'answer_watch', 'poll_events', 'poll_hidden']
   .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
   .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
 

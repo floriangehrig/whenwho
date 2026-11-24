@@ -1266,6 +1266,12 @@
   .st.open{background:var(--yes-bg);color:var(--yes-dark)} .st.closed{background:var(--empty);color:var(--muted)}
   .pc-copy{position:absolute;top:10px;right:10px;z-index:1;padding:0;width:32px;min-height:32px}
   .pc-copy svg{width:16px;height:16px}
+  .pc-more{z-index:2;width:auto;min-height:0} .pc-more>summary.qb{width:32px;height:32px;color:var(--muted)} .pc-more .ddp{top:100%;margin-top:4px}
+  .pcard:has(.pc-more[open]){z-index:5} .pcard.hid{opacity:.72;border-style:dashed}
+  .hp-tools{margin:12px 0 0} .hp-tools .pd-q{flex:1 1 200px} .hp-tools .seg .segic svg{width:14px;height:14px}
+  .hp-dd{margin:0} .hp-dd>summary.btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;list-style:none} .hp-dd>summary::-webkit-details-marker{display:none}
+  .hp-dd>summary svg{width:15px;height:15px} .hp-dd>summary.on{border-color:var(--accent);color:var(--accent-ink)}
+  .hp-none{margin:14px 0 4px}
   .pcard.new{text-decoration:none!important;color:inherit;border-style:dashed;cursor:pointer;background:transparent;justify-content:center;align-items:center;text-align:center}
   .pcard.new .pc-title{padding:0}
   .pcard.new .tile{background:var(--accent-weak)}
@@ -1670,7 +1676,7 @@
     .pcard>.tile{grid-row:1/4;margin:0;align-self:center}
     .pcard>:not(.tile):not(.pc-copy){grid-column:2}
     .pc-foot{margin-top:4px;padding-top:0}
-    .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px}
+    .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px} .pc-more>summary.qb{width:40px;height:40px}
     .pcard.new{display:grid;grid-template-columns:44px minmax(0,1fr);text-align:left;justify-items:start}
     .pcard.new>.tile{grid-row:1/3}
     .drafts .dft{gap:4px 9px;padding:8px} .dacts .qb{width:30px;height:30px} .dfoot .btn{flex:1 1 100%;justify-content:center;min-height:44px} .dvote{flex-basis:100%}
@@ -2634,6 +2640,7 @@ function tourSteps(key){
   if(key==='home') return [
     S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.')),
+    S('#hp_own_tools',t('Find your polls'),t('Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
     S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),
@@ -3112,27 +3119,92 @@ const unreadBadge=p=>p.unread?` <span class="ubadge" title="${esc(t('{n} unread 
 function pollCard(p,answered){
   const c=p.current, open=c&&c.status==='open';
   const as=answered?`<span class="pc-n minw" title="${esc(t('as {name}',{name:p.name}))}">${ICON.check}<span class="ell">${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span>`:'';
-  return `<div class="pcard">${pollTile(p)}
+  return `<div class="pcard${p.hidden?' hid':''}">${pollTile(p)}
     <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}${p.role?roleTag(p.role):''}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
       ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
-    <button type="button" class="btn sm ghost pc-copy" data-copy="${esc(shareLink(p.id))}" title="${t('Copy share link')}" aria-label="${t('Copy share link')}">${ICON.link}</button></div>`;
+    <details class="dd qmore pc-copy pc-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
+      <button type="button" data-copy="${esc(shareLink(p.id))}">${ICON.link}<span class="grow">${t('Copy share link')}</span></button>
+      <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button></div></details></div>`;
 }
 // Home lists page after HOME_PAGE polls (own = Your polls, ans = Polls you answered). The page sticks until reload.
+// Each list has a toolbar (homeTools): title search, status (all = not hidden | open | closed | hidden), kind and sort.
+// Status / kind / sort are kept in localStorage `hpv`; hidden polls are stored on the account (PUT /api/me/polls/:id/hidden).
 const HOME_PAGE=9, HOME_PG={own:0,ans:0};
-function homePage(key){
-  const own=key==='own', list=(own?ME.polls:ME.answered)||[], n=list.length, last=Math.max(0,Math.ceil(n/HOME_PAGE)-1);
+const HOME_V=(()=>{ const sv=store.get('hpv',{}), d=k=>({q:'',st:'all',kind:'all',sort:k==='own'?'new':'last',...(sv[k]||{}),q:''}); return {own:d('own'),ans:d('ans')}; })();
+const homeSave=()=>store.set('hpv',Object.fromEntries(['own','ans'].map(k=>{ const {st,kind,sort}=HOME_V[k]; return [k,{st,kind,sort}]; })));
+const homeAll=key=>(key==='own'?ME.polls:ME.answered)||[];
+// Leave the Hidden view once nothing is hidden (also after a reload that remembered it).
+const homeNorm=key=>{ const v=HOME_V[key]; if(v.st==='hidden'&&!homeAll(key).some(p=>p.hidden)){ v.st='all'; homeSave(); } };
+const HOME_SORTS=key=>[key==='ans'?['last',t('Recently answered')]:['new',t('Newest first')],['start',t('By date')],['deadline',t('Reply by, soonest')],['az',t('Title A–Z')]];
+const HOME_KINDS=()=>[['all',t('All kinds')],['single',t('One-off')],['series',t('Recurring')],['weekly',t('Weekly schedule')]];
+function homeList(key){
+  const v=HOME_V[key], q=v.q.trim().toLowerCase(), all=homeAll(key);
+  const isOpen=p=>p.current&&p.current.status==='open';
+  let l=all.filter(p=>(v.st==='hidden')===!!p.hidden
+    &&(v.st!=='open'||isOpen(p))&&(v.st!=='closed'||!isOpen(p))
+    &&(v.kind==='all'||p.kind===v.kind)&&(!q||String(p.title||'').toLowerCase().includes(q)));
+  const idx=new Map(all.map((p,i)=>[p.id,i])), byIdx=(a,b)=>idx.get(a.id)-idx.get(b.id), last='9999';
+  const cmp={
+    new:(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))||byIdx(a,b),
+    last:(a,b)=>String(b.lastAnswered||'').localeCompare(String(a.lastAnswered||''))||byIdx(a,b),
+    start:(a,b)=>(a.current?.startDate||last).localeCompare(b.current?.startDate||last)||byIdx(a,b),
+    deadline:(a,b)=>((isOpen(a)&&a.current.deadline)||last).localeCompare((isOpen(b)&&b.current.deadline)||last)||byIdx(a,b),
+    az:(a,b)=>String(a.title||'').localeCompare(String(b.title||''),LOC,{sensitivity:'base'})||byIdx(a,b),
+  }[v.sort];
+  return cmp?l.sort(cmp):l;
+}
+const homeFiltered=key=>{ const v=HOME_V[key]; return !!v.q.trim()||v.st!=='all'||v.kind!=='all'; };
+function homeTools(key){ homeNorm(key);
+  const all=homeAll(key), nHid=all.filter(p=>p.hidden).length, v=HOME_V[key];
+  if(all.length<=3&&!nHid&&!homeFiltered(key)) return '';
+  const seg=[['all',t('All')],['open',t('Open')],['closed',t('Closed')],...(nHid||v.st==='hidden'?[['hidden',t('Hidden'),nHid]]:[])];
+  const kinds=HOME_KINDS(), sorts=HOME_SORTS(key), kl=(kinds.find(k=>k[0]===v.kind)||kinds[0])[1], sl=(sorts.find(k=>k[0]===v.sort)||sorts[0])[1];
+  return `<div class="acct-tools hp-tools" id="hp_${key}_tools"><label class="pd-q">${ICON.search}<input type="search" data-hpq="${key}" value="${esc(v.q)}" placeholder="${t('Search polls')}" aria-label="${t('Search polls')}" autocomplete="off"></label>
+    <div class="seg" role="group" aria-label="${t('Show')}">${seg.map(([k,l,n])=>`<button type="button" data-hpst="${key}" data-v="${k}" aria-pressed="${v.st===k}" class="${v.st===k?'on':''}"${k==='hidden'?` title="${t('Polls you hid from this overview')}"`:''}>${k==='hidden'?`<span class="segic">${ICON.eyeoff}</span>`:''}<span>${esc(l)}${n?` ${n}`:''}</span></button>`).join('')}</div>
+    <details class="dd pickdd hp-dd"><summary class="btn sm${v.kind!=='all'?' on':''}" title="${t('Kind')}" aria-label="${t('Kind')}: ${esc(kl)}">${ICON.filter}<span class="hide-sm">${esc(kl)}</span></summary>
+      <div class="ddp right menu pickm" role="menu">${kinds.map(([k,l])=>pickItem(`data-hpkind="${key}" data-v`,k,esc(l),v.kind===k)).join('')}</div></details>
+    <details class="dd pickdd hp-dd"><summary class="btn sm" title="${t('Sort')}" aria-label="${t('Sort')}: ${esc(sl)}">${svgI('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>')}<span class="hide-sm">${esc(sl)}</span></summary>
+      <div class="ddp right menu pickm" role="menu">${sorts.map(([k,l])=>pickItem(`data-hpsort="${key}" data-v`,k,esc(l),v.sort===k)).join('')}</div></details></div>`;
+}
+function homePage(key){ homeNorm(key);
+  const own=key==='own', list=homeList(key), n=list.length, last=Math.max(0,Math.ceil(n/HOME_PAGE)-1), v=HOME_V[key];
   const pg=HOME_PG[key]=Math.min(Math.max(0,HOME_PG[key]),last), a=pg*HOME_PAGE;
+  if(!n&&homeAll(key).length) return `<p class="help hp-none">${v.st==='hidden'&&!v.q.trim()&&v.kind==='all'?t('No hidden polls.'):t('No polls match.')} <button type="button" class="btn sm ghost" data-hpclear="${key}">${t('Clear filters')}</button></p>`;
   const cards=list.slice(a,a+HOME_PAGE).map(p=>pollCard(p,!own)).join('')
-    +(own?`<a class="pcard new" href="?new"><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">${t('New poll')}</span><span class="pc-meta">${t('Pick dates, an icon and share the link')}</span></a>`:'');
+    +(own&&!homeFiltered(key)?`<a class="pcard new" href="?new"><span class="tile ptile-icon"><span class="tile-i plus">${ICON.plus}</span></span><span class="pc-title">${t('New poll')}</span><span class="pc-meta">${t('Pick dates, an icon and share the link')}</span></a>`:'');
   const btn=(d,ic,lb,off)=>`<button type="button" class="btn sm ghost" data-hpg="${key}" data-dir="${d}" title="${esc(lb)}" aria-label="${esc(lb)}"${off?' disabled':''}>${svgI(ic)}</button>`;
   return `<div class="pcards">${cards}</div>${n>HOME_PAGE?`<div class="pager">${btn(-1,'<path d="m15 18-6-6 6-6"/>',t('Previous page'),!pg)}
     <span class="small muted">${t('{a}–{b} of {n}',{a:a+1,b:Math.min(n,a+HOME_PAGE),n})}</span>${btn(1,'<path d="m9 18 6-6-6-6"/>',t('Next page'),pg>=last)}</div>`:''}`;
 }
+// Redraw one list: its cards, and the toolbar unless only the search text changed (keeps focus in the field).
+function homeDraw(key,tools=true){
+  const box=$('hp_'+key); if(!box) return;
+  if(tools){ const tb=$('hp_'+key+'_tools'), html=homeTools(key);
+    if(tb){ if(html) tb.outerHTML=html; else tb.remove(); } else if(html) box.insertAdjacentHTML('beforebegin',html); }
+  box.innerHTML=homePage(key);
+}
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-hpg]'); if(!b) return;
   const k=b.dataset.hpg, box=$('hp_'+k); if(!box) return; HOME_PG[k]+=+b.dataset.dir; box.innerHTML=homePage(k);
   const h=box.parentNode.querySelector('.card-h'); if(h&&h.getBoundingClientRect().top<0) h.scrollIntoView({block:'start'}); });
+document.addEventListener('input',e=>{ const i=e.target.closest('[data-hpq]'); if(!i) return; const k=i.dataset.hpq; HOME_V[k].q=i.value; HOME_PG[k]=0; homeDraw(k,false); });
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-hpst],[data-hpkind],[data-hpsort],[data-hpclear],[data-hphide]'); if(!b) return;
+  const dd=b.closest('details[open]'); if(dd) dd.open=false;
+  const ds=b.dataset;
+  if(ds.hphide){ const id=ds.hphide, ps=[...(ME.polls||[]),...(ME.answered||[])].filter(p=>p.id===id); if(!ps.length) return;
+    const was=!!ps[0].hidden, set=h=>{ ps.forEach(p=>{ if(h) p.hidden=true; else delete p.hidden; }); ['own','ans'].forEach(k=>homeDraw(k)); };
+    set(!was); toast(was?t('Shown on your overview again'):t('Hidden. Find it under Hidden.'));
+    try{ await api('PUT','/me/polls/'+encodeURIComponent(id)+'/hidden',{hidden:!was}); }catch(ex){ set(was); toast(ex.message); }
+    return; }
+  const k=ds.hpst||ds.hpkind||ds.hpsort||ds.hpclear, v=HOME_V[k]; if(!v) return;
+  if(ds.hpst) v.st=ds.v; else if(ds.hpkind) v.kind=ds.v; else if(ds.hpsort) v.sort=ds.v; else { v.q=''; v.st='all'; v.kind='all'; }
+  HOME_PG[k]=0; homeSave(); homeDraw(k);
+});
+// The ⋯ menu on a poll card closes after Copy share link.
+document.addEventListener('click',e=>{ const m=e.target.closest('.pc-more[open] .ddp button'); if(m) m.closest('details').open=false; });
+
 function renderHome(){
   document.title='when-who';
   const server = ME.user ? ME.polls : [], answered = ME.user ? ME.answered : [];
@@ -3153,9 +3225,9 @@ function renderHome(){
     </div></section>
     <main class="wrap"><div class="home-grid">
     ${ME.user?`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
-      <div id="hp_own">${homePage('own')}</div></div>
+      ${homeTools('own')}<div id="hp_own">${homePage('own')}</div></div>
       <div class="card span"><div class="card-h"><h2>${t('Polls you answered')}</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
-      ${answered.length?`<div id="hp_ans">${homePage('ans')}</div>`
+      ${answered.length?`${homeTools('ans')}<div id="hp_ans">${homePage('ans')}</div>`
         :`<p class="help">${t('Polls you answer while signed in show up here, and your answers follow you to every device.')}</p>`}</div>`
     :`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2></div>
       ${localOnly.length?`<p class="help mt-0">${t('These polls were created in this browser with an admin link. Sign in to move them into your account; only the account that owns a poll can manage it.')}</p>
@@ -3224,6 +3296,7 @@ function renderPrivacy(){
         <p>${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')} ${t('See also the <a href="?imprint">legal notice</a>.')}</p>`)}
       ${legalSec(t('What we store'),legalUl([
         t('<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts, and to signed-in people who can see the people or answers of a poll you are in. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
+        t('<b>Your overview:</b> which polls you hid from your list of polls. Only you see this, and showing a poll again removes it.'),
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.'),
@@ -9317,6 +9390,27 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+"<b>Your overview:</b> which polls you hid from your list of polls. Only you see this, and showing a poll again removes it.": "<b>Deine Übersicht:</b> welche Umfragen du in deiner Umfrageliste ausgeblendet hast. Nur du siehst das; wenn du eine Umfrage wieder zeigst, wird der Eintrag gelöscht.",
+"Hidden": "Ausgeblendet",
+"Sort": "Sortieren",
+"Kind": "Art",
+"Clear filters": "Filter zurücksetzen",
+"Newest first": "Neueste zuerst",
+"By date": "Nach Datum",
+"Title A–Z": "Titel A–Z",
+"Recently answered": "Zuletzt beantwortet",
+"All kinds": "Alle Arten",
+"Search polls": "Umfragen suchen",
+"Reply by, soonest": "Antwortfrist, nächste zuerst",
+"Polls you hid from this overview": "Umfragen, die du in dieser Übersicht ausgeblendet hast",
+"Show on overview": "In der Übersicht zeigen",
+"Hide from overview": "In der Übersicht ausblenden",
+"Shown on your overview again": "Wieder in deiner Übersicht",
+"Hidden. Find it under Hidden.": "Ausgeblendet. Du findest sie unter Ausgeblendet.",
+"No hidden polls.": "Keine ausgeblendeten Umfragen.",
+"No polls match.": "Keine passenden Umfragen.",
+"Find your polls": "Umfragen finden",
+"Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.": "Suchen, nur offene oder geschlossene Umfragen zeigen, nach Art filtern und sortieren. Alte Umfragen blendest du mit ⋯ auf der Karte aus; sie warten unter Ausgeblendet.",
 "Add your availability": "Verfügbarkeit eintragen",
 "Add your availability to vote": "Verfügbarkeit eintragen, um abzustimmen",
 "1 required question": "1 Pflichtfrage",
