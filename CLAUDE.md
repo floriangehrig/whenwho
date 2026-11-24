@@ -82,7 +82,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Contacts whose address has an account carry that account's `avatar` / `avatarImg` (`accountsByEmail`; pictures via `GET /api/users/:uid/avatar`,
   signed-in only); imported ones are looked up with `POST /api/me/contacts/lookup`. Your own address is never a contact (`isMe`, server checks).
 - `messages` / `chat_reads` (0012): one group chat per poll (a series shares it), `GET|POST /api/polls/:id/chat`, `DELETE .../chat/:mid`.
-  Everyone signed in may read and write (invited-only polls: the owner and invited people); guests can't.
+  Everyone signed in may read and write (invited-only polls: the owner and invited people). Guests (no account) may **read** when they can
+  open the poll (invited-only polls: only through their personal link, `chatReadable`): `GET .../chat` (`chatAccess(…, write = false)`) gives them
+  no `members`, `me: null`, and `people` as names only (`chatGuestNames`: account name or poll name, never email-based, no avatars); no read mark.
+  `GET /api/polls/:id` sends `chat.read` (can read) next to `chat.can` (can write); page `chatRead()` vs `chatCan()`. Guests' "new message"
+  peek / ring compares `chat.last.at` with localStorage `chatSeen:<poll>`; writing, reacting, replying, deleting and muting need an account.
   `polls.allow_comments` is the poll's **Chat** switch (Answering in Settings): off = no chat (403, dock hidden) and no guest Comment field. The page polls
   `?after=` while the chat is open (15 s, slowing to 60 s when quiet; no WebSockets, no emails; see **Push notifications**). `chat_reads.read_at` drives unread counts
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
@@ -90,7 +94,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `updated_at` makes `?after=` return changed reactions. `GET /api/polls/:id` adds `chat.last` (header peek) and `chat.refs` (thread counts).
   The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. The button pops in, peeks out as a pill ("Chat" or the newest unread message, `chatPeek`) on opening a poll (once per tab, `sessionStorage peek:<poll>`) and when a message comes in, and a ring pulses while there are unread messages (`.ping`). It is one
   timeline: messages plus events worked out on the page (answers, grouped when close together; meetings by their `at` stamp; rounds by
-  `createdAt`). Guests see only the events. Dates of the poll written in a message become chips that jump to that day.
+  `createdAt`). Guests who can't read the chat see only the events. Dates of the poll written in a message become chips that jump to that day.
   People who can chat don't get the Comment field under My answer.
   Tags and attachments are inline tokens in `messages.body`: `<@user id>` (a chat member: owner, account participants, accounts invited by email, anyone who opened
   or wrote in the chat; listed as `members` in the full `GET .../chat`, with `me` = caller's id) and `<#m:meeting id>` (proposed or set). The composer shows readable

@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ijPAHCuFxO4B4Z5K8w447IdRqX4a/b9nCu60aOp1vWk=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-yI131ka1ZOADK1m/8pCOn7orMZUn2Whdd8aXiLXiKQo=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1517,15 +1517,21 @@ async function chatAllowed(env, poll, user) {
   if (await accountParticipant(env, poll.id, user.id)) return true;
   return !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(poll.id, user.email.toLowerCase()).first());
 }
-// Throws unless the signed-in person may use this poll's chat. Returns { poll, user, owner }.
-async function chatAccess(request, env, id) {
-  const user = requireUser(request);
+// Throws unless the caller may use this poll's chat. Returns { poll, user, owner }.
+// write = false (reading): guests too, when they can open the poll (invited-only polls: through their personal link); user is then null.
+async function chatAccess(request, env, id, write = true) {
+  const user = write ? requireUser(request) : userOf(request);
   const poll = await loadPoll(env, id);
-  const owner = await isAdmin(request, env, poll, 'manage');
-  if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
+  const owner = !!user && await isAdmin(request, env, poll, 'manage');
+  if (!(user && await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
   if (!poll.allow_comments) throw new HttpError(403, 'The chat is turned off for this poll');
-  if (!(await chatAllowed(env, poll, user))) throw new HttpError(403, 'Only invited people can join this chat');
+  if (user ? !(await chatAllowed(env, poll, user)) : !(await chatReadable(request, env, poll))) throw new HttpError(403, 'Only invited people can join this chat');
   return { poll, user, owner };
+}
+// Guests (no account) may read the chat when the poll is open to everyone with the link, or through their personal link.
+async function chatReadable(request, env, poll) {
+  if (!poll.allow_comments) return false;
+  return !poll.invited_only || !!(await personByKey(request, env, poll.id));
 }
 // Unread messages in a poll's chat for a user (written by others after they last read it).
 // tagged: only those that tag the user (<@user id> in the body).
@@ -1558,7 +1564,8 @@ const CHAT_MEMBERS_SQL = `SELECT user_id FROM participants WHERE poll_id = ?1 AN
   UNION SELECT user_id FROM messages WHERE poll_id = ?1`;
 // ?after=<iso>: only messages from then on (>=, the page drops ones it has). Without it: the newest CHAT_PAGE plus who wrote them.
 async function listChat(request, env, url, id) {
-  const { poll, user, owner } = await chatAccess(request, env, id);
+  const { poll, user: me, owner } = await chatAccess(request, env, id, false);
+  const user = me || CHAT_GUEST; // guests: nothing is theirs, no read mark, names only
   const after = url.searchParams.get('after'), t0 = now(); // t0 before the query, so nothing written meanwhile is skipped next time
   let msgs;
   if (after) {
@@ -1570,7 +1577,21 @@ async function listChat(request, env, url, id) {
       .bind(id, CHAT_PAGE).all());
   }
   // now: the server's clock, so the page can ask for "messages after this" even while the chat is empty.
-  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: t0, me: user.id }; // me: to spot my tags
+  const out = { messages: msgs.map((m) => msgOut(m, user)), owner: poll.owner_id || null, canDeleteAll: owner, now: t0, me: me ? me.id : null }; // me: to spot my tags
+  if (!me) { // guest: no members (no tagging), only the names of the people in these messages, no pictures or addresses
+    if (!after) {
+      const ids = new Set();
+      for (const m of msgs) {
+        ids.add(m.user_id); if (m.q_uid) ids.add(m.q_uid);
+        for (const t of m.body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)) ids.add(t[1]);
+        if (m.q_body) for (const t of m.q_body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)) ids.add(t[1]);
+      }
+      const { results: rr } = await env.DB.prepare("SELECT user_id, role FROM participants WHERE poll_id = ? AND user_id IS NOT NULL AND role != ''").bind(id).all();
+      out.roles = Object.fromEntries(rr.filter((r) => POLL_ROLES.includes(r.role)).map((r) => [r.user_id, r.role]));
+      out.people = await chatGuestNames(env, id, [...ids]);
+    }
+    return json(out);
+  }
   // Who wrote them and who is in the chat (members can be tagged). Pictures only on the first load;
   // a later message from someone new makes the page reload once.
   if (!after) {
@@ -1589,6 +1610,18 @@ async function listChat(request, env, url, id) {
   }
   if (!after || msgs.some((m) => m.user_id !== user.id && m.created_at >= after)) await markChatRead(env, id, user.id);
   return json(out);
+}
+const CHAT_GUEST = { id: '' };
+// Names for guests reading the chat (uid -> { name }): the account's name, else its name in this poll. Never the email.
+async function chatGuestNames(env, pollId, ids) {
+  const out = {};
+  for (let i = 0; i < ids.length; i += 90) { // D1 caps bound parameters per query
+    const part = ids.slice(i, i + 90), q = part.map(() => '?').join(',');
+    const { results } = await env.DB.prepare(`SELECT u.id, COALESCE(NULLIF(u.name, ''), (SELECT p.name FROM participants p WHERE p.poll_id = ? AND p.user_id = u.id LIMIT 1), '') AS name
+      FROM users u WHERE u.id IN (${q})`).bind(pollId, ...part).all();
+    for (const r of results) out[r.id] = { name: r.name || '?' };
+  }
+  return out;
 }
 // Body: { body }.
 async function postChat(request, env, ctx, id) {
@@ -2447,17 +2480,26 @@ async function getPoll(request, env, ctx, url, id) {
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
     if (can && nt && nt.prefs.chat.p === 'off') out.chat.muted = true;
     if (out.chat.unread) out.chat.mentions = (await chatUnread(env, id, user.id, true)) || 0; // unread messages that tag me
-    if (can) { // header peek (newest message) and message counts per day / meeting thread
-      const [last, refs] = await env.DB.batch([
-        env.DB.prepare('SELECT m.body, m.created_at, m.user_id, u.name, u.email FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT 1').bind(id),
-        env.DB.prepare('SELECT ref, COUNT(*) AS n FROM messages WHERE poll_id = ? AND ref IS NOT NULL GROUP BY ref').bind(id),
-      ]);
-      const l = last.results[0];
-      if (l) out.chat.last = { name: l.name || (l.email || '').split('@')[0] || '?', body: l.body.slice(0, 120), at: l.created_at, mine: l.user_id === user.id };
-      out.chat.refs = Object.fromEntries(refs.results.map((r) => [r.ref, r.n]));
-    }
+    out.chat.read = can;
+    if (can) Object.assign(out.chat, await chatPeekInfo(env, id, user));
+  } else { // guests read along (invited-only polls: through their personal link); writing needs an account
+    const read = await chatReadable(request, env, poll);
+    out.chat = { can: false, read, off: !poll.allow_comments };
+    if (read) Object.assign(out.chat, await chatPeekInfo(env, id, null));
   }
   return json(out);
+}
+
+// Header peek (newest message) and message counts per day / meeting thread. user = null for guests: no email-based name.
+async function chatPeekInfo(env, id, user) {
+  const [last, refs] = await env.DB.batch([
+    env.DB.prepare(`SELECT m.body, m.created_at, m.user_id, u.name, u.email, (SELECT p.name FROM participants p WHERE p.poll_id = m.poll_id AND p.user_id = m.user_id LIMIT 1) AS pname
+      FROM messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.poll_id = ? ORDER BY m.created_at DESC LIMIT 1`).bind(id),
+    env.DB.prepare('SELECT ref, COUNT(*) AS n FROM messages WHERE poll_id = ? AND ref IS NOT NULL GROUP BY ref').bind(id),
+  ]);
+  const out = { refs: Object.fromEntries(refs.results.map((r) => [r.ref, r.n])) }, l = last.results[0];
+  if (l) out.last = { name: l.name || (user ? (l.email || '').split('@')[0] : l.pname) || '?', body: l.body.slice(0, 120), at: l.created_at, mine: !!user && l.user_id === user.id };
+  return out;
 }
 
 async function updatePoll(request, env, id) {
@@ -4066,7 +4108,7 @@ QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating
 
 PEOPLE tab. Add people (by email, from your contacts, groups or favourites), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
 
-CHAT. The round button at the bottom right opens the poll's group chat (signed-in people; guests see what happens in the poll). Tag people with @, reply, react, attach meetings, write in a day's or meeting's thread. 🔔 in the chat header mutes it.
+CHAT. The round button at the bottom right opens the poll's group chat (signed-in people write; guests can read along and see what happens in the poll). Tag people with @, reply, react, attach meetings, write in a day's or meeting's thread. 🔔 in the chat header mutes it.
 
 NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from the Home Screen app: Share → Add to Home Screen; "Show me how" explains it) and optional email digests. Defaults in Account → Notifications; per poll with the 🔔 button in the poll header.
 

@@ -3340,7 +3340,7 @@ function renderPrivacy(){
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.'),
-        t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
+        t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages, with the writer’s name, are visible to everyone who can open the poll (on invite-only polls: the organiser and the invited people); only signed-in people can write.'),
         t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
@@ -7721,14 +7721,20 @@ async function saveDrafts(btn){
 // One chat per poll for the owner and everyone answering with an account (a series shares it). It lives in a drawer
 // (side panel on desktop, bottom sheet on phones) opened from the round button bottom-right, the header peek, or the
 // 💬 buttons on a day / meeting (which open that thread: messages with ref 'd:<date>' / 'm:<meeting id>').
-// One timeline: messages plus poll events worked out here (answers, meetings, rounds). Guests see only the events.
+// One timeline: messages plus poll events worked out here (answers, meetings, rounds). Guests (no account) read along when they
+// can open the poll (chat.read; invited-only polls: through their personal link) but can't write, react or reply (chat.can).
+// Their unread mark is the newest message they saw, in localStorage chatSeen:<poll>.
 // Messages can tag people (<@user id>) and attach meetings (<#m:meeting id>) inline, quote another message (re / rq)
 // and carry reactions. Press and hold (right-click, or the ⌄ button) a message to react, reply, copy or delete;
 // swipe right to reply. Search and filters work on the loaded messages (up to CHAT_KEEP).
 // New messages are fetched while the drawer is open and the tab is in front: every 15 s, slowing to 60 s while quiet.
 const CHAT_MIN=15000, CHAT_MAX=60000, CHAT_KEEP=500, CHAT_EMOJI=['👍','❤️','😂','✅','🙏','😮'];
-const chatTip=()=>P.data&&P.data.poll&&P.data.poll.invitedOnly?t('Only the organiser and invited people can read and write here.'):t('Everyone signed in can read and write here.');
-const chatCan=()=>!!(P.data&&P.data.chat&&P.data.chat.can);
+const chatTip=()=>P.data&&P.data.poll&&P.data.poll.invitedOnly?t('Only the organiser and invited people can read and write here.'):t('Everyone with the link can read; signed-in people can write.');
+const chatCan=()=>!!(P.data&&P.data.chat&&P.data.chat.can); // can write
+const chatRead=()=>!!(P.data&&P.data.chat&&(P.data.chat.read||P.data.chat.can));
+// Guests: is there a message newer than the last one this browser showed them?
+const chatGuestNew=()=>{ const ch=P.data&&P.data.chat, l=ch&&ch.last; return !ME.user&&chatRead()&&!!l&&l.at>store.get('chatSeen:'+P.id,''); };
+function chatGuestSeen(){ const c=P.chat; if(ME.user||!c||!c.msgs||!c.msgs.length) return; const at=c.msgs[c.msgs.length-1].at; if(at>store.get('chatSeen:'+P.id,'')) store.set('chatSeen:'+P.id,at); const dk=$('chatdock'); if(dk) dk.classList.remove('ping'); }
 function chatState(){
   if(!P.chat||P.chat.id!==P.id){ chatStop(); const sh=store.get('chatShow','all');
     P.chat={id:P.id,msgs:null,people:{},members:[],draft:'',timer:null,busy:false,since:null,owner:null,canDel:false,
@@ -7748,7 +7754,7 @@ function refLabel(ref){
 }
 const refN=ref=>(P.data&&P.data.chat&&P.data.chat.refs&&P.data.chat.refs[ref])||0;
 // The 💬 button on a day panel or a meeting card.
-const chatRefBtn=(ref,cls='')=>chatCan()?`<button type="button" class="qb chatref${cls}" data-chatgo="${esc(ref)}" title="${t('Chat about this')}" aria-label="${t('Chat about this')}">${ICON.chat}<span class="n"${refN(ref)?'':' hidden'}>${refN(ref)}</span></button>`:'';
+const chatRefBtn=(ref,cls='')=>chatRead()?`<button type="button" class="qb chatref${cls}" data-chatgo="${esc(ref)}" title="${t('Chat about this')}" aria-label="${t('Chat about this')}">${ICON.chat}<span class="n"${refN(ref)?'':' hidden'}>${refN(ref)}</span></button>`:'';
 function chatRefBadges(){ document.querySelectorAll('[data-chatgo]').forEach(b=>{ const n=refN(b.dataset.chatgo), s=b.querySelector('.n'); if(s){ s.textContent=n; s.hidden=!n; } }); }
 function bumpRef(ref){ const c=P.data.chat; if(!ref||!c) return; c.refs=c.refs||{}; c.refs[ref]=(c.refs[ref]||0)+1; }
 // ---- tags (<@user id>) and attached meetings (<#m:meeting id>) inside a message ----
@@ -7796,14 +7802,14 @@ function goMeeting(id){
 function chatDock(){
   const d=P.data;
   if(d.poll.allowComments===false){ document.body.classList.remove('chatopen'); return ''; } // the organiser turned the chat off
-  const c=chatState(), can=chatCan(), n=can?(d.chat.unread||0):0, at=n&&d.chat.mentions;
+  const c=chatState(), can=chatCan(), read=chatRead(), n=can?(d.chat.unread||0):0, at=n&&d.chat.mentions, gnew=!c.open&&chatGuestNew();
   document.body.classList.toggle('chatopen',c.open);
-  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}${n?' ping':''}${c.peek&&!c.open?' peek':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="cd-peek" id="chatpeek" aria-hidden="true">${chatPeekText()}</span><span class="count" id="chatn"${n?'':' hidden'}>${n}</span><span class="count at" id="chatat"${at?'':' hidden'} title="${t('You were tagged')}">@</span></button>
+  return `<button type="button" class="chatdock${read?'':' dim'}${c.open?' isopen':''}${n||gnew?' ping':''}${c.peek&&!c.open?' peek':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="cd-peek" id="chatpeek" aria-hidden="true">${chatPeekText()}</span><span class="count" id="chatn"${n?'':' hidden'}>${n}</span><span class="count at" id="chatat"${at?'':' hidden'} title="${t('You were tagged')}">@</span></button>
     <div class="chatback${c.open?' open':''}" data-chatclose></div>
     <aside class="chatdrawer${c.open?' open':''}" id="chatdrawer" aria-label="${t('Chat')}"${c.open?'':' inert'}>
       <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
         <h2 class="cd-t">${ICON.chat}${t('Chat')}</h2>
-        ${tip(esc(can?chatTip():t('Here you see who answered and which meetings were set.')+' '+(ME.user?t('Only invited people can chat here.'):t('To chat, sign in.'))),'right')}
+        ${tip(esc(can?chatTip():read?t('You can read along. To write, sign in.'):t('Here you see who answered and which meetings were set.')+' '+(ME.user?t('Only invited people can chat here.'):t('To chat, sign in.'))),'right')}
         <span class="ml-auto"></span><span id="chatmuteslot">${chatMuteBtn()}</span>${ib('search',t('Search and filter'),`id="chatfindb" data-chatfind aria-expanded="${c.find}" aria-controls="chatfind"`,'sm ghost'+(c.find||c.show!=='all'?' on':''))}${ib('x',t('Close'),'data-chatclose','sm ghost')}</div>
       <div class="chat-find" id="chatfind"${c.find?'':' hidden'}></div>
       ${pushAskHtml()||'<div id="chatask" hidden></div>'}
@@ -7813,8 +7819,8 @@ function chatDock(){
 // The button's pill label: the newest unread message ("Name: text"), else just "Chat".
 function chatPeekText(){
   const ch=P.data&&P.data.chat, l=ch&&ch.last;
-  if(chatCan()&&ch.unread&&l&&!l.mine&&l.body) return `<b>${esc(l.name||'?')}</b>${esc(plainText(l.body).slice(0,60))}`;
-  return esc(chatCan()?t('Chat'):t('What’s happening'));
+  if(((chatCan()&&ch.unread)||chatGuestNew())&&l&&!l.mine&&l.body) return `<b>${esc(l.name||'?')}</b>${esc(plainText(l.body).slice(0,60))}`;
+  return esc(chatRead()?t('Chat'):t('What’s happening'));
 }
 // Slide the round button out into a pill for a few seconds (once per poll per tab on opening, and when a new message comes in).
 function chatPeek(ms){
@@ -7827,7 +7833,7 @@ function chatUnpeek(){ const c=P.chat; if(c){ c.peek=false; clearTimeout(c.peekT
 function chatPeekAuto(){
   setTimeout(()=>{ if(!$('chatdock')||document.querySelector('dialog[open],.pigeon-ov')) return;
     const k='peek:'+P.id; let seen=false; try{ seen=!!sessionStorage.getItem(k); sessionStorage.setItem(k,'1'); }catch{}
-    if(!seen||(P.data.chat&&P.data.chat.unread&&chatCan())) chatPeek(4000); },900);
+    if(!seen||(P.data.chat&&P.data.chat.unread&&chatCan())||chatGuestNew()) chatPeek(4000); },900);
 }
 function chatUnreadBadges(n){
   const ch=P.data&&P.data.chat, was=ch?ch.unread||0:0; if(ch){ ch.unread=n; if(!n) ch.mentions=0; }
@@ -7873,8 +7879,8 @@ function chatSync(){
   const c=chatState();
   if(!chatVisible()){ chatStop(); return; }
   chatDraw(false);
-  if(!chatCan()) return;
-  if(c.msgs===null) chatFetch(true);
+  if(!chatRead()) return;
+  if(c.msgs===null) chatFetch(true); else chatGuestSeen();
   if(!c.timer) chatTick();
 }
 function chatTick(){
@@ -7919,7 +7925,7 @@ async function chatFetch(full){
       others.forEach(m=>bumpRef(m.ref));
       if(others.length){ const l=others[others.length-1], p=c.people[l.uid]||{}; P.data.chat.last={name:p.name||'?',body:plainText(l.body).slice(0,120),at:l.at,mine:false}; c.unseen+=others.length; }
     }
-    chatUnreadBadges(0); chatRefBadges(); chatDraw(true);
+    chatUnreadBadges(0); chatRefBadges(); chatDraw(true); chatGuestSeen();
   }catch(e){ if(e.status===401||e.status===403){ chatStop(); const b=$('chatbox'); if(b) b.innerHTML=`<p class="muted small chat-empty">${esc(e.message)}</p>`; } }
   finally{ c.busy=false; if(again) chatFetch(true); }
 }
@@ -8016,11 +8022,11 @@ function chatHtml(c){
     if(!filt&&m.id===c.newId) h+=`<div class="chat-new"><span>${t('New')}</span></div>`;
     const p=c.people[m.uid]||{name:'?'}, cont=!filt&&!!prev&&prev.uid===m.uid&&prev.ref===m.ref&&d-new Date(prev.at)<300000&&m.id!==c.newId&&!m.re;
     const canDel=!m.tmp&&(m.mine||c.canDel), tagme=!m.mine&&!!me&&m.body.includes(`<@${me}>`);
-    const rx=Object.entries(m.rx||{}).map(([e,v])=>`<button type="button" class="rx${v.mine?' mine':''}" data-chatrx="${esc(m.id)}" data-e="${esc(e)}" aria-pressed="${!!v.mine}">${e}<span>${v.n}</span></button>`).join('');
+    const rx=Object.entries(m.rx||{}).map(([e,v])=>can?`<button type="button" class="rx${v.mine?' mine':''}" data-chatrx="${esc(m.id)}" data-e="${esc(e)}" aria-pressed="${!!v.mine}">${e}<span>${v.n}</span></button>`:`<span class="rx">${e}<span>${v.n}</span></span>`).join('');
     const stat=m.failed?`<button type="button" class="msg-retry" data-chatretry="${esc(m.id)}" title="${t('Not sent. Tap to try again.')}">${ICON.repeat}${t('Retry')}</button>`:m.tmp?`<span class="msg-sending">${t('Sending…')}</span>`:timeOf(m.at);
     const more=m.tmp?'':`<button type="button" class="msg-more" data-chatmenu="${esc(m.id)}" title="${t('More')}" aria-label="${t('More')}" aria-expanded="${c.menu===m.id}">${ICON.chevd}</button>`;
     const quote=m.re?quoteHtml(c,m.re,m.rq,'data-chatquote'):'';
-    const menu=c.menu===m.id?`<div class="msg-menu" role="menu"><div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}" aria-pressed="${!!(m.rx&&m.rx[e]&&m.rx[e].mine)}">${e}</button>`).join('')}</div>
+    const menu=c.menu===m.id?`<div class="msg-menu" role="menu">${can?`<div class="rx-pick" role="group" aria-label="${t('React')}">${CHAT_EMOJI.map(e=>`<button type="button" data-chatrx="${esc(m.id)}" data-e="${e}" aria-pressed="${!!(m.rx&&m.rx[e]&&m.rx[e].mine)}">${e}</button>`).join('')}</div>`:''}
       <div class="mm-acts">${can?`<button type="button" role="menuitem" data-chatreply="${esc(m.id)}">${ICON.reply}${t('Reply')}</button>`:''}<button type="button" role="menuitem" data-chatcopy="${esc(m.id)}">${ICON.copy}${t('Copy')}</button>${canDel?`<button type="button" role="menuitem" class="danger" data-chatdel="${esc(m.id)}">${ICON.trash}${t('Delete')}</button>`:''}</div></div>`:'';
     h+=`<div class="msg${m.mine?' mine':''}${cont?' cont':''}${m.tmp?' pending':''}${m.failed?' failed':''}${tagme?' tagme':''}${c.menu===m.id?' menuopen':''}" data-mid="${esc(m.id)}">${m.mine?'':`<span class="msg-av">${cont?'':tile({img:p.avatarImg,emoji:p.avatar,text:p.name,seed:m.uid},'avatar')}</span>`}
       <div class="msg-w"><div class="msg-b">${more}${cont||m.mine?'':`<div class="msg-n">${esc(p.name)}${m.uid===c.owner?` <span class="msg-tag">${t('Organiser')}</span>`:c.roles&&c.roles[m.uid]?` <span class="msg-tag">${esc(roleName(c.roles[m.uid]))}</span>`:''}</div>`}${m.ref&&!ref&&!cont?`<button type="button" class="msg-ref" data-chatgo="${esc(m.ref)}">${esc(refLabel(m.ref))}</button>`:''}${quote}<div class="msg-t">${msgText(m.body,q)}</div>
@@ -8037,7 +8043,7 @@ function quoteHtml(c,id,rq,attr){
 // Search box and filter chips under the drawer header.
 function chatFindDraw(){
   const el=$('chatfind'), c=P.chat; if(!el||!c) return;
-  const b=$('chatfindb'); if(b){ b.classList.toggle('on',c.find||c.show!=='all'); b.setAttribute('aria-expanded',c.find); b.style.display=chatCan()?"":"none"; }
+  const b=$('chatfindb'); if(b){ b.classList.toggle('on',c.find||c.show!=='all'); b.setAttribute('aria-expanded',c.find); b.style.display=chatRead()?"":"none"; }
   el.hidden=!c.find;
   if(!c.find){ el.innerHTML=''; return; }
   if(!$('chatq')){
@@ -8165,7 +8171,7 @@ function chatDraw(fresh){
       <form class="chat-form"><button type="button" class="qb chat-attb" id="chatattb" data-chatatt title="${t('Tag people or attach a meeting')}" aria-label="${t('Tag people or attach a meeting')}" aria-expanded="false" aria-controls="chatac">${ICON.clip}</button>
       <textarea id="chatin" rows="1" maxlength="2000" aria-label="${t('Message')}"></textarea>
       <button class="btn primary withic ib" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`
-      :`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?t('Sign in to chat with the others in this poll.'):t('Only invited people can chat here.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`}`;
+      :`<div class="chat-note">${ICON.chat}<span class="grow muted small">${signin?(chatRead()?t('Sign in to write here.'):t('Sign in to chat with the others in this poll.')):t('Only invited people can chat here.')}</span>${signin?`<button type="button" class="btn sm" data-opensignin>${t('Sign in')}</button>`:''}</div>`}`;
     list=box.querySelector('.chat-list');
     const jump=box.querySelector('.chat-jump');
     jump.onclick=()=>{ list.scrollTo({top:list.scrollHeight,behavior:'smooth'}); };
@@ -8232,6 +8238,7 @@ async function chatDelete(mid){
   catch(e){ toast(e.message); }
 }
 async function chatReact(mid,e){
+  if(!chatCan()) return;
   const c=chatState(), m=(c.msgs||[]).find(x=>x.id===mid); if(!m) return;
   const old=m.rx, rx={...(m.rx||{})}, v=rx[e]||{n:0,mine:false};
   rx[e]=v.mine?{n:v.n-1,mine:false}:{n:v.n+1,mine:true}; if(!rx[e].n) delete rx[e];
@@ -10179,7 +10186,7 @@ function germanText(){ return {
 "Contact point": "Kontaktstelle",
 "Authorities, the European Commission and users can reach us at {email}, in German or English.": "Behörden, die Europäische Kommission und Nutzer erreichen uns unter {email}, auf Deutsch oder Englisch.",
 "See also the <a href=\"?imprint\">legal notice</a>.": "Siehe auch das <a href=\"?imprint\">Impressum</a>.",
-"<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.": "<b>Chat:</b> Nachrichten, Reaktionen und Antworten im Chat einer Umfrage und wann du ihn zuletzt gelesen hast (für die Zahl ungelesener Nachrichten). Nachrichten sehen die Mitglieder des Chats.",
+"<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages, with the writer’s name, are visible to everyone who can open the poll (on invite-only polls: the organiser and the invited people); only signed-in people can write.": "<b>Chat:</b> Nachrichten, Reaktionen und Antworten im Chat einer Umfrage und wann du ihn zuletzt gelesen hast (für die Zahl ungelesener Nachrichten). Nachrichten mit dem Namen der Person, die sie geschrieben hat, sieht jede Person, die die Umfrage öffnen kann (bei Umfragen nur für Eingeladene: die Organisation und die Eingeladenen); schreiben können nur Angemeldete.",
 "<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.": "<b>Kontakte:</b> deine Favoriten und die Gruppen, die du anlegst, und welche deiner Gruppen mit deinen Umfragen verknüpft sind (deren Personen folgen dann Änderungen an der Gruppe). Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du markierst sie mit einem Stern oder fügst sie einer Umfrage oder Gruppe hinzu; ihre E-Mail-Adressen werden einmal mit when-who-Konten abgeglichen, um die Profilbilder dieser Personen zu zeigen.",
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
@@ -11549,6 +11556,9 @@ function germanText(){ return {
 "Invalid reaction": "Ungültige Reaktion",
 "Only the organiser and invited people can read and write here.": "Nur die Organisator*in und eingeladene Leute können hier lesen und schreiben.",
 "Everyone signed in can read and write here.": "Alle, die angemeldet sind, können hier lesen und schreiben.",
+"Everyone with the link can read; signed-in people can write.": "Alle mit dem Link können mitlesen; schreiben können alle, die angemeldet sind.",
+"You can read along. To write, sign in.": "Du kannst mitlesen. Zum Schreiben melde dich an.",
+"Sign in to write here.": "Melde dich an, um hier zu schreiben.",
 "Only invited people can join this chat": "Nur eingeladene Leute können diesem Chat beitreten",
 "You’re sending a lot of messages. Wait a few minutes.": "Du schickst sehr viele Nachrichten. Warte ein paar Minuten.",
 "This chat is full. Delete old messages first.": "Dieser Chat ist voll. Lösch zuerst alte Nachrichten.",
