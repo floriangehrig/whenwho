@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-tRGBp5P+E9zxbeAar+CfZJXApsatRXTBkb8b/zBH+Bw=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-oz46pwZ9ARzNaWmjAqb4yEOwrtpKaGMTid6L85y4MSg=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -201,6 +201,7 @@ async function route(request, env, ctx, url) {
     if (m === 'POST') return createPoll(request, env);
     throw new HttpError(405, 'Method not allowed');
   }
+  if (id === 'generate-text' && !parts[3]) { if (m === 'POST') return pollFromText(request, env); throw new HttpError(405, 'Method not allowed'); }
   if (!ID_RE.test(id)) throw new HttpError(404, 'Poll not found');
   const [, , , a, b, c, d, e] = parts;
   if (!a) {
@@ -3405,19 +3406,13 @@ function qgenPrompt(poll, lang) {
     `Write everything in the language of the text (it may be ${lang === 'de' ? 'German or English' : 'English or German'}). Answer only with the JSON object.`,
   ].join('\n');
 }
-async function questionsFromText(request, env, id, iid) {
-  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
-  const poll = await loadPoll(env, id);
-  await requireAdmin(request, env, poll, 'edit');
-  await loadInstance(env, id, iid);
-  const b = await body(request);
-  const text = str(b.text, 500, 'Text', true);
-  await aiQuota(request, env, userOf(request));
-  const r = await aiJson(env, qgenPrompt(poll, reqLang(request)), text, QGEN_SCHEMA, 2000, 0.3);
-  const line = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n);
-  const icon = (v) => { try { return emojiIcon(line(v, 16), 'Icon') || undefined; } catch { return undefined; } };
-  const out = [];
-  for (const x of Array.isArray(r && r.questions) ? r.questions.slice(0, QGEN_MAX) : []) {
+// Shared by Generate questions and Generate a poll: model output → questions in the page's shape (options as plain labels).
+const aiLine = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n);
+const AI_PLACEHOLDER = /^(option|choice|auswahl|möglichkeit|wahl|game|spiel|place|ort)\s*[a-z]?\d*$/i; // "Option 1": made up, not from the text
+const aiIcon = (v) => { try { return emojiIcon(aiLine(v, 16), 'Icon') || undefined; } catch { return undefined; } };
+function aiQuestions(list) {
+  const line = aiLine, out = [];
+  for (const x of Array.isArray(list) ? list.slice(0, QGEN_MAX) : []) {
     if (!x || typeof x !== 'object' || !Q_TYPES.includes(x.type)) continue;
     const label = line(x.label, 200);
     if (!label) continue;
@@ -3425,7 +3420,7 @@ async function questionsFromText(request, env, id, iid) {
     if (Q_CHOICE.has(q.type)) {
       const seen = new Set();
       q.options = (Array.isArray(x.options) ? x.options : []).map((o) => line(o, 120))
-        .filter((o) => o && !seen.has(o.toLowerCase()) && seen.add(o.toLowerCase())).slice(0, MAX_Q_OPTIONS);
+        .filter((o) => o && !AI_PLACEHOLDER.test(o) && !seen.has(o.toLowerCase()) && seen.add(o.toLowerCase())).slice(0, MAX_Q_OPTIONS);
       if (x.place === true) q.place = true;
       if (q.type !== 'select' && (x.add === true || !q.options.length)) q.add = true;
       if (q.type === 'select' && !q.options.length) q.type = 'radio', q.add = true;
@@ -3438,9 +3433,118 @@ async function questionsFromText(request, env, id, iid) {
     if (x.after === 'each' || x.after === 'last') { q.link = { to: 'after', ...(x.after === 'last' ? { last: true } : {}) }; q.who = { mode: 'meeting' }; }
     out.push(q);
   }
+  return out;
+}
+async function questionsFromText(request, env, id, iid) {
+  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, env, poll, 'edit');
+  await loadInstance(env, id, iid);
+  const b = await body(request);
+  const text = str(b.text, 500, 'Text', true);
+  await aiQuota(request, env, userOf(request));
+  const r = await aiJson(env, qgenPrompt(poll, reqLang(request)), text, QGEN_SCHEMA, 2000, 0.3);
+  const out = aiQuestions(r && r.questions);
   if (!out.length) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
-  const title = line(r.title, 120);
-  return json({ group: title ? { label: title, icon: icon(r.icon) } : null, questions: out });
+  const title = aiLine(r.title, 120);
+  return json({ group: title ? { label: title, icon: aiIcon(r.icon) } : null, questions: out });
+}
+
+// ---------- Generate a poll with AI (New poll page) ----------
+// The person describes the poll; the model drafts the New poll form (settings + questions) in a preset's data shape,
+// checked by presetData (same checks as creating a poll). Nothing is saved: the page fills its form and the person
+// creates the poll as usual. Only the text is sent.
+const POLLGEN_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' }, icon: { type: 'string' }, description: { type: 'string' },
+    kind: { type: 'string', enum: ['single', 'series', 'weekly'] }, unit: { type: 'string', enum: ['week', 'month'] }, every: { type: 'integer' },
+    start_date: { type: 'string' }, days: { type: 'integer' },
+    answer_mode: { type: 'string', enum: ['days', 'slots', 'both'] }, weekdays: { type: 'array', items: { type: 'string' } },
+    from: { type: 'integer' }, to: { type: 'integer' }, location: { type: 'string' },
+    questionnaire_title: { type: 'string' }, questions: QGEN_SCHEMA.properties.questions,
+  },
+  required: ['title', 'icon', 'description', 'kind', 'unit', 'every', 'start_date', 'days', 'answer_mode', 'weekdays', 'from', 'to', 'location', 'questionnaire_title', 'questions'],
+};
+function pollGenPrompt(lang) {
+  const t = today(), wd = (d) => FILL_WD[isoWd(d)];
+  const wk = (n) => { const a = addDays(t, 7 * n - isoWd(t)); return `${a} to ${addDays(a, 6)}`; };
+  return [
+    'You set up a scheduling poll ("when is everyone free?") from the organiser\'s description. People mark the days or hours they are free.',
+    `Today is ${t} (${wd(t)}). This week = ${wk(0)}, next week = ${wk(1)} (Monday to Sunday). Dates are always in the future: a month that has passed this year means next year.`,
+    'title = short poll title (2-6 words); icon = one fitting emoji; description = one or two friendly sentences for the people answering ("" if nothing to add).',
+    'kind: single = one date range to find a date in (a trip, a party, one meeting); series = a new poll every week or month for something that happens',
+    'again and again (monthly club night, weekly training: unit week | month, every = 1 unless said); weekly = find a fixed regular weekly slot (a typical week, no dates).',
+    'For single: start_date = first day of the range (YYYY-MM-DD, "" = today) and days = how many days the range covers (default 14; "next week" = next Monday, 7 days;',
+    '"in March" = March 1st, 31 days; at most 92). For series and weekly: start_date "" and days 0.',
+    'answer_mode: days = whole days (trips, day events, anything over several days); slots = hours (meetings, dinners, evenings, calls); both = days and hours.',
+    'weekdays = which days are offered: "all", "weekdays", "weekend" or names (mon tue wed thu fri sat sun). "Not on Friday" = the other six.',
+    'from / to = hours offered (24-hour clock, "to" exclusive, 0-24). "Morning" = 8-12, "afternoon" = 12-17, "evening" = 17-22, "lunch" = 12-14; default 8 to 24.',
+    'location = where people meet, if the text names a place ("" otherwise).',
+    'questions = a short form for the people (0 to 6), only for things the text asks or clearly needs, never about dates or times (the poll does that).',
+    'Question types: radio = pick one; check = pick several; select = dropdown; rating = stars 1..rating_max; short / long = text; yesno = yes / no, optional number after yes (count_label).',
+    'Voting on a place = radio with place true and add true; dietary needs = short with private true; bringing someone = yesno with count_label; feedback after meetings = rating with after "each" or "last".',
+    'Each question: label = a full, friendly question ("Which game shall we play?"); help ("" if none); options = only choices the text names, never made-up ones like "Option 1"',
+    '(else [] with add true, so people suggest them); required; private; place; add; rating_max (5); low; high;',
+    'count_label = "" unless a number really fits after yes (e.g. "How many guests?"); after = "no" normally.',
+    'questionnaire_title = a 2-4 word name for the questions if there are several, else "".',
+    `Write everything in the language of the text (it may be ${lang === 'de' ? 'German or English' : 'English or German'}). Answer only with the JSON object.`,
+  ].join('\n');
+}
+async function pollFromText(request, env) {
+  if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
+  const b = await body(request);
+  const text = str(b.text, 500, 'Text', true);
+  await aiQuota(request, env, userOf(request));
+  const r = await aiJson(env, pollGenPrompt(reqLang(request)), text, POLLGEN_SCHEMA, 2500, 0.3);
+  if (!r) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
+  const num = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+  const kind = ['single', 'series', 'weekly'].includes(r.kind) ? r.kind : 'single';
+  const d = { title: aiLine(r.title, 120) || aiLine(text, 60), description: aiLine(r.description, 1000), kind, icon: aiIcon(r.icon) || '',
+    allowComments: true, meetLocation: aiLine(r.location, 200) };
+  d.answerMode = ['days', 'slots', 'both'].includes(r.answer_mode) ? r.answer_mode : 'days';
+  if (kind === 'weekly' && d.answerMode === 'days') d.answerMode = 'slots';
+  if (kind === 'series') {
+    d.unit = r.unit === 'week' ? 'week' : 'month';
+    d.every = num(r.every, 1, d.unit === 'week' ? 12 : 3, 1);
+    Object.assign(d, d.unit === 'week' ? { openDays: 6, deadlineDays: 2 } : { openDays: 11, deadlineDays: 4 });
+  }
+  let hs = num(r.from, 0, 23, 8), he = num(r.to, 1, 24, 24);
+  if (d.answerMode === 'days' || he <= hs) { hs = 8; he = 24; }
+  d.hourStart = hs; d.hourEnd = he;
+  const wd = new Set();
+  for (const x of Array.isArray(r.weekdays) ? r.weekdays.slice(0, 20) : []) {
+    const v = String(x).toLowerCase().trim();
+    if (v === 'all') [0, 1, 2, 3, 4, 5, 6].forEach((i) => wd.add(i)); else fillWds(v).forEach((i) => wd.add(i));
+  }
+  if (wd.size && wd.size < 7) d.dayPattern = { wd: [...wd].sort() };
+  let startDate;
+  if (kind === 'single') {
+    d.days = num(r.days, 1, MAX_RANGE_DAYS, 14);
+    let sd = String(r.start_date || '').trim();
+    if (isDate(sd) && sd < today()) { const y = String(+sd.slice(0, 4) + 1) + sd.slice(4); if (isDate(y) && y >= today()) sd = y; } // "in July" in November = next July
+    if (isDate(sd) && sd >= today() && sd <= addDays(today(), 400)) startDate = sd;
+    // Make sure the range has at least one offered day (else the form can't be sent): widen it to a week.
+    if (d.dayPattern && d.days < 7) {
+      const s0 = startDate || today();
+      let any = false; for (let i = 0; i < d.days; i++) if (wd.has(isoWd(addDays(s0, i)))) any = true;
+      if (!any) d.days = 7;
+    }
+    d.remindDays = 2;
+  }
+  // Questions, in one questionnaire when the model named one (after-meeting questions keep their own link).
+  let qs = aiQuestions(r.questions).slice(0, 8).map((q) => ({ ...q, options: q.options ? q.options.map((label) => ({ label })) : undefined }));
+  const qt = aiLine(r.questionnaire_title, 120);
+  if (qt && qs.length >= 2) qs = [{ id: 'grpAi1', type: 'group', label: qt, link: { to: 'poll' }, who: { mode: 'all' } },
+    ...qs.map((q) => ({ ...q, grp: 'grpAi1', ...(q.link ? { own: true } : {}) }))];
+  if (qs.length) d.questions = qs;
+  let data;
+  try { data = JSON.parse(presetData(d)); } catch (e) {
+    console.log('AI poll rejected', e && e.message);
+    delete d.questions; delete d.dayPattern;
+    try { data = JSON.parse(presetData(d)); } catch { throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.'); }
+  }
+  return json({ data, ...(startDate ? { startDate } : {}) });
 }
 
 async function createResponse(request, env, ctx, id, iid) {

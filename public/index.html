@@ -1519,6 +1519,11 @@
   .prs-tx b{font-size:15px} .prs-l{font-size:11.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
   .prs-s{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .prs-go{flex:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:550;color:var(--accent-ink)} .prs-go svg{width:14px;height:14px}
+  .prs-row{display:flex;align-items:center} .prs-fw{min-width:0}
+  .prs-ai{flex:none;display:inline-flex;align-items:center;gap:5px;margin-right:14px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:none;color:var(--accent-ink);font:inherit;font-size:13px;font-weight:550;cursor:pointer}
+  .prs-ai:hover,.prs-ai[aria-expanded="true"]{background:var(--sunken)} .prs-ai svg{width:15px;height:15px}
+  .npai{margin:0;padding:0 14px 14px} .npai .boxh .ml-auto{margin-left:auto}
+  @media (max-width:560px){ .prs-ai span{display:none} .prs-ai{padding:7px} }
   .prs-ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--sunken);font-size:20px;line-height:1} .prs-ic svg{width:17px;height:17px;color:var(--muted)}
   .prs-qs{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:var(--sunken);font-size:13px}
   .prs-qs>summary{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;cursor:pointer;list-style:none} .prs-qs>summary::-webkit-details-marker{display:none}
@@ -2496,6 +2501,7 @@ function tourSteps(key){
   if(key==='new') return [
     S(null,t('Create a poll'),t('A quick look at the New poll page.')),
     S('#prs',t('Start from'),t('Start from a ready-made preset (with fitting questions) or one you saved, or start empty.')),
+    S('#npAiBtn',t('Describe it'),t('Or describe the poll in your own words and let AI fill in the form and questions. You check everything before creating it.')),
     S('[data-nset="details"]',t('Details'),t('Title, an icon or picture, and an optional description.')),
     S('[data-nset="when"]',t('Dates'),t('One date range, a new round every week or month, or a regular weekly slot.')),
     S('[data-nset="answering"]',t('Answering'),t('Whole days or hours, which days and times are offered, chat, required email or invited people only.')),
@@ -3092,7 +3098,7 @@ function renderPrivacy(){
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
-        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.'),
+        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the answer summaries you asked for.'),
         t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and, if you asked for them, new answers (poll title and the person’s name) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
@@ -3407,7 +3413,7 @@ function renderNew(){
   Object.assign(P,{id:'new',atab:'questions',qview:'results',qedit:null,qai:null,qdd:null,qfold:false,form:{extra:{},can:null},
     data:{draft:true,isAdmin:true,poll:{kind:'single',title:''},instance:{id:'new',meetings:[],questions:[],groups:[]},instances:[]}});
   $app.innerHTML=`${appbar()}${band}
-    <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"></div><form id="f" class="new-grid" novalidate>
+    <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"><div class="prs-row"><div id="prsF" class="grow prs-fw"></div>${CONFIG.aiFill?`<button type="button" class="prs-ai" id="npAiBtn" aria-expanded="false" aria-controls="npai" title="${t('Describe your poll and let AI fill in the form')}">${ICON.spark}<span>${t('Describe it')}</span></button>`:''}</div><div id="npai"></div></div><form id="f" class="new-grid" novalidate>
     <div class="card sform new-form">
     ${sset('details','edit',t('Details'),`
       <div class="ttl-row"><button type="button" class="ttl-ic" data-pktog aria-expanded="false" aria-controls="pkwrap" title="${t('Icon or picture')}" aria-label="${t('Icon or picture')}"><span id="iconTile"></span><span class="ttl-ed">${ICON.edit}</span></button>
@@ -3500,13 +3506,13 @@ function renderNew(){
     if(mail){ d.notifyOpen=kind==='series'&&$('notify').checked; d.remindDays=$('remind').checked&&v0('remindDays')!==''?+v0('remindDays'):null; }
     if(NP.qs&&NP.qs.length) d.questions=NP.qs; return d; };
   const v0=id=>$(id).value;
-  const applyPreset=(pr,keepQs)=>{ const d=pr?pr.data:{};
+  const applyPreset=(pr,keepQs,start)=>{ const d=pr?pr.data:{}; // start = first day of a one-off range (default today)
     $('title').value=d.title||''; pickerSetText('new',d.title||''); $('desc').value=d.description||'';
     const st=PICK.new; st.emoji=d.icon||''; st.data=null; st.img=''; pickerRefresh('new');
     const kind=d.kind||'single', kr=f.querySelector(`input[name="kind"][value="${kind}"]`); if(kr&&!kr.checked){ kr.checked=true; kr.dispatchEvent(new Event('change',{bubbles:true})); }
     if(kind==='series'){ if(d.unit&&$('unit').value!==d.unit){ $('unit').value=d.unit; $('unit').dispatchEvent(new Event('change',{bubbles:true})); }
       $('every').value=d.every||1; $('openDays').value=d.openDays??11; $('dlDays').value=d.deadlineDays??''; }
-    if(kind==='single'){ const s=new Date(); $('start').value=iso(s); $('end').value=iso(new Date(s.getFullYear(),s.getMonth(),s.getDate()+(d.days||14)-1)); $('dl').value=''; dpkSync('rng'); dpkSync('dl'); }
+    if(kind==='single'){ const s=start?new Date(start+'T00:00:00'):new Date(); $('start').value=iso(s); $('end').value=iso(new Date(s.getFullYear(),s.getMonth(),s.getDate()+(d.days||14)-1)); $('dl').value=''; dpkSync('rng'); dpkSync('dl'); }
     const ab=f.querySelector(`[data-for="ans"] [data-sans="${d.answerMode||'days'}"]`); if(ab) ab.click();
     const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'days')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
@@ -3518,8 +3524,40 @@ function renderNew(){
   P.qdraftChanged=()=>{ const it=qDraftItems(); NP.qs=it.length?it:null; NP.qsEdited=true; sum(); };
   qDraftSet([]);
   const field=()=>{ const p=prsFind(NP.pick);
-    $('prs').innerHTML=`<button type="button" class="prs-field" id="prsBtn" aria-haspopup="dialog"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.copy}</span><span class="prs-tx"><span class="prs-l">${t('Start from')}</span><b>${esc(p?p.name:t('Blank'))}</b><span class="prs-s">${esc(p?presetSummary(p):t('{n} presets: dinner, trips, sport, team meetings…',{n:builtinPresets().length+(ME.presets||[]).length}))}</span></span><span class="prs-go">${t('Change')}${ICON.chevd}</span></button>`; };
-  field(); loadPresets().then(()=>{ if($('prs')) field(); });
+    $('prsF').innerHTML=`<button type="button" class="prs-field" id="prsBtn" aria-haspopup="dialog"><span class="prs-ic">${p?esc(p.icon||'📋'):ICON.copy}</span><span class="prs-tx"><span class="prs-l">${t('Start from')}</span><b>${esc(p?p.name:t('Blank'))}</b><span class="prs-s">${esc(p?presetSummary(p):t('{n} presets: dinner, trips, sport, team meetings…',{n:builtinPresets().length+(ME.presets||[]).length}))}</span></span><span class="prs-go">${t('Change')}${ICON.chevd}</span></button>`; };
+  field(); loadPresets().then(()=>{ if($('prsF')) field(); });
+  // Generate with AI: the text goes to POST /polls/generate-text, which returns a preset's data (+ startDate); it fills the form
+  // like a preset. Nothing is created until Create poll; Undo puts the form back as it was.
+  const NA={open:false,text:'',busy:false,msg:'',err:false,undo:null};
+  const aiDraw=()=>{ const box=$('npai'), btn=$('npAiBtn'); if(!box) return; if(btn) btn.setAttribute('aria-expanded',String(NA.open));
+    box.innerHTML=NA.open?`<div class="aif npai"><div class="patp">
+      <div class="boxh">${ICON.spark}<span>${t('Generate with AI')}</span>${tip(t('Describe the poll: what it’s for, when, which days or hours, and anything to ask people. Only this text is sent to Cloudflare Workers AI, and it isn’t stored. The form is filled in for you to check; nothing is created until you press Create poll.'))}<button type="button" class="qb ml-auto" data-npaiclose title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
+      <textarea id="npAiText" rows="3" maxlength="500" placeholder="${esc(t('e.g. Monthly board game night on weekday evenings. People vote on the game and say if they bring snacks.'))}">${esc(NA.text)}</textarea>
+      <div class="aif-go"><button type="button" class="btn sm primary withic" data-npaigo${NA.busy?' disabled':''}>${ICON.spark}<span>${NA.busy?t('Writing…'):t('Fill in the form')}</span></button>
+        ${NA.undo&&!NA.busy?`<button type="button" class="btn sm ghost" data-npaiundo>${t('Undo')}</button>`:''}
+        ${NA.msg&&!NA.busy?`<span class="aif-msg${NA.err?' err':''}">${esc(NA.msg)}</span>`:''}</div></div></div>`:''; };
+  const aiSnap=()=>({d:formData(),start:v0('start'),end:v0('end'),dl:v0('dl'),dlw:v0('dlw'),first:v0('first'),pw:v0('pw'),pk:{...PICK.new},pick:NP.pick,qsEdited:NP.qsEdited});
+  const aiRestore=u=>{ applyPreset({data:u.d});
+    Object.assign(PICK.new,u.pk); pickerRefresh('new');
+    if(u.d.kind==='series'){ $('first').value=u.first; patRefresh('np'); }
+    $('start').value=u.start; $('end').value=u.end; $('dl').value=u.dl; $('dlw').value=u.dlw; $('pw').value=u.pw; ['rng','dl','dlw'].forEach(dpkSync);
+    NP.pick=u.pick; NP.qsEdited=u.qsEdited; field(); patRefresh('np'); sum(); };
+  const aiGo=async()=>{ if(NA.busy) return; const ta=$('npAiText'); if(ta) NA.text=ta.value; const text=NA.text.trim();
+    if(!text){ NA.err=true; NA.msg=t('Describe your poll first.'); aiDraw(); $('npAiText')?.focus(); return; }
+    NA.busy=true; NA.err=false; NA.msg=''; aiDraw();
+    try{ const r=await api('POST','/polls/generate-text',{text}), snap=aiSnap(), nq=(r.data.questions||[]).length;
+      const keep=NP.qsEdited&&!!NP.qs&&(!nq||!confirm(t('Replace your questions with the generated ones?')));
+      applyPreset({data:r.data},keep,r.startDate); NP.pick='blank'; field(); patRefresh('np'); sum();
+      NA.undo=snap; NA.msg=t('Filled in. Check it, then create the poll.'); }
+    catch(e){ NA.err=true; NA.msg=e.message; }
+    NA.busy=false; aiDraw(); };
+  if($('npAiBtn')) $('npAiBtn').addEventListener('click',()=>{ NA.open=!NA.open; aiDraw(); if(NA.open) $('npAiText')?.focus(); });
+  $('npai').addEventListener('click',e=>{
+    if(e.target.closest('[data-npaiclose]')){ NA.open=false; aiDraw(); $('npAiBtn')?.focus(); }
+    else if(e.target.closest('[data-npaigo]')) aiGo();
+    else if(e.target.closest('[data-npaiundo]')&&NA.undo){ aiRestore(NA.undo); NA.undo=null; NA.err=false; NA.msg=t('Undone'); aiDraw(); } });
+  $('npai').addEventListener('input',e=>{ if(e.target.id==='npAiText') NA.text=e.target.value; });
+  $('npai').addEventListener('keydown',e=>{ if(e.target.id==='npAiText'&&e.key==='Enter'&&(e.metaKey||e.ctrlKey)){ e.preventDefault(); aiGo(); } });
   const ctx={get cur(){ return NP.pick; }, set cur(v){ NP.pick=v; }, apply:(pr,o={})=>{ // Without questions: settings only; questions you wrote yourself stay, ones from an earlier preset go
     if(o.noQ) applyPreset(pr&&{...pr,data:{...pr.data,questions:undefined}},NP.qsEdited);
     else applyPreset(pr,NP.qsEdited&&!!NP.qs&&!confirm(t('Replace your questions with the ones from this preset?'))); field(); }, changed:()=>{ if(!prsFind(NP.pick)) NP.pick='blank'; field(); }};
@@ -7666,9 +7704,18 @@ async function pushEnable(){
     if(sub&&!same(sub)){ await sub.unsubscribe(); sub=null; } // the site's key changed
     if(!sub) sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
     const j=sub.toJSON(); await api('POST','/me/push',{endpoint:j.endpoint,keys:j.keys});
-    PUSH.sub=sub; store.set('pushOn',true); store.set('pushSync',isoL(new Date())); pushRedraw(); toast(t('Notifications are on'));
+    PUSH.sub=sub; PUSH.fail=null; store.set('pushOn',true); store.set('pushSync',isoL(new Date())); pushRedraw(); toast(t('Notifications are on'));
     return true;
-  }catch(e){ toast(e.message||t('Couldn’t turn on notifications')); pushRedraw(); return false; }
+  }catch(e){ PUSH.fail=pushErr(e); toast(PUSH.fail); pushRedraw(); return false; }
+}
+// Readable reason when subscribing fails. AbortError = the browser has no push service or can't reach it
+// (Brave turns Google's push service off by default; VPNs and blockers can stop it too).
+function pushErr(e){
+  const n=e&&e.name;
+  if(n==='AbortError') return navigator.brave?t('Brave blocks notifications by default. Turn on “Use Google services for push messaging” in Brave’s privacy settings, restart Brave and try again.')
+    :t('This browser couldn’t reach its push service. A VPN, firewall or blocker may be stopping it.');
+  if(n==='NotAllowedError') return t('Notifications are blocked. Allow them in your browser’s site settings.');
+  return (e&&e.message)||t('Couldn’t turn on notifications');
 }
 async function pushDisable(quiet){
   try{
@@ -7718,7 +7765,7 @@ function pushSecDraw(){
   el.innerHTML=`<h3>${t('Notifications')}</h3>
     <div class="row mt-3"><span class="grow">${t('Chat messages on this device')}</span>${tip(t('Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header. For new answers, use the bell at the top of a poll.'),'left')}
       ${note?'':`<label class="sw" title="${esc(t('Chat messages on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Chat messages on this device'))}"><span></span></label>`}</div>
-    ${note?`<p class="help m0">${note}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`;
+    ${note?`<p class="help m0">${note}</p>`:!on&&PUSH.fail?`<p class="help m0">${esc(PUSH.fail)}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`;
   const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
 }
 document.addEventListener('click',async e=>{
@@ -8979,6 +9026,15 @@ function germanText(){ return {
 "Up to {n} questions per round": "Bis zu {n} Fragen pro Runde",
 "Up to {n} questionnaires per round": "Bis zu {n} Fragebögen pro Runde",
 "Describe what you want to ask first.": "Beschreib zuerst, was du fragen willst.",
+"Describe your poll and let AI fill in the form": "Beschreib deine Umfrage und lass die KI das Formular ausfüllen",
+"Describe it": "Beschreiben",
+"Describe the poll: what it’s for, when, which days or hours, and anything to ask people. Only this text is sent to Cloudflare Workers AI, and it isn’t stored. The form is filled in for you to check; nothing is created until you press Create poll.": "Beschreib die Umfrage: wofür, wann, welche Tage oder Uhrzeiten und was du die Leute fragen willst. Nur dieser Text geht an Cloudflare Workers AI und wird nicht gespeichert. Das Formular wird für dich ausgefüllt, damit du es prüfen kannst; erstellt wird erst, wenn du auf „Umfrage erstellen“ tippst.",
+"e.g. Monthly board game night on weekday evenings. People vote on the game and say if they bring snacks.": "z. B. Monatlicher Spieleabend unter der Woche abends. Alle stimmen über das Spiel ab und sagen, ob sie Snacks mitbringen.",
+"Fill in the form": "Formular ausfüllen",
+"Describe your poll first.": "Beschreib zuerst deine Umfrage.",
+"Replace your questions with the generated ones?": "Deine Fragen durch die erzeugten ersetzen?",
+"Filled in. Check it, then create the poll.": "Ausgefüllt. Prüf alles und erstell dann die Umfrage.",
+"Or describe the poll in your own words and let AI fill in the form and questions. You check everything before creating it.": "Oder beschreib die Umfrage in eigenen Worten und lass die KI Formular und Fragen ausfüllen. Du prüfst alles, bevor du sie erstellst.",
 "Remove the added questions and any answers to them?": "Die hinzugefügten Fragen und alle Antworten darauf entfernen?",
 "Describe what you want to ask. Only this text and the poll’s title are sent to Cloudflare Workers AI, and they aren’t stored. You pick which questions to add and can edit them afterwards.": "Beschreib, was du fragen willst. Nur dieser Text und der Titel der Umfrage gehen an Cloudflare Workers AI und werden nicht gespeichert. Du wählst, welche Fragen dazukommen, und kannst sie danach bearbeiten.",
 "e.g. Dinner after the hike: vote on the restaurant, dietary needs (only I see them), plus-ones, and rate the hike": "z. B. Essen nach der Wanderung: Restaurant abstimmen, Ernährungswünsche (nur ich sehe sie), Begleitung und die Wanderung bewerten",
@@ -9100,7 +9156,7 @@ function germanText(){ return {
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
-"<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI or Generate questions with AI, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions or draft questions (for questions, together with the poll’s title). It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“, „Mit KI vorschlagen“ oder „Fragen mit KI erstellen“ nutzt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten, Vorschläge oder Fragenentwürfe macht (bei Fragen zusammen mit dem Titel der Umfrage). when-who speichert ihn nicht.",
+"<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“, „Mit KI vorschlagen“ oder „Fragen mit KI erstellen“ nutzt oder eine neue Umfrage beschreibst, damit die KI sie ausfüllt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten, Vorschläge, Fragenentwürfe oder Umfrage-Einstellungen macht (bei Fragen zusammen mit dem Titel der Umfrage). when-who speichert ihn nicht.",
 "<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.": "<b>Google / Microsoft</b>: nur wenn du einen Kalender verbindest oder Kontakte importierst, wie oben beschrieben.",
 "The fonts are served by when-who itself; no third party is contacted when the page loads.": "Die Schriften liefert when-who selbst aus; beim Laden der Seite wird kein Dritter kontaktiert.",
 "Transfers outside the EU": "Übermittlung außerhalb der EU",
@@ -10515,6 +10571,8 @@ function germanText(){ return {
 "First round: {range}. People can answer from {open}, until {dl}.": "Erste Runde: {range}. Antworten von {open} bis {dl} möglich.",
 "Then a new round every time, on its own.": "Danach startet jede neue Runde von selbst.",
 "Invalid time": "Ungültige Zeit",
+"Brave blocks notifications by default. Turn on “Use Google services for push messaging” in Brave’s privacy settings, restart Brave and try again.": "Brave blockiert Benachrichtigungen standardmäßig. Schalte in Braves Datenschutz-Einstellungen „Google-Dienste für Push-Nachrichten verwenden“ ein, starte Brave neu und versuch es noch mal.",
+"This browser couldn’t reach its push service. A VPN, firewall or blocker may be stopping it.": "Dieser Browser hat seinen Push-Dienst nicht erreicht. Vielleicht blockiert ihn ein VPN, eine Firewall oder ein Blocker.",
 "Notifications are blocked. Allow them in your browser’s site settings.": "Benachrichtigungen sind blockiert. Erlaube sie in den Website-Einstellungen deines Browsers.",
 "Notifications stay off.": "Benachrichtigungen bleiben aus.",
 "Notifications are on": "Benachrichtigungen sind an",

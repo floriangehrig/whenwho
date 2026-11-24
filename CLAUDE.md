@@ -141,6 +141,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
   (no mic button of our own). Same access checks as answering; `AI_PER_DAY` fills per account / IP per day (`login_attempts`, kind `ai`).
   Without the `AI` binding `GET /api/config` says `aiFill: false` and the button is hidden.
+- **Generate a poll with AI** (✨ Describe it next to Start from on the New poll page, `CONFIG.aiFill`): `POST /api/polls/generate-text` `{ text }`
+  (signed out too, by IP) sends only the text to Workers AI (`pollFromText`, `POLLGEN_SCHEMA`) and returns `{ data, startDate? }`, `data` in a
+  preset's shape (checked by `presetData`; questions via the shared `aiQuestions`, in one questionnaire when the model names one). The page fills
+  the form with `applyPreset` (Undo restores the snapshot); nothing is created or stored. Shares the `AI_PER_DAY` cap.
 - **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 50): `data` = the New poll body without
   dates or password (`days` = length of a one-off range) plus `questions` (links reset by `presetQuestions`: meetings → whole poll,
   after-meeting ones kept, `people` → everyone). `GET|POST /api/me/presets` (POST with a name you already use replaces it),
