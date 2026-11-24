@@ -930,7 +930,8 @@ async function verifyEmailChange(request, env, url) {
       : `The email address of your when-who account was changed from ${old} to ${addr}. Sign-in codes now go to the new address.${help ? "\n\nWasn't you? Reply to this email." : ''}`;
     await sendEmail(env, { fromName: 'when-who', to: [old], replyTo: help || undefined,
       subject: de ? 'Deine E-Mail-Adresse wurde geändert' : 'Your email address was changed', text,
-      html: emailHtml(`<div style="white-space:pre-wrap">${escHtml(text)}</div>`, { site, lang: de ? 'de' : 'en' }) }).catch(() => {});
+      html: emailHtml(mailBlocks({ title: de ? 'Deine E-Mail-Adresse wurde geändert' : 'Your email address was changed', intro: text.split('\n\n') }),
+        { site, lang: de ? 'de' : 'en' }) }).catch(() => {});
   }
   return json({ ok: true, email: addr });
 }
@@ -1061,7 +1062,8 @@ async function deleteAccount(request, env, url) {
       : `Your when-who account (${user.email}) has been deleted${owned ? `, along with ${owned} poll${owned === 1 ? '' : 's'}` : ''}. Your answers and messages in other polls were deleted too.`;
     await sendEmail(env, { fromName: 'when-who', to: [user.email], replyTo: env.CONTACT_EMAIL || undefined,
       subject: de ? 'Dein Konto wurde gelöscht' : 'Your account was deleted', text,
-      html: emailHtml(`<div style="white-space:pre-wrap">${escHtml(text)}</div>`, { site: siteUrl(env, url.origin), lang: de ? 'de' : 'en' }) }).catch(() => {});
+      html: emailHtml(mailBlocks({ title: de ? 'Dein Konto wurde gelöscht' : 'Your account was deleted', intro: text }),
+        { site: siteUrl(env, url.origin), lang: de ? 'de' : 'en' }) }).catch(() => {});
   }
   return json({ ok: true, polls: owned }, 200, { 'set-cookie': sessionCookie(url, '', 0) });
 }
@@ -1207,8 +1209,14 @@ async function addFriend(request, env, url) {
   if (emailEnabled(env)) {
     await mailQuota(env, { owner_id: user.id }, 1);
     await sendEmail(env, { fromName: user.name || 'when-who', to: [addr], replyTo: user.email, subject, text,
-      html: emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
-        { preheader: subject, button: { href: link, label: de ? 'Anfrage ansehen' : 'See the request' }, site, lang: de ? 'de' : 'en' }) });
+      html: emailHtml(mailBlocks({ title: subject,
+        intro: [de ? `${who} (${user.email}) möchte dich auf when-who als Freund*in hinzufügen. Dann könnt ihr euch gegenseitig ganz einfach zu Umfragen einladen.`
+          : `${who} (${user.email}) would like to add you as a friend on when-who, so you can easily invite each other to polls.`,
+          de ? 'Melde dich mit dieser E-Mail-Adresse an, um die Anfrage anzunehmen oder abzulehnen.' : 'Sign in with this email address to accept or decline.'],
+        button: { href: link, label: de ? 'Anfrage ansehen' : 'See the request' }, orLink: de ? 'Oder öffne diesen Link:' : 'Or open this link:',
+        foot: de ? `Du bekommst diese E-Mail, weil ${who} deine Adresse eingegeben hat. Wenn du nichts tust, passiert nichts.`
+          : `You're getting this because ${who} entered your address. If you do nothing, nothing happens.` }),
+        { preheader: subject, site, lang: de ? 'de' : 'en' }) });
   } else console.log(`[dev] friend request to ${addr}:\n${text}`);
   return json({ ok: true });
 }
@@ -2512,8 +2520,13 @@ async function retentionWarning(env, poll, months, onDay) {
   if (!emailEnabled(env)) { console.log(`[dev] retention warning to ${to}:\n${subject}\n${text}`); return; }
   await sendEmail(env, {
     fromName: 'when-who', to: [to], subject, text,
-    html: emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
-      { preheader: subject, button: { href: link, label: de ? 'Umfrage behalten' : 'Keep my poll' }, site, lang: langOf(poll.lang) }),
+    html: emailHtml(mailBlocks({ title: subject, icon: poll.icon,
+      intro: de ? `In deiner Umfrage „${poll.title}“ ist seit ${months} Monaten nichts mehr passiert. Damit keine alten Daten liegen bleiben, löschen wir sie am ${day} mit allen Antworten und Nachrichten.`
+        : `Nothing has happened in your poll “${poll.title}” for ${months} months. So old data doesn't pile up, we'll delete it on ${day}, with all its answers and messages.`,
+      after: de ? 'Willst du sie behalten? Öffne sie einfach, während du angemeldet bist. Wenn du nichts tust, wird sie gelöscht.'
+        : "Want to keep it? Just open it while signed in. If you do nothing, it will be deleted.",
+      button: { href: link, label: de ? 'Umfrage behalten' : 'Keep my poll' }, orLink: de ? 'Oder öffne diesen Link:' : 'Or open this link:' }),
+      { preheader: subject, site, lang: langOf(poll.lang) }),
   });
 }
 
@@ -2632,6 +2645,15 @@ function meetingDescText(poll, mt, ans, { link, pollDesc = true } = {}) {
   const who = mt.participants === 'all' ? `${L.who}\n• ${L.all}`
     : `${L.who} (${mt.participants.length})\n${mt.participants.map((p) => bullet(p.name)).join('\n')}`;
   return [descSection('📝', L.desc, desc), `👥 ${who}`, ans, link && `🔗 ${L.poll}: ${link}`].filter(Boolean).join('\n\n');
+}
+// The same description as mailBlocks sections ({ label, body }) for HTML emails; the poll link is left out (the email has a button).
+function meetingSections(poll, mt, ans, { pollDesc = true } = {}) {
+  const L = ANS_L[poll.lang === 'de' ? 'de' : 'en'];
+  const desc = [pollDesc && poll.description, mt.note, mt.extra].map((x) => (x || '').trim()).filter(Boolean).join('\n\n');
+  const who = mt.participants === 'all' ? { label: `👥 ${L.who}`, body: L.all }
+    : { label: `👥 ${L.who} (${mt.participants.length})`, body: mt.participants.map((p) => p.name).join(', ') };
+  const answers = (ans || '').split('\n\n').filter(Boolean).map((b) => { const i = b.indexOf('\n'); return i < 0 ? { body: b } : { label: b.slice(0, i), body: b.slice(i + 1) }; });
+  return [desc && { label: `📝 ${L.desc}`, body: desc }, who, ...answers].filter(Boolean);
 }
 // ---- answers in a meeting's description (mt.inc), rendered live from the round's answers ----
 // The data one round needs: availability answers and form answers (with names), options people added.
@@ -2764,12 +2786,20 @@ const emailEnabled = (env) => !!(env.RESEND_API_KEY && env.MAIL_FROM);
 const headerSafe = (s) => String(s || '').replace(/[\r\n<>"\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
 const b64 = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); };
 // One message: { fromName, to: [..], bcc?: [..], replyTo?, subject, text, html, attachments?: [{ content: Uint8Array, filename }] }
+// Sender: "Anna via when-who" <MAIL_FROM>, so a person's name next to our address doesn't look like spoofing (spam filters, e.g. GMX).
+const fromHeader = (env, name) => { const n = headerSafe(name); return `"${!n || n === 'when-who' ? 'when-who' : n + ' via when-who'}" <${env.MAIL_FROM}>`; };
+// List-Unsubscribe (RFC 2369) for emails sent to many people (invites, reminders, digests): `unsub` = mailto address or https URL(s).
+const unsubHeaders = (unsub) => {
+  const v = [].concat(unsub || []).filter(Boolean).map((u) => /^https?:/.test(u) ? `<${u}>` : `<mailto:${u}?subject=unsubscribe>`);
+  return v.length ? { headers: { 'List-Unsubscribe': v.join(', ').replace(/[\r\n]/g, '') } } : {};
+};
 async function sendEmail(env, m) {
   const payload = {
-    from: `"${headerSafe(m.fromName) || 'when-who'}" <${env.MAIL_FROM}>`,
+    from: fromHeader(env, m.fromName),
     to: m.to, subject: String(m.subject).replace(/[\r\n]+/g, ' ').slice(0, 200), text: m.text, html: m.html,
     ...(m.bcc && m.bcc.length ? { bcc: m.bcc } : {}),
     ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+    ...unsubHeaders(m.unsub),
     ...(m.attachments ? { attachments: m.attachments.map((a) => ({ filename: a.filename, content: b64(a.content) })) } : {}),
   };
   const r = await fetch((env.RESEND_API_URL || 'https://api.resend.com') + '/emails', {
@@ -2787,9 +2817,10 @@ async function sendEmail(env, m) {
 async function sendEmailBatch(env, msgs) {
   for (let i = 0; i < msgs.length; i += 100) {
     const payload = msgs.slice(i, i + 100).map((m) => ({
-      from: `"${headerSafe(m.fromName) || 'when-who'}" <${env.MAIL_FROM}>`,
+      from: fromHeader(env, m.fromName),
       to: m.to, subject: String(m.subject).replace(/[\r\n]+/g, ' ').slice(0, 200), text: m.text, html: m.html,
       ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+      ...unsubHeaders(m.unsub),
     }));
     const r = await fetch((env.RESEND_API_URL || 'https://api.resend.com') + '/emails/batch', {
       method: 'POST',
@@ -2860,6 +2891,49 @@ function emailHtml(bodyHtml, { preheader = '', button = null, site = '', lang = 
   </table></td></tr></table></body></html>`;
 }
 const linkify = (escaped) => escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1F5EFF;word-break:break-all">$1</a>');
+// The designed email body (inside emailHtml's frame), the same look for every email. Everything is plain text and escaped here.
+//   title (+ icon), intro (string or list of paragraphs), facts [[label, value, href?]], boxes [{ label, body, tone: 'note' | 'info' }],
+//   sections [{ label, body }] (small heading + text), cards [{ title, facts, sections }] (one per meeting), after (paragraphs after
+//   the cards), button { href, label } (+ orLink: "Or open this link:" with the address), foot (grey small print at the bottom).
+const mailP = (s, extra = '') => `<p style="margin:0 0 16px;color:#334155${extra}">${linkify(escHtml(s))}</p>`;
+function mailFacts(facts) {
+  if (!facts || !facts.length) return '';
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px">${facts.map(([k, v, href]) =>
+    `<tr><td style="padding:2px 12px 2px 0;color:#5B6578;white-space:nowrap;vertical-align:top">${escHtml(k)}</td><td style="padding:2px 0;font-weight:600;color:#0F172A">${
+      href ? `<a href="${escHtml(href)}" style="color:#1F5EFF;text-decoration:none">${escHtml(v)}</a>` : escHtml(v)}</td></tr>`).join('')}</table>`;
+}
+const mailBox = (label, body, tone = 'info') => {
+  const [bg, border] = tone === 'note' ? ['#F1F5F9', '#94A3B8'] : ['#E8EFFF', '#1F5EFF'];
+  return `<div style="margin:0 0 20px;padding:14px 16px;background:${bg};border-left:3px solid ${border};border-radius:8px">
+    ${label ? `<div style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#5B6578">${escHtml(label)}</div>` : ''}
+    <div style="white-space:pre-wrap;color:#0F172A">${linkify(escHtml(body))}</div></div>`;
+};
+const mailSection = ({ label, body }) => body ? `<div style="margin:0 0 16px">
+    ${label ? `<div style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#5B6578">${escHtml(label)}</div>` : ''}
+    <div style="white-space:pre-wrap;color:#0F172A">${linkify(escHtml(body))}</div></div>` : '';
+const mailButton = (b) => `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px"><tr><td style="border-radius:8px;background:#1F5EFF">
+      <a href="${escHtml(b.href)}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${escHtml(b.label)}</a></td></tr></table>`;
+function mailBlocks({ title, icon, intro, facts, boxes, sections, cards, after, button, orLink, foot }) {
+  // Paragraphs; an { label, body, tone } item is drawn as a box.
+  const paras = (x) => (Array.isArray(x) ? x : [x]).filter(Boolean).map((s) => (typeof s === 'object' ? mailBox(s.label, s.body, s.tone) : mailP(s))).join('');
+  const card = (c) => `<div style="margin:0 0 16px;padding:16px 18px;border:1px solid #E2E8F0;border-radius:10px">
+    ${c.title ? `<div style="margin:0 0 8px;font-size:17px;font-weight:700;color:#0B1F3A">${c.href ? `<a href="${escHtml(c.href)}" style="color:#0B1F3A">${escHtml(c.title)}</a>` : escHtml(c.title)}</div>` : ''}
+    ${mailFacts(c.facts).replace('margin:0 0 20px', 'margin:0 0 12px')}${(c.sections || []).map(mailSection).join('')}</div>`;
+  return [
+    title ? `<h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:#0B1F3A">${icon ? escHtml(icon) + ' ' : ''}${escHtml(title)}</h1>` : '',
+    intro ? paras(intro) : '',
+    mailFacts(facts),
+    (boxes || []).filter((b) => b && b.body).map((b) => mailBox(b.label, b.body, b.tone)).join(''),
+    (sections || []).map(mailSection).join(''),
+    (cards || []).map(card).join(''),
+    after ? paras(after) : '',
+    button ? mailButton(button) : '',
+    button && orLink ? `<p style="margin:0 0 24px;font-size:13px;color:#5B6578">${escHtml(orLink)} ${linkify(escHtml(button.href))}</p>` : button ? '<div style="height:12px"></div>' : '',
+    foot ? `<p style="margin:0;padding-top:16px;border-top:1px solid #E2E8F0;font-size:13px;color:#5B6578;white-space:pre-wrap">${linkify(escHtml(foot))}</p>` : '',
+  ].join('\n');
+}
+// The footer text of a plain-text email ("\n\n—\n…") without its dash, for mailBlocks' foot.
+const footOf = (s) => String(s || '').replace(/^\s*—\s*/, '');
 function periodText(poll, inst) {
   const loc = LOCALE[langOf(poll.lang)];
   if (isWeek0(inst)) return poll.lang === 'de' ? 'eine typische Woche' : 'a typical week';
@@ -2882,7 +2956,7 @@ async function mailQuota(env, poll, count) {
 const ownerOf = (env, poll) => poll.owner_id ? env.DB.prepare('SELECT name, email FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
 // `html` (optional): the email's own body HTML (already escaped); without it the text is shown with an Open poll button on top.
 // `links` (optional, Map email -> personal link, see personalLinks): those people get a message of their own in which the
-// poll's plain link (`${site}/?p=<id>`) is their personal one, sent in one Resend batch call; everyone else gets the BCC copy.
+// poll's plain link (`${site}/?p=<id>`) is their personal one, sent in one Resend batch call; everyone gets a message of their own (BCC only with attachments).
 async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachments, quota = false, fromName, replyTo, links }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
@@ -2899,37 +2973,36 @@ async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachme
     preheader: subject, button: pollLink ? { href: pollLink, label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
     site: siteUrl(env, ''), lang: langOf(poll.lang),
   });
-  let sent = 0;
-  const own = links && links.size ? list.filter((e) => links.has(e)) : [];
-  if (own.length) {
-    const plain = new RegExp(escRe(`${siteUrl(env, '')}/?p=${poll.id}`) + '(?![\\w#&])', 'g');
-    const html0 = emailHtml(bodyHtml || `<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
-      preheader: subject, button: pollLink ? { href: '\u0000', label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
-      site: siteUrl(env, ''), lang: langOf(poll.lang),
-    });
-    await sendEmailBatch(env, own.map((e) => {
-      const link = links.get(e), put = (x) => x.replace(plain, () => link);
-      return { fromName: sender, to: [e], subject, text: put(text), html: put(html0).replace('\u0000', escHtml(link)), ...(reply ? { replyTo: reply } : {}) };
-    }));
-    sent += own.length;
-    const rest = new Set(own);
-    list.splice(0, list.length, ...list.filter((e) => !rest.has(e)));
-    // The organiser still gets one copy (with the plain link) when nobody is left for the BCC message.
-    if (!list.length && ownerMail) await sendEmail(env, { fromName: sender, to: [ownerMail.toLowerCase()], subject, text, html, ...(reply ? { replyTo: reply } : {}) });
+  const unsub = reply || env.CONTACT_EMAIL || '';
+  const base = { fromName: sender, subject, ...(reply ? { replyTo: reply } : {}), unsub };
+  // Emails with an attachment (.ics) can't go through the batch API: those still go as BCC, max 50 recipients per message.
+  if (attachments) {
+    let sent = 0;
+    for (let i = 0; i < list.length; i += 49) {
+      const bcc = list.slice(i, i + 49);
+      const to = (ownerMail || env.MAIL_FROM).toLowerCase();
+      await sendEmail(env, { ...base, to: [to], bcc: bcc.filter((e) => e !== to), text, html, attachments });
+      sent += bcc.length;
+    }
+    return sent;
   }
-  for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
-    const bcc = list.slice(i, i + 49);
-    const to = (ownerMail || env.MAIL_FROM).toLowerCase();
-    await sendEmail(env, {
-      fromName: sender,
-      to: [to],
-      bcc: bcc.filter((e) => e !== to), subject, text, html,
-      ...(reply ? { replyTo: reply } : {}),
-      ...(attachments ? { attachments } : {}),
-    });
-    sent += bcc.length;
-  }
-  return sent;
+  // Everything else: one message per person (their own To, personal link when they have one) in Resend batch calls,
+  // since mass BCC mail lands in spam more often. The organiser gets one copy with the plain link.
+  const plain = new RegExp(escRe(`${siteUrl(env, '')}/?p=${poll.id}`) + '(?![\\w#&])', 'g');
+  const html0 = links && links.size ? emailHtml(bodyHtml || `<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
+    preheader: subject, button: pollLink ? { href: '\u0000', label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
+    site: siteUrl(env, ''), lang: langOf(poll.lang),
+  }) : null;
+  const msgs = list.map((e) => {
+    const link = links && links.get(e);
+    if (!link) return { ...base, to: [e], text, html };
+    const put = (x) => x.replace(plain, () => link);
+    return { ...base, to: [e], text: put(text), html: put(html0).replace('\u0000', escHtml(link)) };
+  });
+  const om = ownerMail.toLowerCase();
+  if (om && list.length && !list.includes(om)) msgs.push({ ...base, to: [om], text, html });
+  if (msgs.length) await sendEmailBatch(env, msgs);
+  return list.length;
 }
 const footer = (poll) => poll.lang === 'de'
   ? `\n\n—\nDu bekommst diese E-Mail, weil du in der Umfrage „${poll.title}“ deine E-Mail-Adresse angegeben hast. Um keine E-Mails mehr zu bekommen, öffne die Umfrage und entferne deine E-Mail-Adresse aus deiner Antwort.`
@@ -2960,8 +3033,13 @@ async function sendInvite(request, env, url, id, iid, mid) {
   const ans = mt.inc ? meetingAnswerText(poll, inst, mt, await answerData(env, inst)) : '', texts = new Map(ans ? [[mt.id, ans]] : []);
   const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null,
     '', meetingDescText(poll, mt, ans, { link }), '', L.ics].filter((x) => x !== null).join('\n') + footer(poll);
+  const mapUrl = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  const html = mailBlocks({ title: mt.title || poll.title, icon: poll.icon,
+    facts: [[L.when, when], mt.location && [L.where, mt.location, mapUrl(mt.location)]].filter(Boolean),
+    sections: meetingSections(poll, mt, ans), after: L.ics,
+    button: { href: link, label: de ? 'Umfrage öffnen' : 'Open poll' }, foot: footOf(footer(poll)) });
   const ics = buildIcs(poll, [mt], link, texts);
-  const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
+  const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text, html,
     attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }], quota: true });
   mt.sentAt = now();
   await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ?').bind(JSON.stringify(meetings), iid).run();
@@ -3018,8 +3096,18 @@ async function sendAllMeetings(request, env, url, id) {
   const text = [message || null, message ? '' : null, L.head(sorted.length), '', (upcoming.length ? upcoming : sorted).map(block).join('\n\n'),
     upcoming.length && past ? '\n' + L.past(past) : null, '', L.ics, '', L.sub, feed.replace(/^https?:/, 'webcal:'), `${L.google}: ${feed}`, '', `${L.poll}: ${link}`]
     .filter((x) => x !== null).join('\n') + L.footer;
+  const shown = upcoming.length ? upcoming : sorted;
+  const html = mailBlocks({ title: poll.title, icon: poll.icon, intro: L.head(sorted.length),
+    boxes: [message && { label: de ? 'Nachricht' : 'Message', body: message, tone: 'note' }],
+    cards: shown.map((mt) => ({ title: mt.title || poll.title,
+      facts: [[de ? 'Wann' : 'When', meetingWhen(mt, poll.lang)],
+        mt.location && [L.where, mt.location, `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}`]].filter(Boolean),
+      sections: meetingSections(poll, mt, texts.get(mt.id), { pollDesc: false }) })),
+    after: [upcoming.length && past ? L.past(past) : null, L.ics,
+      { label: de ? 'Abonnieren' : 'Subscribe', body: `${L.sub}\n${feed.replace(/^https?:/, 'webcal:')}\n\n${L.google}:\n${feed}` }],
+    button: { href: link, label: de ? 'Umfrage öffnen' : 'Open poll' }, foot: footOf(L.footer) });
   const name = poll.title.replace(/[^\w\- ]+/g, '').trim() || 'meetings';
-  const sent = await sendMail(env, poll, { to, subject: L.subject, text, quota: true,
+  const sent = await sendMail(env, poll, { to, subject: L.subject, text, html, quota: true,
     attachments: [{ content: enc.encode(buildIcs(poll, sorted, link, texts)), filename: `${name}.ics` }] });
   return json({ ok: true, sent, missing });
 }
@@ -3107,20 +3195,9 @@ function inviteMail(poll, inst, name, { again = false, message = '', link }) {
     poll.description ? `${L.about}:\n${poll.description}\n` : null,
     L.how, link,
   ].filter((x) => x !== null).join('\n') + `\n\n—\n${L.foot}`;
-  const box = (label, body, bg, border) => `<div style="margin:0 0 20px;padding:14px 16px;background:${bg};border-left:3px solid ${border};border-radius:8px">
-    <div style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#5B6578">${escHtml(label)}</div>
-    <div style="white-space:pre-wrap;color:#0F172A">${linkify(escHtml(body))}</div></div>`;
-  const html = `<h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:#0B1F3A">${poll.icon ? escHtml(poll.icon) + ' ' : ''}${escHtml(title)}</h1>
-    <p style="margin:0 0 16px;color:#334155">${escHtml(L.intro)}</p>
-    ${facts.length ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px">${facts.map(([k, v]) =>
-      `<tr><td style="padding:2px 12px 2px 0;color:#5B6578;white-space:nowrap;vertical-align:top">${escHtml(k)}</td><td style="padding:2px 0;font-weight:600;color:#0F172A">${escHtml(v)}</td></tr>`).join('')}</table>` : ''}
-    ${message ? box(L.msg, message, '#F1F5F9', '#94A3B8') : ''}
-    ${poll.description ? box(L.about, poll.description, '#E8EFFF', '#1F5EFF') : ''}
-    <p style="margin:0 0 16px;color:#334155">${escHtml(L.how)}</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px"><tr><td style="border-radius:8px;background:#1F5EFF">
-      <a href="${escHtml(link)}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px">${escHtml(L.button)}</a></td></tr></table>
-    <p style="margin:0 0 24px;font-size:13px;color:#5B6578">${escHtml(L.orLink)} ${linkify(escHtml(link))}</p>
-    <p style="margin:0;padding-top:16px;border-top:1px solid #E2E8F0;font-size:13px;color:#5B6578">${escHtml(L.foot)}</p>`;
+  const html = mailBlocks({ title, icon: poll.icon, intro: L.intro, facts,
+    boxes: [message && { label: L.msg, body: message, tone: 'note' }, poll.description && { label: L.about, body: poll.description }],
+    after: L.how, button: { href: link, label: L.button }, orLink: L.orLink, foot: L.foot });
   return { subject: L.subject, text, html };
 }
 // Sends the invite (or reminder) email to `emails` and marks participants `pids` as invited.
@@ -3372,16 +3449,19 @@ async function notifyDigests(env) {
           const who = [...new Set(chat.map((e) => e.name))].slice(0, 4).join(', ');
           lines.push('• ' + (de ? `${chat.length === 1 ? 'Eine neue Chat-Nachricht' : chat.length + ' neue Chat-Nachrichten'} (${who})` : `${chat.length === 1 ? '1 new chat message' : chat.length + ' new chat messages'} (${who})`));
         }
-        return `${poll.title}\n${lines.join('\n')}\n${base}/?p=${poll.id}`;
+        return { poll, lines };
       });
       const one = p.polls.length === 1 ? p.polls[0].poll : null;
       const subject = one ? `${one.title}: ${de ? (total === 1 ? 'eine Neuigkeit' : total + ' Neuigkeiten') : (total === 1 ? '1 update' : total + ' updates')}`
         : (de ? `Neuigkeiten in ${p.polls.length} Umfragen` : `Updates in ${p.polls.length} polls`);
-      const text = sections.join('\n\n') + '\n\n—\n' + (de ? 'Du bekommst diese E-Mail, weil du diese Benachrichtigungen per E-Mail eingeschaltet hast. Ändern: die Glocke 🔔 oben in der Umfrage oder dein Konto → Benachrichtigungen.'
+      const foot = (de ? 'Du bekommst diese E-Mail, weil du diese Benachrichtigungen per E-Mail eingeschaltet hast. Ändern: die Glocke 🔔 oben in der Umfrage oder dein Konto → Benachrichtigungen.'
         : 'You’re getting this because you turned these notifications on by email. To change them, use the bell 🔔 at the top of the poll or Account → Notifications.');
-      const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
-        { preheader: subject, button: one ? { href: `${base}/?p=${one.id}`, label: de ? 'Umfrage öffnen' : 'Open poll' } : null, site: base, lang: langOf(p.lang) });
-      try { await sendEmail(env, { fromName: 'when-who', to: [p.email], subject, text, html }); sent++; } catch (e) { console.error('digest', e); }
+      const text = sections.map((x) => `${x.poll.title}\n${x.lines.join('\n')}\n${base}/?p=${x.poll.id}`).join('\n\n') + '\n\n—\n' + foot;
+      const html = emailHtml(mailBlocks({ title: one ? one.title : subject, icon: one && one.icon,
+        cards: sections.map((x) => ({ title: one ? '' : (x.poll.icon ? x.poll.icon + ' ' : '') + x.poll.title, href: one ? null : `${base}/?p=${x.poll.id}`, sections: [{ body: x.lines.join('\n') }] })),
+        button: one ? { href: `${base}/?p=${one.id}`, label: de ? 'Umfrage öffnen' : 'Open poll' } : null, foot }),
+        { preheader: subject, site: base, lang: langOf(p.lang) });
+      try { await sendEmail(env, { fromName: 'when-who', to: [p.email], subject, text, html, unsub: `${base}/?account` }); sent++; } catch (e) { console.error('digest', e); }
     }
   }
   await env.DB.prepare('UPDATE poll_events SET digested = 1 WHERE digested = 0 AND id <= ?').bind(maxId).run();
@@ -3399,14 +3479,21 @@ async function notifyOpened(env, poll, inst, origin) {
   const rows = await waitingRows(env, poll, inst), to = rows.map((p) => p.mail_to), links = await personalLinks(env, poll, rows);
   if (!to.length) return;
   const base = siteUrl(env, origin); if (!base) return;
-  const period = periodText(poll, inst);
-  if (poll.lang === 'de') {
-    const text = `Die Umfrage für ${period} ist offen.\n\nBitte trag ein, wann du Zeit hast${inst.deadline ? ` (bis ${fmtDay(inst.deadline, 'de')})` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
-    await sendMail(env, poll, { to, subject: `${poll.title}: Wann hast du Zeit (${period})?`, text, links });
-    return;
-  }
-  const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
-  await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text, links });
+  const period = periodText(poll, inst), de = poll.lang === 'de', link = `${base}/?p=${poll.id}`;
+  const by = inst.deadline ? fmtDay(inst.deadline.slice(0, 10), poll.lang) : '';
+  const text = (de ? `Die Umfrage für ${period} ist offen.\n\nBitte trag ein, wann du Zeit hast${by ? ` (bis ${by})` : ''}:\n${link}`
+    : `The poll for ${period} is open.\n\nPlease mark when you're available${by ? ` by ${by}` : ''}:\n${link}`) + seriesFooter(poll);
+  const html = roundMail(poll, { intro: de ? `Die Umfrage für ${period} ist offen. Bitte trag ein, wann du Zeit hast.` : `The poll for ${period} is open. Please mark when you're available.`,
+    period, by, link });
+  await sendMail(env, poll, { to, subject: de ? `${poll.title}: Wann hast du Zeit (${period})?` : `${poll.title}: when are you free in ${period}?`, text, html, links });
+}
+// Body of the round-opened and reminder emails. The button has the plain poll link, so sendMail swaps in personal links.
+function roundMail(poll, { intro, period, by, link }) {
+  const de = poll.lang === 'de';
+  return mailBlocks({ title: poll.title, icon: poll.icon, intro,
+    facts: [[de ? 'Zeitraum' : 'Dates', period], by && [de ? 'Bitte antworte bis' : 'Please answer by', by]].filter(Boolean),
+    button: { href: link, label: de ? 'Eintragen, wann ich Zeit habe' : "Mark when I'm free" }, orLink: de ? 'Oder öffne diesen Link:' : 'Or open this link:',
+    foot: footOf(seriesFooter(poll)) });
 }
 async function remind(env, poll, inst) {
   const claim = await env.DB.prepare('UPDATE instances SET reminded = 1 WHERE id = ? AND reminded = 0').bind(inst.id).run();
@@ -3416,9 +3503,11 @@ async function remind(env, poll, inst) {
   if (!to.length) return;
   const period = periodText(poll, inst);
   const de = poll.lang === 'de';
-  const text = (de ? `Erinnerung: Bitte trag bis ${fmtDay(inst.deadline, 'de')} ein, wann du für ${period} Zeit hast.`
-    : `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.`) + `\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
-  await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text, links });
+  const intro = de ? `Erinnerung: Bitte trag bis ${fmtDay(inst.deadline, 'de')} ein, wann du für ${period} Zeit hast.`
+    : `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.`;
+  const text = intro + `\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
+  const html = roundMail(poll, { intro, period, by: fmtDay(inst.deadline.slice(0, 10), poll.lang), link: `${base}/?p=${poll.id}` });
+  await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text, html, links });
 }
 async function runScheduled(env) {
   try {
