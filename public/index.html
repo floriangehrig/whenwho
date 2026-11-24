@@ -1817,6 +1817,8 @@
   /* To do strip (todoSync): what the person answering still has to do. */
   .todo{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:12px;padding:7px 8px 7px 12px;max-width:720px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--on-brand)}
   .todo>.tip{position:static} /* the bubble lines up with the strip, so it doesn't stick out past the screen edge (phones scrolled sideways) */
+  .pplist .pname b{flex:0 1 auto;min-width:3em} .pplist .pacct{flex:none} .pplist .role-tag{flex:0 1 auto;min-width:0;overflow:hidden;margin-left:0} .pplist .role-tag svg{flex:none} .pplist .role-tag>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media (max-width:560px){ .pplist .role-tag>span{display:none} .pplist .role-tag{padding:1px 5px} }
   .todo[hidden]{display:none} .todo .tip{color:var(--on-brand-muted)}
   .todo.soon{background:color-mix(in srgb,var(--maybe) 22%,transparent);border-color:color-mix(in srgb,var(--maybe) 55%,transparent)}
   .todo-h{display:inline-flex;align-items:center;gap:6px;font-size:13px} .todo-h svg{width:16px;height:16px;color:var(--maybe)}
