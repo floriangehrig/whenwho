@@ -105,6 +105,17 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   `push` = Web Push right away (`pushAnswer`, kind `answer`, from `createResponse` and `updateResponse`; a changed answer only if it last changed
   `ANSWER_PUSH_GAP` (10 min) ago). `email` = hourly digest in the cron (`answerDigests`, `sent_at` = cutoff, `DIGESTS_PER_RUN`), sent from "when-who"
   to the watcher only (not via `sendMail`, so no owner copy and no owner quota). The watcher's own answers are left out.
+- **MCP (AI assistants)** (0030): Claude, ChatGPT etc. use an account through the Model Context Protocol. The Worker is its own OAuth 2.1
+  server outside `/api/` (`isMcpPath` → `mcpEntry`, CORS open, bearer only): `/.well-known/oauth-protected-resource[/mcp]`,
+  `/.well-known/oauth-authorization-server`, `/oauth/register` (dynamic registration, public clients, `mcp_clients`), `/oauth/authorize`
+  (PKCE S256 required, stores `mcp_requests`, sends the browser to `?connect=<id>`), `/oauth/token` (code / rotating refresh; access 1 h,
+  refresh 60 days), `/oauth/revoke`. The page's `renderConnect` signs in and asks Allow / Deny (`GET|POST /api/connect/:id`).
+  `mcp_grants` = connected apps (token hashes only), listed on the Account page's **AI assistants** card (`renderMcpCard`,
+  `GET|DELETE /api/me/connections[/:id]`), max 20 per account. `POST /mcp` = stateless Streamable HTTP (JSON replies, no SSE):
+  `initialize`, `ping`, `tools/list`, `tools/call`. Tools (`MCP_TOOLS`: whoami, list_polls, get_poll with `availabilitySummary`, answer_poll,
+  create_poll, add_people, schedule_meeting, send_message) call the normal handlers through `callApi()`: an `INTERNAL` request with the
+  grant's user preset, so every check and limit applies; rate limits key on the grant (`mcp:<id>`), not the IP (assistants share IPs).
+  When a new feature should be usable from assistants, add a tool. Local testing needs `--var SITE_URL:http://localhost:<port>`.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

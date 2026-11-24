@@ -40,6 +40,7 @@ const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (isMcpPath(url.pathname)) return mcpEntry(request, env, ctx, url); // AI assistants: OAuth + MCP (see the MCP section)
     if (!url.pathname.startsWith('/api/')) return secure(await servePage(request, env), url);
     try {
       return secure(await route(request, env, ctx, url), url);
@@ -63,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-oz46pwZ9ARzNaWmjAqb4yEOwrtpKaGMTid6L85y4MSg=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-fwzMzIiKveYUUOQJk1VJVGikhkwvkye/107MHGYd5sA=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -130,7 +131,7 @@ async function route(request, env, ctx, url) {
   const rl = parts[1] === 'places' ? env.RL_PLACES : m !== 'GET' && m !== 'HEAD' ? env.RL_WRITE : null;
   if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
-  USERS.set(request, await getUser(env, cookies));
+  if (!INTERNAL.has(request)) USERS.set(request, await getUser(env, cookies)); // MCP tool calls come with their user set (callApi)
   if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
@@ -143,6 +144,10 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'logout' && m === 'POST') return logout(request, env, cookies, url);
     throw new HttpError(404, 'Not found');
   }
+  if (parts[1] === 'connect' && parts[2] && !parts[3]) { // consent screen for an AI assistant (MCP)
+    if (m === 'GET') return connectInfo(request, env, parts[2]);
+    if (m === 'POST') return connectAnswer(request, env, url, parts[2]);
+  }
   if (parts[1] === 'users' && parts[2] && parts[3] === 'avatar' && !parts[4] && m === 'GET') return userAvatar(request, env, parts[2]);
   if (parts[1] === 'me') {
     if (!parts[2] && m === 'GET') return me(request, env);
@@ -154,6 +159,10 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
     if (parts[2] === 'calendar' && m === 'POST') return fetchCalendar(request, env);
+    if (parts[2] === 'connections') {
+      if (!parts[3] && m === 'GET') return listConnections(request, env);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteConnection(request, env, parts[3]);
+    }
     if (parts[2] === 'push') {
       if (!parts[3] && m === 'POST') return savePushSub(request, env);
       if (!parts[3] && m === 'DELETE') return deletePushSub(request, env);
@@ -912,7 +921,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0029';
+const USER_DATA_REVIEWED = '0030';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -945,6 +954,10 @@ const USER_DATA = {
   oauth_states: { skip: 'calendar sign-ins in progress (deleted after an hour)', del: 'DELETE FROM oauth_states WHERE user_id = ?' },
   push_subs: { rows: "SELECT id, substr(endpoint, 1, instr(substr(endpoint, 9), '/') + 7) AS push_service, lang, created_at FROM push_subs WHERE user_id = ?",
     del: 'DELETE FROM push_subs WHERE user_id = ?' }, // devices with chat notifications; the push address and keys stay out of the export
+  mcp_grants: { rows: 'SELECT id, client_name, created_at, used_at, refresh_exp FROM mcp_grants WHERE user_id = ?',
+    del: 'DELETE FROM mcp_grants WHERE user_id = ?' }, // AI assistants connected with MCP (token hashes stay out of the export)
+  mcp_requests: { skip: 'MCP sign-ins in progress (deleted after 10 minutes)', del: 'DELETE FROM mcp_requests WHERE user_id = ?' },
+  mcp_clients: { skip: 'names and return addresses of apps that registered for MCP, not linked to a person' },
   mail_log: { rows: 'SELECT * FROM mail_log WHERE user_id = ?', del: 'DELETE FROM mail_log WHERE user_id = ?' },
   sessions: { skip: 'sign-in tokens', del: 'DELETE FROM sessions WHERE user_id = ?' },
   login_codes: { skip: 'one-time codes (expire after 10 minutes)',
@@ -1019,7 +1032,7 @@ async function deleteAccount(request, env, url) {
   }
   await env.DB.batch([
     ...(await dropReactions(env, user.id)),
-    ...Object.values(USER_DATA).map((d) => byUser(env, d.del, user.id)),
+    ...Object.values(USER_DATA).filter((d) => d.del).map((d) => byUser(env, d.del, user.id)),
   ]);
   if (emailEnabled(env)) {
     const de = reqLang(request) === 'de';
@@ -3035,6 +3048,9 @@ async function runScheduled(env) {
       env.DB.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(now()),
       env.DB.prepare('DELETE FROM mail_log WHERE at < ?').bind(new Date(Date.now() - 2 * 86400000).toISOString()),
       env.DB.prepare('DELETE FROM oauth_states WHERE created_at < ?').bind(new Date(Date.now() - 3600000).toISOString()),
+      env.DB.prepare('DELETE FROM mcp_requests WHERE created_at < ?').bind(new Date(Date.now() - MCP_CODE_MIN * 60000).toISOString()),
+      env.DB.prepare('DELETE FROM mcp_grants WHERE refresh_exp < ?').bind(now()),
+      env.DB.prepare('DELETE FROM mcp_clients WHERE created_at < ? AND id NOT IN (SELECT client_id FROM mcp_grants)').bind(new Date(Date.now() - 30 * 86400000).toISOString()),
     ]);
   } catch (e) { console.error('cleanup', e); }
   if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
@@ -4289,3 +4305,453 @@ async function mergeInto(env, src, dst) {
   ]);
   return drop.length;
 }
+
+// ---------- MCP: AI assistants (Claude, ChatGPT, …) use an account through the Model Context Protocol ----------
+// when-who is its own OAuth 2.1 authorization server (RFC 8414 metadata, RFC 7591 dynamic registration of public clients,
+// PKCE S256 only) and protected resource (RFC 9728). Paths live outside /api/ (clients expect them at the site root):
+//   /.well-known/oauth-protected-resource[/mcp], /.well-known/oauth-authorization-server, /oauth/register, /oauth/authorize,
+//   /oauth/token, /oauth/revoke, and the MCP endpoint POST /mcp (Streamable HTTP, stateless, JSON replies, no SSE).
+// /oauth/authorize sends the person to the page (?connect=<request id>), which signs them in with the emailed code and
+// asks Allow / Deny (GET|POST /api/connect/:id). Tokens are stored only as hashes (mcp_grants); access 1 h, refresh 60 days (rotated).
+// Tools call the normal API handlers through callApi() (an INTERNAL request with the grant's user preset), so every check,
+// role, cap and rate limit applies unchanged. Auth is a bearer header only (no cookies), so CORS is open on these paths.
+const MCP_CODE_MIN = 10;        // an authorization request / code is valid this long
+const MCP_ACCESS_SEC = 3600;    // access token lifetime
+const MCP_REFRESH_DAYS = 60;    // refresh token lifetime (renewed on every refresh)
+const MCP_MAX_GRANTS = 20;      // connected apps per account
+const MCP_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
+const INTERNAL = new WeakSet(); // requests made by callApi(): route() keeps the preset user instead of reading cookies
+const MCP_CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS',
+  'access-control-allow-headers': 'authorization, content-type, mcp-protocol-version, mcp-session-id, last-event-id',
+  'access-control-expose-headers': 'www-authenticate, mcp-protocol-version', 'access-control-max-age': '86400' };
+const isMcpPath = (p) => p === '/mcp' || p.startsWith('/.well-known/oauth-') || p.startsWith('/oauth/');
+const mcpHash = (token) => sha256('mcp:' + token);
+const oauthErr = (status, code, msg) => new HttpError(status, msg, { oauth: code });
+
+async function mcpEntry(request, env, ctx, url) {
+  let res;
+  try { res = await mcpRoute(request, env, ctx, url); } catch (e) {
+    if (!(e instanceof HttpError)) console.error(e);
+    res = e instanceof HttpError ? json({ error: e.extra.oauth || (e.status === 429 ? 'slow_down' : 'invalid_request'), error_description: e.message }, e.status)
+      : json({ error: 'server_error', error_description: 'Something went wrong on the server.' }, 500);
+  }
+  res = secure(res, url);
+  if (url.pathname !== '/oauth/authorize') for (const [k, v] of Object.entries(MCP_CORS)) res.headers.set(k, v);
+  return res;
+}
+async function mcpRoute(request, env, ctx, url) {
+  const p = url.pathname, m = request.method, base = siteUrl(env, url.origin);
+  if (m === 'OPTIONS') return new Response(null, { status: 204 });
+  if (p.startsWith('/.well-known/oauth-protected-resource') && m === 'GET')
+    return json({ resource: base + '/mcp', resource_name: 'when-who', authorization_servers: [base], bearer_methods_supported: ['header'], scopes_supported: ['polls'] });
+  if (p === '/.well-known/oauth-authorization-server' && m === 'GET')
+    return json({ issuer: base, authorization_endpoint: base + '/oauth/authorize', token_endpoint: base + '/oauth/token',
+      registration_endpoint: base + '/oauth/register', revocation_endpoint: base + '/oauth/revoke', scopes_supported: ['polls'],
+      response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
+      code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'],
+      revocation_endpoint_auth_methods_supported: ['none'], authorization_response_iss_parameter_supported: true });
+  if (p === '/oauth/authorize' && m === 'GET') return mcpAuthorize(request, env, url);
+  if (p === '/mcp' && m !== 'POST') return json({ error: 'Use POST' }, 405, { allow: 'POST, OPTIONS' });
+  if (m !== 'POST') throw new HttpError(404, 'Not found');
+  if (p === '/mcp') return mcpPost(request, env, ctx, url);
+  if (env.RL_WRITE && !(await env.RL_WRITE.limit({ key: clientIp(request) })).success) throw oauthErr(429, 'slow_down', 'Too many requests. Wait a minute and try again.');
+  if (p === '/oauth/register') return mcpRegister(request, env);
+  if (p === '/oauth/token') return mcpToken(request, env);
+  if (p === '/oauth/revoke') return mcpRevoke(request, env);
+  throw new HttpError(404, 'Not found');
+}
+
+// Return addresses: https, http on this machine (desktop apps), or an app's own scheme (cursor://, vscode://).
+const BAD_SCHEMES = new Set(['javascript:', 'data:', 'file:', 'vbscript:', 'blob:', 'about:', 'ftp:', 'ws:', 'wss:', 'mailto:', 'tel:', 'sms:']);
+function okRedirect(u) {
+  if (typeof u !== 'string' || u.length > 500) return false;
+  let x; try { x = new URL(u); } catch { return false; }
+  if (x.hash || x.username || x.password) return false;
+  if (x.protocol === 'https:') return true;
+  if (x.protocol === 'http:') return ['localhost', '127.0.0.1', '[::1]'].includes(x.hostname);
+  return /^[a-z][a-z0-9+.-]*:$/.test(x.protocol) && !BAD_SCHEMES.has(x.protocol);
+}
+const hostOf = (u) => { try { const x = new URL(u); return x.host || x.protocol.replace(/:$/, ''); } catch { return ''; } };
+async function mcpClient(env, id) {
+  if (typeof id !== 'string' || !/^[A-Za-z0-9]{16,40}$/.test(id)) return null;
+  const c = await env.DB.prepare('SELECT * FROM mcp_clients WHERE id = ?').bind(id).first();
+  return c ? { ...c, uris: JSON.parse(c.redirect_uris) } : null;
+}
+async function mcpRegister(request, env) {
+  await checkThrottle(env, request, 'mcpreg', { max: 60, msg: 'Too many app registrations. Try again later.' });
+  await recordFail(env, request, 'mcpreg');
+  const b = await body(request);
+  const uris = Array.isArray(b.redirect_uris) ? [...new Set(b.redirect_uris)] : [];
+  if (!uris.length || uris.length > 10 || !uris.every(okRedirect)) throw oauthErr(400, 'invalid_redirect_uri', 'redirect_uris must be 1 to 10 https (or local http) addresses');
+  if (b.grant_types && (!Array.isArray(b.grant_types) || b.grant_types.some((g) => !['authorization_code', 'refresh_token'].includes(g))))
+    throw oauthErr(400, 'invalid_client_metadata', 'Only authorization_code and refresh_token are supported');
+  const name = (typeof b.client_name === 'string' ? b.client_name.replace(/[\u0000-\u001f\u007f]/g, '').trim() : '').slice(0, 80) || hostOf(uris[0]) || 'App';
+  const id = randomId(24), t = now();
+  await env.DB.prepare('INSERT INTO mcp_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?)').bind(id, name, JSON.stringify(uris), t).run();
+  return json({ client_id: id, client_id_issued_at: Math.floor(Date.now() / 1000), client_name: name, redirect_uris: uris,
+    grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: 'none', scope: 'polls' }, 201);
+}
+const plainPage = (status, text) => new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>when-who</title><p style="font:16px system-ui;margin:2em">${text}</p>`,
+  { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+function backTo(redirectUri, params, base) {
+  const u = new URL(redirectUri);
+  for (const [k, v] of Object.entries(params)) if (v) u.searchParams.set(k, v);
+  u.searchParams.set('iss', base); // RFC 9207
+  return u.toString();
+}
+async function mcpAuthorize(request, env, url) {
+  const q = url.searchParams, base = siteUrl(env, url.origin);
+  const client = await mcpClient(env, q.get('client_id'));
+  const ru = q.get('redirect_uri') || (client && client.uris.length === 1 ? client.uris[0] : '');
+  // Never send anyone to an address the app didn't register.
+  if (!client || !client.uris.includes(ru)) return plainPage(400, 'This connection link isn’t valid (unknown app or return address). Start connecting again from the app.');
+  const state = (q.get('state') || '').slice(0, 500);
+  const fail = (error, desc) => new Response(null, { status: 302, headers: { location: backTo(ru, { error, error_description: desc, state }, base) } });
+  if (q.get('response_type') !== 'code') return fail('unsupported_response_type', 'Only response_type=code is supported');
+  const ch = q.get('code_challenge') || '';
+  if (q.get('code_challenge_method') !== 'S256' || !/^[A-Za-z0-9_-]{43}$/.test(ch)) return fail('invalid_request', 'PKCE with S256 is required');
+  const resource = q.get('resource');
+  if (resource && ![base, base + '/', base + '/mcp', base + '/mcp/'].includes(resource)) return fail('invalid_target', 'Unknown resource');
+  await checkThrottle(env, request, 'mcpauth', { max: 60, msg: 'Too many tries. Try again later.' });
+  await recordFail(env, request, 'mcpauth');
+  const id = randomId(20);
+  await env.DB.prepare('INSERT INTO mcp_requests (id, client_id, redirect_uri, state, code_challenge, resource, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, client.id, ru, state || null, ch, resource || null, now()).run();
+  return new Response(null, { status: 302, headers: { location: `${base}/?connect=${id}`, 'cache-control': 'no-store' } });
+}
+async function mcpPending(env, rid) {
+  const since = new Date(Date.now() - MCP_CODE_MIN * 60000).toISOString();
+  const r = /^[A-Za-z0-9]{20}$/.test(rid || '') ? await env.DB.prepare('SELECT * FROM mcp_requests WHERE id = ? AND code_hash IS NULL AND created_at > ?').bind(rid, since).first() : null;
+  const c = r && await mcpClient(env, r.client_id);
+  if (!r || !c) throw new HttpError(404, 'This connection request has expired. Start connecting again from the app.');
+  return { r, c };
+}
+// GET /api/connect/:id: what the consent screen shows. POST { allow }: the answer; the page then goes to `redirect`.
+async function connectInfo(request, env, rid) {
+  requireUser(request);
+  const { r, c } = await mcpPending(env, rid);
+  return json({ name: c.name, host: hostOf(r.redirect_uri), local: /^http:/.test(r.redirect_uri), registered: c.created_at });
+}
+async function connectAnswer(request, env, url, rid) {
+  const user = requireUser(request);
+  const { r } = await mcpPending(env, rid);
+  const b = await body(request), base = siteUrl(env, url.origin);
+  if (b.allow !== true) {
+    await env.DB.prepare('DELETE FROM mcp_requests WHERE id = ?').bind(rid).run();
+    return json({ redirect: backTo(r.redirect_uri, { error: 'access_denied', state: r.state }, base) });
+  }
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM mcp_grants WHERE user_id = ?').bind(user.id).first('n');
+  if (n >= MCP_MAX_GRANTS) throw new HttpError(409, `You have ${MCP_MAX_GRANTS} connected apps. Disconnect one on your Account page first.`);
+  const code = secret() + secret();
+  const ok = await env.DB.prepare('UPDATE mcp_requests SET user_id = ?, code_hash = ? WHERE id = ? AND code_hash IS NULL').bind(user.id, await mcpHash('code:' + code), rid).run();
+  if (!ok.meta.changes) throw new HttpError(409, 'This connection request was already answered.');
+  return json({ redirect: backTo(r.redirect_uri, { code, state: r.state }, base) });
+}
+async function mcpIssue(env, uid, client, grantId) {
+  const access = 'wwa_' + secret() + secret(), refresh = 'wwr_' + secret() + secret(), t = now();
+  const aExp = new Date(Date.now() + MCP_ACCESS_SEC * 1000).toISOString(), rExp = new Date(Date.now() + MCP_REFRESH_DAYS * 86400000).toISOString();
+  const [ah, rh] = [await mcpHash(access), await mcpHash(refresh)];
+  if (grantId) await env.DB.prepare('UPDATE mcp_grants SET access_hash = ?, access_exp = ?, refresh_hash = ?, refresh_exp = ?, used_at = ? WHERE id = ?').bind(ah, aExp, rh, rExp, t, grantId).run();
+  else await env.DB.prepare('INSERT INTO mcp_grants (id, user_id, client_id, client_name, access_hash, access_exp, refresh_hash, refresh_exp, created_at, used_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .bind(randomId(12), uid, client.id, client.name, ah, aExp, rh, rExp, t, t).run();
+  if (!grantId) await env.DB.prepare('UPDATE mcp_clients SET used_at = ? WHERE id = ?').bind(t, client.id).run();
+  return json({ access_token: access, token_type: 'Bearer', expires_in: MCP_ACCESS_SEC, refresh_token: refresh, scope: 'polls' }, 200, { pragma: 'no-cache' });
+}
+async function oauthBody(request) {
+  if ((request.headers.get('content-type') || '').includes('application/json')) return body(request);
+  const text = await request.text();
+  if (text.length > 20000) throw oauthErr(413, 'invalid_request', 'Request too large');
+  return Object.fromEntries(new URLSearchParams(text));
+}
+async function mcpToken(request, env) {
+  await checkThrottle(env, request, 'mcptok', { max: 100, msg: 'Too many failed attempts. Try again later.' });
+  const b = await oauthBody(request);
+  const bad = async (msg) => { await recordFail(env, request, 'mcptok'); return oauthErr(400, 'invalid_grant', msg); };
+  if (b.grant_type === 'authorization_code') {
+    const code = typeof b.code === 'string' && b.code.length <= 200 ? b.code : '';
+    const r = code ? await env.DB.prepare('SELECT * FROM mcp_requests WHERE code_hash = ?').bind(await mcpHash('code:' + code)).first() : null;
+    if (!r) throw await bad('Unknown or used code');
+    await env.DB.prepare('DELETE FROM mcp_requests WHERE id = ?').bind(r.id).run(); // single use
+    if (r.created_at < new Date(Date.now() - MCP_CODE_MIN * 60000).toISOString()) throw await bad('The code has expired');
+    if ((b.client_id && b.client_id !== r.client_id) || b.redirect_uri !== r.redirect_uri) throw await bad('client_id or redirect_uri does not match');
+    const v = typeof b.code_verifier === 'string' ? b.code_verifier : '';
+    if (!/^[A-Za-z0-9._~-]{43,128}$/.test(v)) throw await bad('code_verifier missing or invalid');
+    const ch = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(v))));
+    if (!safeEqual(ch, r.code_challenge)) throw await bad('code_verifier does not match');
+    const client = await mcpClient(env, r.client_id);
+    if (!client || !(await env.DB.prepare('SELECT 1 FROM users WHERE id = ?').bind(r.user_id).first())) throw await bad('Unknown app or account');
+    return mcpIssue(env, r.user_id, client, null);
+  }
+  if (b.grant_type === 'refresh_token') {
+    const rt = typeof b.refresh_token === 'string' && b.refresh_token.length <= 200 ? b.refresh_token : '';
+    const g = rt ? await env.DB.prepare('SELECT * FROM mcp_grants WHERE refresh_hash = ? AND refresh_exp > ?').bind(await mcpHash(rt), now()).first() : null;
+    if (!g || (b.client_id && b.client_id !== g.client_id)) throw await bad('Unknown or expired refresh token');
+    return mcpIssue(env, g.user_id, { id: g.client_id, name: g.client_name }, g.id);
+  }
+  throw oauthErr(400, 'unsupported_grant_type', 'Use authorization_code or refresh_token');
+}
+// RFC 7009: forget the grant behind either token. Always 200 (no probing).
+async function mcpRevoke(request, env) {
+  const b = await oauthBody(request);
+  if (typeof b.token === 'string' && b.token.length <= 200) {
+    const h = await mcpHash(b.token);
+    await env.DB.prepare('DELETE FROM mcp_grants WHERE access_hash = ? OR refresh_hash = ?').bind(h, h).run();
+  }
+  return new Response(null, { status: 200 });
+}
+// Account page: connected apps.
+async function listConnections(request, env) {
+  const user = requireUser(request);
+  const { results } = await env.DB.prepare('SELECT id, client_name, created_at, used_at FROM mcp_grants WHERE user_id = ? ORDER BY created_at DESC').bind(user.id).all();
+  return json({ connections: results.map((g) => ({ id: g.id, name: g.client_name, createdAt: g.created_at, usedAt: g.used_at })) });
+}
+async function deleteConnection(request, env, gid) {
+  const user = requireUser(request);
+  await env.DB.prepare('DELETE FROM mcp_grants WHERE id = ? AND user_id = ?').bind(gid, user.id).run();
+  return json({ ok: true });
+}
+
+// ---- the MCP endpoint (JSON-RPC 2.0) ----
+async function mcpAuth(env, request) {
+  const m = /^Bearer\s+([A-Za-z0-9_-]{20,200})$/i.exec(request.headers.get('authorization') || '');
+  if (!m) return null;
+  const g = await env.DB.prepare('SELECT id, user_id, used_at FROM mcp_grants WHERE access_hash = ? AND access_exp > ?').bind(await mcpHash(m[1]), now()).first();
+  if (!g) return null;
+  const u = await env.DB.prepare('SELECT id, email, name, avatar, bio, created_at, avatar_img IS NOT NULL AS has_img FROM users WHERE id = ?').bind(g.user_id).first();
+  if (!u) return null;
+  if (!g.used_at || g.used_at < new Date(Date.now() - 3600000).toISOString()) await env.DB.prepare('UPDATE mcp_grants SET used_at = ? WHERE id = ?').bind(now(), g.id).run();
+  return { grant: g.id, user: { id: u.id, email: u.email, name: u.name || '', avatar: u.avatar || '', bio: u.bio || '', hasImg: !!u.has_img, created: u.created_at } };
+}
+const rpcOk = (id, result) => ({ jsonrpc: '2.0', id, result });
+const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } });
+async function mcpPost(request, env, ctx, url) {
+  const base = siteUrl(env, url.origin);
+  const auth = await mcpAuth(env, request);
+  if (!auth) return json({ error: 'invalid_token', error_description: 'Connect when-who again (sign in).' }, 401, {
+    'www-authenticate': `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource/mcp"${request.headers.get('authorization') ? ', error="invalid_token"' : ''}` });
+  // Shared egress IPs (an assistant's servers talk for many people): limit per connected app instead of per IP.
+  const key = 'mcp:' + auth.grant;
+  if (env.RL_WRITE && !(await env.RL_WRITE.limit({ key })).success) return json(rpcErr(null, -32000, 'Too many requests. Wait a minute and try again.'), 429);
+  const text = await request.text();
+  if (text.length > 200_000) return json(rpcErr(null, -32600, 'Request too large'), 413);
+  let msg; try { msg = JSON.parse(text); } catch { return json(rpcErr(null, -32700, 'Parse error'), 400); }
+  const call = { env, ctx, user: auth.user, key, origin: url.origin, base };
+  const list = Array.isArray(msg) ? msg.slice(0, 20) : [msg];
+  const out = [];
+  for (const m of list) { const r = await mcpHandle(call, m); if (r) out.push(r); }
+  if (!out.length) return new Response(null, { status: 202 });
+  return json(Array.isArray(msg) ? out : out[0]);
+}
+const MCP_INSTRUCTIONS = `when-who finds when a group of people is free. A poll covers a range of dates (one round; a recurring series gets a new round each period).
+Each person marks per date: "y" available, "i" if needed, "m" maybe, "n" not available, or per hour as {"y":[18,19],"i":[],"m":[20]} (hour 18 = 18:00-19:00, within the poll's hours).
+Start with list_polls, then get_poll for dates, answers and the best times. Always give the person the poll link.
+Ask before inviting people by email, setting meetings or sending chat messages: they reach other people.`;
+async function mcpHandle(call, m) {
+  if (!m || typeof m !== 'object' || m.jsonrpc !== '2.0' || typeof m.method !== 'string') return rpcErr(m && m.id, -32600, 'Invalid request');
+  const isNote = m.id === undefined, p = m.params && typeof m.params === 'object' ? m.params : {};
+  if (m.method.startsWith('notifications/')) return null;
+  if (m.method === 'initialize') {
+    const v = MCP_VERSIONS.includes(p.protocolVersion) ? p.protocolVersion : MCP_VERSIONS[0];
+    return rpcOk(m.id, { protocolVersion: v, capabilities: { tools: { listChanged: false } },
+      serverInfo: { name: 'when-who', title: 'when-who', version: '1.0.0', websiteUrl: call.base }, instructions: MCP_INSTRUCTIONS });
+  }
+  if (m.method === 'ping') return rpcOk(m.id, {});
+  if (m.method === 'tools/list') return rpcOk(m.id, { tools: MCP_TOOLS.map(({ run, ...t }) => t) });
+  if (m.method === 'tools/call') {
+    const tool = MCP_TOOLS.find((t) => t.name === p.name);
+    if (!tool) return rpcErr(m.id, -32602, 'Unknown tool: ' + String(p.name).slice(0, 60));
+    const args = p.arguments && typeof p.arguments === 'object' && !Array.isArray(p.arguments) ? p.arguments : {};
+    try {
+      const out = await tool.run(call, args);
+      return rpcOk(m.id, { content: [{ type: 'text', text: typeof out === 'string' ? out : JSON.stringify(out) }] });
+    } catch (e) {
+      if (!(e instanceof HttpError)) { console.error('mcp tool', p.name, e); return rpcOk(m.id, { content: [{ type: 'text', text: 'Something went wrong on the server.' }], isError: true }); }
+      return rpcOk(m.id, { content: [{ type: 'text', text: e.message }], isError: true });
+    }
+  }
+  return isNote ? null : rpcErr(m.id, -32601, 'Method not found');
+}
+// Runs one API call as the connected account: the same handlers, checks and limits as the page.
+async function callApi(call, method, path, data, headers = {}) {
+  const u = new URL('/api' + path, call.origin);
+  const req = new Request(u, { method, body: data === undefined ? undefined : JSON.stringify(data),
+    headers: { 'content-type': 'application/json', 'cf-connecting-ip': call.key, ...headers } });
+  INTERNAL.add(req); USERS.set(req, call.user);
+  const res = await route(req, call.env, call.ctx, u);
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new HttpError(res.status, out.error || 'Request failed');
+  return out;
+}
+// Tool arguments (the Worker validates again; these only give clear messages).
+const argId = (v, what = 'poll_id') => { if (typeof v !== 'string' || !ID_RE.test(v)) throw new HttpError(400, `${what} is missing or invalid`); return v; };
+const pwHeader = (a) => (typeof a.password === 'string' && a.password ? { 'x-poll-password': a.password.slice(0, 100) } : {});
+const pollLink = (call, id) => `${call.base}/?p=${id}`;
+const WD_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const mcpWd = (d) => WD_SHORT[(new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7];
+const hourText = (h) => pad(h % 24) + ':00';
+
+// Who is free when, worked out like the page's group view: per date the hours with the most people free
+// (available + if needed), then the fewest "if needed", then the most "maybe"; the longest run of those hours.
+function availabilitySummary(poll, dates, responses) {
+  const H = []; for (let h = poll.hourStart; h < poll.hourEnd; h++) H.push(h);
+  const daysOnly = poll.answerMode === 'days';
+  const states = (v) => {
+    const mp = new Map();
+    if (v === 'y' || v === 'i' || v === 'm') H.forEach((h) => mp.set(h, v));
+    else if (v && typeof v === 'object') ['m', 'i', 'y'].forEach((s) => (v[s] || []).forEach((h) => mp.set(h, s)));
+    return mp;
+  };
+  const days = [];
+  for (const d of dates) {
+    const per = H.map((h) => ({ h, free: [], ifn: [], maybe: [] }));
+    const allDay = [];
+    for (const r of responses) {
+      const v = (r.entries || {})[d], st = states(v);
+      if (v === 'y') allDay.push(r.name);
+      for (const x of per) { const s = st.get(x.h); if (s === 'y') x.free.push(r.name); else if (s === 'i') x.ifn.push(r.name); else if (s === 'm') x.maybe.push(r.name); }
+    }
+    const score = (x) => (x.free.length + x.ifn.length) * 10000 - x.ifn.length * 100 + x.maybe.length;
+    const peak = Math.max(0, ...per.map(score));
+    if (!peak) continue;
+    let best = null, cur = null;
+    for (const x of per) {
+      if (score(x) === peak) { cur = cur && cur.to === x.h ? { ...cur, to: x.h + 1 } : { from: x.h, to: x.h + 1, x }; if (!best || cur.to - cur.from > best.to - best.from) best = cur; }
+      else cur = null;
+    }
+    const b = best.x;
+    days.push({ date: d, weekday: mcpWd(d), ...(daysOnly ? {} : { from: hourText(best.from), to: hourText(best.to) }),
+      free: b.free.length + b.ifn.length, of: responses.length, available: b.free, if_needed: b.ifn, maybe: b.maybe,
+      ...(daysOnly ? {} : { available_all_day: allDay }), _s: peak, _len: best.to - best.from });
+  }
+  const best_times = days.filter((x) => x.free).sort((a, b) => b._s - a._s || b._len - a._len || a.date.localeCompare(b.date)).slice(0, 5)
+    .map(({ date, weekday, from, to, free, of, if_needed }) => ({ date, weekday, from, to, free, of, if_needed: if_needed.length }));
+  return { people_answered: responses.length, best_times, days: days.map(({ _s, _len, ...x }) => x) };
+}
+const meetingOut = (mt) => ({ id: mt.id, date: mt.date, ...(mt.endDate ? { end_date: mt.endDate } : {}), weekday: mcpWd(mt.date),
+  ...(mt.allDay ? { all_day: true } : { from: hourText(mt.start), to: hourText(mt.end) }), title: mt.title || undefined,
+  location: mt.location || undefined, note: mt.note || undefined, ...(mt.proposed ? { proposed: true, vote: mt.vote } : {}),
+  ...(mt.repeat ? { repeat: mt.repeat } : {}) });
+const loadPollFor = (call, a) => callApi(call, 'GET', `/polls/${argId(a.poll_id)}${a.round_id ? '?i=' + argId(a.round_id, 'round_id') : ''}`, undefined, pwHeader(a));
+const pollIdProp = { poll_id: { type: 'string', description: 'Poll id (from list_polls or a poll link ?p=<id>)' } };
+const roundProp = { round_id: { type: 'string', description: 'Round id (series only; default = the current round)' } };
+const pwProp = { password: { type: 'string', description: 'The poll password, only for password-protected polls you don’t manage' } };
+const ENTRY_DOC = 'Map of date (YYYY-MM-DD, one of the poll dates) to "y" available / "i" if needed / "m" maybe / "n" not available for the whole day, or per hour {"y":[hours],"i":[hours],"m":[hours]} (hour 18 = 18:00-19:00; other hours = not available). null removes a date.';
+
+const MCP_TOOLS = [
+  { name: 'whoami', title: 'Who am I', description: 'The when-who account this connection uses.',
+    inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (call) => ({ name: call.user.name || null, email: call.user.email, site: call.base }) },
+  { name: 'list_polls', title: 'List my polls', description: 'Polls I own and polls I answered or have a role in, with their current round (dates, open/closed, number of answers).',
+    inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (call) => {
+      const r = await callApi(call, 'GET', '/me/polls');
+      const cur = (c) => (c ? { dates: c.startDate === WEEK0 ? 'weekly schedule' : `${c.startDate} to ${c.endDate}`, status: c.status, answers: c.answers, reply_by: c.deadline || undefined } : null);
+      return {
+        owned: r.polls.map((p) => ({ id: p.id, title: p.title, kind: p.kind, link: pollLink(call, p.id), current_round: cur(p.current), unread_chat: p.unread || undefined })),
+        answered: r.answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, link: pollLink(call, p.id), my_name: p.name, role: p.role, last_answered: p.lastAnswered, current_round: cur(p.current), unread_chat: p.unread || undefined })),
+      };
+    } },
+  { name: 'get_poll', title: 'Show a poll', description: 'A poll\'s dates and hours, my answer, everyone\'s answers (when visible to me), the best times (who is free when) and its meetings.',
+    inputSchema: { type: 'object', properties: { ...pollIdProp, ...roundProp, ...pwProp }, required: ['poll_id'] }, annotations: { readOnlyHint: true, openWorldHint: false },
+    run: async (call, a) => {
+      const g = await loadPollFor(call, a), P = g.poll, I = g.instance;
+      const rs = g.responses || null, mine = g.me && g.me.responseId && rs ? rs.find((r) => r.id === g.me.responseId) : null;
+      let myEntries = mine ? mine.entries : null;
+      if (!myEntries && g.me && g.me.responseId) myEntries = (await callApi(call, 'GET', `/polls/${P.id}/responses/${g.me.responseId}`, undefined, pwHeader(a))).entries;
+      return {
+        id: P.id, title: P.title, description: P.description || undefined, link: pollLink(call, P.id), kind: P.kind,
+        answer_type: P.answerMode === 'days' ? 'whole days only' : P.answerMode === 'slots' ? 'hours' : 'whole days or hours',
+        hours: P.answerMode === 'days' ? undefined : `${hourText(P.hourStart)}-${hourText(P.hourEnd)}`,
+        my_role: g.role || (g.me && g.me.participantId ? 'participant' : 'none'), password_protected: P.hasPassword || undefined,
+        round: { id: I.id, status: I.status, dates: g.dates, reply_by: I.deadline || undefined, note: I.note || undefined },
+        other_rounds: g.instances.length > 1 ? g.instances.filter((i) => i.id !== I.id).map((i) => ({ id: i.id, from: i.startDate, to: i.endDate, status: i.status })) : undefined,
+        my_answer: myEntries || null,
+        answers: rs ? (rs.length <= 60 ? rs.map((r) => ({ name: r.name, comment: r.comment || undefined, entries: r.entries })) : `${rs.length} answers (too many to list; see availability)`) : 'hidden by the organiser',
+        availability: rs ? availabilitySummary(P, g.dates, rs) : undefined,
+        meetings: (I.meetings || []).map(meetingOut),
+        people: g.people ? g.people.map((p) => ({ name: p.name, answered: p.answered, role: p.role })) : undefined,
+        questions: (I.questions || []).length ? `${I.questions.length} questions: answer them in the app (Questions tab)` : undefined,
+        chat: g.chat && g.chat.can ? { unread: g.chat.unread || 0 } : undefined,
+      };
+    } },
+  { name: 'answer_poll', title: 'Answer a poll', description: 'Save my availability in a poll (creates my answer or updates it). By default the given dates are merged into my existing answer; replace=true sends the whole answer.',
+    inputSchema: { type: 'object', properties: { ...pollIdProp, ...roundProp,
+      entries: { type: 'object', description: ENTRY_DOC, additionalProperties: { anyOf: [{ type: 'string', enum: ['y', 'i', 'm', 'n'] }, { type: 'object' }, { type: 'null' }] } },
+      replace: { type: 'boolean', description: 'Replace my whole answer instead of merging (default false)' },
+      comment: { type: 'string', description: 'Optional comment shown with my answer (polls without chat only)' }, ...pwProp }, required: ['poll_id', 'entries'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    run: async (call, a) => {
+      if (!a.entries || typeof a.entries !== 'object' || Array.isArray(a.entries)) throw new HttpError(400, 'entries must be an object of date → answer');
+      const g = await loadPollFor(call, a), id = g.poll.id, rid = g.me && g.me.responseId;
+      const dates = new Set(g.dates), wrong = Object.keys(a.entries).filter((d) => !dates.has(d));
+      if (wrong.length) throw new HttpError(400, `Not dates of this round: ${wrong.slice(0, 5).join(', ')}. The round's dates are ${g.dates[0]} to ${g.dates[g.dates.length - 1]} (see get_poll).`);
+      const old = rid && !a.replace ? (await callApi(call, 'GET', `/polls/${id}/responses/${rid}`, undefined, pwHeader(a))).entries : {};
+      const entries = { ...old, ...a.entries };
+      for (const [d, v] of Object.entries(entries)) if (v == null) delete entries[d];
+      const b = { entries, ...(typeof a.comment === 'string' ? { comment: a.comment } : {}) };
+      if (rid) await callApi(call, 'PUT', `/polls/${id}/responses/${rid}`, b, pwHeader(a));
+      else await callApi(call, 'POST', `/polls/${id}/instances/${g.instance.id}/responses`, { ...b, name: call.user.name || undefined }, pwHeader(a));
+      return { ok: true, saved: rid ? 'updated my answer' : 'added my answer', days_marked: Object.keys(entries).length, link: pollLink(call, id) };
+    } },
+  { name: 'create_poll', title: 'Create a poll', description: 'Create a one-off availability poll for a date range (owned by my account). Returns its id and link to share.',
+    inputSchema: { type: 'object', properties: {
+      title: { type: 'string', description: 'Title, max 120 characters' }, description: { type: 'string', description: 'Optional description, max 1000 characters' },
+      start_date: { type: 'string', description: 'First date, YYYY-MM-DD' }, end_date: { type: 'string', description: 'Last date, YYYY-MM-DD (at most 92 days after start)' },
+      weekdays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 }, description: 'Only these weekdays (0 = Monday … 6 = Sunday); default all' },
+      answer_type: { type: 'string', enum: ['days', 'slots', 'both'], description: 'days = whole days only, slots = hours, both (default)' },
+      hour_start: { type: 'integer', minimum: 0, maximum: 23, description: 'First hour people can pick (default 8)' },
+      hour_end: { type: 'integer', minimum: 1, maximum: 24, description: 'End of the last hour (default 24)' },
+      reply_by: { type: 'string', description: 'Optional reply-by date, YYYY-MM-DD' },
+      hide_results: { type: 'boolean', description: 'Hide answers from people who answer (default false)' },
+      invited_only: { type: 'boolean', description: 'Only invited, signed-in people may answer (default false)' },
+      language: { type: 'string', enum: ['en', 'de'], description: 'Language of emails sent for this poll (default en)' } }, required: ['title', 'start_date', 'end_date'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: async (call, a) => {
+      const b = { kind: 'single', title: a.title, description: a.description, startDate: a.start_date, endDate: a.end_date, deadline: a.reply_by || null,
+        answerMode: a.answer_type || 'both', hourStart: a.hour_start, hourEnd: a.hour_end, hideResults: !!a.hide_results, invitedOnly: !!a.invited_only,
+        dayPattern: Array.isArray(a.weekdays) && a.weekdays.length ? { wd: a.weekdays } : null };
+      const r = await callApi(call, 'POST', '/polls', b, a.language === 'de' ? { 'x-lang': 'de' } : {});
+      return { ok: true, id: r.id, link: pollLink(call, r.id), next: 'Share the link, or add_people with invite=true to email people.' };
+    } },
+  { name: 'add_people', title: 'Add people to a poll', description: 'Add people (name + email) to a poll I manage. With invite=true each gets an email with the poll link (counts toward the daily email limit). Ask the person first.',
+    inputSchema: { type: 'object', properties: { ...pollIdProp,
+      people: { type: 'array', maxItems: 200, items: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string' } }, required: ['name', 'email'] } },
+      invite: { type: 'boolean', description: 'Email them an invitation now (default false)' },
+      message: { type: 'string', description: 'Optional personal message in the invitation, max 1000 characters' } }, required: ['poll_id', 'people'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    run: async (call, a) => {
+      const id = argId(a.poll_id), people = Array.isArray(a.people) ? a.people.map((p) => ({ name: p && p.name, email: p && p.email })) : [];
+      const r = a.invite ? await callApi(call, 'POST', `/polls/${id}/invite`, { people, message: a.message || '' })
+        : await callApi(call, 'POST', `/polls/${id}/participants`, { people });
+      return { ok: true, added: r.added, updated: r.updated, skipped: r.skipped || undefined, invited: a.invite ? r.sent : 0, without_email: r.missing && r.missing.length ? r.missing : undefined };
+    } },
+  { name: 'schedule_meeting', title: 'Schedule a meeting', description: 'Add a meeting to a poll\'s round (organisers and editors). propose=true puts it up for a vote instead of setting it; proposals with the same vote id are options of one vote. Ask the person first.',
+    inputSchema: { type: 'object', properties: { ...pollIdProp, ...roundProp,
+      date: { type: 'string', description: 'YYYY-MM-DD' }, all_day: { type: 'boolean' },
+      start_hour: { type: 'integer', minimum: 0, maximum: 23 }, end_hour: { type: 'integer', minimum: 1, maximum: 24, description: 'e.g. 18 to 20 = 18:00-20:00' },
+      title: { type: 'string' }, location: { type: 'string' }, note: { type: 'string' },
+      propose: { type: 'boolean', description: 'Put it up for a vote instead of setting it (default false)' },
+      vote: { type: 'string', description: 'Vote id from an earlier proposal, to add another option to the same vote' } }, required: ['poll_id', 'date'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    run: async (call, a) => {
+      const g = await loadPollFor(call, a), P = g.poll, I = g.instance;
+      if (P.kind === 'weekly') throw new HttpError(400, 'Meetings of weekly schedule polls repeat: set them in the app.');
+      if (!g.can || !g.can.edit) throw new HttpError(403, 'Only the organiser (or an editor) can schedule meetings.');
+      if (!a.all_day && (!Number.isInteger(a.start_hour) || !Number.isInteger(a.end_hour))) throw new HttpError(400, 'Give start_hour and end_hour, or all_day=true');
+      const vote = a.propose ? (typeof a.vote === 'string' && /^[A-Za-z0-9]{4,20}$/.test(a.vote) ? a.vote : randomId(8)) : undefined;
+      const mt = { id: randomId(8), date: a.date, allDay: !!a.all_day, start: a.all_day ? undefined : a.start_hour, end: a.all_day ? undefined : a.end_hour,
+        title: a.title || '', location: a.location || P.meetLocation || '', note: a.note || P.meetNote || '', participants: 'all',
+        ...(a.propose ? { proposed: true, vote } : {}) };
+      await callApi(call, 'PATCH', `/polls/${P.id}/instances/${I.id}`, { meetings: [...(I.meetings || []), mt] });
+      return { ok: true, meeting: meetingOut({ ...mt, proposed: mt.proposed, vote }), link: pollLink(call, P.id),
+        next: a.propose ? 'People vote on it in the poll.' : 'People see it in the poll and can add it to their calendar. Calendar invitations by email are sent from the app (Meetings tab).' };
+    } },
+  { name: 'send_message', title: 'Send a chat message', description: 'Post a message in a poll\'s group chat as me. Everyone in the poll can read it and may get a notification. Ask the person first.',
+    inputSchema: { type: 'object', properties: { ...pollIdProp, text: { type: 'string', description: 'The message' } }, required: ['poll_id', 'text'] },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    run: async (call, a) => {
+      const id = argId(a.poll_id);
+      await callApi(call, 'POST', `/polls/${id}/chat`, { body: a.text });
+      return { ok: true, link: pollLink(call, id) + '&chat=1' };
+    } },
+];

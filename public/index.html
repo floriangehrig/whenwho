@@ -522,6 +522,8 @@
   .acct-list{max-height:min(460px,60dvh);overflow:auto;overscroll-behavior:contain}
   .acct-list .cgrp{position:sticky;top:0;z-index:1;background:var(--card);font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:12px 0 4px;display:flex;align-items:center;gap:6px}
   .acct-list .cgrp:first-child{padding-top:6px}
+  .mcp-url{align-items:center;gap:8px;margin-bottom:6px} .mcp-url code{padding:8px 10px;border-radius:8px;background:var(--sunken);font-size:13.5px}
+  .cn-app{display:flex;gap:12px;align-items:center;margin-bottom:14px} .cn-app>svg{width:32px;height:32px;color:var(--accent);flex:none}
   .acct-list .cgrp>svg{width:14px;height:14px;flex:none} .acct-list .cgrp .grow{min-width:0}
   .acct-list .cgrp .cem{text-transform:none;letter-spacing:0;font-weight:500}
   .acct-list .cgrp .qb{width:28px;height:28px} .acct-list .cgrp .qb svg{width:15px;height:15px}
@@ -2514,6 +2516,7 @@ function tourSteps(key){
     S('#calcard',t('Calendars'),t('Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.')),
     S('#ctcard',t('Contacts'),t('Favourites, people from your polls and groups, to add many people to a poll at once.')),
     S('#pushsec',t('Notifications'),t('Get chat messages as notifications on this device, even when when-who is closed.')),
+    S('#mcpcard',t('AI assistants'),t('Connect Claude, ChatGPT or another assistant to read and answer your polls, create new ones and set meetings by chatting.')),
     S('#datacard',t('Your data'),t('Download everything we store about you, or delete your account.')),end];
   const d=P.data, edit=key!=='answer', man=key==='manage', guest=!ME.user, role=d.role&&d.role!=='owner'?d.role:'';
   const series=d.poll.kind==='series', chatOn=d.poll.allowComments!==false;
@@ -2931,7 +2934,7 @@ document.addEventListener('submit',async e=>{
       ME.user=r.user; await claimLocalPolls();
       // Land on the overview, except when signing in on a poll page (e.g. to answer it): stay there.
       const qs=new URLSearchParams(location.search);
-      if(qs.has('p')){ unsentKeep(); location.reload(); } else if(qs.has('new')&&pendingPoll()) location.reload(); else location.href=origin;
+      if(qs.has('p')){ unsentKeep(); location.reload(); } else if((qs.has('new')&&pendingPoll())||qs.has('connect')) location.reload(); else location.href=origin;
       return;
     }
   }catch(ex){ err.textContent=ex.message; }
@@ -3090,12 +3093,14 @@ function renderPrivacy(){
         t('<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.'),
         t('<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
+        t('<b>AI assistants (only if you connect one):</b> the name the app gave itself, when you connected it and last used it, and its access keys, stored only as a hash. You can disconnect it on your Account page, which deletes them.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
       ]))}
       ${legalSec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
         <p>${t('when-who’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.')}</p>
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
+      ${legalSec(t('AI assistants'),`<p>${t('You can connect an AI assistant (for example Claude or ChatGPT) to your account with MCP. It then acts for you: it can read what you can see in your polls (titles, dates, people’s names and answers, meetings) and answer polls, create polls, invite people and write chat messages in your name. That data goes to the assistant’s provider, who processes it under their own privacy policy; you choose the provider, and when-who sends nothing there unless you connect it. Disconnect it any time on your Account page.')}</p>`)}
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
         t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.'),
@@ -4174,6 +4179,9 @@ function renderAccount(){
         <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
+      <div class="card span" id="mcpcard"><div class="card-h"><h2 class="grow">${t('AI assistants')}<span class="count" id="mcp_count" hidden></span></h2>${tip(t('Use when-who from Claude, ChatGPT or another AI assistant that supports MCP: add a custom connector with this address, then sign in here when it asks. It can then read your polls, answer them, create polls, invite people and set meetings for you.'),'left')}</div>
+        <div class="row mcp-url"><code class="grow ell" id="mcp_url">${esc(location.origin)}/mcp</code>${pqb('copy',t('Copy address'),'id="mcp_copy"')}</div>
+        <div id="mcpbox"></div></div>
       <div class="card span" id="datacard"><div class="card-h"><h2 class="grow">${t('Your data')}</h2>${tip(t('Get a copy of everything when-who stores about your account, or delete the account. You can change your name, email and answers right here. <a href="?privacy">Privacy policy</a>'),'left')}</div>
         <div class="row">
           <button type="button" class="btn sm withic" id="dl_btn">${ICON.download}${t('Download my data')}</button>
@@ -4190,7 +4198,7 @@ function renderAccount(){
           <div class="err" id="del_err"></div>
         </form></div>
     </div></main>${siteFoot()}`;
-  renderCalCard(); renderContactsCard();
+  renderCalCard(); renderContactsCard(); renderMcpCard();
   // Your data: download a copy (JSON), or delete the account after a code sent to its address.
   pushSecDraw();
   $('dl_btn').onclick=async e=>{ const btn=e.currentTarget; btn.disabled=true;
@@ -4237,6 +4245,45 @@ function renderAccount(){
     try{ await api('PATCH','/me',b); Object.assign(ME, await api('GET','/me')); renderAccount(); toast(t('Profile saved')); }
     catch(ex){ err.textContent=ex.message; btn.disabled=false; }
   };
+}
+
+// AI assistants connected through MCP (OAuth grants): list + Disconnect.
+async function renderMcpCard(){
+  const box=$('mcpbox'); if(!box) return;
+  let r; try{ r=await api('GET','/me/connections'); }catch(e){ box.innerHTML=''; return; }
+  if(!$('mcpbox')) return;
+  const cnt=$('mcp_count'); if(cnt){ cnt.textContent=r.connections.length; cnt.hidden=!r.connections.length; }
+  const day=x=>x?new Date(x).toLocaleDateString(LOC,{day:'numeric',month:'short',year:'numeric'}):'';
+  box.innerHTML=r.connections.length?`<div class="acct-list"><ul class="list">${r.connections.map(c=>`<li><span class="cmark" style="--c:var(--accent)">${ICON.spark}</span><span class="grow pmain"><b class="ell">${esc(c.name)}</b>
+      <span class="muted small ell">${t('Connected {date}',{date:esc(day(c.createdAt))})}${c.usedAt?' · '+t('last used {date}',{date:esc(day(c.usedAt))}):''}</span></span>
+      <span class="acts">${pqb('x',t('Disconnect'),`data-mcpdel="${esc(c.id)}"`,' danger')}</span></li>`).join('')}</ul></div>`
+    :`<p class="help">${t('No assistants connected yet.')}</p>`;
+}
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-mcpdel],#mcp_copy'); if(!b) return;
+  if(b.id==='mcp_copy') return copy($('mcp_url').textContent);
+  if(!confirm(t('Disconnect this assistant? It loses access right away.'))) return;
+  try{ await api('DELETE','/me/connections/'+encodeURIComponent(b.dataset.mcpdel)); renderMcpCard(); }catch(ex){ toast(ex.message); } });
+
+// ================= CONNECT AN AI ASSISTANT (?connect=<request id>) =================
+// /oauth/authorize (Worker) sends people here: sign in, then Allow or Deny. The answer sends the browser back to the app.
+async function renderConnect(rid){
+  document.title=t('Connect an app')+' · when-who';
+  const shell=body=>{ $app.innerHTML=`${appbar()}<section class="band"><div class="wrap"><div class="eyebrow">${t('Connect an app')}</div>
+    <h1>${t('Allow access to your account?')}</h1></div></section><main class="wrap"><div class="card legal">${body}</div></main>${siteFoot()}`; };
+  if(!ME.user){ shell(`<p>${t('An app wants to use when-who for you. Sign in first to see which app it is.')}</p>
+    <div class="row mt-3"><button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div>`); return; }
+  let r; try{ r=await api('GET','/connect/'+encodeURIComponent(rid)); }catch(ex){ shell(`<p class="err">${esc(ex.message)}</p>`); return; }
+  shell(`<div class="cn-app">${ICON.spark}<div><b>${esc(r.name)}</b><div class="muted small">${t('Returns to {host}',{host:esc(r.host)})} · ${t('the name is given by the app and not checked')}</div></div></div>
+    <p>${t('It will be able to act as {email}:',{email:`<b>${esc(ME.user.email)}</b>`})}</p>
+    ${legalUl([t('see your polls, everyone’s answers you can see, and meetings'),t('answer polls for you'),t('create polls, add and invite people, set meetings and write in chats')])}
+    <p class="help">${t('Only allow this if you just started connecting from this app. You can disconnect it any time on your Account page.')}</p>
+    <div class="err" id="cn_err"></div>
+    <div class="row mt-3"><button type="button" class="btn primary" id="cn_ok">${t('Allow')}</button><button type="button" class="btn" id="cn_no">${t('Deny')}</button></div>`);
+  const go=async allow=>{ $('cn_ok').disabled=$('cn_no').disabled=true; $('cn_err').textContent='';
+    try{ const x=await api('POST','/connect/'+encodeURIComponent(rid),{allow});
+      shell(`<p>${allow?t('Done. You can go back to the app now.'):t('Access denied. You can close this page.')}</p>`); location.replace(x.redirect); }
+    catch(ex){ $('cn_err').textContent=ex.message; $('cn_ok').disabled=$('cn_no').disabled=false; } };
+  $('cn_ok').onclick=()=>go(true); $('cn_no').onclick=()=>go(false);
 }
 
 // ================= POLL =================
@@ -8647,7 +8694,8 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     if(qs.has('chat')){ store.set('chatOpen:'+pid,true); qs.delete('chat'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from a notification
     await openPoll(pid); await contactsReturn(qs);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
-  } else if(qs.has('account')){ renderAccount(); calReturn(qs); }
+  } else if(qs.has('connect')) renderConnect(qs.get('connect'));
+  else if(qs.has('account')){ renderAccount(); calReturn(qs); }
   else if(qs.has('new')) renderNew();
   else if(qs.has('privacy')) renderPrivacy();
   else if(qs.has('imprint')) renderImprint();
@@ -8658,6 +8706,34 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
 function germanText(){ return {
+"AI assistants": "KI-Assistenten",
+"Use when-who from Claude, ChatGPT or another AI assistant that supports MCP: add a custom connector with this address, then sign in here when it asks. It can then read your polls, answer them, create polls, invite people and set meetings for you.": "Nutze when-who aus Claude, ChatGPT oder einem anderen KI-Assistenten mit MCP-Unterstützung: Füge dort einen eigenen Connector mit dieser Adresse hinzu und melde dich hier an, wenn er danach fragt. Er kann dann deine Umfragen lesen und beantworten, Umfragen erstellen, Leute einladen und Termine für dich festlegen.",
+"Copy address": "Adresse kopieren",
+"Connected {date}": "Verbunden am {date}",
+"last used {date}": "zuletzt genutzt am {date}",
+"No assistants connected yet.": "Noch keine Assistenten verbunden.",
+"Disconnect this assistant? It loses access right away.": "Diesen Assistenten trennen? Er verliert sofort den Zugriff.",
+"Connect an app": "App verbinden",
+"Allow access to your account?": "Zugriff auf dein Konto erlauben?",
+"An app wants to use when-who for you. Sign in first to see which app it is.": "Eine App möchte when-who für dich nutzen. Melde dich zuerst an, um zu sehen, welche App es ist.",
+"Returns to {host}": "Zurück zu {host}",
+"the name is given by the app and not checked": "den Namen gibt die App selbst an, er wird nicht geprüft",
+"It will be able to act as {email}:": "Sie kann dann als {email}:",
+"see your polls, everyone’s answers you can see, and meetings": "deine Umfragen, die Antworten, die du sehen kannst, und Termine sehen",
+"answer polls for you": "Umfragen für dich beantworten",
+"create polls, add and invite people, set meetings and write in chats": "Umfragen erstellen, Leute hinzufügen und einladen, Termine festlegen und in Chats schreiben",
+"Only allow this if you just started connecting from this app. You can disconnect it any time on your Account page.": "Erlaube das nur, wenn du gerade selbst das Verbinden in dieser App gestartet hast. Du kannst sie jederzeit auf deiner Kontoseite trennen.",
+"Allow": "Erlauben",
+"Deny": "Ablehnen",
+"Done. You can go back to the app now.": "Fertig. Du kannst jetzt zur App zurückgehen.",
+"Access denied. You can close this page.": "Zugriff abgelehnt. Du kannst diese Seite schließen.",
+"Connect Claude, ChatGPT or another assistant to read and answer your polls, create new ones and set meetings by chatting.": "Verbinde Claude, ChatGPT oder einen anderen Assistenten, um im Chat deine Umfragen zu lesen und zu beantworten, neue zu erstellen und Termine festzulegen.",
+"<b>AI assistants (only if you connect one):</b> the name the app gave itself, when you connected it and last used it, and its access keys, stored only as a hash. You can disconnect it on your Account page, which deletes them.": "<b>KI-Assistenten (nur wenn du einen verbindest):</b> der Name, den die App sich selbst gibt, wann du sie verbunden und zuletzt genutzt hast, und ihre Zugangsschlüssel, nur als Hash gespeichert. Du kannst sie auf deiner Kontoseite trennen, dann wird das gelöscht.",
+"You can connect an AI assistant (for example Claude or ChatGPT) to your account with MCP. It then acts for you: it can read what you can see in your polls (titles, dates, people’s names and answers, meetings) and answer polls, create polls, invite people and write chat messages in your name. That data goes to the assistant’s provider, who processes it under their own privacy policy; you choose the provider, and when-who sends nothing there unless you connect it. Disconnect it any time on your Account page.": "Du kannst einen KI-Assistenten (zum Beispiel Claude oder ChatGPT) per MCP mit deinem Konto verbinden. Er handelt dann für dich: Er kann lesen, was du in deinen Umfragen siehst (Titel, Daten, Namen und Antworten der Leute, Termine), und in deinem Namen Umfragen beantworten, Umfragen erstellen, Leute einladen und Chatnachrichten schreiben. Diese Daten gehen an den Anbieter des Assistenten, der sie nach seiner eigenen Datenschutzerklärung verarbeitet; den Anbieter wählst du, und when-who sendet nichts dorthin, solange du ihn nicht verbindest. Du kannst ihn jederzeit auf deiner Kontoseite trennen.",
+"Too many app registrations. Try again later.": "Zu viele App-Registrierungen. Versuch es später noch einmal.",
+"This connection request has expired. Start connecting again from the app.": "Diese Verbindungsanfrage ist abgelaufen. Starte das Verbinden in der App neu.",
+"This connection request was already answered.": "Diese Verbindungsanfrage wurde schon beantwortet.",
+"You have 20 connected apps. Disconnect one on your Account page first.": "Du hast 20 verbundene Apps. Trenne zuerst eine auf deiner Kontoseite.",
 "Fill tools": "Ausfüll-Werkzeuge",
 "Tap: mark days one by one (tap or drag)": "Tippen: Tage einzeln markieren (tippen oder ziehen)",
 "Tap: mark hours one by one (tap or drag)": "Tippen: Stunden einzeln markieren (tippen oder ziehen)",
