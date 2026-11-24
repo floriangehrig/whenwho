@@ -1,5 +1,5 @@
-// Service worker: only for notifications (Web Push): chat messages and answers to polls you follow. No caching, no offline mode.
-// A push carries { kind, title, name, body, url, tag, poll, at }, encrypted by the Worker (pushChat, pushAnswer).
+// Service worker: only for notifications (Web Push): chat messages and what happens in polls (answers, votes, meetings, questions, rounds). No caching, no offline mode.
+// A push carries { kind, title, name, body, url, tag, poll, at }, encrypted by the Worker (notifyEvent).
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -9,10 +9,10 @@ self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = { title: 'when-who', body: e.data ? e.data.text() : '' }; }
   e.waitUntil((async () => {
-    if ((d.kind === 'chat' || d.kind === 'answer') && d.poll) {
+    if (d.poll && d.kind !== 'test') {
       const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const here = wins.filter((w) => pollOf(w.url) === d.poll);
-      here.forEach((w) => w.postMessage({ type: d.kind, poll: d.poll }));
+      here.forEach((w) => w.postMessage(d.kind === 'chat' ? { type: 'chat', poll: d.poll } : { type: 'event', poll: d.poll, kind: d.kind }));
       // Someone is looking at this poll right now: the page shows the message / answer itself.
       if (here.some((w) => w.focused && w.visibilityState === 'visible')) return;
     }
@@ -31,7 +31,7 @@ self.addEventListener('notificationclick', (e) => {
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const w = poll ? wins.find((x) => pollOf(x.url) === poll) : null;
-    if (w) { await w.focus(); if (kind !== 'answer') w.postMessage({ type: 'openchat', poll }); return; }
+    if (w) { await w.focus(); if (!kind || kind === 'chat') w.postMessage({ type: 'openchat', poll }); return; }
     await self.clients.openWindow(target);
   })());
 });

@@ -113,23 +113,17 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   notification unless a focused tab is on that poll, tap opens `?p=<id>&chat=1`) and `public/manifest.webmanifest` (iPhone: push only from the
   Home Screen app). `pushEnable` / `pushDisable` / `pushResync` (daily), ask bar at the top of the chat (`pushAskHtml`, ✕ = `pushAsk`, 30 days),
   🔔/🔕 mute in the chat header (`chatMuteBtn`), Account → Summary → Notifications (`pushSecDraw`, Send a test). Signing out unsubscribes.
-- **Answer notifications** (0029, `answer_watch`, one row per person per poll, deleted when both off): "Notify me when someone answers",
-  for signed-in people who can see the answers (`watchAllowed`: organisers, or answers not hidden and, invited-only, in the poll). `PUT /api/polls/:id/watch
-  { email, push }`; `GET /api/polls/:id` sends `me.watch` only to those allowed (the page's 🔔 chip in the header, `watchChip` / `watchMenu`).
-  `push` = Web Push right away (`pushAnswer`, kind `answer`, from `createResponse` and `updateResponse`; a changed answer only if it last changed
-  `ANSWER_PUSH_GAP` (10 min) ago). `email` = hourly digest in the cron (`answerDigests`, `sent_at` = cutoff, `DIGESTS_PER_RUN`), sent from "when-who"
-  to the watcher only (not via `sendMail`, so no owner copy and no owner quota). The watcher's own answers are left out.
-- **MCP (AI assistants)** (0030): Claude, ChatGPT etc. use an account through the Model Context Protocol. The Worker is its own OAuth 2.1
-  server outside `/api/` (`isMcpPath` → `mcpEntry`, CORS open, bearer only): `/.well-known/oauth-protected-resource[/mcp]`,
-  `/.well-known/oauth-authorization-server`, `/oauth/register` (dynamic registration, public clients, `mcp_clients`), `/oauth/authorize`
-  (PKCE S256 required, stores `mcp_requests`, sends the browser to `?connect=<id>`), `/oauth/token` (code / rotating refresh; access 1 h,
-  refresh 60 days), `/oauth/revoke`. The page's `renderConnect` signs in and asks Allow / Deny (`GET|POST /api/connect/:id`).
-  `mcp_grants` = connected apps (token hashes only), listed on the Account page's **AI assistants** card (`renderMcpCard`,
-  `GET|DELETE /api/me/connections[/:id]`), max 20 per account. `POST /mcp` = stateless Streamable HTTP (JSON replies, no SSE):
-  `initialize`, `ping`, `tools/list`, `tools/call`. Tools (`MCP_TOOLS`: whoami, list_polls, get_poll with `availabilitySummary`, answer_poll,
-  create_poll, add_people, schedule_meeting, send_message) call the normal handlers through `callApi()`: an `INTERNAL` request with the
-  grant's user preset, so every check and limit applies; rate limits key on the grant (`mcp:<id>`), not the IP (assistants share IPs).
-  When a new feature should be usable from assistants, add a tool. Local testing needs `--var SITE_URL:http://localhost:<port>`.
+- **Notifications** (0029 `answer_watch`, 0032 prefs + `poll_events`): what people are told about, per type: `chat` (`'all'|'mentions'|'off'`),
+  `answers`, `votes`, `qanswers` (these three only for people who can see the answers), `meetings`, `questions`, `rounds`, each `{ p: push, e: email }`.
+  Effective prefs (`ntRow`): the poll's override (`answer_watch.prefs`, set with the 🔔 button in the poll header, dialog `ntOpen`, `PUT /api/polls/:id/notify
+  { prefs | null }`) ?? account defaults (`users.notify`, Account → Notifications, `GET|PUT /api/me/notify`) ?? built-in by role (`ntBuiltin`: everyone push
+  for chat / meetings / questions / rounds, organisers also answers / votes / question answers; email off). Legacy `answer_watch.email/push` and
+  `chat_reads.muted` still count when there is no override; the chat header 🔔/🔕 sets `chat.p`. Audience (`ntAudience`) = accounts connected to the poll
+  (chat members, people in it, owner, anyone with settings); guests get none. Events are logged by `notifyEvent` (from answers, votes, question answers,
+  `updateInstance` meeting / question / status diffs (`meetingEvents`), `notifyOpened` for later series rounds, `postChat`) into `poll_events` (kept 3 days)
+  and pushed right away (`kind` = event, `tag` per type; same person's changed answer / vote / form within 10 min is logged but not pushed).
+  The hourly cron's `notifyDigests` emails each person once with the events they want by email, across polls, then marks them `digested`.
+  `GET /api/polls/:id` sends `me.notify = { prefs, own, types }`. Push URLs may carry `&tab=meetings|questions`.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).
@@ -222,6 +216,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Demo steps (`demo`, people who can answer): a fake finger (`tourPtr`, `demoKit`) paints days (`demoDays`), shows tap vs range
   (`demoRange`) and fine-tunes hours (`demoHours`) on My answer; `tourDemoSnap` / `tourDemoRestore` put the answer, mode, brush and
   undo history back when the demo steps end, nothing is saved. The answer brush always starts in tap mode (range isn't remembered).
+- **To do** (page only, people answering; not organisers): `todoList()` works out what's still open for me in this round from page state
+  (availability not sent, required questions empty `qReqOpen`, vote groups without my vote, after-meeting questions via `qPromptPick(true)`).
+  `todoSync()` draws the `#todo` strip under the header chips (amber when the deadline is today / tomorrow) and the `.tdot` dots on the tabs;
+  it runs from `renderBody`, `renderMeetings`, `renderQuestions` and `renderHeader`. Tapping a chip (`data-todo`) opens the tab and flashes the spot.
 - **Undo / redo** (page only): two histories in `HIST`, `ans` (My answer: marks + Quick fill layers) and `plan` (planner drafts + Suggest dates).
   `histTick()` runs at the start of every `renderBody()` and pushes the last snapshot when the state changed, so any edit path is covered
   without hooks (one drag = one step; name/comment typing isn't tracked). ↶ / ↷ in one small grey box (`histSeg`, `.hseg`; My answer adds its ✕ Clear there) and ⌘Z / ⌘⇧Z / Ctrl+Y

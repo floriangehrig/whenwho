@@ -1285,8 +1285,14 @@
   :is(.pgrid .slot,.pgrid .hd,#pcal .day)[data-dn]::after{content:attr(data-dn);position:absolute;top:1px;right:1px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--accent);color:#fff;font:700 9px/13px system-ui,sans-serif;text-align:center;pointer-events:none}
   .pn-acts{display:flex;align-items:center;gap:4px;margin-left:auto}
   .dmenu.pmergem{min-width:300px;max-height:min(420px,70vh);overflow:auto;z-index:95} .dmenu .pmr>.tile.avatar{width:30px;height:30px;min-width:30px;font-size:13px;flex:none} .pmergem input[type=search]{margin:2px 4px 6px;width:calc(100% - 8px)} .pmr{width:100%;text-align:left;background:none;border:0;cursor:pointer;color:inherit;font:inherit;min-height:44px} .pmr:hover,.pmr:focus-visible{background:var(--accent-weak)} .pmr .minw{display:flex;flex-direction:column}
-  .watchm{min-width:260px} .watchr{display:flex;align-items:center;gap:8px;min-height:38px;padding:2px 6px} .watchr>svg{width:16px;height:16px;flex:none;color:var(--accent)} .watchr>.tip{position:static} .watchn{padding:4px 6px}
-  .watchchip{cursor:pointer;font-family:inherit} .watchchip:hover,.watchchip.on{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);color:#fff}
+  .pbell{flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;cursor:pointer;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;transition:background .12s,transform .12s}
+  .pbell svg{width:22px;height:22px} .pbell:hover{background:rgba(255,255,255,.18);transform:scale(1.05)} .pbell.on{background:#fff;color:var(--accent);border-color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .ntdlg{z-index:100} .ntg{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:6px 14px} .ntg.one{grid-template-columns:1fr auto}
+  .ntch{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--muted);justify-self:center} .ntch svg{width:14px;height:14px}
+  .ntl{display:flex;align-items:center;gap:8px;min-height:36px;font-size:14px;min-width:0} .ntl>svg{width:16px;height:16px;flex:none;color:var(--accent)} .ntl>.tip{position:static}
+  .ntc{justify-self:center} .ntg .seg.ntseg button{padding:4px 8px;font-size:12px;min-height:0} .ntdev{display:flex;align-items:center;gap:6px} .ntdev>svg{width:14px;height:14px;color:var(--yes,#2e9e5b)} .ntown{margin-top:4px}
+  .ntl>.ell{min-width:0} .ntwrap{container-type:inline-size} .ntg select.ntsel{width:auto;min-height:0;display:none;font:inherit;font-size:13px;padding:5px 6px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);max-width:110px}
+  @container (max-width:460px){ .ntg{gap:4px 10px} .ntch span{display:none} .ntg .seg.ntseg{display:none} .ntg select.ntsel{display:inline-block} .ntl{font-size:13.5px;gap:6px} .ntl>.ell{white-space:normal;overflow:visible;line-height:1.2} .ntl>.tip{display:none} }
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
   .dmenu .dm-h{padding:4px 8px 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
   .dmenu .dm-r{display:flex;align-items:center;gap:8px;padding:2px 2px 2px 8px;border-radius:10px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -1618,6 +1624,7 @@
     .card.atabs{padding:4px 2px 0;gap:0} .card.atabs button{padding:12px 6px 14px;font-size:13px} .card.atabs button.on::after{left:4px;right:4px}
     .card.atabs button{flex:1 1 auto;min-width:auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 10px;font-size:11.5px;position:relative}
     .card.atabs .ti{display:block;line-height:0} .card.atabs .ti svg{width:20px;height:20px}
+    .card.atabs button .tdot{position:absolute;top:6px;left:calc(50% - 18px);margin:0}
     .card.atabs button .count{position:absolute;top:4px;left:calc(50% + 6px);margin:0;min-width:17px;height:17px;padding:0 4px;font-size:10.5px}
     /* compact buttons: icon only (or icon + short label) */
     .btn .bl{display:none} .btn .bs,.sm-only{display:inline}
@@ -1798,6 +1805,16 @@
   .pshare-l svg{flex:none;width:16px;height:16px}
   /* in the poll header (brand band) */
   #hdr .pshare{max-width:560px;margin:12px 0 0}
+  /* To do strip (todoSync): what the person answering still has to do. */
+  .todo{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:12px;padding:7px 8px 7px 12px;max-width:720px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--on-brand)}
+  .todo[hidden]{display:none} .todo .tip{color:var(--on-brand-muted)}
+  .todo.soon{background:color-mix(in srgb,var(--maybe) 22%,transparent);border-color:color-mix(in srgb,var(--maybe) 55%,transparent)}
+  .todo-h{display:inline-flex;align-items:center;gap:6px;font-size:13px} .todo-h svg{width:16px;height:16px;color:var(--maybe)}
+  .todo-c{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px;cursor:pointer;background:var(--card);color:var(--ink);border:0;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+  .todo-c svg{width:14px;height:14px;color:var(--accent)} .todo-c:hover{transform:translateY(-1px)} .todo-c:focus-visible{outline:2px solid var(--maybe);outline-offset:2px}
+  .todo-dl{font-size:12px;color:var(--on-brand-muted)}
+  .tdot{display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:var(--maybe);box-shadow:0 0 0 2px var(--card);vertical-align:2px} .tdot[hidden]{display:none}
+  .vpanel.flash,#wsme.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent);transition:box-shadow .3s}
   #hdr .pshare-l{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14);color:var(--on-brand-muted)}
   #hdr .pshare-l input{color:var(--on-brand-muted);font-size:12px}
   #hdr .pshare-l,#hdr .pshare .btn.ib,#hdr .pshare-copy{height:34px} #hdr .pshare .btn.ib,#hdr .pshare-copy{width:34px;min-width:34px;border-radius:9px}
@@ -2534,8 +2551,9 @@ function tourSteps(key){
   return [
     S(null,t('Welcome to when-who'),edit?t('A quick look at everything you can do in this poll, from answering to planning meetings.'):t('Three quick steps to answer this poll.'),{go:tgView(editable()?'mine':'group'),basic:1}),
     S('#hdr .meta',t('This poll'),(series?t('The dates of this round, the deadline and how many people answered. Tap the date to switch between rounds.'):t('The dates, the deadline and how many people answered.'))+(role?' '+t('Your role: {role}.',{role:esc(roleName(role))})+' '+esc(roleHelp(role)):'')),
+    S('#todo',t('Your to-dos'),t('What’s still open for you in this round: your availability, required questions, votes on meeting times or rating a meeting. Tap one to go there; the tab gets a dot too.')),
     S('.pshare',t('Share the link'),t('Send this link to everyone who should answer: copy it or share it straight to WhatsApp or email.'),{when:()=>edit}),
-    S('#watchchip',t('Get notified'),t('Get an email or a notification when someone answers or changes their answer. Everyone who can see the answers can switch it on for themselves.')),
+    S('#pbell',t('Notifications'),t('Choose what you’re notified about in this poll, right away or in an hourly email: chat, answers, meetings, questions and more.')),
     S('[data-istatus]',t('Close or reopen'),t('Closing stops new answers. Reopen it any time.'),{when:()=>edit}),
     S('.atabs',t('Sections'),edit?t('Availability, Meetings, Questions, People and Settings: everything about this poll is in these tabs.'):t('Answer in Availability, see the planned meetings and fill in the organiser’s questions.')),
     S('#wsme',t('You'),guest?t('Enter your name (and, if you like, your email). No account needed.'):t('You answer as your account, so your answer follows you to every device.'),{go:tgView('mine'),basic:1}),
@@ -3103,7 +3121,7 @@ function renderPrivacy(){
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.'),
-        t('<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.'),
+        t('<b>Notification settings:</b> which events you want as a notification or in an hourly email (chat, answers, votes, meetings, questions, rounds), as your defaults and per poll. To send them, when-who keeps a short log of what happened in a poll (for example “Ana answered” or “Meeting set”, with the person’s name, no chat text) for 3 days. The email lists these events for the polls you chose.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>AI assistants (only if you connect one):</b> the name the app gave itself, when you connected it and last used it, and its access keys, stored only as a hash. You can disconnect it on your Account page, which deletes them.'),
         t('<b>Personal links:</b> invitation emails to people without an account contain a link made just for them. Opening it answers as that person, so anyone they forward it to can answer in their name. Nothing extra is stored for it; the organiser can replace the link, and the old one then stops working.'),
@@ -3117,8 +3135,8 @@ function renderPrivacy(){
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
         t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.'),
-        t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the answer summaries you asked for.'),
-        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and, if you asked for them, new answers (poll title and the person’s name) to your device. They are encrypted end to end, so the push service can’t read them.'),
+        t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the hourly notification emails you asked for.'),
+        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
       ]))}
@@ -4683,58 +4701,122 @@ function renderHeader(){
   const n=d.responses?d.responses.length:null, pc=Math.max(n||0,d.participantCount||0);
   el.innerHTML=`<div class="poll-h">${pollTile(p,'lg')}<div class="grow"><div class="eyebrow">${p.kind==='weekly'?t('Weekly schedule'):''}<span class="st ${i.status==='open'?'open':'closed'}">${i.status==='open'?t('Open'):t('Closed')}</span>${d.isAdmin?(()=>{ const sr=p.kind==='series', cl=i.manualStatus==='open', lb=cl?(sr?t('Close this round'):t('Close poll')):(sr?t('Reopen this round'):t('Reopen poll'));
       return `<button type="button" class="stbtn" data-istatus="${i.id}" data-to="${cl?'closed':'open'}" title="${esc(lb)}">${ICON[cl?'lock':'unlock']}<span>${cl?t('Close'):t('Reopen')}</span></button>`; })():''}</div>
-    <h1>${esc(p.title)}</h1></div></div>
-    <div class="meta">${watchChip(d)}${d.role&&d.role!=='owner'?`<span class="chip" title="${esc(t('Your role in this poll')+': '+roleHelp(d.role))}">${ICON[ROLE_IC[d.role]]}<span>${esc(roleName(d.role))}</span></span>`:''}${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
+    <h1>${esc(p.title)}</h1></div>${pbellBtn(d)}</div>
+    <div class="meta">${d.role&&d.role!=='owner'?`<span class="chip" title="${esc(t('Your role in this poll')+': '+roleHelp(d.role))}">${ICON[ROLE_IC[d.role]]}<span>${esc(roleName(d.role))}</span></span>`:''}${roundChip(d,i)}${d.isAdmin&&p.kind==='series'&&d.instances.length>1&&i.id!==d.instances[d.instances.length-1].id?`<a href="#" class="chip" data-sroundgo>${t('Earlier round · see all rounds')}</a>`:''}${i.meetings.length?(()=>{ const nc=i.meetings.filter(m=>!m.proposed).length, np=i.meetings.length-nc;
       return `<a href="#" class="chip" data-atab="meetings"${d.isAdmin?' data-msubgo="list"':''} id="mchip">${nc?`★ ${nc} ${nc===1?t('meeting'):t('meetings')}`:''}${nc&&np?' · ':''}${np?t('{n} to vote on',{n:np}):''}</a>`; })():''}${i.questions&&i.questions.length?`<a href="#" class="chip" data-atab="questions">${ICON.ask}<span>${i.questions.length===1?t('1 question'):t('{n} questions',{n:i.questions.length})}</span></a>`:''}${i.deadline?`<span class="chip keepl" title="${t('Reply by {date}',{date:esc(dayLabel(i.deadline))})}">${ICON.deadline}<span><span class="bl">${t('Reply by ')}</span>${esc(dayLabel(i.deadline))}</span></span>`:''}${n!=null?(pc>n?`<span class="chip keepl" title="${d.instances.length>1?t('{n} of the {pc} people in this poll answered this round',{n,pc}):t('{n} of the {pc} people in this poll answered',{n,pc})}">${ICON.users}<span>${n}/${pc}<span class="bl"> ${t('answered')}</span></span></span>`
       :`<span class="chip keepl" title="${n} ${n===1?t('answer'):t('answers')}">${ICON.users}<span>${n}<span class="bl"> ${n===1?t('answer'):t('answers')}</span></span></span>`):''}${p.hasPassword&&canManage()?`<span class="chip" title="${t('Password')}">${ICON.lock}<span class="bl">${t('Password')}</span></span>`:''}</div>
+    <div id="todo" class="todo" role="status" hidden></div>
     ${p.description?`<div class="desc">${esc(p.description)}</div>`:''}
     ${p.invitedOnly&&!d.isAdmin?'':shareRow(p,i)}
     ${i.note?`<div class="notice">${esc(i.note)}</div>`:''}
     ${p.hideResults&&!canSee()?'<div class="notice warn">'+t('Only the organiser can see everyone’s answers.')+'</div>':''}`;
-  renderMeetings(); renderQuestions();
+  renderMeetings(); renderQuestions(); todoSync();
 }
-// "Notify me when someone answers" (answer_watch): a chip in the header for signed-in people who can see the answers
-// (me.watch from GET /api/polls/:id). Email = at most one summary an hour; push = right away on devices with notifications on.
-function watchChip(d){
-  const w=d.me&&d.me.watch; if(!w) return '';
-  const on=w.email||w.push, lb=on?t('You get notified about new answers'):t('Get notified when someone answers');
-  return `<button type="button" class="chip watchchip${on?' on':''}" id="watchchip" data-watch aria-haspopup="true" title="${esc(lb)}" aria-label="${esc(lb)}">${ICON[on?'bell':'belloff']}<span class="bl">${on?t('Notifying you'):t('Notify me')}</span></button>`;
+// ---- notifications per poll (the bell in the poll header) and account defaults (Account → Notifications) ----
+// me.notify = { prefs, own, types } from GET /api/polls/:id; prefs[type] = { p: push, e: email }, chat takes 'all' | 'mentions' | 'off'.
+// The Worker pushes right away and emails once an hour (notifyEvent / notifyDigests).
+const NT_ROWS=()=>({
+  chat:[ICON.chat,t('Chat messages'),t('All messages, or only the ones that @mention you.')],
+  answers:[ICON.cal,t('Answers'),t('Someone answers or changes their availability.')],
+  votes:[ICON.check,t('Votes on proposed times'),t('Someone votes on the meeting times proposed for a vote.')],
+  qanswers:[ICON.ask,t('Answers to questions'),t('Someone fills in the questions.')],
+  meetings:[ICON.star,t('Meetings'),t('A meeting is set, proposed for a vote, changed or cancelled.')],
+  questions:[ICON.ask,t('New questions'),t('The organiser adds questions.')],
+  rounds:[ICON.repeat,t('Rounds'),t('A new round opens, or the poll is closed or reopened.')],
+});
+const ntAny=(p,types)=>types.some(k=>k==='chat'?(p.chat.p!=='off'||p.chat.e!=='off'):(p[k].p||p[k].e));
+function pbellBtn(d){
+  const n=d.me&&d.me.notify; if(!n) return '';
+  const on=ntAny(n.prefs,n.types), lb=t('Notifications for this poll');
+  return `<button type="button" class="pbell${on?' on':''}" id="pbell" data-ntopen title="${esc(lb)}" aria-label="${esc(lb)}" aria-haspopup="dialog">${ICON[on?'bell':'belloff']}</button>`;
 }
-function watchMenu(){
-  closeDraftMenu();
-  const d=P.data, w=d.me&&d.me.watch, chip=$('watchchip'); if(!w||!chip) return;
-  const a=pushAvail(), pushNote=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
-    :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
-  const row=(id,ic,label,help,on)=>`<div class="dm-r watchr">${ICON[ic]}<span class="grow">${label}</span>${tip(help,'left')}<label class="sw" title="${esc(label)}"><input type="checkbox" id="${id}"${on?' checked':''} aria-label="${esc(label)}"><span></span></label></div>`;
-  const el=document.createElement('div'); el.id='dmenu'; el.className='dmenu watchm'; el.setAttribute('role','dialog'); el.setAttribute('aria-label',t('When someone answers'));
-  el.innerHTML=`<div class="dm-h">${t('When someone answers')}</div>`
-    +(d.emailEnabled?row('watch_em','mail',t('Email'),t('At most one email an hour, listing who answered or changed their answer.'),w.email):'')
-    +(a==='off'?'':(!pushNote||w.push?row('watch_pu','bell',t('Notification'),t('Right away, on your devices where notifications are on (this one is switched on when you tap here).'),w.push):'')
-      +(pushNote?`<p class="help m0 watchn">${pushNote}</p>`:''));
-  if(!el.querySelector('input')) el.innerHTML+=`<p class="help m0 watchn">${t('Email and notifications aren’t available here.')}</p>`;
-  el.dataset.y=scrollY; document.body.appendChild(el);
-  if(matchMedia('(max-width:620px)').matches) el.classList.add('sheet');
-  else { const r=chip.getBoundingClientRect(), wd=el.offsetWidth;
-    el.style.left=Math.max(8,Math.min(innerWidth-wd-8,r.left))+'px'; el.style.top=(r.bottom+6)+'px'; }
-  el.onchange=async e=>{
-    const cb=e.target; if(!cb.matches('input[type=checkbox]')) return;
-    const next={email:!!w.email,push:!!w.push};
-    if(cb.id==='watch_em') next.email=cb.checked;
-    if(cb.id==='watch_pu'){
-      next.push=cb.checked;
-      if(cb.checked&&!pushIsOn()&&pushAvail()!=='denied'&&pushAvail()!=='unsupported'&&pushAvail()!=='homescreen'){ cb.disabled=true; const ok=await pushEnable(); cb.disabled=false; if(!ok){ cb.checked=false; return; } }
-    }
-    cb.disabled=true;
-    try{ const r=await api('PUT',`/polls/${P.id}/watch`,next,headers()); d.me.watch=r.watch;
-      toast(r.watch.email||r.watch.push?t('You’ll be notified when someone answers'):t('No more notifications about answers')); }
-    catch(x){ cb.checked=!cb.checked; toast(x.message); }
-    cb.disabled=false;
-    const nc=document.createElement('div'); nc.innerHTML=watchChip(d); const old=$('watchchip'); if(old&&nc.firstElementChild) old.replaceWith(nc.firstElementChild);
+// The grid: one row per type, a push column and an email column (each only where available).
+function ntGrid(prefs,types,{push,mail}){
+  const R=NT_ROWS();
+  const cell=(k,c)=>{
+    if(k==='chat'){ const v=prefs.chat[c], al=esc(R.chat[1]+' · '+(c==='p'?t('Notification'):t('Email'))), L=[['all',t('All')],['mentions','@'],['off',t('Off')]];
+      // Segmented on wide grids, a small dropdown when the grid is narrow (container query).
+      return `<span class="seg ntseg" role="radiogroup" aria-label="${al}">${L.map(([x,l])=>`<button type="button" role="radio" aria-checked="${v===x}" class="${v===x?'on':''}" data-ntk="chat" data-ntc="${c}" data-ntv="${x}" title="${esc(x==='mentions'?t('Only when someone @mentions you'):l)}">${l}</button>`).join('')}</span>`
+        +`<select class="ntsel" data-ntk="chat" data-ntc="${c}" aria-label="${al}">${L.map(([x,l])=>`<option value="${x}"${v===x?' selected':''}>${x==='mentions'?'@ '+t('Mentions'):l}</option>`).join('')}</select>`; }
+    const v=!!prefs[k][c], lb=R[k][1]+' · '+(c==='p'?t('Notification'):t('Email'));
+    return `<label class="sw" title="${esc(lb)}"><input type="checkbox" data-ntk="${k}" data-ntc="${c}"${v?' checked':''} aria-label="${esc(lb)}"><span></span></label>`;
   };
-  el.onclick=e=>e.stopPropagation();
-  const f=el.querySelector('input'); if(f&&!TOUCH) f.focus({preventScroll:true});
+  return `<div class="ntwrap"><div class="ntg${push&&mail?'':' one'}"><span></span>${push?`<span class="ntch" title="${esc(t('Right away on your devices'))}">${ICON.bell}<span>${t('Notification')}</span></span>`:''}${mail?`<span class="ntch" title="${esc(t('At most one email an hour'))}">${ICON.mail}<span>${t('Email')}</span></span>`:''}
+    ${types.map(k=>`<span class="ntl">${R[k][0]}<span class="ell">${R[k][1]}</span>${tip(R[k][2],'right')}</span>${push?`<span class="ntc">${cell(k,'p')}</span>`:''}${mail?`<span class="ntc">${cell(k,'e')}</span>`:''}`).join('')}</div></div>`;
 }
-document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-watch]'); if(!b) return; e.preventDefault(); if($('dmenu')&&$('dmenu').classList.contains('watchm')) closeDraftMenu(); else watchMenu(); });
+// Reads a click / change in a grid into a new prefs object (null if it wasn't a grid control).
+function ntRead(e,prefs){
+  const x=e.target.closest&&e.target.closest('[data-ntk]'); if(!x) return null;
+  const n=JSON.parse(JSON.stringify(prefs)), k=x.dataset.ntk, c=x.dataset.ntc;
+  if(k==='chat'){ const v=x.dataset.ntv||(x.tagName==='SELECT'?x.value:''); if(!v) return null; n.chat[c]=v; } else n[k][c]=x.checked?1:0;
+  return n;
+}
+// Device line: is push on here, or how to turn it on.
+function ntDevice(){
+  const a=pushAvail(); if(a==='off') return '';
+  if(pushIsOn()) return `<p class="help m0 ntdev">${ICON.check}${t('Notifications are on for this device.')}</p>`;
+  const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
+    :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
+  return note?`<p class="help m0 ntdev">${note}</p>`:`<div class="row ntdev"><span class="grow help m0">${t('Notifications are off on this device.')}</span><button type="button" class="btn sm primary withic" data-pushon>${ICON.bell}<span>${t('Turn on')}</span></button></div>`;
+}
+function ntOpen(){
+  const d0=P.data, n=d0&&d0.me&&d0.me.notify; if(!n) return;
+  let d=$('ntdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='ntdlg'; d.className='dlg ntdlg'; d.setAttribute('aria-labelledby','nt_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d){ d.close(); return; } if(e.target.closest('[data-ntclose]')) d.close(); });
+    d.addEventListener('click',e=>ntChange(e,true)); d.addEventListener('change',e=>ntChange(e,false)); }
+  ntDraw(); if(!d.open) d.showModal();
+  if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+}
+function ntDraw(){
+  const d=$('ntdlg'), n=P.data&&P.data.me&&P.data.me.notify; if(!d||!n) return;
+  const push=pushAvail()!=='off', mail=!!P.data.emailEnabled;
+  d.innerHTML=`<div class="dlg-h"><h2 id="nt_h">${t('Notifications for this poll')}</h2>${ib('x',t('Close'),'data-ntclose','sm ghost')}</div>
+    <div class="dlg-b">${push||mail?ntGrid(n.prefs,n.types,{push,mail}):`<p class="help m0">${t('Email and notifications aren’t available here.')}</p>`}
+      ${push?ntDevice():''}
+      <div class="row ntown"><span class="grow help m0">${n.own?t('Custom settings for this poll.'):t('Using your default settings.')}</span>${n.own?`<button type="button" class="btn sm" data-ntreset>${t('Use my defaults')}</button>`:`<a class="btn sm ghost" href="?account#notifications">${t('Change defaults')}</a>`}</div></div>`;
+}
+async function ntChange(e,click){
+  const d=P.data, n=d&&d.me&&d.me.notify; if(!n) return;
+  if(click&&e.target.closest('[data-ntreset]')){ try{ const r=await api('PUT',`/polls/${P.id}/notify`,{prefs:null},headers()); d.me.notify=r.notify; ntAfter(t('Back to your defaults')); }catch(x){ toast(x.message); } return; }
+  const x=e.target.closest&&e.target.closest('[data-ntk]'); if(!x) return;
+  if(click!==!!x.dataset.ntv) return; // segmented buttons on click, switches on change
+  const next=ntRead(e,n.prefs); if(!next) return;
+  // Turning a push switch on here also switches this device on.
+  const pushOn=x.dataset.ntc==='p'&&(x.dataset.ntv?x.dataset.ntv!=='off':x.tagName==='SELECT'?x.value!=='off':x.checked);
+  if(pushOn&&!pushIsOn()&&['default','granted'].includes(pushAvail())) await pushEnable();
+  try{ const r=await api('PUT',`/polls/${P.id}/notify`,{prefs:next},headers()); d.me.notify=r.notify; if(d.chat) d.chat.muted=r.notify.prefs.chat.p==='off'; ntAfter(t('Saved')); }
+  catch(ex){ toast(ex.message); ntDraw(); }
+}
+function ntAfter(msg){
+  ntDraw(); const b=$('pbell'), w=document.createElement('div'); w.innerHTML=pbellBtn(P.data); if(b&&w.firstElementChild) b.replaceWith(w.firstElementChild);
+  if(typeof pushRedraw==='function') pushRedraw(); if(msg) toast(msg);
+}
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('[data-ntopen]')){ e.preventDefault(); ntOpen(); } });
+// Account → Notifications: the same grid for the defaults (GET|PUT /api/me/notify).
+const NTA={prefs:null,own:false};
+async function ntAcctLoad(){ try{ const r=await api('GET','/me/notify'); NTA.prefs=r.prefs; NTA.own=r.own; }catch(e){} }
+function ntAcctHtml(){
+  if(!NTA.prefs) return '';
+  const push=pushAvail()!=='off', mail=!!CONFIG.emailEnabled; if(!push&&!mail) return '';
+  return `<div class="row mt-3"><span class="grow"><b>${t('Default for your polls')}</b></span>${tip(t('Used in every poll where you haven’t changed the settings with its bell. Answers, votes and answers to questions apply in polls you organise.'),'left')}</div>
+    <div id="nt_acct">${ntGrid(NTA.prefs,['chat','answers','votes','qanswers','meetings','questions','rounds'],{push,mail})}</div>
+    ${NTA.own?`<div class="row mt-2"><button type="button" class="btn sm" data-ntareset>${t('Reset to the standard settings')}</button></div>`:''}`;
+}
+async function ntAcctSave(prefs){
+  try{ const r=await api('PUT','/me/notify',{prefs}); NTA.prefs=r.prefs; NTA.own=r.own; toast(t('Saved')); }catch(x){ toast(x.message); }
+  pushSecDraw();
+}
+document.addEventListener('click',e=>{
+  if(e.target.closest&&e.target.closest('[data-ntareset]')){ ntAcctSave(null); return; }
+  const box=e.target.closest&&e.target.closest('#nt_acct'); if(!box) return;
+  const x=e.target.closest('[data-ntk]'); if(!x||!x.dataset.ntv) return;
+  const n=ntRead(e,NTA.prefs); if(n) ntAcctSave(n);
+});
+document.addEventListener('change',e=>{
+  const box=e.target.closest&&e.target.closest('#nt_acct'); if(!box) return;
+  const n=ntRead(e,NTA.prefs); if(n) ntAcctSave(n);
+});
 // The share link with Copy and Share / WhatsApp / email buttons, under the poll header.
 function shareRow(p,i){
   const link=shareLink(p.id), info={id:p.id,title:p.title,description:p.description,range:i?instLabel(i):'',deadline:i&&i.status==='open'?i.deadline:null};
@@ -4747,7 +4829,7 @@ function renderBody(){
   // (often to the top). Hold the old height until the next frame and put the scroll position back.
   const y0=window.scrollY, h0=b.offsetHeight; if(h0) b.style.minHeight=h0+'px';
   try{ renderBodyInner(b); } finally {
-    syncDSheet();
+    syncDSheet(); todoSync();
     if(Math.abs(window.scrollY-y0)>1) window.scrollTo(0,y0);
     requestAnimationFrame(()=>{ b.style.minHeight=''; });
   }
@@ -4877,16 +4959,23 @@ function whenText(m){ const tm=m.allDay?' · '+t('all day'):` · ${hh(m.start)}�
   if(m.endDate) return `${longDay(m.date)} – ${longDay(m.endDate)}${tm}`;
   return `${longDay(m.date)}${tm}`; }
 // A meeting's full description: the shared one, then its own extra text below.
-function descOf(m){ return [m.note,m.extra,m.answersText].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
+// A meeting's description for copy / share, in the same sections as the .ics and emails (meetingDescText in the Worker):
+// 📝 Description (poll description unless pollDesc is false, notes), 👥 Participants, then the answers text (already in sections).
+function descOf(m,pollDesc=true){
+  const bul=x=>'• '+String(x).replace(/\n/g,'\n  ');
+  const desc=[pollDesc&&P.data.poll.description,m.note,m.extra].map(x=>(x||'').trim()).filter(Boolean).join('\n\n');
+  const who=m.participants==='all'?`👥 ${t('Participants')}\n• ${t('Everyone')}`:`👥 ${t('Participants')} (${m.participants.length})\n${m.participants.map(p=>bul(p.name)).join('\n')}`;
+  return [desc&&`📝 ${t('Description')}\n${desc}`,who,(m.answersText||'').trim()].filter(Boolean).join('\n\n');
+}
 function whoText(m){ return m.participants==='all'?t('Everyone'):m.participants.map(p=>p.name).join(', '); }
-const meetingLines=m=>[`${m.title||P.data.poll.title}`, whenText(m), m.location?`${t('Where:')} ${m.location}\n${t('Map:')} ${mapUrl(m.location)}`:'', `${t('Who:')} ${whoText(m)}`, descOf(m)].filter(Boolean);
+const meetingLines=(m,pollDesc=true)=>[`${m.title||P.data.poll.title}`, whenText(m), m.location?`${t('Where:')} ${m.location}\n${t('Map:')} ${mapUrl(m.location)}`:'', '', descOf(m,pollDesc)];
 const joinLines=a=>a.filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
 function inviteText(m){
   return joinLines([...meetingLines(m), '', `${t('Add to your calendar:')} ${icsUrl(m.id,true)}`, `${t('Poll:')} ${shareLink(P.id)}`]);
 }
 // Every scheduled meeting in one text, for the Scheduled header's email / copy buttons.
 function allInviteText(ms){
-  return joinLines([t('Meetings: {title}',{title:P.data.poll.title}), '', ...ms.flatMap(m=>[...meetingLines(m), '']),
+  return joinLines([t('Meetings: {title}',{title:P.data.poll.title}), '', ...ms.flatMap(m=>[...meetingLines(m,false), '']),
     `${t('Add all to your calendar:')} ${icsUrl(null,true)}`, `${t('Subscribe (stays up to date):')} ${icsUrl(null,false).replace(/^https?:/,'webcal:')}`, `${t('Poll:')} ${shareLink(P.id)}`]);
 }
 // The phone's share sheet where there is one, else copy to the clipboard.
@@ -4908,7 +4997,7 @@ function dateTile(m){
   return `<div class="mtile" role="img" aria-label="${esc(longDay(m.date))}"><span class="mo">${esc(dt.toLocaleDateString(LOC,{month:'short'}))}</span><span class="dn">${dt.getDate()}</span><span class="wd">${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span></div>`;
 }
 function renderMeetings(listOnly){
-  const el=$('meetings'); if(!el) return;
+  const el=$('meetings'); if(!el) return; todoSync();
   const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
   ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
   if(!ms.length&&!props.length){ P.msel=null;
@@ -5067,7 +5156,7 @@ async function loadForm(){
 // ---- "How was it?": after-meeting questions pop up once a meeting I was in has happened (newest one in the last 14 days).
 // Skipped ones are remembered per poll (localStorage qskip:<poll>). A meeting of the round before opens that round.
 const qSkips=()=>new Set(store.get('qskip:'+P.id,[]));
-function qPromptPick(){ const a=myExtra().a, skip=qSkips(), since=Date.now()-14*86400e3, out=[];
+function qPromptPick(all){ const a=myExtra().a, skip=all?new Set():qSkips(), since=Date.now()-14*86400e3, out=[];
   for(const q of qList()) if(qAfter(q)&&!q.closed&&qMayFill(q)) for(const o of qOccs(q)) if(o.end>=since&&qOccOpen(q,o.key)&&qEmpty((a[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key)) out.push({q,o});
   if(!out.length) return null; out.sort((x,y)=>y.o.end-x.o.end);
   const top=out[0].o; return {o:top,qs:out.filter(x=>x.o.key===top.key).map(x=>x.q)}; }
@@ -5142,6 +5231,42 @@ const qEmpty=v=>v===undefined||v===''||(Array.isArray(v)&&!v.length);
 const qAnswered=(q,a)=>qAfter(q)?qOccs(q).filter(o=>qOccOpen(q,o.key)).every(o=>!qEmpty((a[q.id]||{})[o.key]))
   :q.link.each?!!(a[q.id]&&Object.keys(a[q.id]).length):!qEmpty(a[q.id]);
 const qOpenN=()=>qList().filter(q=>qMayFill(q)&&!qAnswered(q,myExtra().a)).length;
+// Required questions I may answer that are still empty (the rule qSend checks before sending).
+const qReqOpen=()=>canManage()?[]:qList().filter(q=>q.req&&qMayFill(q)&&!qPer(q)&&!qAnswered(q,myExtra().a));
+// ---- To do: what the person answering still has to do in this round (strip under the header + dots on the tabs).
+// Worked out from page state only: availability not sent, required questions empty, vote groups without my vote,
+// after-meeting questions waiting. Organisers don't get it (they set the poll up); invite-locked people see the lock notice.
+function todoList(){
+  const d=P.data, i=d&&inst(); if(!i||d.isAdmin||d.draft||inviteLock()) return [];
+  const out=[], open=editable(), vg=voteGroups();
+  if(open&&!P.myResp) out.push({key:'avail',tab:'answers',icon:'cal',text:vg.length?t('Add your availability to vote'):t('Add your availability')});
+  const rq=open?qReqOpen():[]; if(rq.length) out.push({key:'req',tab:'questions',icon:'ask',text:rq.length===1?t('1 required question'):t('{n} required questions',{n:rq.length}),q:rq[0]});
+  const nv=open&&P.myResp?vg.filter(g=>!g.opts.some(m=>myVotes().has(m.id))):[];
+  if(nv.length) out.push({key:'vote',tab:'meetings',icon:'check',text:nv.length===1?t('Vote on the proposed times'):t('Vote in {n} polls for meeting times',{n:nv.length}),g:nv[0]});
+  const ap=qList().length&&P.form&&P.form.can?qPromptPick(true):null;
+  if(ap) out.push({key:'after',tab:'questions',icon:'star',text:t('Rate {title}',{title:meetTitle(ap.o.m)}),pick:ap});
+  return out;
+}
+// Deadline today or tomorrow while something's still open: the strip turns amber.
+function todoSoon(){ const dl=inst().deadline; if(!dl||inst().status!=='open') return false; const n=new Date(), tm=new Date(n); tm.setDate(n.getDate()+1); return dl<=isoL(tm); }
+function todoSync(){
+  const el=$('todo'); if(!el||!P.data) return; const L=todoList(), tabs=new Set(L.map(x=>x.tab)); P.todo=L;
+  document.querySelectorAll('[data-tdot]').forEach(x=>{ x.hidden=!tabs.has(x.dataset.tdot); });
+  if(!L.length){ el.innerHTML=''; el.hidden=true; return; }
+  const dl=inst().deadline, soon=todoSoon();
+  el.hidden=false; el.className='todo'+(soon?' soon':'');
+  el.innerHTML=`<span class="todo-h">${ICON[soon?'deadline':'bell']}<b>${t('To do')}</b></span>${L.map(x=>`<button type="button" class="todo-c" data-todo="${x.key}">${ICON[x.icon]}<span>${esc(x.text)}</span></button>`).join('')}${dl&&inst().status==='open'?`<span class="todo-dl">${t('by {date}',{date:esc(dayLabel(dl))})}</span>`:''}${tip(t('What’s still open for you in this round. Tap one to go there.'))}`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-todo]'); if(!b||!P.data) return; e.preventDefault();
+  const x=(P.todo||[]).find(y=>y.key===b.dataset.todo); if(!x) return;
+  const flash=el=>{ if(!el) return; el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); };
+  if(x.key==='after'){ qPromptOpen(x.pick); return; }
+  if(x.key==='vote') setMsub('list',false);
+  setPollTab(x.tab);
+  if(x.key==='avail'){ if(P.tab!=='mine'){ P.tab='mine'; store.set('view:'+P.id,'mine'); } renderBody(); flash($('wsme')||$('pane-answers')); return; }
+  if(x.key==='req'){ P.qview='fill'; store.set('qview:'+P.id,'fill'); renderQuestions(); flash($('q_'+x.q.id)); return; }
+  if(x.key==='vote'){ renderBody(); flash(document.querySelector(`.vpanel[data-vg="${CSS.escape(vgKey(x.g))}"]`)); }
+});
 // Everyone's answers to q (for its picked date) — null when this person can't see them.
 function qAnswers(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!canSee())) return null;
   return rows.map(r=>({name:r.name||t('Someone'),v:qPer(q)?((r.extra||{})[q.id]||{})[qDate(q)]:(r.extra||{})[q.id],me:!!(P.form&&r.pid===P.form.pid)})).filter(x=>!qEmpty(x.v)); }
@@ -5236,7 +5361,7 @@ function qCard(q,fill){
 }
 // The Questions tab: header (Fill in / Results, + Ask), "You" for guests, cards, the form's Send bar.
 function renderQuestions(fresh){
-  const el=$('questions'); if(!el) return;
+  const el=$('questions'); if(!el) return; todoSync();
   if(!fresh&&P.qedit&&$('qeForm')) qeRead(); // a re-render keeps the open editor's fields and the field being typed in
   const fa=document.activeElement, keep=fa&&fa.id&&el.contains(fa)?{id:fa.id,v:fa.value,s:fa.selectionStart}:null;
   if(!P.form) P.form={extra:{},can:null,dirty:false};
@@ -7847,15 +7972,18 @@ function pushRedraw(){
 function pushSecDraw(){
   const el=$('pushsec'); if(!el) return;
   const a=pushAvail(), on=pushIsOn();
-  if(a==='off'){ el.hidden=true; return; }
+  if(a==='off'&&!CONFIG.emailEnabled){ el.hidden=true; return; }
+  if(!NTA.prefs&&!NTA.loading){ NTA.loading=true; ntAcctLoad().then(()=>{ NTA.loading=false; pushSecDraw(); }); }
   const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
     :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
   el.hidden=false;
-  el.innerHTML=`<h3>${t('Notifications')}</h3>
-    <div class="row mt-3"><span class="grow">${t('Chat messages on this device')}</span>${tip(t('Get a notification when someone writes in the chat of a poll you’re in, even when when-who is closed. Mute a single chat with the bell in its header. For new answers, use the bell at the top of a poll.'),'left')}
-      ${note?'':`<label class="sw" title="${esc(t('Chat messages on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Chat messages on this device'))}"><span></span></label>`}</div>
-    ${note?`<p class="help m0">${note}</p>`:!on&&PUSH.fail?`<p class="help m0">${esc(PUSH.fail)}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`;
+  el.innerHTML=`<h3 id="notifications">${t('Notifications')}</h3>
+    ${a==='off'?'':`<div class="row mt-3"><span class="grow">${t('Notifications on this device')}</span>${tip(t('Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.'),'left')}
+      ${note?'':`<label class="sw" title="${esc(t('Notifications on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Notifications on this device'))}"><span></span></label>`}</div>
+    ${note?`<p class="help m0">${note}</p>`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
+    ${ntAcctHtml()}`;
   const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
+  if(location.hash==='#notifications'&&NTA.prefs&&!NTA.scrolled){ NTA.scrolled=1; el.scrollIntoView({block:'start',behavior:'smooth'}); }
 }
 document.addEventListener('click',async e=>{
   const b=e.target.closest&&e.target.closest('[data-pushon],[data-pushno],[data-chatmute],[data-pushtest]'); if(!b) return;
@@ -7864,7 +7992,7 @@ document.addEventListener('click',async e=>{
   if(ds.pushno!==undefined){ store.set('pushAsk',new Date().toISOString()); pushRedraw(); return; }
   if(ds.pushtest!==undefined){ b.disabled=true; try{ const sub=PUSH.sub||(await (await pushReg()).pushManager.getSubscription()); await api('POST','/me/push/test',sub?{endpoint:sub.endpoint}:{}); toast(t('Test sent')); }catch(x){ toast(x.message); } b.disabled=false; return; }
   if(ds.chatmute!==undefined){ const ch=P.data&&P.data.chat; if(!ch) return; const m=!ch.muted; b.disabled=true;
-    try{ await api('PUT',`/polls/${P.id}/chat/mute`,{muted:m},headers()); ch.muted=m; toast(m?t('This chat is muted'):t('Notifications for this chat are on')); }catch(x){ toast(x.message); }
+    try{ const r=await api('PUT',`/polls/${P.id}/chat/mute`,{muted:m},headers()); ch.muted=m; if(r.notify&&P.data.me) P.data.me.notify=r.notify; ntAfter(m?t('This chat is muted'):t('Notifications for this chat are on')); }catch(x){ toast(x.message); }
     pushRedraw(); }
 });
 // Messages from the service worker: a push for the poll on screen, or a tapped notification.
@@ -7872,7 +8000,7 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',e=>{
     const d=e.data||{}; if(!d.poll||d.poll!==P.id||!P.data) return;
     if(d.type==='openchat'){ chatSetOpen(true,null); return; }
-    if(d.type==='answer'){ if(!$('dmenu')&&!document.querySelector('dialog[open]')) loadPoll(); return; }
+    if(d.type==='event'){ if(!$('dmenu')&&!document.querySelector('dialog[open]')) loadPoll(); return; }
     if(d.type==='chat'){ if(chatVisible()){ chatFast(); chatFetch(false); } else if(P.data.chat&&chatCan()) chatUnreadBadges((P.data.chat.unread||0)+1); }
   });
   navigator.serviceWorker.startMessages&&navigator.serviceWorker.startMessages();
@@ -7930,7 +8058,7 @@ function pollTabs(){
   if(P.atab==='participants'||P.atab==='share') P.atab='people'; // remembered tabs from before they were combined
   if(P.atab==='rounds'){ P.atab=P.data.isAdmin?'settings':'answers'; if(P.data.isAdmin) (P.setOpen||(P.setOpen={details:true})).rounds=true; } // the old Rounds tab
   if(!pollTabList().some(x=>x[0]===P.atab)) P.atab='answers';
-  return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='questions'?(n=>`<span class="count" id="qtabn"${n?'':' hidden'}>${n}</span>`)(P.data.isAdmin?qList().length:qOpenN()):''}</button>`).join('')}</nav>`;
+  return `<nav class="card tabs atabs" aria-label="${P.data.isAdmin?t('Manage this poll'):t('Poll sections')}">${pollTabList().map(([k,l])=>`<button type="button" data-atab="${k}" class="${P.atab===k?'on':''}"><span class="ti">${ICON[TAB_ICON[k]]}</span>${l}<span class="tdot" data-tdot="${k}" hidden title="${t('Something to do here')}"></span>${k==='meetings'?`<span class="count" id="mtabn"${inst().meetings.length?'':' hidden'}>${inst().meetings.length}</span>`:''}${k==='questions'?(n=>`<span class="count" id="qtabn"${n?'':' hidden'}>${n}</span>`)(P.data.isAdmin?qList().length:qOpenN()):''}</button>`).join('')}</nav>`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-msub]'); if(!b||!P.data) return; e.preventDefault(); if(b.dataset.msub!==P.msub) setMsub(b.dataset.msub); });
 // Meetings tab sub-view: 'list' (scheduled meetings) or 'plan' (the scheduler). Remembered per poll;
@@ -8793,6 +8921,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     if(em){ store.set(`resp:${pid}:${em[1]}`,{id:em[2],editKey:em[3]}); history.replaceState(null,'',location.pathname+location.search); }
     const pk=/^#k=([\w-]{1,40}\.[\w-]{22})$/.exec(location.hash);
     if(pk){ store.set('plink:'+pid,pk[1]); history.replaceState(null,'',location.pathname+location.search); }
+    if(['meetings','questions'].includes(qs.get('tab'))){ store.set('atab:'+pid,qs.get('tab')); qs.delete('tab'); history.replaceState(null,'','?'+qs.toString()+location.hash); }
     if(qs.has('chat')){ store.set('chatOpen:'+pid,true); qs.delete('chat'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from a notification
     await openPoll(pid); await contactsReturn(qs);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
@@ -8817,7 +8946,21 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+"Add your availability": "Verfügbarkeit eintragen",
+"Add your availability to vote": "Verfügbarkeit eintragen, um abzustimmen",
+"1 required question": "1 Pflichtfrage",
+"{n} required questions": "{n} Pflichtfragen",
+"Vote on the proposed times": "Über die Terminvorschläge abstimmen",
+"Vote in {n} polls for meeting times": "In {n} Terminabstimmungen abstimmen",
+"Rate {title}": "{title} bewerten",
+"To do": "Zu tun",
+"by {date}": "bis {date}",
+"What’s still open for you in this round. Tap one to go there.": "Was in dieser Runde noch für dich offen ist. Tippe darauf, um dorthin zu springen.",
+"Something to do here": "Hier ist noch etwas zu tun",
+"Your to-dos": "Deine To-dos",
+"What’s still open for you in this round: your availability, required questions, votes on meeting times or rating a meeting. Tap one to go there; the tab gets a dot too.": "Was in dieser Runde noch für dich offen ist: deine Verfügbarkeit, Pflichtfragen, Abstimmungen über Termine oder die Bewertung eines Treffens. Tippe darauf, um dorthin zu springen; der Tab bekommt auch einen Punkt.",
 "From the answers": "Aus den Antworten",
+"Participants": "Teilnehmende",
 "live": "live",
 "Updated from the current answers each time the invite email, calendar file or this page is shown.": "Wird bei jeder Einladungs-E-Mail, Kalenderdatei und jedem Öffnen dieser Seite aus den aktuellen Antworten neu erstellt.",
 "only you see the answers": "nur du siehst die Antworten",
@@ -9603,7 +9746,6 @@ function germanText(){ return {
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
 "You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.": "Du kannst die Verbindung jederzeit auf deiner Kontoseite trennen. Dabei werden die gespeicherten Tokens gelöscht und Google wird gebeten, den Zugriff zu widerrufen. Du kannst den Zugriff auch in deinen Google- oder Microsoft-Kontoeinstellungen entfernen.",
 "Services we use": "Dienste, die wir nutzen",
-"<b>Resend</b>: sends sign-in codes, invitations, reminders and the answer summaries you asked for.": "<b>Resend</b>: verschickt Anmeldecodes, Einladungen, Erinnerungen und die Zusammenfassungen neuer Antworten, die du eingeschaltet hast.",
 "<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.": "<b>Photon (komoot)</b>: schlägt Orte vor, wenn du einen Ort eintippst. Gesendet wird nur, was du in dieses Feld tippst.",
 "How long we keep it": "Wie lange wir Daten aufbewahren",
 "Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. A poll with no activity for 12 months (no answers, changes or chat messages, and its last day has passed) is deleted automatically with everything in it. Its owner gets an email 14 days before and can keep it by opening it. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.": "Umfragen und Antworten bleiben gespeichert, bis die Person, der die Umfrage gehört, sie löscht. Dabei werden auch alle Antworten und Nachrichten gelöscht. Eine Umfrage ohne Aktivität seit 12 Monaten (keine Antworten, Änderungen oder Chat-Nachrichten, und ihr letzter Tag ist vorbei) wird automatisch mit allem darin gelöscht. Die Person, der sie gehört, bekommt 14 Tage vorher eine E-Mail und kann sie behalten, indem sie sie öffnet. Kalender bleiben, bis du sie entfernst oder trennst. Dein Konto bleibt, bis du uns bittest, es zu löschen.",
@@ -10804,7 +10946,7 @@ function germanText(){ return {
 "Notifications for this chat are on": "Benachrichtigungen für diesen Chat sind an",
 "Get chat messages as notifications on this device, even when when-who is closed.": "Chat-Nachrichten als Benachrichtigung auf diesem Gerät, auch wenn when-who geschlossen ist.",
 "<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.": "<b>Benachrichtigungen (nur wenn du sie einschaltest):</b> pro Gerät die Push-Adresse, die uns dein Browser gibt, und ihre Schlüssel, damit neue Chat-Nachrichten dich erreichen, und welche Chats du stummgeschaltet hast. Ausschalten, Abmelden auf dem Gerät oder Löschen deines Kontos entfernt sie.",
-"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and, if you asked for them, new answers (poll title and the person’s name) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) und, wenn du sie eingeschaltet hast, neue Antworten (Titel der Umfrage und Name der Person) auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
+"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) und die anderen Benachrichtigungen, die du gewählt hast (Titel der Umfrage, Name der Person und was passiert ist), auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
 "This browser’s push service isn’t supported": "Der Push-Dienst dieses Browsers wird nicht unterstützt",
 "Invalid push keys": "Ungültige Push-Schlüssel",
 "Notifications aren’t set up on this site": "Benachrichtigungen sind auf dieser Website nicht eingerichtet",
@@ -10823,7 +10965,6 @@ function germanText(){ return {
 "No more notifications about answers": "Keine Benachrichtigungen mehr zu Antworten",
 "Get notified": "Benachrichtigt werden",
 "Get an email or a notification when someone answers or changes their answer. Everyone who can see the answers can switch it on for themselves.": "Bekomm eine E-Mail oder Benachrichtigung, wenn jemand antwortet oder die Antwort ändert. Alle, die die Antworten sehen können, können das für sich einschalten.",
-"<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.": "<b>Benachrichtigungen zu Antworten (nur wenn du sie für eine Umfrage einschaltest):</b> dass du eine E-Mail und/oder Benachrichtigung bekommen möchtest, wenn jemand in dieser Umfrage antwortet, und wann die letzte E-Mail verschickt wurde. Die E-Mail nennt die Namen der Personen, die geantwortet oder ihre Antwort geändert haben. Ausschalten kannst du sie mit der Glocke oben in der Umfrage.",
 "Only people who can see the answers can get notified about them.": "Nur wer die Antworten sehen kann, kann über sie benachrichtigt werden.",
 "{name} answered without an email address. Move the answer to the invited person it belongs to.": "{name} hat ohne E-Mail-Adresse geantwortet. Verschieb die Antwort zur eingeladenen Person, zu der sie gehört.",
 "This is someone invited…": "Ist eine eingeladene Person …",
@@ -10836,7 +10977,39 @@ function germanText(){ return {
 "Merged into {name}": "Mit {name} zusammengeführt",
 "Who is {name}?": "Wer ist {name}?",
 "likely": "wahrscheinlich",
-"Nobody found": "Niemand gefunden"}; }
+"Nobody found": "Niemand gefunden",
+"<b>Notification settings:</b> which events you want as a notification or in an hourly email (chat, answers, votes, meetings, questions, rounds), as your defaults and per poll. To send them, when-who keeps a short log of what happened in a poll (for example “Ana answered” or “Meeting set”, with the person’s name, no chat text) for 3 days. The email lists these events for the polls you chose.": "<b>Benachrichtigungs-Einstellungen:</b> welche Ereignisse du als Benachrichtigung oder in einer stündlichen E-Mail bekommen möchtest (Chat, Antworten, Abstimmungen, Termine, Fragen, Runden), als Standard und je Umfrage. Dafür speichert when-who 3 Tage lang ein kurzes Protokoll, was in einer Umfrage passiert ist (zum Beispiel „Ana hat geantwortet“ oder „Termin steht“, mit dem Namen der Person, ohne Chat-Text). Die E-Mail listet diese Ereignisse für die Umfragen, die du gewählt hast.",
+"<b>Resend</b>: sends sign-in codes, invitations, reminders and the hourly notification emails you asked for.": "<b>Resend</b>: verschickt Anmeldecodes, Einladungen, Erinnerungen und die stündlichen Benachrichtigungs-E-Mails, die du eingeschaltet hast.",
+"Chat messages": "Chat-Nachrichten",
+"All messages, or only the ones that @mention you.": "Alle Nachrichten oder nur die, in denen du @erwähnt wirst.",
+"Someone answers or changes their availability.": "Jemand antwortet oder ändert seine Verfügbarkeit.",
+"Votes on proposed times": "Abstimmungen über Terminvorschläge",
+"Someone votes on the meeting times proposed for a vote.": "Jemand stimmt über die vorgeschlagenen Termine ab.",
+"Answers to questions": "Antworten auf Fragen",
+"Someone fills in the questions.": "Jemand füllt die Fragen aus.",
+"A meeting is set, proposed for a vote, changed or cancelled.": "Ein Termin wird festgelegt, zur Abstimmung vorgeschlagen, geändert oder abgesagt.",
+"New questions": "Neue Fragen",
+"The organiser adds questions.": "Die Organisatorin oder der Organisator fügt Fragen hinzu.",
+"A new round opens, or the poll is closed or reopened.": "Eine neue Runde beginnt oder die Umfrage wird geschlossen oder wieder geöffnet.",
+"Notifications for this poll": "Benachrichtigungen für diese Umfrage",
+"Only when someone @mentions you": "Nur wenn dich jemand @erwähnt",
+"Right away on your devices": "Sofort auf deinen Geräten",
+"At most one email an hour": "Höchstens eine E-Mail pro Stunde",
+"Notifications are on for this device.": "Benachrichtigungen sind auf diesem Gerät an.",
+"Notifications are off on this device.": "Benachrichtigungen sind auf diesem Gerät aus.",
+"Custom settings for this poll.": "Eigene Einstellungen für diese Umfrage.",
+"Using your default settings.": "Deine Standard-Einstellungen werden verwendet.",
+"Use my defaults": "Meine Standards verwenden",
+"Change defaults": "Standards ändern",
+"Back to your defaults": "Wieder deine Standards",
+"Default for your polls": "Standard für deine Umfragen",
+"Used in every poll where you haven’t changed the settings with its bell. Answers, votes and answers to questions apply in polls you organise.": "Gilt in jeder Umfrage, in der du die Einstellungen nicht mit der Glocke geändert hast. Antworten, Abstimmungen und Antworten auf Fragen gelten in Umfragen, die du organisierst.",
+"Reset to the standard settings": "Auf die Grundeinstellungen zurücksetzen",
+"Notifications on this device": "Benachrichtigungen auf diesem Gerät",
+"Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.": "Bekomm Benachrichtigungen von when-who auf diesem Gerät, auch wenn es geschlossen ist. Was du bekommst, legst du unten fest und je Umfrage mit der Glocke oben in der Umfrage.",
+"Choose what you’re notified about in this poll, right away or in an hourly email: chat, answers, meetings, questions and more.": "Wähle, worüber du in dieser Umfrage benachrichtigt wirst, sofort oder in einer stündlichen E-Mail: Chat, Antworten, Termine, Fragen und mehr.",
+"Invalid notification settings": "Ungültige Benachrichtigungs-Einstellungen",
+"Mentions": "Erwähnungen"}; }
 })();
 </script>
 </body>

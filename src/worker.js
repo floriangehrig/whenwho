@@ -64,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-v9UqFdu5t+z5i+aNmOxZPX4lBaqwznC9vZ5SZDJTP4c=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-M2L7a9TIGcmD5/uh22SJhjQ/ZG34bNh7VrdkQPQtxn4=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -163,6 +163,7 @@ async function route(request, env, ctx, url) {
       if (!parts[3] && m === 'GET') return listConnections(request, env);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteConnection(request, env, parts[3]);
     }
+    if (parts[2] === 'notify' && !parts[3] && (m === 'GET' || m === 'PUT')) return meNotify(request, env);
     if (parts[2] === 'push') {
       if (!parts[3] && m === 'POST') return savePushSub(request, env);
       if (!parts[3] && m === 'DELETE') return deletePushSub(request, env);
@@ -223,6 +224,7 @@ async function route(request, env, ctx, url) {
   if (a === 'invite' && m === 'POST') return invitePoll(request, env, url, id);
   if (a === 'claim' && m === 'POST') return claimPoll(request, env, id);
   if (a === 'watch' && !b && m === 'PUT') return setWatch(request, env, id);
+  if (a === 'notify' && !b && m === 'PUT') return setPollNotify(request, env, id);
   if (a === 'meetings' && b === 'send' && !c && m === 'POST') return sendAllMeetings(request, env, url, id);
   if (a === 'chat') {
     if (!b && m === 'GET') return listChat(request, env, url, id);
@@ -247,7 +249,7 @@ async function route(request, env, ctx, url) {
   }
   if (a === 'instances') {
     if (!b && m === 'POST') return createNextInstance(request, env, ctx, url, id);
-    if (b && !c && m === 'PATCH') return updateInstance(request, env, id, b);
+    if (b && !c && m === 'PATCH') return updateInstance(request, env, ctx, id, b);
     if (b && !c && m === 'DELETE') return deleteInstance(request, env, id, b);
     if (b && c === 'responses' && !d && m === 'POST') return createResponse(request, env, ctx, id, b);
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
@@ -256,11 +258,11 @@ async function route(request, env, ctx, url) {
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'busy' && !d && m === 'PUT') return shareBusy(request, env, id, b);
     if (b && c === 'form' && !d && m === 'GET') return getForm(request, env, url, id, b);
-    if (b && c === 'form' && !d && m === 'PUT') return saveForm(request, env, url, id, b);
+    if (b && c === 'form' && !d && m === 'PUT') return saveForm(request, env, ctx, url, id, b);
     if (b && c === 'form' && !d && m === 'DELETE') return deleteForm(request, env, url, id, b);
     if (b && c === 'meetings' && d && e === 'send' && m === 'POST') return sendInvite(request, env, url, id, b, d);
   }
-  if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, id, b);
+  if (a === 'responses' && b && c === 'votes' && !d && m === 'PUT') return voteMeetings(request, env, ctx, id, b);
   if (a === 'responses' && b) {
     if (m === 'GET') return getOwnResponse(request, env, id, b);
     if (m === 'PUT') return updateResponse(request, env, ctx, id, b);
@@ -938,7 +940,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0031';
+const USER_DATA_REVIEWED = '0032';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -957,7 +959,9 @@ const USER_DATA = {
   chat_reads: { rows: 'SELECT * FROM chat_reads WHERE user_id = ?',
     del: `DELETE FROM chat_reads WHERE user_id = ? OR poll_id IN (${OWNED})` },
   answer_watch: { rows: 'SELECT * FROM answer_watch WHERE user_id = ?',
-    del: `DELETE FROM answer_watch WHERE user_id = ? OR poll_id IN (${OWNED})` }, // "notify me when someone answers" switches
+    del: `DELETE FROM answer_watch WHERE user_id = ? OR poll_id IN (${OWNED})` }, // notification settings per poll (prefs)
+  poll_events: { rows: 'SELECT id, poll_id, instance_id, kind, name, at FROM poll_events WHERE actor_id = ?',
+    del: `DELETE FROM poll_events WHERE actor_id = ? OR poll_id IN (${OWNED})` }, // 3-day log of what happened, for notifications
   instances: { rows: `SELECT * FROM instances WHERE poll_id IN (${OWNED})`,
     del: `DELETE FROM instances WHERE poll_id IN (${OWNED})` },
   polls: { rows: `SELECT * FROM polls WHERE owner_id = ? OR id IN (SELECT poll_id FROM participants WHERE user_id = ?)`,
@@ -1681,27 +1685,20 @@ async function pushSend(env, subs, payload, topic) {
   if (gone.length) await env.DB.prepare(`DELETE FROM push_subs WHERE id IN (${gone.map(() => '?').join(',')})`).bind(...gone).run();
   return sent;
 }
-// A new chat message → every member's devices (not the writer's, not muted).
+// A new chat message → notifyEvent (kind chat): members who want chat pushes ('all', or 'mentions' when tagged).
 async function pushChat(env, poll, user, m) {
-  if (!pushOn(env)) return;
-  const { results: subs } = await env.DB.prepare(
-    `SELECT s.id, s.endpoint, s.p256dh, s.auth, s.lang FROM push_subs s
-     WHERE s.user_id != ?2 AND s.user_id IN (${CHAT_MEMBERS_SQL} UNION SELECT owner_id FROM polls WHERE id = ?1)
-       AND NOT EXISTS (SELECT 1 FROM chat_reads r WHERE r.poll_id = ?1 AND r.user_id = s.user_id AND r.muted = 1)
-     ORDER BY s.created_at DESC LIMIT ?3`).bind(poll.id, user.id, PUSH_MAX).all();
-  if (!subs.length) return;
-  // Tags as @name, attached meetings as ★.
   const tagged = [...new Set([...m.body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)].map((x) => x[1]))];
   const names = {};
   if (tagged.length) {
     const { results } = await env.DB.prepare(`SELECT id, email, name FROM users WHERE id IN (${tagged.map(() => '?').join(',')})`).bind(...tagged).all();
     for (const u of results) names[u.id] = personOut({ ...u, avatar: '', avatar_img: '' }).name;
   }
+  // Tags as @name, attached meetings as ★.
   let text = m.body.replace(/<@([A-Za-z0-9_]{4,40})>/g, (_, id) => '@' + (names[id] || '?')).replace(/<#m:[A-Za-z0-9_-]{1,24}>/g, '★').replace(/\s+/g, ' ').trim();
   if (text.length > 200) text = text.slice(0, 199) + '…';
-  const tag = 'chat-' + poll.id;
-  await pushSend(env, subs, { kind: 'chat', title: String(poll.title || '').slice(0, 120), name: personOut({ ...user, avatar: '', avatar_img: '' }).name.slice(0, 60),
-    body: text, url: `/?p=${poll.id}&chat=1`, tag, poll: poll.id, at: m.created_at }, tag);
+  const name = personOut({ ...user, avatar: '', avatar_img: '' }).name.slice(0, 60);
+  await notifyEvent(env, poll, { kind: 'chat', actor: user.id, name, ref: m.id, tagged,
+    push: () => ({ name, body: text, url: `/?p=${poll.id}&chat=1`, at: m.created_at }) });
 }
 // Body: { endpoint, keys: { p256dh, auth } }.
 async function savePushSub(request, env) {
@@ -1747,12 +1744,16 @@ async function testPush(request, env) {
 }
 // Body: { muted }. Per person per poll, on the chat_reads row (a new row keeps read_at empty = nothing read yet).
 async function muteChat(request, env, id) {
-  const { user } = await chatAccess(request, env, id);
+  const { poll, user } = await chatAccess(request, env, id);
   const b = await body(request);
-  const muted = b.muted ? 1 : 0;
-  await env.DB.prepare(`INSERT INTO chat_reads (poll_id, user_id, read_at, muted) VALUES (?, ?, '', ?)
-    ON CONFLICT (poll_id, user_id) DO UPDATE SET muted = excluded.muted`).bind(id, user.id, muted).run();
-  return json({ ok: true, muted: !!muted });
+  const cur = await ntFor(env, poll, user.id);
+  const p = cleanPrefs({ chat: { p: b.muted ? 'off' : 'all' } }, cur.prefs);
+  await env.DB.batch([
+    env.DB.prepare(`INSERT INTO answer_watch (poll_id, user_id, prefs, sent_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (poll_id, user_id) DO UPDATE SET prefs = excluded.prefs`).bind(id, user.id, JSON.stringify(p), now()),
+    env.DB.prepare(`INSERT INTO chat_reads (poll_id, user_id, read_at, muted) VALUES (?, ?, '', ?)
+      ON CONFLICT (poll_id, user_id) DO UPDATE SET muted = excluded.muted`).bind(id, user.id, b.muted ? 1 : 0)]);
+  return json({ ok: true, muted: !!b.muted, notify: ntOut(await ntFor(env, poll, user.id)) });
 }
 
 // ---------- external calendar (iCal feed) ----------
@@ -2400,13 +2401,11 @@ async function getPoll(request, env, ctx, url, id) {
       responseId: part ? (await answerIn(env, part.id, sel.id)) || null : null };
     // Invited-only polls: in the poll as this account, or invited as a guest with this account's email (linked on first answer).
     if (poll.invited_only) out.me.invited = !!part || !!(await env.DB.prepare('SELECT 1 FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, user.email.toLowerCase()).first());
-    if (admin || (!poll.hide_results && (!poll.invited_only || part))) { // "notify me when someone answers" (answer_watch)
-      const w = await env.DB.prepare('SELECT email, push FROM answer_watch WHERE poll_id = ? AND user_id = ?').bind(id, user.id).first();
-      out.me.watch = { email: !!(w && w.email), push: !!(w && w.push) };
-    }
+    const nt = await ntFor(env, poll, user.id); // notification settings for this poll (the bell)
+    if (nt && nt.member) out.me.notify = ntOut(nt);
     const can = !!poll.allow_comments && (admin || !poll.invited_only || out.me.invited); // chat: everyone signed in, or the invited
     out.chat = { can, off: !poll.allow_comments, unread: can ? (await chatUnread(env, id, user.id)) || 0 : 0 };
-    if (can && (await env.DB.prepare('SELECT muted FROM chat_reads WHERE poll_id = ? AND user_id = ?').bind(id, user.id).first('muted'))) out.chat.muted = true;
+    if (can && nt && nt.prefs.chat.p === 'off') out.chat.muted = true;
     if (out.chat.unread) out.chat.mentions = (await chatUnread(env, id, user.id, true)) || 0; // unread messages that tag me
     if (can) { // header peek (newest message) and message counts per day / meeting thread
       const [last, refs] = await env.DB.batch([
@@ -2452,7 +2451,7 @@ async function deletePoll(request, env, id) {
   return json({ ok: true });
 }
 // Everything stored for one poll (answers, people, rounds, chat, shared busy hours), poll row last.
-const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups', 'answer_watch']
+const pollDeleteStmts = (env, id) => ['responses', 'form_answers', 'participants', 'instances', 'messages', 'chat_reads', 'shared_busy', 'poll_groups', 'answer_watch', 'poll_events']
   .map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE poll_id = ?`).bind(id))
   .concat(env.DB.prepare('DELETE FROM polls WHERE id = ?').bind(id));
 
@@ -2531,7 +2530,7 @@ async function createNextInstance(request, env, ctx, url, id) {
   return json({ ok: true, id: inst.id }, 201);
 }
 
-async function updateInstance(request, env, id, iid) {
+async function updateInstance(request, env, ctx, id, iid) {
   const poll = await loadPoll(env, id);
   await requireAdmin(request, env, poll, 'edit');
   const inst = await loadInstance(env, id, iid);
@@ -2551,6 +2550,15 @@ async function updateInstance(request, env, id, iid) {
   }
   const cols = Object.keys(u);
   if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
+  // Notifications: meetings set / proposed / changed / cancelled, questions added, the round closed or reopened.
+  const actor = (userOf(request) || {}).id, evs = [];
+  if (u.meetings) evs.push(...meetingEvents(JSON.parse(inst.meetings || '[]'), JSON.parse(u.meetings)));
+  if (u.questions !== undefined) {
+    const was = new Set(questionsOf(inst).map((q) => q.id)), added = (u.questions ? JSON.parse(u.questions) : []).filter((q) => q.type !== 'group' && !was.has(q.id));
+    if (added.length) evs.push({ kind: 'question_added', name: added.slice(0, 3).map((q) => q.label).join(' · ') + (added.length > 3 ? ' …' : '') });
+  }
+  if (u.status && u.status !== effStatus(inst)) evs.push({ kind: u.status === 'closed' ? 'poll_closed' : 'poll_reopened' });
+  for (const ev of evs) fireEvent(ctx, env, poll, { ...ev, iid, actor });
   const fresh = await loadInstance(env, id, iid);
   return json({ ok: true, instance: await withAnswerTexts(env, poll, fresh, publicInstance(fresh)) });
 }
@@ -2603,7 +2611,7 @@ function meetingToIcs(mt, poll, link, texts) {
   }
   lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
-  lines.push(`DESCRIPTION:${icsEscape([mt.note, mt.extra, texts && texts.get(mt.id) && `\n${texts.get(mt.id)}\n`, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
+  lines.push(`DESCRIPTION:${icsEscape(meetingDescText(poll, mt, texts && texts.get(mt.id), { link }))}`, 'END:VEVENT');
   return lines;
 }
 function buildIcs(poll, meetings, link, texts) {
@@ -2612,6 +2620,19 @@ function buildIcs(poll, meetings, link, texts) {
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
 const whoText = (mt) => (mt.participants === 'all' ? 'Everyone' : mt.participants.map((p) => p.name).join(', '));
+// Plain-text sections for meeting descriptions (.ics, emails): "📝 Description" header line, then the body.
+const ANS_ICON = { y: '✅', i: '🟡', m: '🤔', n: '❌' };
+const bullet = (x) => '• ' + String(x).replace(/\n/g, '\n  ');
+const descSection = (icon, label, body) => (body ? `${icon} ${label}\n${body}` : '');
+// The whole description of a meeting: poll description + meeting notes, participants, the answers (ans, from
+// meetingAnswerText) and the poll link. pollDesc: false leaves the poll's description out (emails listing several meetings).
+function meetingDescText(poll, mt, ans, { link, pollDesc = true } = {}) {
+  const L = ANS_L[poll.lang === 'de' ? 'de' : 'en'];
+  const desc = [pollDesc && poll.description, mt.note, mt.extra].map((x) => (x || '').trim()).filter(Boolean).join('\n\n');
+  const who = mt.participants === 'all' ? `${L.who}\n• ${L.all}`
+    : `${L.who} (${mt.participants.length})\n${mt.participants.map((p) => bullet(p.name)).join('\n')}`;
+  return [descSection('📝', L.desc, desc), `👥 ${who}`, ans, link && `🔗 ${L.poll}: ${link}`].filter(Boolean).join('\n\n');
+}
 // ---- answers in a meeting's description (mt.inc), rendered live from the round's answers ----
 // The data one round needs: availability answers and form answers (with names), options people added.
 async function answerData(env, inst) {
@@ -2626,8 +2647,10 @@ async function answerData(env, inst) {
     forms: forms.map((f) => ({ name: f.name, a: parseExtra(f.extra).a || {} })), added };
 }
 const ANS_L = {
-  en: { y: 'Coming', i: 'If needed', m: 'Maybe', n: 'Can’t', comments: 'Comments', yes: 'Yes', no: 'No', none: 'No answers yet' },
-  de: { y: 'Dabei', i: 'Wenn nötig', m: 'Vielleicht', n: 'Kann nicht', comments: 'Kommentare', yes: 'Ja', no: 'Nein', none: 'Noch keine Antworten' },
+  en: { y: 'Coming', i: 'If needed', m: 'Maybe', n: 'Can’t', comments: 'Comments', yes: 'Yes', no: 'No', none: 'No answers yet',
+    desc: 'Description', who: 'Participants', votes: 'Votes', all: 'Everyone', poll: 'Poll' },
+  de: { y: 'Dabei', i: 'Wenn nötig', m: 'Vielleicht', n: 'Kann nicht', comments: 'Kommentare', yes: 'Ja', no: 'Nein', none: 'Noch keine Antworten',
+    desc: 'Beschreibung', who: 'Teilnehmende', votes: 'Abstimmung', all: 'Alle', poll: 'Umfrage' },
 };
 // A person's state for the meeting: y / i / m / n (worst over its hours and days; nothing marked = n).
 function meetState(entries, mt) {
@@ -2667,8 +2690,8 @@ function meetingAnswerText(poll, inst, mt, data) {
     const rs = mt.participants === 'all' ? data.responses : data.responses.filter((r) => mt.participants.some((p) => p.id === r.id));
     const by = { y: [], i: [], m: [], n: [] };
     for (const r of rs) by[meetState(r.entries, mt)].push(r.name);
-    const lines = ['y', 'i', 'm', 'n'].filter((s) => by[s].length).map((s) => `${L[s]} (${by[s].length}): ${by[s].join(', ')}`);
-    if (lines.length) out.push(lines.join('\n'));
+    const lines = ['y', 'i', 'm', 'n'].filter((s) => by[s].length).map((s) => `• ${ANS_ICON[s]} ${L[s]} (${by[s].length}): ${by[s].join(', ')}`);
+    if (lines.length) out.push(descSection('🗳', L.votes, lines.join('\n')));
   }
   const qs = new Map(questionsOf(inst).map((q) => [q.id, q]));
   for (const pick of inc.qs || []) {
@@ -2693,13 +2716,13 @@ function meetingAnswerText(poll, inst, mt, data) {
     } else if (q.type === 'yesno') {
       const yes = vals.filter((x) => x.v && x.v.y), sum = yes.reduce((s, x) => s + (+x.v.n || 0), 0);
       body = [`${L.yes} ${yes.length} · ${L.no} ${vals.length - yes.length}${q.count && sum ? ` · ${q.count.label || '#'}: ${sum}` : ''}`];
-    } else body = vals.map((x) => `– ${answerValueText(q, x.v, opts, L)}`);
-    out.push([/[?:!.？！]$/.test(q.label) ? q.label : `${q.label}:`, ...body.filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))].join('\n'));
+    } else body = vals.map((x) => answerValueText(q, x.v, opts, L));
+    out.push(descSection('❓', q.label.replace(/:$/, ''), body.filter(Boolean).map(bullet).join('\n')));
   }
   if (inc.comments) {
     const rs = mt.participants === 'all' ? data.responses : data.responses.filter((r) => mt.participants.some((p) => p.id === r.id));
     const cs = rs.filter((r) => (r.comment || '').trim());
-    if (cs.length) out.push([`${L.comments}:`, ...cs.map((r) => `  ${r.name}: ${r.comment.trim().replace(/\n/g, '\n  ')}`)].join('\n'));
+    if (cs.length) out.push(descSection('💬', L.comments, cs.map((r) => bullet(`${r.name}: ${r.comment.trim()}`)).join('\n')));
   }
   const text = out.join('\n\n');
   return text.length > 4000 ? text.slice(0, 3999) + '…' : text;
@@ -2934,11 +2957,9 @@ async function sendInvite(request, env, url, id, iid, mid) {
     ics: 'Die Kalenderdatei ist angehängt. Öffne sie, um den Termin in deinen Kalender zu übernehmen.' }
     : { when: 'When', where: 'Where', map: 'Map', who: 'Who', all: 'Everyone', poll: 'Poll',
       ics: 'The calendar file is attached. Open it to add the meeting to your calendar.' };
-  const who = mt.participants === 'all' ? L.all : whoText(mt);
   const ans = mt.inc ? meetingAnswerText(poll, inst, mt, await answerData(env, inst)) : '', texts = new Map(ans ? [[mt.id, ans]] : []);
-  const desc = [mt.note, mt.extra, ans].filter(Boolean).join('\n\n');
-  const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `${L.who}: ${who}`, desc ? `\n${desc}` : null,
-    '', L.ics, `${L.poll}: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
+  const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null,
+    '', meetingDescText(poll, mt, ans, { link }), '', L.ics].filter((x) => x !== null).join('\n') + footer(poll);
   const ics = buildIcs(poll, [mt], link, texts);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
     attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }], quota: true });
@@ -2991,8 +3012,8 @@ async function sendAllMeetings(request, env, url, id) {
   const lastDay = (mt) => (mt.repeat ? mt.repeat.until || '9999-12-31' : mt.endDate || mt.date);
   const sorted = [...meetings].sort((x, y) => meetingStart(x).localeCompare(meetingStart(y)) || (x.start || 0) - (y.start || 0));
   const upcoming = sorted.filter((mt) => lastDay(mt) >= today), past = sorted.length - upcoming.length;
-  const block = (mt) => [`• ${mt.title || poll.title}`, `  ${meetingWhen(mt, poll.lang)}`, mt.location ? `  ${L.where}: ${mt.location}` : null,
-    `  ${L.who}: ${mt.participants === 'all' ? L.all : whoText(mt)}`, ...[mt.note, mt.extra, texts.get(mt.id)].filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))]
+  const block = (mt) => [`▪ ${mt.title || poll.title}`, `  ${meetingWhen(mt, poll.lang)}`, mt.location ? `  ${L.where}: ${mt.location}` : null, '',
+    '  ' + meetingDescText(poll, mt, texts.get(mt.id), { pollDesc: false }).replace(/\n/g, '\n  ').replace(/\n  \n/g, '\n\n')]
     .filter((x) => x !== null).join('\n');
   const text = [message || null, message ? '' : null, L.head(sorted.length), '', (upcoming.length ? upcoming : sorted).map(block).join('\n\n'),
     upcoming.length && past ? '\n' + L.past(past) : null, '', L.ics, '', L.sub, feed.replace(/^https?:/, 'webcal:'), `${L.google}: ${feed}`, '', `${L.poll}: ${link}`]
@@ -3120,82 +3141,250 @@ async function sendPollInvite(env, url, poll, user, emails, pids, { again, messa
 
 // Who gets series emails: everyone in the poll's participant list who has an email address, not only last round's answers.
 // Accounts: the account's email. Guests who answered: the email on their latest answer (removing it there stops the emails).
-// ---------- answer notifications ("notify me when someone answers", answer_watch, 0029) ----------
-// Per person per poll, for signed-in people who can see the answers: email = an hourly digest (cron), push = right away.
-const ANSWER_PUSH_GAP = 10 * 60000; // a changed answer pushes again only if it last changed this long ago (autosaves)
-const DIGESTS_PER_RUN = 40;         // emails per hourly run (Resend free tier: 100 a day for the whole site)
-// May this account follow the poll's answers? Organisers (any role) always; others when answers aren't hidden
-// (invited-only polls: only people in the poll).
-async function watchAllowed(env, poll, uid) {
-  if (poll.owner_id === uid) return true;
-  const p = await env.DB.prepare('SELECT role FROM participants WHERE poll_id = ? AND user_id = ? LIMIT 1').bind(poll.id, uid).first();
-  if (p && POLL_ROLES.includes(p.role)) return true;
-  return !poll.hide_results && (!poll.invited_only || !!p);
+// ---------- notifications (answer_watch 0029, prefs + poll_events 0032) ----------
+// What happens in a poll (an answer, a vote, a meeting set, questions added, a new round, a chat message) is logged in
+// poll_events (notifyEvent) and pushed right away to the devices of people who want that type; the hourly cron sends one
+// email per person with the types they want by email (notifyDigests). Preferences per type: { p: push, e: email };
+// chat takes 'all' | 'mentions' | 'off'. Effective = the poll's override (answer_watch.prefs) ?? account defaults
+// (users.notify) ?? built-in by role (organisers also get answers, votes and question answers). Answers, votes and
+// question answers only go to people who can see the answers; chat only to chat members; guests (no account) get none.
+const NT_TYPES = ['chat', 'answers', 'votes', 'qanswers', 'meetings', 'questions', 'rounds'];
+const NT_SEE = new Set(['answers', 'votes', 'qanswers']); // need to see everyone's answers
+const EV_TYPE = { chat: 'chat', answer: 'answers', answer_changed: 'answers', vote: 'votes', qanswer: 'qanswers',
+  meeting_set: 'meetings', meeting_proposed: 'meetings', meeting_changed: 'meetings', meeting_cancelled: 'meetings',
+  question_added: 'questions', round_open: 'rounds', poll_closed: 'rounds', poll_reopened: 'rounds' };
+const EV_QUIET = new Set(['answer_changed', 'vote', 'qanswer']); // same person again within EV_GAP: logged, not pushed again
+const EV_GAP = 10 * 60000;
+const EV_KEEP_DAYS = 3;
+const DIGESTS_PER_RUN = 40;  // emails per hourly run (Resend free tier: 100 a day for the whole site)
+const CHAT_LV = ['all', 'mentions', 'off'];
+const ntBuiltin = (org) => ({ chat: { p: 'all', e: 'off' }, answers: { p: org ? 1 : 0, e: 0 }, votes: { p: org ? 1 : 0, e: 0 },
+  qanswers: { p: org ? 1 : 0, e: 0 }, meetings: { p: 1, e: 0 }, questions: { p: 1, e: 0 }, rounds: { p: 1, e: 0 } });
+const parseJ = (s) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+// Valid values from x laid over base (unknown keys and values ignored).
+function cleanPrefs(x, base) {
+  const out = JSON.parse(JSON.stringify(base));
+  if (!x || typeof x !== 'object') return out;
+  for (const k of NT_TYPES) {
+    const v = x[k]; if (!v || typeof v !== 'object') continue;
+    for (const c of ['p', 'e']) {
+      if (v[c] === undefined) continue;
+      if (k === 'chat') out.chat[c] = CHAT_LV.includes(v[c]) ? v[c] : v[c] === true || v[c] === 1 ? 'all' : v[c] === false || v[c] === 0 ? 'off' : out.chat[c];
+      else out[k][c] = v[c] ? 1 : 0;
+    }
+  }
+  return out;
 }
-// PUT /api/polls/:id/watch { email, push }: both off deletes the row.
+// Account defaults: answers / votes / question answers apply only in polls the person organises.
+function ntAccount(notify, org) {
+  const b = ntBuiltin(org), acct = parseJ(notify);
+  if (!acct) return b;
+  const out = cleanPrefs(acct, b);
+  if (!org) for (const k of NT_SEE) out[k] = b[k];
+  return out;
+}
+// Columns per person: uid, email, notify, prefs, wem, wpu (legacy answer_watch), muted, role, inpoll.
+const NT_COLS = (from) => `SELECT a.user_id AS uid, u.email, u.notify, w.prefs, w.email AS wem, w.push AS wpu, r.muted,
+    (SELECT role FROM participants WHERE poll_id = ?1 AND user_id = a.user_id AND role != '' LIMIT 1) AS role,
+    EXISTS (SELECT 1 FROM participants WHERE poll_id = ?1 AND (user_id = a.user_id OR (user_id IS NULL AND LOWER(email) = LOWER(u.email)))) AS inpoll
+  FROM (${from}) a JOIN users u ON u.id = a.user_id
+  LEFT JOIN answer_watch w ON w.poll_id = ?1 AND w.user_id = a.user_id
+  LEFT JOIN chat_reads r ON r.poll_id = ?1 AND r.user_id = a.user_id`;
+// One person's effective prefs and the types they may get in this poll.
+function ntRow(poll, x) {
+  const owner = !!poll.owner_id && poll.owner_id === x.uid, org = owner || POLL_ROLES.includes(x.role);
+  const member = org || !poll.invited_only || !!x.inpoll;
+  const see = org || (!poll.hide_results && member), chat = !!poll.allow_comments && member;
+  const acct = ntAccount(x.notify, org), own = parseJ(x.prefs);
+  let prefs;
+  if (own) prefs = cleanPrefs(own, acct);
+  else { // legacy switches: "notify me when someone answers" (0029) and the chat mute
+    prefs = JSON.parse(JSON.stringify(acct));
+    if (x.wem != null && (x.wem || x.wpu)) prefs.answers = { p: x.wpu ? 1 : 0, e: x.wem ? 1 : 0 };
+    if (x.muted) prefs.chat.p = 'off';
+  }
+  const types = NT_TYPES.filter((k) => (k === 'chat' ? chat : NT_SEE.has(k) ? see : member));
+  return { uid: x.uid, email: x.email, prefs, own: !!own, types, member };
+}
+// Everyone with an account connected to the poll (chat members, people in it, the owner, anyone with settings for it).
+async function ntAudience(env, poll) {
+  // (D1 allows only a few UNION terms per query, so one SELECT with ORs.)
+  const { results } = await env.DB.prepare(NT_COLS(`SELECT u.id AS user_id FROM users u WHERE
+      u.id IN (SELECT user_id FROM participants WHERE poll_id = ?1 AND user_id IS NOT NULL)
+      OR u.email IN (SELECT LOWER(email) FROM participants WHERE poll_id = ?1 AND user_id IS NULL AND email IS NOT NULL AND email != '')
+      OR u.id IN (SELECT user_id FROM chat_reads WHERE poll_id = ?1) OR u.id IN (SELECT user_id FROM messages WHERE poll_id = ?1)
+      OR u.id IN (SELECT user_id FROM answer_watch WHERE poll_id = ?1) OR u.id = (SELECT owner_id FROM polls WHERE id = ?1)`) + ' LIMIT 300').bind(poll.id).all();
+  return results.map((x) => ntRow(poll, x)).filter((a) => a.member);
+}
+async function ntFor(env, poll, uid) {
+  const x = await env.DB.prepare(NT_COLS('SELECT ?2 AS user_id')).bind(poll.id, uid).first();
+  return x ? ntRow(poll, x) : null;
+}
+const ntOut = (r) => ({ prefs: r.prefs, own: r.own, types: r.types });
+const wants = (a, type, ch, ev) => {
+  if (!a.types.includes(type)) return false;
+  const v = a.prefs[type][ch];
+  return type === 'chat' ? v === 'all' || (v === 'mentions' && (ev.tagged || []).includes(a.uid)) : !!v;
+};
+// Event text in a language (push body and email line).
+function evText(ev, poll, lang) {
+  const de = langOf(lang) === 'de', n = ev.name || '?';
+  const mt = (ev.kind || '').startsWith('meeting_') ? parseJ(ev.ref) : null;
+  const when = mt ? meetingWhen(mt, lang) + (mt.title ? ` · ${mt.title}` : '') : '';
+  switch (ev.kind) {
+    case 'answer': return de ? `${n} hat geantwortet` : `${n} answered`;
+    case 'answer_changed': return de ? `${n} hat die Antwort geändert` : `${n} changed their answer`;
+    case 'vote': return de ? `${n} hat über die Terminvorschläge abgestimmt` : `${n} voted on the proposed times`;
+    case 'qanswer': return de ? `${n} hat die Fragen beantwortet` : `${n} answered the questions`;
+    case 'meeting_set': return (de ? 'Termin steht: ' : 'Meeting set: ') + when;
+    case 'meeting_proposed': return (de ? 'Neuer Terminvorschlag zum Abstimmen: ' : 'New time to vote on: ') + when;
+    case 'meeting_changed': return (de ? 'Termin geändert: ' : 'Meeting changed: ') + when;
+    case 'meeting_cancelled': return (de ? 'Termin abgesagt: ' : 'Meeting cancelled: ') + when;
+    case 'question_added': return (de ? 'Neue Fragen: ' : 'New questions: ') + n;
+    case 'round_open': { const r = parseJ(ev.ref) || {}; return (de ? 'Neue Runde offen: ' : 'A new round is open: ') + periodText({ ...poll, lang }, { start_date: r.s, end_date: r.e }); }
+    case 'poll_closed': return de ? 'Die Umfrage ist geschlossen' : 'The poll is closed';
+    case 'poll_reopened': return de ? 'Die Umfrage ist wieder offen' : 'The poll is open again';
+    case 'chat': return de ? `Nachricht von ${n}` : `Message from ${n}`;
+  }
+  return '';
+}
+const EV_TAB = { meetings: 'meetings', questions: 'questions', qanswers: 'questions' };
+// Logs an event and pushes it. ev = { kind, iid?, actor?, name, ref?, tagged?: [uid], push?: (lang) => payload fields }.
+async function notifyEvent(env, poll, ev) {
+  const type = EV_TYPE[ev.kind]; if (!type) return;
+  const at = now();
+  let quiet = false;
+  if (EV_QUIET.has(ev.kind) && ev.ref) {
+    quiet = !!(await env.DB.prepare("SELECT 1 FROM poll_events WHERE poll_id = ? AND kind IN ('answer', 'answer_changed', ?) AND ref = ? AND at > ? LIMIT 1")
+      .bind(poll.id, ev.kind, ev.ref, new Date(Date.now() - EV_GAP).toISOString()).first());
+  }
+  // Chat: the message itself is the record (no copy in the log); only mentions are kept for the email.
+  await env.DB.prepare('INSERT INTO poll_events (poll_id, instance_id, kind, actor_id, name, ref, tagged, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(poll.id, ev.iid || null, ev.kind, ev.actor || null, String(ev.name || '').slice(0, 200), ev.kind === 'chat' ? '' : String(ev.ref || '').slice(0, 2000),
+      (ev.tagged || []).join(','), at).run();
+  if (quiet || !pushOn(env)) return;
+  const to = (await ntAudience(env, poll)).filter((a) => a.uid !== ev.actor && wants(a, type, 'p', ev)).map((a) => a.uid);
+  if (!to.length) return;
+  const { results: subs } = await env.DB.prepare(`SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id IN (${to.map(() => '?').join(',')})
+    ORDER BY created_at DESC LIMIT ?`).bind(...to, PUSH_MAX).all();
+  const tag = (type === 'chat' ? 'chat' : ev.kind.replace(/_.*/, '')) + '-' + poll.id;
+  await pushSend(env, subs, (s) => ({ kind: type === 'chat' ? 'chat' : ev.kind, title: String(poll.title || '').slice(0, 120), tag, poll: poll.id, at,
+    url: `/?p=${poll.id}${EV_TAB[type] ? '&tab=' + EV_TAB[type] : ''}`, body: evText(ev, poll, s.lang).slice(0, 200), ...(ev.push ? ev.push(s.lang) : {}) }), tag);
+}
+const fireEvent = (ctx, env, poll, ev) => ctx.waitUntil(notifyEvent(env, poll, ev).catch((e) => console.error('event', ev.kind, e)));
+// Meetings saved: what's new, proposed, moved or gone (confirmed ones), at most 5 events per save.
+function meetingEvents(oldList, newList) {
+  const old = new Map(oldList.map((m) => [m.id, m])), evs = [];
+  const brief = (m) => JSON.stringify({ date: m.date, endDate: m.endDate, start: m.start, end: m.end, allDay: m.allDay, repeat: m.repeat, title: m.title || '' });
+  const timeOf = (m) => [m.date, m.endDate, m.start, m.end, m.allDay, JSON.stringify(m.repeat || null)].join('|');
+  for (const m of newList) {
+    const o = old.get(m.id);
+    if (!o) evs.push({ kind: m.proposed ? 'meeting_proposed' : 'meeting_set', ref: brief(m) });
+    else if (o.proposed && !m.proposed) evs.push({ kind: 'meeting_set', ref: brief(m) });
+    else if (!m.proposed && timeOf(o) !== timeOf(m)) evs.push({ kind: 'meeting_changed', ref: brief(m) });
+  }
+  const ids = new Set(newList.map((m) => m.id));
+  for (const o of oldList) if (!o.proposed && !ids.has(o.id)) evs.push({ kind: 'meeting_cancelled', ref: brief(o) });
+  return evs.slice(0, 5);
+}
+// PUT /api/polls/:id/notify { prefs | null }: this poll's own settings (null = follow my defaults again).
+async function setPollNotify(request, env, id) {
+  const user = requireUser(request);
+  const poll = await loadPoll(env, id);
+  await checkPassword(env, request, poll);
+  const b = await body(request);
+  const cur = await ntFor(env, poll, user.id);
+  if (b.prefs === null) {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM answer_watch WHERE poll_id = ? AND user_id = ?').bind(id, user.id),
+      env.DB.prepare('UPDATE chat_reads SET muted = 0 WHERE poll_id = ? AND user_id = ?').bind(id, user.id)]);
+  } else {
+    if (!b.prefs || typeof b.prefs !== 'object') throw new HttpError(400, 'Invalid notification settings');
+    const p = cleanPrefs(b.prefs, cur.prefs);
+    await env.DB.prepare(`INSERT INTO answer_watch (poll_id, user_id, prefs, sent_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (poll_id, user_id) DO UPDATE SET prefs = excluded.prefs`).bind(id, user.id, JSON.stringify(p), now()).run();
+  }
+  return json({ ok: true, notify: ntOut(await ntFor(env, poll, user.id)) });
+}
+// Old API (answer notifications only): { email, push } → the answers row of this poll's settings.
 async function setWatch(request, env, id) {
   const user = requireUser(request);
   const poll = await loadPoll(env, id);
   await checkPassword(env, request, poll);
-  if (!(await watchAllowed(env, poll, user.id))) throw new HttpError(403, 'Only people who can see the answers can get notified about them.');
+  const cur = await ntFor(env, poll, user.id);
+  if (!cur.types.includes('answers')) throw new HttpError(403, 'Only people who can see the answers can get notified about them.');
   const b = await body(request);
-  const mail = b.email ? 1 : 0, push = b.push ? 1 : 0;
-  if (!mail && !push) await env.DB.prepare('DELETE FROM answer_watch WHERE poll_id = ? AND user_id = ?').bind(id, user.id).run();
-  else await env.DB.prepare(`INSERT INTO answer_watch (poll_id, user_id, email, push, sent_at) VALUES (?1, ?2, ?3, ?4, ?5)
-    ON CONFLICT (poll_id, user_id) DO UPDATE SET email = excluded.email, push = excluded.push,
-      sent_at = CASE WHEN answer_watch.email = 0 THEN excluded.sent_at ELSE answer_watch.sent_at END`).bind(id, user.id, mail, push, now()).run();
-  return json({ ok: true, watch: { email: !!mail, push: !!push } });
+  const p = cleanPrefs({ answers: { p: b.push ? 1 : 0, e: b.email ? 1 : 0 } }, cur.prefs);
+  await env.DB.prepare(`INSERT INTO answer_watch (poll_id, user_id, prefs, sent_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT (poll_id, user_id) DO UPDATE SET prefs = excluded.prefs`).bind(id, user.id, JSON.stringify(p), now()).run();
+  return json({ ok: true, watch: { email: !!p.answers.e, push: !!p.answers.p } });
 }
-// Someone answered (isNew) or changed their answer: push to the devices of everyone following the poll, except them.
-async function pushAnswer(env, poll, name, isNew, actorId) {
-  if (!pushOn(env)) return;
-  const { results: ws } = await env.DB.prepare('SELECT user_id FROM answer_watch WHERE poll_id = ? AND push = 1 AND user_id != ?').bind(poll.id, actorId || '').all();
-  const ok = [];
-  for (const w of ws) if (await watchAllowed(env, poll, w.user_id)) ok.push(w.user_id);
-  if (!ok.length) return;
-  const { results: subs } = await env.DB.prepare(`SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id IN (${ok.map(() => '?').join(',')})
-    ORDER BY created_at DESC LIMIT ?`).bind(...ok, PUSH_MAX).all();
-  const who = String(name || '?').slice(0, 60), tag = 'ans-' + poll.id;
-  await pushSend(env, subs, (s) => ({ kind: 'answer', title: String(poll.title || '').slice(0, 120), tag, poll: poll.id, url: `/?p=${poll.id}`, at: now(),
-    body: s.lang === 'de' ? (isNew ? `${who} hat geantwortet` : `${who} hat die Antwort geändert`) : (isNew ? `${who} answered` : `${who} changed their answer`) }), tag);
+// GET|PUT /api/me/notify { prefs | null }: account defaults (as for a poll you organise).
+async function meNotify(request, env) {
+  const user = requireUser(request);
+  if (request.method === 'PUT') {
+    const b = await body(request);
+    if (b.prefs !== null && (!b.prefs || typeof b.prefs !== 'object')) throw new HttpError(400, 'Invalid notification settings');
+    const was = await env.DB.prepare('SELECT notify FROM users WHERE id = ?').bind(user.id).first('notify');
+    const v = b.prefs === null ? '' : JSON.stringify(cleanPrefs(b.prefs, ntAccount(was, true)));
+    await env.DB.prepare('UPDATE users SET notify = ? WHERE id = ?').bind(v, user.id).run();
+    user.notify = v;
+  } else user.notify = await env.DB.prepare('SELECT notify FROM users WHERE id = ?').bind(user.id).first('notify');
+  return json({ prefs: ntAccount(user.notify, true), own: !!user.notify, types: NT_TYPES });
 }
-// Hourly: one email per follower with the answers given or changed since the last one (their own left out).
-async function answerDigests(env) {
-  if (!emailEnabled(env)) return;
-  const base = siteUrl(env); if (!base) return;
-  const { results: due } = await env.DB.prepare(
-    `SELECT w.poll_id, w.user_id, w.sent_at, u.email FROM answer_watch w JOIN users u ON u.id = w.user_id
-     WHERE w.email = 1 AND EXISTS (SELECT 1 FROM responses r LEFT JOIN participants p ON p.id = r.participant_id
-       WHERE r.poll_id = w.poll_id AND r.updated_at > w.sent_at AND (p.user_id IS NULL OR p.user_id != w.user_id))
-     LIMIT ?`).bind(DIGESTS_PER_RUN).all();
-  for (const w of due) {
-    try {
-      const poll = await env.DB.prepare('SELECT * FROM polls WHERE id = ?').bind(w.poll_id).first();
-      if (!poll || !(await watchAllowed(env, poll, w.user_id))) { // can't see the answers any more: stop following
-        await env.DB.prepare('UPDATE answer_watch SET email = 0 WHERE poll_id = ? AND user_id = ?').bind(w.poll_id, w.user_id).run();
-        continue;
+// Hourly: one email per person with what happened (types they want by email) since the last run, all their polls together.
+async function notifyDigests(env) {
+  await env.DB.prepare('DELETE FROM poll_events WHERE at < ?').bind(new Date(Date.now() - EV_KEEP_DAYS * 86400000).toISOString()).run();
+  const { results: evs } = await env.DB.prepare('SELECT * FROM poll_events WHERE digested = 0 ORDER BY id LIMIT 300').all();
+  if (!evs.length) return;
+  const maxId = evs[evs.length - 1].id;
+  const base = siteUrl(env);
+  if (emailEnabled(env) && base) {
+    const byPoll = new Map();
+    for (const e of evs) { if (!byPoll.has(e.poll_id)) byPoll.set(e.poll_id, []); byPoll.get(e.poll_id).push(e); }
+    const people = new Map(); // uid -> { email, lang, polls: [{ poll, evs }] }
+    for (const [pid, list] of byPoll) {
+      const poll = await env.DB.prepare('SELECT * FROM polls WHERE id = ?').bind(pid).first();
+      if (!poll) continue;
+      for (const a of await ntAudience(env, poll)) {
+        const mine = list.map((e) => ({ ...e, tagged: e.tagged ? e.tagged.split(',') : [] }))
+          .filter((e) => e.actor_id !== a.uid && wants(a, EV_TYPE[e.kind] || '', 'e', e));
+        if (!mine.length) continue;
+        if (!people.has(a.uid)) people.set(a.uid, { email: a.email, lang: poll.lang, polls: [] });
+        people.get(a.uid).polls.push({ poll, evs: mine });
       }
-      const { results: rs } = await env.DB.prepare(
-        `SELECT r.name, r.created_at, r.updated_at, i.start_date, i.end_date FROM responses r JOIN instances i ON i.id = r.instance_id
-         LEFT JOIN participants p ON p.id = r.participant_id
-         WHERE r.poll_id = ? AND r.updated_at > ? AND (p.user_id IS NULL OR p.user_id != ?) ORDER BY r.updated_at LIMIT 200`).bind(poll.id, w.sent_at, w.user_id).all();
-      if (!rs.length) continue;
-      const de = poll.lang === 'de', series = poll.kind === 'series';
-      const line = (r) => `• ${r.name}: ${r.created_at > w.sent_at ? (de ? 'hat geantwortet' : 'answered') : (de ? 'hat die Antwort geändert' : 'changed their answer')}`
-        + (series ? ` (${periodText(poll, r)})` : '');
-      const n = rs.length, allNew = rs.every((r) => r.created_at > w.sent_at);
-      const subject = `${poll.title}: ` + (de ? (allNew ? (n === 1 ? 'eine neue Antwort' : n + ' neue Antworten') : (n === 1 ? 'eine geänderte Antwort' : n + ' neue oder geänderte Antworten'))
-        : (allNew ? (n === 1 ? '1 new answer' : n + ' new answers') : (n === 1 ? '1 changed answer' : n + ' new or changed answers')));
-      const link = `${base}/?p=${poll.id}`;
-      const text = (de ? `Seit der letzten E-Mail in „${poll.title}“:` : `Since the last email in “${poll.title}”:`) + '\n\n' + rs.map(line).join('\n')
-        + `\n\n${link}\n\n—\n` + (de ? 'Du bekommst diese E-Mail, weil du für diese Umfrage „Bei neuen Antworten benachrichtigen“ eingeschaltet hast. Ausschalten: die Glocke 🔔 oben in der Umfrage.'
-          : 'You’re getting this because you turned on “Notify me when someone answers” for this poll. To turn it off, use the bell 🔔 at the top of the poll.');
+    }
+    let sent = 0;
+    for (const [, p] of people) {
+      if (sent >= DIGESTS_PER_RUN) break;
+      const de = p.lang === 'de', total = p.polls.reduce((n, x) => n + x.evs.length, 0);
+      const sections = p.polls.map(({ poll, evs: list }) => {
+        const lines = [], seen = new Set(), chat = list.filter((e) => e.kind === 'chat');
+        // The same person's answer twice in an hour: one line (answered wins over changed).
+        for (const e of [...list].reverse()) {
+          if (e.kind === 'chat') continue;
+          const key = EV_TYPE[e.kind] === 'answers' ? 'a:' + e.ref : ['vote', 'qanswer'].includes(e.kind) ? e.kind + ':' + e.ref : 'x:' + e.id;
+          if (seen.has(key)) continue; seen.add(key);
+          const first = EV_TYPE[e.kind] === 'answers' && list.some((x) => x.kind === 'answer' && x.ref === e.ref) ? { ...e, kind: 'answer' } : e;
+          lines.unshift('• ' + evText(first, poll, p.lang));
+        }
+        if (chat.length) {
+          const who = [...new Set(chat.map((e) => e.name))].slice(0, 4).join(', ');
+          lines.push('• ' + (de ? `${chat.length === 1 ? 'Eine neue Chat-Nachricht' : chat.length + ' neue Chat-Nachrichten'} (${who})` : `${chat.length === 1 ? '1 new chat message' : chat.length + ' new chat messages'} (${who})`));
+        }
+        return `${poll.title}\n${lines.join('\n')}\n${base}/?p=${poll.id}`;
+      });
+      const one = p.polls.length === 1 ? p.polls[0].poll : null;
+      const subject = one ? `${one.title}: ${de ? (total === 1 ? 'eine Neuigkeit' : total + ' Neuigkeiten') : (total === 1 ? '1 update' : total + ' updates')}`
+        : (de ? `Neuigkeiten in ${p.polls.length} Umfragen` : `Updates in ${p.polls.length} polls`);
+      const text = sections.join('\n\n') + '\n\n—\n' + (de ? 'Du bekommst diese E-Mail, weil du diese Benachrichtigungen per E-Mail eingeschaltet hast. Ändern: die Glocke 🔔 oben in der Umfrage oder dein Konto → Benachrichtigungen.'
+        : 'You’re getting this because you turned these notifications on by email. To change them, use the bell 🔔 at the top of the poll or Account → Notifications.');
       const html = emailHtml(`<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`,
-        { preheader: subject, button: { href: link, label: de ? 'Umfrage öffnen' : 'Open poll' }, site: base, lang: langOf(poll.lang) });
-      await sendEmail(env, { fromName: 'when-who', to: [w.email], subject, text, html });
-      await env.DB.prepare('UPDATE answer_watch SET sent_at = ? WHERE poll_id = ? AND user_id = ?').bind(rs[rs.length - 1].updated_at, poll.id, w.user_id).run();
-    } catch (e) { console.error('digest', w.poll_id, e); }
+        { preheader: subject, button: one ? { href: `${base}/?p=${one.id}`, label: de ? 'Umfrage öffnen' : 'Open poll' } : null, site: base, lang: langOf(p.lang) });
+      try { await sendEmail(env, { fromName: 'when-who', to: [p.email], subject, text, html }); sent++; } catch (e) { console.error('digest', e); }
+    }
   }
+  await env.DB.prepare('UPDATE poll_events SET digested = 1 WHERE digested = 0 AND id <= ?').bind(maxId).run();
 }
 
 // Who gets round emails: everyone in the poll with an address (participantRows' mail_to) who hasn't answered `inst`.
@@ -3204,6 +3393,8 @@ async function notifyOpened(env, poll, inst, origin) {
   // claim the notification so it is sent once even if the cron job and a visitor race
   const claim = await env.DB.prepare('UPDATE instances SET opened_notified = 1 WHERE id = ? AND opened_notified = 0').bind(inst.id).run();
   if (!claim.meta || !claim.meta.changes) return;
+  if (poll.kind === 'series' && (await env.DB.prepare('SELECT 1 FROM instances WHERE poll_id = ? AND seq < ? LIMIT 1').bind(poll.id, inst.seq).first()))
+    await notifyEvent(env, poll, { kind: 'round_open', iid: inst.id, ref: JSON.stringify({ s: inst.start_date, e: inst.end_date }) }).catch((e) => console.error('event', e));
   if (!poll.notify_open || !emailEnabled(env)) return;
   const rows = await waitingRows(env, poll, inst), to = rows.map((p) => p.mail_to), links = await personalLinks(env, poll, rows);
   if (!to.length) return;
@@ -3244,7 +3435,7 @@ async function runScheduled(env) {
   } catch (e) { console.error('cleanup', e); }
   if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
   if (new Date().getUTCHours() === 4) { try { await mergeEmailDupesAll(env); } catch (e) { console.error('dupes', e); } }
-  try { await answerDigests(env); } catch (e) { console.error('digest', e); }
+  try { await notifyDigests(env); } catch (e) { console.error('digest', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
   for (const poll of polls) {
@@ -3850,7 +4041,7 @@ async function createResponse(request, env, ctx, id, iid) {
   await env.DB.prepare('INSERT INTO responses (id, poll_id, instance_id, name, email, comment, entries, edit_hash, participant_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(rid, id, iid, part.name, mail, comment, JSON.stringify(entries), await sha256('edit:' + editKey), part.id, t, t).run();
   if (fill) await env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid).run(); // column from migration 0015
-  ctx.waitUntil(pushAnswer(env, poll, part.name, true, user && user.id).catch((e) => console.error(e)));
+  fireEvent(ctx, env, poll, { kind: 'answer', iid, actor: user && user.id, name: part.name, ref: part.id });
   return json({ id: rid, editKey, name: part.name }, 201);
 }
 async function loadResponse(env, id, rid) {
@@ -3902,7 +4093,7 @@ async function getOwnResponse(request, env, id, rid) {
 const proposedIds = (inst) => new Set(JSON.parse(inst.meetings || '[]').filter((x) => x.proposed).map((x) => x.id));
 function parseVotes(raw, props) { let v; try { v = JSON.parse(raw || '[]'); } catch { v = []; } return Array.isArray(v) ? v.filter((x) => props.has(x)) : []; }
 // PUT /api/polls/:id/responses/:rid/votes { votes: [meetingId] } — by the answer's owner (same rule as editing it) or the organiser.
-async function voteMeetings(request, env, id, rid) {
+async function voteMeetings(request, env, ctx, id, rid) {
   const poll = await loadPoll(env, id);
   const r = await loadResponse(env, id, rid);
   const inst = await loadInstance(env, id, r.instance_id);
@@ -3918,6 +4109,8 @@ async function voteMeetings(request, env, id, rid) {
   const seen = new Set();
   const votes = [...new Set(b.votes)].reverse().filter((x) => { if (!grp.has(x)) return true; const g = grp.get(x); if (seen.has(g)) return false; seen.add(g); return true; }).reverse();
   await env.DB.prepare('UPDATE responses SET votes = ? WHERE id = ?').bind(votes.length ? JSON.stringify(votes) : null, r.id).run();
+  if (JSON.stringify(parseVotes(r.votes, props).sort()) !== JSON.stringify([...votes].sort()))
+    fireEvent(ctx, env, poll, { kind: 'vote', iid: inst.id, actor: (userOf(request) || {}).id, name: r.name, ref: r.participant_id || r.id });
   return json({ ok: true, votes });
 }
 // ---- questions: a small form per round (instances.questions), answered apart from the availability (form_answers).
@@ -4228,7 +4421,7 @@ async function getForm(request, env, url, id, iid) {
     can: qs.filter((q) => admin || canAnswer(q, part, meetings, responses)).map((q) => q.id), occ });
 }
 // PUT /api/polls/:id/instances/:iid/form { fid?, rid?, name?, email?, extra } — save my answers to the questions.
-async function saveForm(request, env, url, id, iid) {
+async function saveForm(request, env, ctx, url, id, iid) {
   const poll = await loadPoll(env, id);
   const admin = await isAdmin(request, env, poll, 'manage');
   if (!(await isAdmin(request, env, poll))) await checkPassword(env, request, poll);
@@ -4266,6 +4459,7 @@ async function saveForm(request, env, url, id, iid) {
       .bind(fid, id, iid, part.id, extra, editKey ? await sha256('edit:' + editKey) : null, t, t).run();
     row = { id: fid };
   }
+  fireEvent(ctx, env, poll, { kind: 'qanswer', iid, actor: user && user.id, name: part.name, ref: part.id });
   return json({ ok: true, id: row.id, pid: part.id, name: part.name, extra: parseExtra(extra), ...(editKey ? { editKey } : {}) });
 }
 // DELETE /api/polls/:id/instances/:iid/form?fid=&rid= — remove my answers to the questions (the organiser: ?fid= of anyone's).
@@ -4341,9 +4535,8 @@ async function updateResponse(request, env, ctx, id, rid) {
   if (fill !== undefined) stmts.push(env.DB.prepare('UPDATE responses SET fill = ? WHERE id = ?').bind(fill, rid));
   await env.DB.batch(stmts);
   if (mail && !(cur && cur.user_id)) await linkGuestToAccount(env, id, partId, mail);
-  // Watchers get a push for a changed answer, but not for every autosave: only if it last changed 10+ minutes ago.
-  if ((entries !== r.entries || comment !== r.comment) && !(Date.now() - Date.parse(r.updated_at) < ANSWER_PUSH_GAP))
-    ctx.waitUntil(pushAnswer(env, poll, name, false, user && user.id).catch((e) => console.error(e)));
+  // A changed answer (pushed at most once per EV_GAP per person, see notifyEvent).
+  if (entries !== r.entries || comment !== r.comment) fireEvent(ctx, env, poll, { kind: 'answer_changed', iid: inst.id, actor: user && user.id, name, ref: partId || r.id });
   return json({ ok: true, name });
 }
 async function deleteResponse(request, env, id, rid) {
