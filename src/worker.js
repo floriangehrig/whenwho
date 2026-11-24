@@ -64,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-fwzMzIiKveYUUOQJk1VJVGikhkwvkye/107MHGYd5sA=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-9STkxYgv7pPCC/8m40R1geJPMcrTKnNi94fQcVO853c=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -132,7 +132,7 @@ async function route(request, env, ctx, url) {
   if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   if (!INTERNAL.has(request)) USERS.set(request, await getUser(env, cookies)); // MCP tool calls come with their user set (callApi)
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, personalLinks: !!env.LINK_KEY, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -238,6 +238,8 @@ async function route(request, env, ctx, url) {
     if (b && !c && m === 'DELETE') return deleteParticipant(request, env, url, id, b);
     if (b && c === 'merge' && m === 'POST') return mergeParticipant(request, env, id, b);
     if (b && c === 'role' && m === 'PUT') return setParticipantRole(request, env, id, b);
+    if (b && c === 'link' && !d && m === 'GET') return participantLink(request, env, id, b, false);
+    if (b && c === 'link' && d === 'reset' && m === 'POST') return participantLink(request, env, id, b, true);
   }
   if (a === 'groups') {
     if (!b && m === 'POST') return linkGroup(request, env, url, id);
@@ -921,7 +923,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0030';
+const USER_DATA_REVIEWED = '0031';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -2364,6 +2366,12 @@ async function getPoll(request, env, ctx, url, id) {
       .map((r) => ({ pid: r.id, name: r.name, hours: JSON.parse(r.hours), updatedAt: r.updated_at }));
   }
   const user = userOf(request);
+  const person = user ? null : await personByKey(request, env, id);
+  if (person) out.person = { pid: person.id, name: person.name, responseId: (await answerIn(env, person.id, sel.id)) || null };
+  else if (!user && env.LINK_KEY && PKEY_RE.test(request.headers.get('x-person-key') || '')) { // old or wrong link
+    const pid = request.headers.get('x-person-key').split('.')[0]; // that person has an account by now: they sign in instead
+    out.person = (await env.DB.prepare('SELECT 1 FROM participants WHERE id = ? AND poll_id = ? AND user_id IS NOT NULL').bind(pid, id).first()) ? { signin: true } : { bad: true };
+  }
   if (user) { // signed in: their answers are linked to the account
     const part = await accountParticipant(env, id, user.id);
     out.me = { name: part ? part.name : user.name, email: user.email, participantId: part ? part.id : null, shareBusy: !!(part && part.share_busy),
@@ -2618,6 +2626,37 @@ async function sendEmail(env, m) {
   if (r.status === 429) throw new HttpError(503, 'The site’s email limit is reached for now. Try again later (or tomorrow).');
   throw new HttpError(502, 'The email couldn’t be sent. Try again later.');
 }
+// Several different messages in one Resend call (POST /emails/batch, max 100 each): one subrequest instead of one per person.
+async function sendEmailBatch(env, msgs) {
+  for (let i = 0; i < msgs.length; i += 100) {
+    const payload = msgs.slice(i, i + 100).map((m) => ({
+      from: `"${headerSafe(m.fromName) || 'when-who'}" <${env.MAIL_FROM}>`,
+      to: m.to, subject: String(m.subject).replace(/[\r\n]+/g, ' ').slice(0, 200), text: m.text, html: m.html,
+      ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+    }));
+    const r = await fetch((env.RESEND_API_URL || 'https://api.resend.com') + '/emails/batch', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.ok) continue;
+    const detail = await r.text().catch(() => '');
+    console.error('resend batch', r.status, detail.slice(0, 300));
+    if (r.status === 429) throw new HttpError(503, 'The site’s email limit is reached for now. Try again later (or tomorrow).');
+    throw new HttpError(502, 'The email couldn’t be sent. Try again later.');
+  }
+}
+const escRe = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Personal links for the guest rows among `rows` (participantRows shape): Map email -> link. Empty without LINK_KEY.
+async function personalLinks(env, poll, rows) {
+  const out = new Map(), base = siteUrl(env, '');
+  if (!env.LINK_KEY || !base) return out;
+  for (const p of rows) {
+    const e = (p.mail_to || '').toLowerCase();
+    if (!p.user_id && EMAIL_RE.test(e) && !out.has(e)) out.set(e, await personalLink(env, base, poll.id, p));
+  }
+  return out;
+}
 const siteUrl = (env, origin) => (env.SITE_URL || origin || '').replace(/\/+$/, '');
 const fmtDay = (d, lang) => new Date(d + 'T00:00:00Z').toLocaleDateString(LOCALE[langOf(lang)], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 const hh = (h) => `${pad(h % 24)}:00`;
@@ -2685,7 +2724,9 @@ async function mailQuota(env, poll, count) {
 }
 const ownerOf = (env, poll) => poll.owner_id ? env.DB.prepare('SELECT name, email FROM users WHERE id = ?').bind(poll.owner_id).first() : null;
 // `html` (optional): the email's own body HTML (already escaped); without it the text is shown with an Open poll button on top.
-async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachments, quota = false, fromName, replyTo }) {
+// `links` (optional, Map email -> personal link, see personalLinks): those people get a message of their own in which the
+// poll's plain link (`${site}/?p=<id>`) is their personal one, sent in one Resend batch call; everyone else gets the BCC copy.
+async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachments, quota = false, fromName, replyTo, links }) {
   if (!emailEnabled(env)) throw new HttpError(400, 'Email isn’t set up for this site');
   const list = [...new Set(to.map((e) => e.toLowerCase()))].filter((e) => EMAIL_RE.test(e));
   if (quota) await mailQuota(env, poll, list.length);
@@ -2702,6 +2743,23 @@ async function sendMail(env, poll, { to, subject, text, html: bodyHtml, attachme
     site: siteUrl(env, ''), lang: langOf(poll.lang),
   });
   let sent = 0;
+  const own = links && links.size ? list.filter((e) => links.has(e)) : [];
+  if (own.length) {
+    const plain = new RegExp(escRe(`${siteUrl(env, '')}/?p=${poll.id}`) + '(?![\\w#&])', 'g');
+    const html0 = emailHtml(bodyHtml || `<div style="white-space:pre-wrap">${linkify(escHtml(text))}</div>`, {
+      preheader: subject, button: pollLink ? { href: '\u0000', label: poll.lang === 'de' ? 'Umfrage öffnen' : 'Open poll' } : null,
+      site: siteUrl(env, ''), lang: langOf(poll.lang),
+    });
+    await sendEmailBatch(env, own.map((e) => {
+      const link = links.get(e), put = (x) => x.replace(plain, () => link);
+      return { fromName: sender, to: [e], subject, text: put(text), html: put(html0).replace('\u0000', escHtml(link)), ...(reply ? { replyTo: reply } : {}) };
+    }));
+    sent += own.length;
+    const rest = new Set(own);
+    list.splice(0, list.length, ...list.filter((e) => !rest.has(e)));
+    // The organiser still gets one copy (with the plain link) when nobody is left for the BCC message.
+    if (!list.length && ownerMail) await sendEmail(env, { fromName: sender, to: [ownerMail.toLowerCase()], subject, text, html, ...(reply ? { replyTo: reply } : {}) });
+  }
   for (let i = 0; i < list.length; i += 49) { // max 50 recipients per message: send each batch as BCC
     const bcc = list.slice(i, i + 49);
     const to = (ownerMail || env.MAIL_FROM).toLowerCase();
@@ -2912,7 +2970,9 @@ async function sendPollInvite(env, url, poll, user, emails, pids, { again, messa
   const inst = await latestInstance(env, poll.id);
   const link = `${siteUrl(env, url.origin)}/?p=${poll.id}`;
   const { subject, text, html } = inviteMail(poll, inst, user.name, { again, message, link });
-  const sent = await sendMail(env, poll, { to: emails, subject, text, html, quota: true });
+  const want = new Set(pids);
+  const links = pids.length && env.LINK_KEY ? await personalLinks(env, poll, (await participantRows(env, poll.id, null)).filter((p) => want.has(p.id))) : null;
+  const sent = await sendMail(env, poll, { to: emails, subject, text, html, quota: true, links });
   if (pids.length) {
     const at = now();
     await env.DB.batch(pids.map((pid) => env.DB.prepare('UPDATE participants SET invited_at = ? WHERE id = ?').bind(at, pid)));
@@ -3001,44 +3061,36 @@ async function answerDigests(env) {
   }
 }
 
-// Guests who never answered (added by the owner in Participants): the email the owner gave them.
-// Skips anyone who already answered `inst`.
-async function participantEmails(env, poll, inst) {
-  const { results } = await env.DB.prepare(
-    `SELECT u.email AS ue, p.email AS pe,
-       (SELECT r.email FROM responses r WHERE r.participant_id = p.id ORDER BY r.updated_at DESC LIMIT 1) AS re,
-       EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS here
-     FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ?`).bind(inst.id, poll.id).all();
-  return results.filter((r) => !r.here).map((r) => (r.ue || (r.re !== null ? r.re : r.pe) || '').trim()).filter(Boolean);
-}
+// Who gets round emails: everyone in the poll with an address (participantRows' mail_to) who hasn't answered `inst`.
+const waitingRows = async (env, poll, inst) => (await participantRows(env, poll.id, inst.id)).filter((p) => !p.here && p.mail_to);
 async function notifyOpened(env, poll, inst, origin) {
   // claim the notification so it is sent once even if the cron job and a visitor race
   const claim = await env.DB.prepare('UPDATE instances SET opened_notified = 1 WHERE id = ? AND opened_notified = 0').bind(inst.id).run();
   if (!claim.meta || !claim.meta.changes) return;
   if (!poll.notify_open || !emailEnabled(env)) return;
-  const to = await participantEmails(env, poll, inst);
+  const rows = await waitingRows(env, poll, inst), to = rows.map((p) => p.mail_to), links = await personalLinks(env, poll, rows);
   if (!to.length) return;
   const base = siteUrl(env, origin); if (!base) return;
   const period = periodText(poll, inst);
   if (poll.lang === 'de') {
     const text = `Die Umfrage für ${period} ist offen.\n\nBitte trag ein, wann du Zeit hast${inst.deadline ? ` (bis ${fmtDay(inst.deadline, 'de')})` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
-    await sendMail(env, poll, { to, subject: `${poll.title}: Wann hast du Zeit (${period})?`, text });
+    await sendMail(env, poll, { to, subject: `${poll.title}: Wann hast du Zeit (${period})?`, text, links });
     return;
   }
   const text = `The poll for ${period} is open.\n\nPlease mark when you're available${inst.deadline ? ` by ${fmtDay(inst.deadline)}` : ''}:\n${base}/?p=${poll.id}` + seriesFooter(poll);
-  await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text });
+  await sendMail(env, poll, { to, subject: `${poll.title}: when are you free in ${period}?`, text, links });
 }
 async function remind(env, poll, inst) {
   const claim = await env.DB.prepare('UPDATE instances SET reminded = 1 WHERE id = ? AND reminded = 0').bind(inst.id).run();
   if (!claim.meta || !claim.meta.changes || !emailEnabled(env)) return;
   const base = siteUrl(env); if (!base) return;
-  const to = await participantEmails(env, poll, inst);
+  const rows = await waitingRows(env, poll, inst), to = rows.map((p) => p.mail_to), links = await personalLinks(env, poll, rows);
   if (!to.length) return;
   const period = periodText(poll, inst);
   const de = poll.lang === 'de';
   const text = (de ? `Erinnerung: Bitte trag bis ${fmtDay(inst.deadline, 'de')} ein, wann du für ${period} Zeit hast.`
     : `Reminder: please mark when you're available for ${period} by ${fmtDay(inst.deadline)}.`) + `\n\n${base}/?p=${poll.id}` + seriesFooter(poll);
-  await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text });
+  await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text, links });
 }
 async function runScheduled(env) {
   try {
@@ -3146,13 +3198,37 @@ const acctName = (user, typed, part) => user.name
   || (part && part.name) || user.email.split('@')[0].slice(0, 60);
 // Invited-only polls: the answer must come from a signed-in account that the owner invited, either as that account
 // or as a guest row with the account's email (that row then becomes the account's). The owner can always answer.
-async function requireInvited(env, poll, user, admin) {
+async function requireInvited(env, poll, user, admin, request) {
   if (!poll.invited_only || admin) return;
+  if (!user && request && await personByKey(request, env, poll.id)) return; // their personal link
   if (!user) throw new HttpError(403, 'Only invited people can answer this poll. Sign in with the email address you were invited with.', { code: 'invite_only' });
   if (await accountParticipant(env, poll.id, user.id)) return;
   const g = await env.DB.prepare('SELECT id FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(poll.id, user.email.toLowerCase()).first();
   if (!g) throw new HttpError(403, 'Only invited people can answer this poll, and this account isn’t invited.', { code: 'not_invited' });
   await toAccountRow(env, g.id, user).run();
+}
+// ---------- personal links ----------
+// A guest's own link to a poll: /?p=<poll>#k=<pid>.<token> (fragment: never in server logs). The token is an HMAC of
+// poll, person and participants.link_ver with the LINK_KEY secret, so nothing secret is stored; "New link" bumps link_ver.
+// Only guest rows have one: accounts sign in. The page sends it back as x-person-key; when signed in it's ignored.
+const PKEY_RE = /^([\w-]{1,40})\.([\w-]{22})$/;
+const PERSONS = new WeakMap(); // request -> participant row (or null), worked out once per request
+async function linkToken(env, pollId, pid, ver) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LINK_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`plink:${pollId}:${pid}:${ver || 0}`));
+  return b64url(new Uint8Array(sig)).slice(0, 22);
+}
+const personalLink = async (env, base, pollId, p) => `${base}/?p=${pollId}#k=${p.id}.${await linkToken(env, pollId, p.id, p.link_ver)}`;
+async function personByKey(request, env, pollId) {
+  if (PERSONS.has(request)) return PERSONS.get(request);
+  PERSONS.set(request, null);
+  const m = env.LINK_KEY && !userOf(request) && PKEY_RE.exec(request.headers.get('x-person-key') || '');
+  if (!m) return null;
+  await checkThrottle(env, request, 'name');
+  const p = await env.DB.prepare('SELECT * FROM participants WHERE id = ? AND poll_id = ? AND user_id IS NULL').bind(m[1], pollId).first();
+  if (p && safeEqual(await linkToken(env, pollId, p.id, p.link_ver), m[2])) { PERSONS.set(request, p); return p; }
+  await recordFail(env, request, 'name');
+  return null;
 }
 // ---------- shared busy hours ----------
 // PUT /api/polls/:id/instances/:iid/busy { share, hours? }: the caller's account participant turns sharing on / off.
@@ -3165,7 +3241,7 @@ async function shareBusy(request, env, id, iid) {
   const admin = await isAdmin(request, env, poll);
   if (!admin) await checkPassword(env, request, poll);
   const inst = await loadInstance(env, id, iid);
-  await requireInvited(env, poll, user, admin);
+  await requireInvited(env, poll, user, admin, request);
   const part = await accountParticipant(env, id, user.id);
   if (!part) throw new HttpError(409, 'Answer the poll first, then you can share your busy times');
   const b = await body(request);
@@ -3280,7 +3356,7 @@ async function fillFromText(request, env, id, iid) {
   const b = await body(request);
   const text = str(b.text, 500, 'Text', true);
   const user = userOf(request);
-  await requireInvited(env, poll, user, admin);
+  await requireInvited(env, poll, user, admin, request);
   await aiQuota(request, env, user);
   const dates = datesOf(inst, poll);
   const res = await aiJson(env, fillPrompt(poll, dates, reqLang(request)), text, FILL_SCHEMA);
@@ -3571,19 +3647,25 @@ async function createResponse(request, env, ctx, id, iid) {
   if (effStatus(inst) !== 'open' && !admin) throw new HttpError(409, 'This poll is closed');
   const b = await body(request);
   const user = userOf(request);
-  await requireInvited(env, poll, user, admin);
+  await requireInvited(env, poll, user, admin, request);
   // Signed in: the name shown to others is the account's profile name (typed name only while the profile has none).
   const mine = user ? await accountRow(env, id, user) : null;
-  const name = user ? acctName(user, b.name, mine) : personName(b.name);
+  const linked = user ? null : await personByKey(request, env, id);
+  const name = user ? acctName(user, b.name, mine) : linked ? linked.name : personName(b.name);
   const comment = poll.allow_comments ? str(b.comment, 500, 'Comment') : '';
-  const mail = user ? user.email : email(b.email);
+  const mail = user ? user.email : (linked && linked.email) || email(b.email);
   if (poll.require_email && !mail && !admin) throw new HttpError(400, 'This poll asks for your email address');
   const entries = validateEntries(b.entries, poll, datesOf(inst, poll));
   const fill = parseFill(b.fill, poll, datesOf(inst, poll));
   const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM responses WHERE instance_id = ?').bind(iid).first('n');
   if (count >= MAX_RESPONSES) throw new HttpError(409, 'This poll has reached its maximum number of responses');
   let part;
-  if (user) { // signed in: one participant per account, whatever name they give
+  const person = user ? null : await personByKey(request, env, id);
+  if (person) { // their personal link: this is that person, whatever name is typed
+    part = person;
+    const existing = await answerIn(env, part.id, iid);
+    if (existing) throw new HttpError(409, 'You have already answered this poll', { code: 'own_answer', responseId: existing });
+  } else if (user) { // signed in: one participant per account, whatever name they give
     part = mine;
     if (part) {
       const existing = await answerIn(env, part.id, iid);
@@ -3634,6 +3716,8 @@ async function canEditResponse(request, env, r) {
   }
   const key = request.headers.get('x-edit-key');
   if (key && safeEqual(await sha256('edit:' + key), r.edit_hash)) return true;
+  const person = r.participant_id ? await personByKey(request, env, r.poll_id) : null;
+  if (person && person.id === r.participant_id) return true;
   const raw = request.headers.get('x-edit-name');
   if (!raw || !r.participant_id) return false;
   await checkThrottle(env, request, 'name');
@@ -3957,6 +4041,8 @@ async function formIdentity(request, env, id, iid, { fid, rid }) {
     const row = part ? await env.DB.prepare('SELECT * FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, part.id).first() : null;
     return { part, row, user };
   }
+  const person = await personByKey(request, env, id);
+  if (person) return { part: person, row: await env.DB.prepare('SELECT * FROM form_answers WHERE instance_id = ? AND participant_id = ?').bind(iid, person.id).first() };
   if (fid && ID_RE.test(fid)) {
     const row = await env.DB.prepare('SELECT * FROM form_answers WHERE id = ? AND instance_id = ?').bind(fid, iid).first();
     const key = request.headers.get('x-form-key');
@@ -4000,7 +4086,7 @@ async function saveForm(request, env, url, id, iid) {
   if (!questionsOf(inst).length) throw new HttpError(400, 'This round has no questions');
   const b = await body(request);
   const user = userOf(request);
-  await requireInvited(env, poll, user, admin);
+  await requireInvited(env, poll, user, admin, request);
   let { part, row } = await formIdentity(request, env, id, iid, { fid: b.fid, rid: b.rid });
   let editKey = null;
   if (!part) {
@@ -4049,7 +4135,7 @@ async function updateResponse(request, env, ctx, id, rid) {
     await checkPassword(env, request, poll);
     if (effStatus(inst) !== 'open') throw new HttpError(409, 'This poll is closed');
   }
-  await requireInvited(env, poll, userOf(request), admin);
+  await requireInvited(env, poll, userOf(request), admin, request);
   const b = await body(request);
   let name = b.name !== undefined ? personName(b.name) : r.name;
   let mail = b.email !== undefined ? email(b.email) : r.email;
@@ -4060,6 +4146,9 @@ async function updateResponse(request, env, ctx, id, rid) {
   const cur = partId ? await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(partId).first() : null;
   const stmts = [];
   const user = userOf(request);
+  // Their personal link: they are that person, so the organiser's name for them stays (no renaming into someone else).
+  const person = cur && !admin ? await personByKey(request, env, id) : null;
+  if (person && person.id === cur.id) { name = cur.name; if (!mail) mail = cur.email || ''; }
   // A guest who signs in and edits their own answer: link that person to the account (if it has none in this poll yet).
   if (user && own && cur && !cur.user_id && !(await accountParticipant(env, id, user.id))) {
     stmts.push(toAccountRow(env, cur.id, user));
@@ -4144,7 +4233,7 @@ const latestInstance = (env, pollId) => env.DB.prepare('SELECT * FROM instances 
 // and whether they answered `instId` (`here`).
 async function participantRows(env, pollId, instId) {
   const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, p.role, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, p.role, p.link_ver, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
        (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email,
        (SELECT r3.email FROM responses r3 WHERE r3.participant_id = p.id ORDER BY r3.updated_at DESC LIMIT 1) AS re,
        EXISTS (SELECT 1 FROM responses r4 WHERE r4.participant_id = p.id AND r4.instance_id = ?) AS here
@@ -4274,6 +4363,19 @@ async function mergeParticipant(request, env, id, pid) {
   const dst = await loadParticipant(env, id, b.into);
   if (src.user_id && dst.user_id) throw new HttpError(409, 'Both are signed-in accounts, so they can’t be merged');
   return json({ ok: true, removedAnswers: await mergeInto(env, src, dst) });
+}
+// GET .../participants/:pid/link → { url }: a guest's personal link, for the organiser to send themselves.
+// POST .../link/reset makes a new one (the old one stops working).
+async function participantLink(request, env, id, pid, reset) {
+  const poll = await adminPoll(request, env, id, 'manage');
+  if (!env.LINK_KEY) throw new HttpError(404, 'Personal links aren’t set up on this site');
+  const p = await loadParticipant(env, id, pid);
+  if (p.user_id) throw new HttpError(400, 'This person has an account: they open the poll and sign in');
+  if (reset) {
+    await env.DB.prepare('UPDATE participants SET link_ver = link_ver + 1 WHERE id = ?').bind(p.id).run();
+    p.link_ver = (p.link_ver || 0) + 1;
+  }
+  return json({ url: await personalLink(env, siteUrl(env, new URL(request.url).origin), poll.id, p) });
 }
 // Moves everything of participant src to dst and deletes src; where both answered the same round, the newer answer wins.
 // Returns how many answers were dropped.

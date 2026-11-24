@@ -1803,12 +1803,13 @@
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .pmore{display:none;margin:0} .pmore>summary.qb{min-height:0;padding:0;border-color:transparent;background:none} .pmore .ddp{top:calc(100% + 2px)} .pmore .ddp .danger{color:var(--no)}
   .pact-w{display:inline-flex;gap:2px}
+  .pmore.plk{display:inline-block} .pmore .pm-n{display:none} /* personal link items: the ⋯ menu shows on wide screens too, without the inline actions */
   @media (max-width:560px){
     .pshare{gap:4px} .pshare .btn.ib,.pshare-copy{width:38px;min-width:38px;height:38px}
     .ppl .ptools{padding:4px 0 6px}
     .ppl .pplist li{padding:7px 6px;margin:0 -6px;gap:8px}
     .ppl .pplist .qb{width:34px;height:34px}
-    .ppl .pact-w{display:none} .ppl .pmore{display:inline-block}
+    .ppl .pact-w{display:none} .ppl .pmore{display:inline-block} .ppl .pmore .pm-n{display:contents}
   }
   .padd-new{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto auto}
   /* Settings */
@@ -3094,6 +3095,7 @@ function renderPrivacy(){
         t('<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.'),
         t('<b>Poll roles:</b> a poll’s owner can make people who answer with an account admin, editor or viewer. They then see what the organiser sees: everyone’s answers (also when answers are hidden) and the list of people; admins also their email addresses. The role is stored with your place in that poll and removed with it.'),
         t('<b>AI assistants (only if you connect one):</b> the name the app gave itself, when you connected it and last used it, and its access keys, stored only as a hash. You can disconnect it on your Account page, which deletes them.'),
+        t('<b>Personal links:</b> invitation emails to people without an account contain a link made just for them. Opening it answers as that person, so anyone they forward it to can answer in their name. Nothing extra is stored for it; the organiser can replace the link, and the old one then stops working.'),
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
       ]))}
@@ -4291,7 +4293,11 @@ const P = { id:null, data:null, password:null, iid:null, mine:null, mineFor:null
   tab:'mine', range:null, mode:'days', brush:'y', week:0, ovDay:null, dirty:false, saving:false,
   hint:store.get('showOthers',false), hintOff:new Set(), hddOpen:false, bddOpen:false, who:null, whoOpen:false, pweek:0, pavail:true, ppage:0, prange:!!store.get('prange',0), arange:false, aanchor:null, panchor:null, hanchor:null, drafts:[], dmeta:null, atab:'answers' };
 
+// Personal link (#k=<pid>.<token> from an invite email): the guest it was made for. Sent as x-person-key, never when signed in.
+const plinkOf=()=>P.id&&!ME.user?store.get('plink:'+P.id,''):'';
+const personMe=()=>!ME.user&&P.data&&P.data.person&&P.data.person.pid?P.data.person:null;
 function headers(){ const h={}; if(P.password) h['x-poll-password']=P.password;
+  const pk=plinkOf(); if(pk) h['x-person-key']=pk;
   if(P.myResp){ if(P.myResp.editKey) h['x-edit-key']=P.myResp.editKey; else if(P.myResp.name) h['x-edit-name']=encodeURIComponent(P.myResp.name); }
   return h; }
 const inst = () => P.data.instance;
@@ -4324,11 +4330,13 @@ async function loadPoll(first){
       <main class="wrap"><div class="card"><p class="m0">${t('The link may be wrong, or the poll was deleted. Ask the organiser for a new link.')}</p><div class="row mt-4"><a class="btn primary" href="${esc(origin)}">${t('Go to when-who')}</a></div></div></main>${siteFoot()}`; return;
   }
   P.iid = inst().id;
+  if(P.data.person&&(P.data.person.bad||P.data.person.signin)){ store.del('plink:'+P.id);
+    toast(P.data.person.signin?t('You have an account now: sign in to answer.'):t('This personal link no longer works. Ask the organiser for a new one.')); delete P.data.person; }
   if(P.mineFor!==P.iid){
     P.mineFor=P.iid; P.myVotes=[]; P.qAddWas=new Set(); P.qedit=null; P.form=null; P.formFor=null; P.qdate={}; qfReset(); histReset(); P.dirty=false; P.rep=null; P.range=null; P.ovDay=null; P.week=0; P.month=null; P.who=null; P.whoOpen=false; P.hintOff=new Set(); P.hddOpen=false; P.pweek=0; P.ppage=0; P.drafts=[]; P.dmeta=null;
-    const me=P.data.me; // signed in: the answer belongs to the account
-    P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : store.get(respKey(), null);
-    P.mine = { name: me ? (me.name||displayName(ME.user)) : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
+    const me=P.data.me, pp=personMe(); // signed in: the answer belongs to the account; personal link: to that person
+    P.myResp = me&&me.responseId ? {id:me.responseId, account:true} : pp&&pp.responseId ? {id:pp.responseId, account:true} : store.get(respKey(), null);
+    P.mine = { name: me ? (me.name||displayName(ME.user)) : pp ? pp.name : store.get('myName',''), email: me ? me.email : store.get('myEmail',''), comment:'', entries:{} };
     if(P.myResp){
       try{ const r=await api('GET',`/polls/${P.id}/responses/${P.myResp.id}`,null,headers()); P.mine={name:r.name,email:r.email||'',comment:r.comment,entries:cleanEntries(r.entries)}; P.myVotes=r.votes||[]; qfRestore(r.fill); }
       catch(e){ if(e.status===404||e.status===403){ store.del(respKey()); P.myResp=null; } }
@@ -4422,7 +4430,7 @@ function windowStatus(v,start,end,allDay,k){
 
 // ---- saving ----
 // Invited-only polls: '' = may answer, 'signin' = signed out, 'not' = this account isn't invited. The owner always may.
-function inviteLock(){ const d=P.data, p=d&&d.poll; if(!p||!p.invitedOnly||canSee()) return ''; if(!ME.user) return 'signin'; return d.me&&d.me.invited?'':'not'; }
+function inviteLock(){ const d=P.data, p=d&&d.poll; if(!p||!p.invitedOnly||canSee()) return ''; if(!ME.user) return personMe()?'':'signin'; return d.me&&d.me.invited?'':'not'; }
 function editable(){ return P.data && inst().status==='open' && !inviteLock(); }
 function status(t){ saveBar(t); }
 // The send/update bar under the calendar. Answers are only sent when the button is pressed.
@@ -4616,6 +4624,10 @@ function meFields(d,p){
   if(ME.user) return `${hd}<div class="me-box"><div class="me-row">${avatarOf(ME.user)}${ME.user.name
       ?`<b class="grow minw ell">${esc(ME.user.name)}</b><a href="?account" class="btn sm ghost withic ib" title="${t('Change name')}" aria-label="${t('Change name')}">${ICON.edit}</a>`
       :`<input type="text" id="name" class="grow" maxlength="60" autocomplete="name" placeholder="${t('Name shown to others')}" aria-label="${t('Name shown to others')}">`}</div></div>`;
+  const pp=personMe();
+  if(pp) return `${hd}<div class="me-box"><div class="me-row"><span class="me-ic">${ICON.user}</span><span class="grow minw ell">${t('Answering as <b>{name}</b>',{name:esc(pp.name)})}</span>
+      <button type="button" class="btn sm ghost" data-plinkforget title="${esc(t('This is {name}’s personal link. If you’re someone else, answer under your own name.',{name:pp.name}))}">${t('Not you?')}</button></div>
+    <p class="help small me-help${P.myResp?' sent':''}" id="ansHelp">${ansHelp()}</p></div>`;
   return `${hd}<div class="me-box"><div class="me-guest">
       <label class="me-f"><span class="me-ic">${ICON.user}</span><input type="text" id="name" maxlength="60"${req?' required':''} placeholder="${t('Your name')}" aria-label="${t('Your name (unique in this poll)')}" list="pnames" autocomplete="off"></label>
       <datalist id="pnames">${(d.participants||[]).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>
@@ -7919,7 +7931,7 @@ function adminPanes(){
       <button type="button" role="tab" data-msub="plan" class="${ms==='plan'?'on':''}" aria-selected="${ms==='plan'}"><span class="segic">${ICON.cal}</span>${t('Plan new')}<span class="count" id="msubd"${P.drafts&&P.drafts.length?'':' hidden'}>${P.drafts?P.drafts.length:0}</span></button></div></div>
     <div id="meetings" class="${ms==='list'?'':'hide'}"></div><div class="${ms==='plan'?'':'hide'}" id="mplan"></div></div></div>
   <div id="pane-questions" class="${hid('questions')}"><div class="card ws mws qws"><div id="questions"></div></div></div>
-  <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for every round.')+' ':'')+(p.invitedOnly?t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
+  <div id="pane-people" class="${hid('people')}"><div class="card ppl"><div class="card-h"><h2 class="grow">${t('People')}</h2>${tip((series?t('The link always shows the newest open round, so you can share it once for every round.')+' ':'')+(p.invitedOnly?t(CONFIG.personalLinks?'Only people you added in the <b>People</b> tab can answer. They open the personal link from their invitation email, or sign in with the email address you added (a 6-digit code is emailed to them).':'Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.'):t('Anyone with the link can answer, no account needed.')),'right')}</div>
     ${peoplePanel(p.id,{title:p.title,series,deadline:info.deadline,info})}</div></div>
   <div id="pane-settings" class="${hid('settings')}"><form id="sf" class="card sform"><div class="card-h"><h2>${t('Settings')}</h2></div>
     ${man?sset('details','edit',t('Details'),`
@@ -8003,7 +8015,7 @@ function answerChips(ids,o){
   return `<div class="mrows mt-3">
     ${srow('chat',t('Chat'),t('Group chat, and a comment field for guests'),swc(ids[0],o.com,t('Allow the group chat')),{tip:t('A group chat for you and everyone who answers with an account. Guests can leave a comment with their answer. Off = no chat and no comments.')})}
     ${srow('mail',t('Email required'),t('Guests give their email to answer'),swc(ids[1],o.req,t('Require name and email to answer')),{tip:t('Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.')})}
-    ${srow('users',t('Invited only'),t('Only people you add can answer. They sign in with an emailed code.'),swc(ids[2],o.inv,t('Only invited people can answer')),{tip:t('Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')})}</div>`;
+    ${srow('users',t('Invited only'),t('Only people you add can answer. They sign in with an emailed code.'),swc(ids[2],o.inv,t('Only invited people can answer')),{tip:t(CONFIG.personalLinks?'Only people you added in the <b>People</b> tab can answer. They open the personal link from their invitation email, or sign in with the email address you added (a 6-digit code is emailed to them).':'Only people you added in the <b>People</b> tab can answer. They sign in with the email address you added (a 6-digit code is emailed to them), so nobody else can answer in their name.')})}</div>`;
 }
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-sans]');
@@ -8096,8 +8108,9 @@ function renderParts(){
       ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
       <span class="acts">${rmenu(p)}${!man?'':`${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
-        <details class="dd more pmore"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
-          <button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></div></details>`}</span></li>`;
+        <details class="dd more pmore${here&&!p.account&&CONFIG.personalLinks?' plk':''}"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
+          ${here&&!p.account&&CONFIG.personalLinks?`<button type="button" data-plink="${esc(p.id)}" title="${esc(t('Opening it answers as {name}, no name to type. Send it only to them.',{name:p.name}))}">${ICON.link}<span>${t('Copy personal link')}</span></button><button type="button" data-plinkreset="${esc(p.id)}" title="${esc(t('Makes a new link. The old one stops working.'))}">${ICON.undo}<span>${t('New personal link')}</span></button>`:''}
+          <span class="pm-n"><button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></span></div></details>`}</span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
         <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
         <input type="email" id="pe_e" maxlength="200" value="${esc(p.email||'')}" aria-label="${t('Email')}" placeholder="${t('Email (optional)')}" data-pekey="${esc(p.id)}" autocomplete="off" autocapitalize="off" spellcheck="false"${p.account?` readonly title="${t('Linked to their account')}"`:''}></span>
@@ -8691,6 +8704,8 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
   if(pid){
     const em=/^#e=([\w-]{1,40})\.([\w-]{1,40})\.([\w-]{8,200})$/.exec(location.hash);
     if(em){ store.set(`resp:${pid}:${em[1]}`,{id:em[2],editKey:em[3]}); history.replaceState(null,'',location.pathname+location.search); }
+    const pk=/^#k=([\w-]{1,40}\.[\w-]{22})$/.exec(location.hash);
+    if(pk){ store.set('plink:'+pid,pk[1]); history.replaceState(null,'',location.pathname+location.search); }
     if(qs.has('chat')){ store.set('chatOpen:'+pid,true); qs.delete('chat'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from a notification
     await openPoll(pid); await contactsReturn(qs);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
@@ -8705,7 +8720,28 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
 })();
 
 // German texts for t(): English text → German. Add an entry for every new t('…') string.
+// Personal links: copy / renew in the People tab, "Not you?" in My answer.
+document.addEventListener('click',async e=>{
+  const tg=e.target.closest('[data-plink],[data-plinkreset],[data-plinkforget]'); if(!tg) return;
+  const ds=tg.dataset, dd=tg.closest('details'); if(dd) dd.open=false;
+  if(ds.plinkforget!==undefined){ store.del('plink:'+P.id); store.del(respKey()); P.myResp=null; P.mineFor=null; await loadPoll(false); return; }
+  if(ds.plinkreset&&!confirm(t('Make a new personal link? The old one stops working.'))) return;
+  try{ const r=await api(ds.plink?'GET':'POST',`/polls/${P.id}/participants/${ds.plink||ds.plinkreset}/link${ds.plink?'':'/reset'}`,ds.plink?null:{},headers());
+    await copy(r.url); }catch(err){ toast(err.message); }
+});
 function germanText(){ return {
+"This personal link no longer works. Ask the organiser for a new one.": "Dieser persönliche Link funktioniert nicht mehr. Bitte die Organisatorin oder den Organisator um einen neuen.",
+"Answering as <b>{name}</b>": "Du antwortest als <b>{name}</b>",
+"This is {name}’s personal link. If you’re someone else, answer under your own name.": "Das ist der persönliche Link von {name}. Wenn du jemand anderes bist, antworte unter deinem eigenen Namen.",
+"Not you?": "Nicht du?",
+"You have an account now: sign in to answer.": "Du hast jetzt ein Konto: Melde dich an, um zu antworten.",
+"Opening it answers as {name}, no name to type. Send it only to them.": "Wer ihn öffnet, antwortet als {name}, ohne Namen einzugeben. Schick ihn nur an diese Person.",
+"Copy personal link": "Persönlichen Link kopieren",
+"Makes a new link. The old one stops working.": "Erstellt einen neuen Link. Der alte funktioniert dann nicht mehr.",
+"New personal link": "Neuer persönlicher Link",
+"Make a new personal link? The old one stops working.": "Neuen persönlichen Link erstellen? Der alte funktioniert dann nicht mehr.",
+"Only people you added in the <b>People</b> tab can answer. They open the personal link from their invitation email, or sign in with the email address you added (a 6-digit code is emailed to them).": "Nur Personen, die du im Tab <b>Personen</b> hinzugefügt hast, können antworten. Sie öffnen den persönlichen Link aus ihrer Einladungs-E-Mail oder melden sich mit der E-Mail-Adresse an, die du eingetragen hast (sie bekommen einen 6-stelligen Code per E-Mail).",
+"<b>Personal links:</b> invitation emails to people without an account contain a link made just for them. Opening it answers as that person, so anyone they forward it to can answer in their name. Nothing extra is stored for it; the organiser can replace the link, and the old one then stops working.": "<b>Persönliche Links:</b> Einladungs-E-Mails an Personen ohne Konto enthalten einen Link nur für sie. Wer ihn öffnet, antwortet als diese Person, also kann auch jemand, an den sie ihn weiterleitet, in ihrem Namen antworten. Dafür wird nichts zusätzlich gespeichert; die Organisatorin oder der Organisator kann den Link ersetzen, dann funktioniert der alte nicht mehr.",
 "AI assistants": "KI-Assistenten",
 "Use when-who from Claude, ChatGPT or another AI assistant that supports MCP: add a custom connector with this address, then sign in here when it asks. It can then read your polls, answer them, create polls, invite people and set meetings for you.": "Nutze when-who aus Claude, ChatGPT oder einem anderen KI-Assistenten mit MCP-Unterstützung: Füge dort einen eigenen Connector mit dieser Adresse hinzu und melde dich hier an, wenn er danach fragt. Er kann dann deine Umfragen lesen und beantworten, Umfragen erstellen, Leute einladen und Termine für dich festlegen.",
 "Copy address": "Adresse kopieren",

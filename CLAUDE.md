@@ -50,6 +50,14 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **One email = one person:** adding someone by an email that has an account adds the account (`upsertPeople`); signing in or changing the
   account email claims that address's guest rows in every poll (`claimGuestRows`, a few merges per call, the rest lazily in `accountRow`);
   the page shows each address once across contact sections (`cgDedup`).
+- **Personal links** (0031, needs secret `LINK_KEY`; without it `GET /api/config` sends `personalLinks: false` and nothing changes): a guest row's
+  own link `/?p=<poll>#k=<pid>.<token>`, token = HMAC(`LINK_KEY`, poll:pid:`participants.link_ver`) (`linkToken` / `personalLink`), so nothing
+  secret is stored; `POST .../participants/:pid/link/reset` bumps `link_ver` (old link dead), `GET .../link` returns it (People ⋯ menu, manage).
+  The page keeps it as `plink:<poll>` and sends `x-person-key` (never when signed in; accounts sign in). `personByKey` then makes that row the
+  answerer in `createResponse` / `updateResponse` (name locked) / `canEditResponse` / `formIdentity`, passes `requireInvited` (invited-only polls
+  need no sign-in through it) and `GET /api/polls/:id` sends `person = { pid, name, responseId }` ("Answering as …", `personMe()`), or `{ bad }`.
+  Invites, reminders and round-opened emails give each guest with an email their own message via `sendMail({ links })` →
+  `sendEmailBatch` (Resend `/emails/batch`, one subrequest per 100); accounts and the rest get the BCC copy as before.
   The page no longer shows friend requests (API kept): the Account page's **Contacts** card and the Add-people popup share one
   contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
   people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
@@ -229,6 +237,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   privacy policy (`renderPrivacy`, bump `PRIVACY_UPDATED`): that includes any new outside service (a `fetch` to a new host, a new CSP entry,
   a new email or AI use). Load nothing from third parties on page load (the Inter font is self-hosted in `public/fonts/`).
 - Production config (custom domain, `MAIL_FROM`, `SITE_URL`, `TURNSTILE_SITE_KEY`) is in `wrangler.toml`; `RESEND_API_KEY` and `TURNSTILE_SECRET` are secrets.
+  Personal invite links (optional): secret `LINK_KEY` (any long random string; changing it kills all personal links).
   Calendar sign-in (optional): secrets `CAL_TOKEN_KEY` plus `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and/or `MS_CLIENT_ID`/`MS_CLIENT_SECRET`;
   redirect URI `<site>/api/oauth/{google|microsoft}/callback`. Without them the Connect buttons are hidden and only iCal links work.
   Email is sent through the Resend HTTP API (`sendEmail` in the Worker). Without `RESEND_API_KEY`, sign-in codes are printed to the `npm run dev` log.
