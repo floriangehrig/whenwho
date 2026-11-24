@@ -1420,7 +1420,13 @@
     .chatdock{right:14px;width:50px;height:50px}
     .chatback{display:block;position:fixed;inset:0;z-index:65;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .2s}
     .chatback.open{opacity:1;pointer-events:auto}
-    .chatdrawer{top:auto;left:0;width:100%;height:min(86vh,86dvh);border-left:0;border-radius:18px 18px 0 0;transform:translateY(105%);padding-bottom:env(safe-area-inset-bottom)}
+    .chatdrawer{top:auto;left:0;bottom:var(--vvb,0px);width:100%;height:min(86vh,86dvh,var(--vvh,100dvh));border-left:0;border-radius:18px 18px 0 0;transform:translateY(105%);padding-bottom:env(safe-area-inset-bottom)}
+    /* on-screen keyboard open (chatKb): the sheet fills the visible area right above it */
+    body.kbopen .chatdrawer{height:var(--vvh);border-radius:0;padding-bottom:0;box-shadow:none}
+    body.kbopen .chatback{display:none}
+    body.kbopen .chat-ask, body.kbopen .cd-grab{display:none}
+    body.kbopen .cd-h{padding-top:8px;padding-bottom:6px}
+    body.kbopen .chat-list{min-height:60px}
     .cd-h{padding-top:18px;position:relative} .cd-grab{display:block;position:absolute;top:6px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:999px;background:var(--line-strong);cursor:pointer}
   }
   .chat-form{display:flex;align-items:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
@@ -1806,7 +1812,8 @@
   /* in the poll header (brand band) */
   #hdr .pshare{max-width:560px;margin:12px 0 0}
   /* To do strip (todoSync): what the person answering still has to do. */
-  .todo{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:12px;padding:7px 8px 7px 12px;max-width:720px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--on-brand)}
+  .todo{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-top:12px;padding:7px 8px 7px 12px;max-width:720px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--on-brand)}
+  .todo>.tip{position:static} /* the bubble lines up with the strip, so it doesn't stick out past the screen edge (phones scrolled sideways) */
   .todo[hidden]{display:none} .todo .tip{color:var(--on-brand-muted)}
   .todo.soon{background:color-mix(in srgb,var(--maybe) 22%,transparent);border-color:color-mix(in srgb,var(--maybe) 55%,transparent)}
   .todo-h{display:inline-flex;align-items:center;gap:6px;font-size:13px} .todo-h svg{width:16px;height:16px;color:var(--maybe)}
@@ -7597,10 +7604,26 @@ function chatSetOpen(on,ref){
   if(dk){ dk.classList.toggle('isopen',on); dk.setAttribute('aria-expanded',on); }
   if(on){ const box=$('chatbox'); if(box&&was) box.innerHTML=''; chatSync(); const ta=$('chatin'); if(ta&&!isPhone()) ta.focus(); }
   else { chatStop(); if(dk&&dr&&dr.contains(document.activeElement)) dk.focus(); }
+  chatKb();
 }
+// Phones: iOS Safari doesn't shrink the page for the on-screen keyboard, so the chat sheet would sit behind it.
+// While the chat is open, the sheet follows the visible part of the screen (visualViewport): it sits right above
+// the keyboard and fills the space (body.kbopen hides the ask bar and tightens the header).
+function chatKb(){
+  const vv=window.visualViewport, dr=$('chatdrawer'), on=!!(vv&&dr&&document.body.classList.contains('chatopen')&&isPhone());
+  if(!on){ document.body.classList.remove('kbopen'); if(dr){ dr.style.removeProperty('--vvh'); dr.style.removeProperty('--vvb'); } return; }
+  const list=dr.querySelector('.chat-list'), end=list&&list.scrollHeight-list.scrollTop-list.clientHeight<40;
+  const f=document.activeElement, kb=!!(f&&dr.contains(f)&&f.matches('textarea,input'))&&innerHeight-vv.height>120;
+  dr.style.setProperty('--vvh',Math.round(vv.height)+'px');
+  dr.style.setProperty('--vvb',Math.max(0,Math.round(innerHeight-vv.offsetTop-vv.height))+'px');
+  document.body.classList.toggle('kbopen',kb);
+  if(end) requestAnimationFrame(()=>{ list.scrollTop=list.scrollHeight; });
+}
+if(window.visualViewport){ visualViewport.addEventListener('resize',chatKb); visualViewport.addEventListener('scroll',chatKb); }
 // Call after the chat may have appeared, disappeared or been rebuilt (render, open).
 function chatSync(){
   if(!$('chatbox')){ chatStop(); return; }
+  chatKb();
   const c=chatState();
   if(!chatVisible()){ chatStop(); return; }
   chatDraw(false);
