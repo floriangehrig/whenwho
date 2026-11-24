@@ -913,6 +913,9 @@
   .mmeta svg{width:15px;height:15px;flex:none;color:var(--accent)}
   .mmeta .tm{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
   .mmeta a{color:inherit;text-decoration:none}
+  .mmeta .mlocadd{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:none;font:inherit;color:var(--muted);cursor:pointer;opacity:.8} .mmeta .mlocadd:hover{color:var(--accent-ink);opacity:1;text-decoration:underline;text-underline-offset:2px}
+  .mdesc .locbox{margin:0}
+  .dinc{border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--card)} .dinc>summary{display:flex;align-items:center;gap:8px;padding:9px 0;cursor:pointer;font-weight:600;font-size:14px;list-style:none} .dinc>summary::-webkit-details-marker{display:none} .dinc>summary svg{width:16px;height:16px;color:var(--accent)} .dinc .inc{padding-bottom:10px} .dinc .inc-h{display:none}
   .mmeta a:hover{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
   .mrep{font-size:12.5px;color:var(--muted)}
   /* meeting description: one soft panel, note icon | text; the extra text sits below a hairline with a small label */
@@ -1342,7 +1345,7 @@
   .mdesc{display:flex;flex-direction:column;gap:6px;margin-top:8px} .mdesc textarea{min-height:70px}
   .inc{display:flex;flex-direction:column;gap:2px;padding-top:8px;border-top:1px solid var(--line)}
   .inc-h{display:flex;align-items:center;gap:6px;font-weight:650;font-size:13.5px;margin-bottom:2px}
-  .mdesc label.inc-r{display:flex;align-items:center;gap:8px;margin:0;padding:4px 0;font-weight:500;font-size:14px;cursor:pointer;min-width:0}
+  .mdesc label.inc-r,.dinc label.inc-r{display:flex;align-items:center;gap:8px;margin:0;padding:4px 0;font-weight:500;font-size:14px;cursor:pointer;min-width:0}
   .inc-r input[type=checkbox]{flex:none;width:16px;height:16px;margin:0} .inc-ic{flex:none;width:20px;text-align:center}
   .inc-l{flex:1;min-width:0;overflow-wrap:anywhere} .inc-r select{flex:none;width:auto;margin:0;padding:3px 24px 3px 8px;font-size:12.5px;min-height:0}
   .mans .mx-l{display:flex;align-items:center;gap:4px} .inc-warn[hidden]{display:none} .inc-warn{margin:6px 0 0;font-size:13px}
@@ -5108,7 +5111,7 @@ function renderMeetings(listOnly){
     const calB=`<a class="qb" href="${esc(icsUrl(m.id,true))}" title="${t('Download calendar file (.ics)')}" aria-label="${t('Download calendar file (.ics)')}">${ICON.download}</a>`;
     const shareB=qb('data-copyinvite',m.id,shareIc,shareL);
     // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
-    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra||m.inc?t('Edit description'):t('Add description'))+qb('data-qask',m.id,'ask',t('Ask people something about this meeting, e.g. vote on the place')):''}${
+    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra||m.inc||m.location?t('Edit details'):t('Add details'))+qb('data-qask',m.id,'ask',t('Ask people something about this meeting, e.g. vote on the place')):''}${
       d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}<span>${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span></span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
@@ -5116,9 +5119,9 @@ function renderMeetings(listOnly){
     return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
-        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
+        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where||(d.isAdmin&&!sel&&!edit?`<button type="button" class="mlocadd" data-mdesc="${m.id}" data-mfocus="loc">${ICON.pin}<span>${t('Add place')}</span></button>`:'')}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${!sel&&!m.proposed&&d.emailEnabled&&canManage()?`<div class="msend">${m.sentAt?`<span class="muted small">${ICON.check} ${t('Invite emailed {when}',{when:new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'})})}</span>`:''}<button type="button" class="btn sm ghost withic" data-sendinvite="${m.id}">${ICON.send}<span>${m.sentAt?t('Send again'):t('Email invite')}</span></button></div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
-        ${edit?descEditor(m.id,m.note||'','',m.extra||'',m.inc):m.note||m.extra||m.answersText?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}${m.answersText?`<div class="mnote mextra mans"><span class="mx-l">${t('From the answers')} · ${t('live')}${tip(t('Updated from the current answers each time the invite email, calendar file or this page is shown.'))}</span>${linkText(m.answersText)}</div>`:''}</div></div>`:''}${sel?'':qMeetChips(m)}</div></div>`; };
+        ${edit?descEditor(m.id,m.note||'','',m.extra||'',m.inc,m.location):m.note||m.extra||m.answersText?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}${m.answersText?`<div class="mnote mextra mans"><span class="mx-l">${t('From the answers')} · ${t('live')}${tip(t('Updated from the current answers each time the invite email, calendar file or this page is shown.'))}</span>${linkText(m.answersText)}</div>`:''}</div></div>`:''}${sel?'':qMeetChips(m)}</div></div>`; };
   const sb=(attr,v,ic,label)=>`<button type="button" ${attr}="${v}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
   const sa=(href,ic,label,tl=label)=>`<a href="${esc(href)}" title="${tl}" aria-label="${label}">${ICON[ic]}</a>`;
   const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sa(icsUrl(null,true),'download',t('Download all'))}${sel?'':sb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+sb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</div>`;
@@ -5134,6 +5137,7 @@ function renderMeetings(listOnly){
   el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?'':tellBar()}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&canManage()&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
   if(sel){ syncBatchBar(pv,nSel,all.length); const ta=$('mb_desc'); if(ta&&ta.value) growTa(ta); }
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; batchPreview(0); });
+  if($('mdesc_loc')) placeSearch($('mdesc_loc'),$('mdesc_loc_sug'),()=>{});
 }
 // Proposed meetings, one panel per vote (m.vote; '' = options from before votes had ids). Everyone who answered ticks
 // the options that suit them (m.one = pick one); the organiser confirms the ones that work.
@@ -6050,15 +6054,15 @@ function incPicker(inc){
     ${row('data-incwho',inc.who,'👥',t('Who’s coming at this time'))}${row('data-inccom',inc.comments,'💬',t('Comments'))}${qs.map(qrow).join('')}
     <div class="notice warn inc-warn" hidden>${t('Some of these answers are otherwise hidden. They will be shown to everyone who gets this meeting.')}</div></div>`;
 }
-function incRead(){ const box=document.querySelector('.mdesc .inc'); if(!box) return undefined;
+function incRead(box=document.querySelector('.mdesc .inc')){ if(!box) return undefined;
   const qs=[...box.querySelectorAll('[data-incq]')].filter(x=>x.checked).map(x=>{ const md=box.querySelector(`[data-incmode="${x.dataset.incq}"]`); return {id:x.dataset.incq,...(md&&md.value==='each'?{each:true}:{})}; });
   const who=box.querySelector('[data-incwho]').checked, com=box.querySelector('[data-inccom]').checked;
   return who||com||qs.length?{...(who?{who:true}:{}),...(com?{comments:true}:{}),...(qs.length?{qs}:{})}:undefined; }
-function incWarn(){ const box=document.querySelector('.mdesc .inc'); if(!box) return; const w=box.querySelector('.inc-warn'), any=box.querySelector('input:checked');
+function incWarn(box=document.querySelector('.mdesc .inc')){ if(!box) return; const w=box.querySelector('.inc-warn'), any=box.querySelector('input:checked');
   if(w) w.hidden=!(any&&(P.data.poll.hideResults||box.querySelector('[data-incown]:checked'))); }
-document.addEventListener('change',e=>{ if(e.target.closest&&e.target.closest('.mdesc .inc')) incWarn(); });
-function descEditor(id,val,help,extra,inc){
-  return `<div class="mdesc"><label for="mdesc_t">${id==='*'?t('Description for all meetings'):t('Description')}</label>
+document.addEventListener('change',e=>{ const b=e.target.closest&&e.target.closest('.inc'); if(b) incWarn(b); });
+function descEditor(id,val,help,extra,inc,loc){
+  return `<div class="mdesc">${id==='*'?'':`<div class="ifld locbox">${ICON.pin}<input type="text" id="mdesc_loc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Location')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="mdesc_loc_sug" value="${esc(loc||'')}"><div class="locsug" id="mdesc_loc_sug" role="listbox" hidden></div></div>`}<label for="mdesc_t">${id==='*'?t('Description for all meetings'):t('Description')}</label>
     <textarea id="mdesc_t" maxlength="1000" rows="${Math.min(10,Math.max(3,String(val||'').split('\n').length+1))}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(val)}</textarea>
     ${id==='*'?'':`<label for="mdesc_x">${t('Extra description <span class="opt">this meeting only, shown below</span>')}</label>
     <textarea id="mdesc_x" maxlength="1000" placeholder="${t('Anything that applies just to this date')}">${esc(extra||'')}</textarea>${incPicker(inc)}`}
@@ -7194,6 +7198,7 @@ function draftTray(){
         <div class="ifld locbox">${ICON.pin}<input type="text" id="dm_loc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Location (optional)')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dm_loc_sug" value="${esc(dm.location)}"><div class="locsug" id="dm_loc_sug" role="listbox" hidden></div></div></div>
       ${repeatFields()}
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
+      <details class="dinc" id="dm_inc"${dm.inc||P.dincOpen?' open':''}><summary>${ICON.users}<span>${t('From the answers')}</span>${tip(t('Adds what people answered to these meetings’ description, invite email and calendar file. It stays up to date as answers come in.'))}${dm.inc?`<span class="count">${(dm.inc.who?1:0)+(dm.inc.comments?1:0)+(dm.inc.qs||[]).length}</span>`:''}</summary>${incPicker(dm.inc)}</details>
       <div class="err" id="dm_err"></div>
       <div class="dfoot">${dvoteBox(n)}<button class="btn primary withic" data-savedrafts>${ICON.check}${dvoteOn(n)?(n===1?t('Propose 1 option'):t('Propose {n} options',{n})):n===1?t('Schedule {n} meeting',{n:1}):t('Schedule {n} meetings',{n})}</button></div></div></div>`;
 }
@@ -7210,6 +7215,9 @@ function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
   [['dm_title','title'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
+  const ib=$('dm_inc'); if(ib){ const box=ib.querySelector('.inc'); incWarn(box); ib.ontoggle=()=>{ P.dincOpen=ib.open; }; ib.querySelector('summary .tip').onclick=e=>e.preventDefault();
+    box.onchange=()=>{ dm.inc=incRead(box); const c=ib.querySelector('summary .count'), n=dm.inc?(dm.inc.who?1:0)+(dm.inc.comments?1:0)+(dm.inc.qs||[]).length:0;
+      if(c) c.textContent=n; else if(n) ib.querySelector('summary').insertAdjacentHTML('beforeend',`<span class="count">${n}</span>`); if(c&&!n) c.remove(); }; }
   document.querySelectorAll('[data-dvote]').forEach(cb=>cb.onchange=()=>{ P.dvote=cb.checked; renderBody(); });
   document.querySelectorAll('[data-dvone]').forEach(cb=>cb.onchange=()=>{ P.dvoteOne=cb.checked; });
   document.querySelectorAll('[data-dvto]').forEach(sl=>sl.onchange=()=>{ P.dvoteTo=sl.value; const g=sl.value&&vgOf(sl.value);
@@ -7485,7 +7493,7 @@ async function saveDrafts(btn){
   const rv=repeatValue(err); if(!rv) return;
   const vote=dvoteOn(P.drafts.length), to=vote&&dvoteTo(P.drafts.length), g=to&&vgOf(to);
   const vk=g?{vote:g.id||undefined,one:g.one||undefined}:{vote:(Math.random().toString(36).slice(2)+'00000000').slice(0,8),one:P.dvoteOne||undefined};
-  const list=P.drafts.map(x=>{ const m={date:x.date, ...(x.allDay&&x.endDate?{endDate:x.endDate}:{}), allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), participants:x.participants, ...rv, ...(vote?{proposed:true,...vk}:{})};
+  const list=P.drafts.map(x=>{ const m={date:x.date, ...(x.allDay&&x.endDate?{endDate:x.endDate}:{}), allDay:x.allDay, title:dm.title, location:dm.location, note:(dm.note||'').trim(), ...(dm.inc?{inc:dm.inc}:{}), participants:x.participants, ...rv, ...(vote?{proposed:true,...vk}:{})};
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length, had=new Set(ms.map(m=>m.id));
@@ -8851,11 +8859,11 @@ document.addEventListener('click',async e=>{
   if(ds.schedule){ scheduleDay(ds.schedule); return; }
   if(ds.ov){ P.ovDay=P.ovDay===ds.ov?null:ds.ov; if(P.ovDay) showMonth(P.ovDay); renderBody(); return; }
   if(ds.clearrange!==undefined){ P.range=null; renderBody(); return; }
-  if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); incWarn(); const ta=$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
+  if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); incWarn(); const ta=ds.mfocus==='loc'?$('mdesc_loc'):$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
   if(ds.mdesccancel!==undefined){ P.mdesc=null; renderMeetings(); return; }
-  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*', xe=$('mdesc_x'), xv=xe?xe.value.trim():null, inc=all?null:incRead();
+  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*', xe=$('mdesc_x'), xv=xe?xe.value.trim():null, inc=all?null:incRead(), le=$('mdesc_loc'), lv=le?le.value.trim().slice(0,200):null;
     tg.disabled=true; P.mdesc=null;
-    if(await saveMeetings(inst().meetings.map(m=>all?{...m,note:v}:m.id===id?{...m,note:v,extra:xv||undefined,inc}:m))) toast(all?t('Description saved on all meetings'):t('Description saved'));
+    if(await saveMeetings(inst().meetings.map(m=>all?{...m,note:v}:m.id===id?{...m,note:v,extra:xv||undefined,inc,...(lv!=null?{location:lv}:{})}:m))) toast(all?t('Description saved on all meetings'):t('Saved'));
     else { P.mdesc=id; tg.disabled=false; } return; }
   if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;
@@ -10218,6 +10226,10 @@ function germanText(){ return {
 "Earlier round · see all rounds": "Frühere Runde · alle Runden ansehen",
 "Edit": "Bearbeiten",
 "Edit description": "Beschreibung bearbeiten",
+"Edit details": "Details bearbeiten",
+"Add details": "Details hinzufügen",
+"Add place": "Ort hinzufügen",
+"Adds what people answered to these meetings’ description, invite email and calendar file. It stays up to date as answers come in.": "Fügt die Antworten in die Beschreibung, die Einladungs-E-Mail und die Kalenderdatei dieser Termine ein. Sie bleiben aktuell, wenn neue Antworten kommen.",
 "Editing this period": "Dieser Zeitraum wird bearbeitet",
 "Editing: ": "Bearbeiten: ",
 "Email": "E-Mail",

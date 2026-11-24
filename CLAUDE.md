@@ -159,7 +159,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   unanswered one of the last 14 days in a sheet (Skip = localStorage `qskip:<poll>`); `GET /api/polls/:id` sends `prevAfter` (the round
   before) so a meeting there opens that round. Ended meetings get a Rate chip; rating results show the average per meeting.
   Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
-- **Answers in a meeting** (meeting field `inc`, no table): the description editor's **From the answers** (`incPicker` / `incRead`) picks
+- **Answers in a meeting** (meeting field `inc`, no table): the meeting editor's (✎ on a card, also holds the location; ＋ Add place opens it) and
+  Plan new → Details' (`#dm_inc`, `P.dmeta.inc`, set on every new meeting) **From the answers** (`incPicker` / `incRead(box)`) picks
   `{ who, comments, qs: [{ id, each }] }` (who's coming at its time, answer comments, questions as summary or per person; not after-meeting ones).
   The Worker renders it live (`meetingAnswerText`, data from `answerData`, `meetingAnswerTexts` for several rounds) into the .ics DESCRIPTION,
   the invite / Email all emails and `answersText` on meetings in `GET /api/polls/:id` (card block, `descOf` for copy/share, MCP `from_answers`).
