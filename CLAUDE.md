@@ -165,6 +165,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The organiser's **Ask ▾** on a card (`qMeetAsk`: place vote, choice, yes/no, text, rating, from a preset linked to it via `qPresetAdd(pr, mid)`)
   and ✎ open the editor inside the card (`qOpenEditor(q, mid)` → `P.qedit.inMeet`). `renderQuestions` draws the tab (`renderQuestionsTab`,
   without the editor when it's in a card) and then `qMeetRefresh` (only the `[data-mqx]` blocks, focus kept by `keepFocus`).
+  **Questions for new meetings** (0033 `polls.meet_questions`, like `meet_location` / `meet_note`): up to 5 templates (questions without
+  id / link / who, `meetQuestionTpls` in the Worker, sent as `meetQuestions`, editors only; also in presets). Edited with one small engine
+  (`mqtBox` / `mqtDraw`, live list `MQT[pre]`, `data-mqt*`) in Settings / New poll → Meetings (`meetDefRows`) and Plan new → Details
+  (`#dm_qs`, `P.dmeta.qs`, pre-filled from the poll). `saveDrafts` checks the 30-per-round limit first, then adds one question per template
+  for each new meeting, or one linked to all of them with **One question for all** (`dm.qOne`) (`mqtQuestions`).
 - **Answers in a meeting** (meeting field `inc`, no table): the meeting editor's (✎ on a card, also holds the location; ＋ Add place opens it) and
   Plan new → Details' (`#dm_inc`, `P.dmeta.inc`, set on every new meeting) **From the answers** (`incPicker` / `incRead(box)`) picks
   `{ who, comments, qs: [{ id, each }] }` (who's coming at its time, answer comments, questions as summary or per person; not after-meeting ones).

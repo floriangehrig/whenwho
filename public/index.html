@@ -1889,6 +1889,15 @@
   .mdef-h{position:relative;display:flex;align-items:center;gap:2px;min-height:20px}
   .mdef-h .tip{position:static;width:22px;height:20px} /* small ⓘ like Reply by's; bubble lines up with the row */
   .mdef textarea{min-height:76px}
+  /* Questions for new meetings (Settings / New poll → Meetings, Plan new → Details) */
+  .mdef-q{display:flex;flex-direction:column;gap:8px} .mdef-q .mdef-h{gap:6px} .mdef-q .mdef-h>svg{width:15px;height:15px;color:var(--accent)}
+  .mqt{display:flex;flex-direction:column;gap:8px} .mqt-r{display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--sunken)}
+  .mqt-top{display:flex;align-items:center;gap:6px;min-width:0} .mqt-top input{flex:1 1 auto;min-width:0;height:36px}
+  .mqt-k{position:relative;display:inline-flex;align-items:center;gap:4px;flex:none;height:36px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--accent)} .mqt-k svg{width:16px;height:16px;flex:none}
+  .mqt-k select{border:0;background:transparent;padding:0;height:34px;font:inherit;font-size:13px;color:var(--ink);max-width:150px}
+  .mqt-o{display:flex;flex-direction:column;gap:6px;padding-left:4px} .mqt-o .qeadd{align-self:flex-start} .mqt-add{align-self:flex-start;margin:0} .mqt-add>summary{list-style:none} .mqt-add>summary::-webkit-details-marker{display:none}
+  .dqs .mqt{margin-top:8px} .dqs-one{margin-top:8px}
+  @media (max-width:520px){ .mqt-k select{max-width:110px} }
   .mrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
   .mrow{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:11px 14px;border-top:1px solid var(--line)}
   .mrows>.mrow:first-child,.mrows>.mrow.hide+.mrow{border-top:0}
@@ -3534,6 +3543,7 @@ const qPresetData=(list,icon)=>({scope:'questions',...(icon?{icon}:{}),questions
 // A poll's settings and the shown round's questions as preset data (Settings → Save as preset).
 function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon','meetLocation','meetNote']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
+  if((p.meetQuestions||[]).length) out.meetQuestions=mqtClone(p.meetQuestions);
   if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(92,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
   const qs=[...(i.groups||[]),...(i.questions||[])].map(({at,closed,...q})=>q); if(qs.length) out.questions=qs;
   return out; }
@@ -3575,7 +3585,7 @@ function renderNew(){
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'days',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true,hours:false})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
-    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','',''),'',NOPEN)}
+    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[]),'',NOPEN)}
     ${sset('questions','ask',t('Questions'),`<div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
@@ -3639,7 +3649,7 @@ function renderNew(){
   // Presets: the rail above the form fills it in (title, settings) and carries the questions along (NP.qs).
   const NP={pick:'blank',qs:null};
   const formData=()=>{ const kind=getR('kind'), pv=patValue('np'), pk=pickerValue('new'), d={title:v0('title').trim(),description:v0('desc'),kind,answerMode:getR('ans'),hourStart:pv.hs,hourEnd:pv.he,dayPattern:pv.pat,
-      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()};
+      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()}; const mq=mqtClean(MQT.n); if(mq.length) d.meetQuestions=mq;
     if(kind==='series') Object.assign(d,{unit:v0('unit'),every:Math.max(1,+v0('every')||1),openDays:+v0('openDays')||0,deadlineDays:v0('dlDays')===''?null:+v0('dlDays')});
     if(kind==='single'&&v0('start')&&v0('end')) d.days=Math.max(1,Math.round((new Date(v0('end'))-new Date(v0('start')))/86400e3)+1);
     if(mail){ d.notifyOpen=kind==='series'&&$('notify').checked; d.remindDays=$('remind').checked&&v0('remindDays')!==''?+v0('remindDays'):null; }
@@ -3655,7 +3665,7 @@ function renderNew(){
     const ab=f.querySelector(`[data-for="ans"] [data-sans="${d.answerMode||'days'}"]`); if(ab) ab.click();
     const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'days')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
-    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||'';
+    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||''; MQT.n=mqtClone(d.meetQuestions); mqtDraw('n');
     if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
     if(!keepQs){ NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; NP.qsEdited=false; qDraftSet(NP.qs||[]); NP.qs=NP.qs&&qDraftItems(); }
     sum(); };
@@ -3749,6 +3759,7 @@ function renderNew(){
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
       hideResults:$('hide').checked, allowComments:$('n_com').checked, requireEmail:$('n_reqmail').checked, password:v('pw')||undefined, meetLocation:v('n_mloc'), meetNote:v('n_mnote') };
     if($('n_invonly').checked) body.invitedOnly=true;
+    { const er=mqtErr(MQT.n); if(er) return fail(er); const mq=mqtClean(MQT.n); if(mq.length) body.meetQuestions=mq; }
     if(NP.qs&&NP.qs.length) body.questions=NP.qs;
     const pk=pickerValue('new'); body.icon=pk.emoji; if(pk.image) body.image=pk.image;
     if(kind==='series'){ Object.assign(body,{unit:v('unit'), every:+v('every'), firstStart:v('first'), openDays:+v('openDays'), deadlineDays:v('dlDays')===''?null:+v('dlDays')}); }
@@ -7257,7 +7268,8 @@ function renderPlan(el){
   el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
-  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||''}), n=P.drafts.length;
+  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:mqtClone(P.data.poll.meetQuestions)}), n=P.drafts.length;
+  if(!dm.qs) dm.qs=[];
   if(!n) return `<div id="drafts"></div>`;
   // One compact row per draft: date tile | time (or All day) over availability + who | icon toggles.
   const rows=P.drafts.map(x=>{ const inv=draftInvited(x), days=spanDays(x.date,mEnd(x)).filter(k=>P.data.dates.includes(k)), free=inv.filter(r=>days.every(k=>windowStatus((r.entries||{})[k],x.start,x.end,x.allDay,k)!=='x')).length;
@@ -7280,6 +7292,8 @@ function draftTray(){
       ${repeatFields()}
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
       <details class="dinc" id="dm_inc"${dm.inc||P.dincOpen?' open':''}><summary>${ICON.users}<span>${t('From the answers')}</span>${tip(t('Adds what people answered to these meetings’ description, invite email and calendar file. It stays up to date as answers come in.'))}${dm.inc?`<span class="count">${(dm.inc.who?1:0)+(dm.inc.comments?1:0)+(dm.inc.qs||[]).length}</span>`:''}</summary>${incPicker(dm.inc)}</details>
+      <details class="dinc dqs" id="dm_qs"${dm.qs.length||P.dqsOpen?' open':''}><summary>${ICON.ask}<span>${t('Questions')}</span>${tip(t('Asked in the new meetings, e.g. a vote on the place. People answer them right in the meeting. Set the ones every new meeting gets in Settings → Meetings.'))}<span class="count" id="dm_mqt_n"${dm.qs.length?'':' hidden'}>${dm.qs.length}</span></summary>
+        ${mqtBox('dm',dm.qs)}${n>1?`<div class="qetog dqs-one">${ICON.users}<label for="dm_qone">${t('One question for all {n}',{n})}</label>${tip(t('Off: each meeting gets its own questions and its own results. On: one question covers all the new meetings, e.g. one place vote for all the options.'))}${swc('dm_qone',!!dm.qOne,t('One question for all {n}',{n}))}</div>`:''}</details>
       <div class="err" id="dm_err"></div>
       <div class="dfoot">${dvoteBox(n)}<button class="btn primary withic" data-savedrafts>${ICON.check}${dvoteOn(n)?(n===1?t('Propose 1 option'):t('Propose {n} options',{n})):n===1?t('Schedule {n} meeting',{n:1}):t('Schedule {n} meetings',{n})}</button></div></div></div>`;
 }
@@ -7296,6 +7310,8 @@ function wirePlanner(){
   const dm=P.dmeta, find=k=>P.drafts.find(x=>x.key===+k);
   [['dm_title','title'],['dm_note','note']].forEach(([id,f])=>{ const el=$(id); if(el) el.oninput=()=>{ dm[f]=el.value; }; });
   if($('dm_loc')) placeSearch($('dm_loc'),$('dm_loc_sug'),v=>{ dm.location=v; });
+  const qb=$('dm_qs'); if(qb){ qb.ontoggle=()=>{ P.dqsOpen=qb.open; }; qb.querySelector('summary .tip').onclick=e=>e.preventDefault(); mqtDraw('dm');
+    const one=$('dm_qone'); if(one) one.onchange=()=>{ dm.qOne=one.checked; }; }
   const ib=$('dm_inc'); if(ib){ const box=ib.querySelector('.inc'); incWarn(box); ib.ontoggle=()=>{ P.dincOpen=ib.open; }; ib.querySelector('summary .tip').onclick=e=>e.preventDefault();
     box.onchange=()=>{ dm.inc=incRead(box); const c=ib.querySelector('summary .count'), n=dm.inc?(dm.inc.who?1:0)+(dm.inc.comments?1:0)+(dm.inc.qs||[]).length:0;
       if(c) c.textContent=n; else if(n) ib.querySelector('summary').insertAdjacentHTML('beforeend',`<span class="count">${n}</span>`); if(c&&!n) c.remove(); }; }
@@ -7568,8 +7584,12 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{ if(e.target.id==='sugAiText') P.sugAiText=e.target.value; });
 document.addEventListener('keydown',e=>{ if(e.target.id==='sugAiText'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); sugAiGo(); } });
 async function saveDrafts(btn){
-  const dm=P.dmeta||{title:'',location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||''}, ms=inst().meetings, err=$('dm_err');
+  const dm=P.dmeta||{title:'',location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:mqtClone(P.data.poll.meetQuestions)}, ms=inst().meetings, err=$('dm_err');
   if(!P.drafts.length) return;
+  // Questions for the new meetings (Details → Questions): checked before anything is saved.
+  const tq=mqtClean(dm.qs), one=!!dm.qOne&&P.drafts.length>1, terr=mqtErr(dm.qs); if(terr){ err.textContent=terr; return; }
+  const nq=tq.length*(one?1:P.drafts.length);
+  if(nq&&qList().length+nq>30){ err.textContent=t('Up to {n} questions per round: this would add {k}. Switch on “One question for all”, or ask fewer.',{n:30,k:nq}); return; }
   if(ms.length+P.drafts.length>100){ err.textContent=t('A poll can have at most 100 meetings ({n} already scheduled).',{n:ms.length}); return; }
   const rv=repeatValue(err); if(!rv) return;
   const vote=dvoteOn(P.drafts.length), to=vote&&dvoteTo(P.drafts.length), g=to&&vgOf(to);
@@ -7578,7 +7598,9 @@ async function saveDrafts(btn){
     if(x.ownDesc&&(x.note||'').trim()) m.extra=x.note.trim();
     if(!x.allDay){ m.start=x.start; m.end=x.end; } return m; });
   btn.disabled=true; const n=list.length, had=new Set(ms.map(m=>m.id));
-  if(await saveMeetings([...ms, ...list])){ if(!vote) tellSet(inst().meetings.filter(m=>!had.has(m.id)).map(m=>m.id)); P.drafts=[]; P.dvoteTo=''; setMsub('list',false); renderBody(); toast(vote?(g?t('Added to “{title}”',{title:g.title}):t('{n} options up for a vote',{n})):n===1?t('{n} meeting scheduled',{n}):t('{n} meetings scheduled',{n})); }
+  if(await saveMeetings([...ms, ...list])){
+    if(tq.length){ const nm=inst().meetings.filter(m=>!had.has(m.id)); if(nm.length) await saveQuestions([...qList(),...mqtQuestions(tq,nm,one)]); }
+    if(!vote) tellSet(inst().meetings.filter(m=>!had.has(m.id)).map(m=>m.id)); P.drafts=[]; P.dvoteTo=''; setMsub('list',false); renderBody(); toast(vote?(g?t('Added to “{title}”',{title:g.title}):t('{n} options up for a vote',{n})):n===1?t('{n} meeting scheduled',{n}):t('{n} meetings scheduled',{n})); }
   else btn.disabled=false;
 }
 
@@ -8410,7 +8432,7 @@ function adminPanes(){
       <div class="field"><label class="row tight">${t('Which days and times')}</label><p class="help small mt-0">${t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.')}</p>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`):''}
-    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote),`${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}`):''}
+    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions)),`${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
     ${man?sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
       p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:''):''}
@@ -8493,11 +8515,54 @@ document.addEventListener('click',e=>{
 const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',meetdef:'#0ea5a4',privacy:'#e0912b',email:'#e0508f'};
 // open: a fixed open map (New poll), so the open state isn't kept in P.
 // Settings / New poll → Meetings: location and description filled into the planner for every new meeting.
-function meetDefRows(pre,loc,note){
-  return `<div class="mdef"><div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location and description. You can still change them before creating meetings. Meetings you already made stay as they are.'))}</div>
+function meetDefRows(pre,loc,note,qs){
+  return `<div class="mdef"><div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are.'))}</div>
     <div class="ifld locbox">${ICON.pin}<input type="text" id="${pre}_mloc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Default location')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${pre}_mloc_sug" value="${esc(loc||'')}"><div class="locsug" id="${pre}_mloc_sug" role="listbox" hidden></div></div>
-    <label class="ifld">${ICON.note}<textarea id="${pre}_mnote" maxlength="1000" rows="3" aria-label="${t('Default description')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(note||'')}</textarea></label></div>`;
+    <label class="ifld">${ICON.note}<textarea id="${pre}_mnote" maxlength="1000" rows="3" aria-label="${t('Default description')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(note||'')}</textarea></label>
+    <div class="mdef-q"><div class="srow-l mdef-h">${ICON.ask}<span>${t('Questions in every new meeting')}</span>${tip(t('Asked in each meeting you create in the planner, e.g. a vote on the place. People answer them right in the meeting.'))}</div>${mqtBox(pre,qs)}</div></div>`;
 }
+// ---- Questions for new meetings: templates (a question without id, link or who), max 5. Edited in Settings / New poll → Meetings
+// and Plan new → Details (prefix 'dm', the list is P.dmeta.qs). MQT[pre] = the live list; typing writes into it at once.
+const MQT={}, MQT_MAX=5, MQT_KINDS=[['place','pin','Vote on the place'],['radio','radio','Multiple choice'],['yesno','users','Yes / no'],['long','note','Text'],['rating','star','Rating']];
+const mqtKind=x=>x.place?'place':x.type==='check'||x.type==='select'?'radio':x.type==='short'?'long':x.type;
+const mqtClone=l=>(Array.isArray(l)?l:[]).filter(x=>x&&x.type!=='group').slice(0,MQT_MAX).map(({id,at,link,who,grp,own,closed,repeat,...x})=>JSON.parse(JSON.stringify({...x,...(x.options?{options:x.options.map(o=>({label:o.label}))}:{})})));
+const mqtNew=k=>{ const x=Q_TPL[k](); if(k==='rating') x.label=''; return x; };
+// For saving: no empty labels or options. err() = why it can't be saved yet ('' = fine).
+const mqtClean=l=>(l||[]).filter(x=>(x.label||'').trim()).map(x=>({...x,label:x.label.trim(),...(x.options?{options:x.options.filter(o=>(o.label||'').trim()).map(o=>({label:o.label.trim().slice(0,120)}))}:{})}));
+const mqtErr=l=>{ const x=mqtClean(l).find(x=>Q_CHOICE.has(x.type)&&!x.options.length&&!x.add); return x?t('“{q}” needs an option, or let people add their own.',{q:x.label}):''; };
+function mqtBox(pre,list){ if(list!==undefined) MQT[pre]=list; if(!MQT[pre]) MQT[pre]=[]; return `<div class="mqt" id="${pre}_mqt" data-mqtpre="${pre}">${mqtInner(pre)}</div>`; }
+function mqtInner(pre){ const l=MQT[pre]||[];
+  const rows=l.map((x,i)=>{ const k=mqtKind(x), kd=MQT_KINDS.find(z=>z[0]===k)||MQT_KINDS[1], choice=Q_CHOICE.has(x.type);
+    const kinds=MQT_KINDS.map(([v,,lb])=>`<option value="${v}"${v===k?' selected':''}>${t(lb)}</option>`).join('');
+    const opts=choice?`<div class="mqt-o">${(x.options||[]).map((o,j)=>`<div class="qeopt${x.place?' locbox':''}"><span class="qmark dot"></span><input type="text" id="${pre}_mqo_${i}_${j}" data-mqto="${i}:${j}" maxlength="120" autocomplete="off" value="${esc(o.label||'')}" placeholder="${x.place?t('Place {n}',{n:j+1}):t('Option {n}',{n:j+1})}" aria-label="${t('Option {n}',{n:j+1})}">${x.place?`<div class="locsug" id="${pre}_mqo_${i}_${j}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-mqtorm="${i}:${j}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
+      <button type="button" class="btn sm ghost withic qeadd" data-mqtoadd="${i}">${ICON.plus}<span>${x.place?t('Place'):t('Option')}</span></button>${x.add?`<span class="muted small">${x.place?t('People can suggest places too.'):t('People can add options too.')}</span>`:''}</div>`:'';
+    return `<div class="mqt-r"><div class="mqt-top"><label class="mqt-k" title="${t(kd[2])}">${ICON[kd[1]]}<select data-mqtkind="${i}" aria-label="${t('Type')}">${kinds}</select></label><input type="text" id="${pre}_mql_${i}" data-mqtl="${i}" maxlength="200" value="${esc(x.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"><button type="button" class="qb" data-mqtrm="${i}" title="${t('Remove question')}" aria-label="${t('Remove question')}">${ICON.x}</button></div>${opts}</div>`; }).join('');
+  const add=l.length<MQT_MAX?`<details class="dd qmore mqt-add"><summary class="btn sm ghost withic">${ICON.plus}<span>${t('Question')}</span></summary><div class="ddp menu pickm">${MQT_KINDS.map(([v,ic,lb])=>`<button type="button" data-mqtadd="${v}">${ICON[ic]}<span class="grow">${t(lb)}</span></button>`).join('')}${ME.user?`<div class="menu-sep"></div><button type="button" data-mqtprs>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>`:''}</div></details>`:'';
+  return `${rows}${add}`; }
+function mqtDraw(pre,focus){ const box=$(pre+'_mqt'); if(!box) return; box.innerHTML=mqtInner(pre);
+  box.querySelectorAll('[data-mqto]').forEach(inp=>{ const sg=$(inp.id+'_sug'); if(sg) placeSearch(inp,sg,v=>{ mqtSetOpt(pre,inp.dataset.mqto,v); }); });
+  const c=$(pre+'_mqt_n'); if(c){ c.textContent=(MQT[pre]||[]).length; c.hidden=!(MQT[pre]||[]).length; }
+  if(focus){ const f=$(focus); if(f) f.focus(); } }
+function mqtSetOpt(pre,ij,v){ const [i,j]=ij.split(':').map(Number), x=(MQT[pre]||[])[i]; if(x&&x.options&&x.options[j]) x.options[j].label=v; }
+document.addEventListener('input',e=>{ const x=e.target, box=x.closest&&x.closest('[data-mqtpre]'); if(!box) return; const pre=box.dataset.mqtpre, l=MQT[pre]||[];
+  if(x.dataset.mqtl!==undefined){ const q=l[+x.dataset.mqtl]; if(q) q.label=x.value; }
+  else if(x.dataset.mqto) mqtSetOpt(pre,x.dataset.mqto,x.value); });
+document.addEventListener('change',e=>{ const x=e.target; if(!x.dataset||x.dataset.mqtkind===undefined) return; const pre=x.closest('[data-mqtpre]').dataset.mqtpre, l=MQT[pre], i=+x.dataset.mqtkind, old=l[i];
+  const nx=mqtNew(x.value); if((old.label||'').trim()&&!(Q_TPL.place().label===old.label)) nx.label=old.label; if(Q_CHOICE.has(nx.type)&&old.options) nx.options=old.options; l[i]=nx; mqtDraw(pre,`${pre}_mql_${i}`); });
+document.addEventListener('click',async e=>{ const b=e.target.closest('[data-mqtadd],[data-mqtrm],[data-mqtoadd],[data-mqtorm],[data-mqtprs]'); if(!b) return; const box=b.closest('[data-mqtpre]'); if(!box) return;
+  const pre=box.dataset.mqtpre, l=MQT[pre], ds=b.dataset; const dd=b.closest('.qmore[open]'); if(dd) dd.open=false; e.preventDefault();
+  if(ds.mqtadd){ if(l.length>=MQT_MAX) return; l.push(mqtNew(ds.mqtadd)); mqtDraw(pre,`${pre}_mql_${l.length-1}`); return; }
+  if(ds.mqtrm!==undefined){ l.splice(+ds.mqtrm,1); mqtDraw(pre); return; }
+  if(ds.mqtoadd!==undefined){ const x=l[+ds.mqtoadd]; (x.options=x.options||[]).push({label:''}); mqtDraw(pre,`${pre}_mqo_${ds.mqtoadd}_${x.options.length-1}`); return; }
+  if(ds.mqtorm){ const [i,j]=ds.mqtorm.split(':').map(Number); l[i].options.splice(j,1); mqtDraw(pre); return; }
+  if(ds.mqtprs!==undefined){ await loadPresets(); prsOpen({mode:'questions',apply:pr=>{ if(!pr) return; const add=mqtClone(pr.data.questions).filter(x=>!(x.link&&x.link.to==='after')).map(({link,...x})=>x);
+    const room=MQT_MAX-l.length; if(add.length>room) toast(t('Up to {n} questions for new meetings',{n:MQT_MAX})); l.push(...add.slice(0,room)); mqtDraw(pre); }}); }
+});
+// The questions a Plan new batch adds: one per template for each new meeting, or one linked to all of them (one).
+function mqtQuestions(list,ms,one){ const sets=one?[ms]:ms.map(m=>[m]), out=[];
+  for(const set of sets) for(const x of list) out.push({...JSON.parse(JSON.stringify(x)),id:qNewId(),...(x.options?{options:x.options.map(o=>({id:qNewId(),label:o.label}))}:{}),
+    link:{to:'meetings',ids:set.map(m=>m.id)},who:{mode:x.place||set.some(m=>m.proposed)?'all':'meeting'}});
+  return out; }
 function sset(k,icon,title,body,extra='',open=null){
   const o=open||P.setOpen||(P.setOpen={details:true});
   return `<details class="section sset" ${open?'data-nset':'data-sset'}="${k}"${o[k]?' open':''}><summary><span class="sic" style="--c:${SSET_C[k]||'var(--accent)'}">${ICON[icon]}</span><span class="grow">${title}</span>${extra?`<span class="sx">${extra}</span>`:''}</summary><div class="sset-b">${body}</div></details>`;
@@ -8858,7 +8923,7 @@ function wireAdmin(){
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const man=canManage();
-    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man){ const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
+    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; } if(man){ const pv=patValue('sp'); if(pv.empty){ toast(t('Add at least one rule.')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     if(man){ const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image; }
     if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
     if(man&&P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
@@ -9723,6 +9788,19 @@ function germanText(){ return {
 "Delete question": "Frage löschen",
 "Set this as the place of the linked meetings": "Als Ort der verknüpften Termine eintragen",
 "Use as place": "Als Ort nehmen",
+"The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are.": "Der Termin-Planer startet mit diesem Ort, dieser Beschreibung und diesen Fragen. Du kannst sie vor dem Erstellen noch ändern. Schon erstellte Termine bleiben, wie sie sind.",
+"Questions in every new meeting": "Fragen in jedem neuen Termin",
+"Asked in each meeting you create in the planner, e.g. a vote on the place. People answer them right in the meeting.": "Werden in jedem Termin gestellt, den du im Planer erstellst, z. B. eine Abstimmung über den Ort. Beantwortet wird direkt im Termin.",
+"“{q}” needs an option, or let people add their own.": "„{q}“ braucht eine Option, oder lass die Leute eigene hinzufügen.",
+"People can suggest places too.": "Die Leute können auch Orte vorschlagen.",
+"People can add options too.": "Die Leute können auch Optionen hinzufügen.",
+"Remove question": "Frage entfernen",
+"Type": "Art",
+"Up to {n} questions for new meetings": "Bis zu {n} Fragen für neue Termine",
+"Asked in the new meetings, e.g. a vote on the place. People answer them right in the meeting. Set the ones every new meeting gets in Settings → Meetings.": "Werden in den neuen Terminen gestellt, z. B. eine Abstimmung über den Ort. Beantwortet wird direkt im Termin. Fragen für jeden neuen Termin legst du unter Einstellungen → Termine fest.",
+"One question for all {n}": "Eine Frage für alle {n}",
+"Off: each meeting gets its own questions and its own results. On: one question covers all the new meetings, e.g. one place vote for all the options.": "Aus: Jeder Termin bekommt eigene Fragen und eigene Ergebnisse. An: Eine Frage gilt für alle neuen Termine, z. B. eine Ortsabstimmung für alle Optionen.",
+"Up to {n} questions per round: this would add {k}. Switch on “One question for all”, or ask fewer.": "Bis zu {n} Fragen pro Runde: Das wären {k} neue. Schalte „Eine Frage für alle“ ein oder stell weniger Fragen.",
 "Ask about this meeting": "Zu diesem Termin fragen",
 "Ask about a meeting": "Zu einem Termin fragen",
 "Open in Questions": "Unter Fragen öffnen",
