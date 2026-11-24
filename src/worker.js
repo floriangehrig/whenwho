@@ -2709,13 +2709,13 @@ function meetingAnswerText(poll, inst, mt, data) {
     else if (Q_CHOICE.has(q.type)) {
       const n = new Map();
       for (const x of vals) for (const o of Array.isArray(x.v) ? x.v : []) n.set(o, (n.get(o) || 0) + 1);
-      body = [[...opts].filter(([id]) => n.get(id)).sort((a, b) => n.get(b[0]) - n.get(a[0])).map(([id, label]) => `${label} ${n.get(id)}`).join(' · ')];
+      body = [...opts].filter(([id]) => n.get(id)).sort((a, b) => n.get(b[0]) - n.get(a[0])).map(([id, label]) => `${label}: ${n.get(id)}`);
     } else if (q.type === 'rating') {
       const ns = vals.map((x) => +x.v).filter((x) => x > 0);
       body = [`Ø ${(ns.reduce((s, x) => s + x, 0) / ns.length).toFixed(1)} / ${q.rating?.max || 5} (${ns.length})`];
     } else if (q.type === 'yesno') {
       const yes = vals.filter((x) => x.v && x.v.y), sum = yes.reduce((s, x) => s + (+x.v.n || 0), 0);
-      body = [`${L.yes} ${yes.length} · ${L.no} ${vals.length - yes.length}${q.count && sum ? ` · ${q.count.label || '#'}: ${sum}` : ''}`];
+      body = [`${L.yes}: ${yes.length}`, `${L.no}: ${vals.length - yes.length}`, q.count && sum ? `${q.count.label || '#'}: ${sum}` : ''];
     } else body = vals.map((x) => answerValueText(q, x.v, opts, L));
     out.push(descSection('❓', q.label.replace(/:$/, ''), body.filter(Boolean).map(bullet).join('\n')));
   }
