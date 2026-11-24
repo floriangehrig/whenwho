@@ -64,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-9STkxYgv7pPCC/8m40R1geJPMcrTKnNi94fQcVO853c=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-6l75B6O6hJRaIKh/O1fJ7E7LKnvmW7EWWM5ME2qjdgQ=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -627,6 +627,7 @@ function validateMeetings(list, poll, old = []) {
       vote: mt.proposed && /^[A-Za-z0-9]{4,20}$/.test(mt.vote || '') ? mt.vote : undefined,
       one: mt.proposed && mt.one ? true : undefined,
       ...(repeat ? { repeat } : {}),
+      inc: validateInc(mt.inc),
     };
     // endDate: last day of a multi-day all-day meeting (trip, offsite, holiday); one-off meetings only.
     if (mt.endDate != null && mt.endDate !== '' && mt.endDate !== mt.date) {
@@ -645,6 +646,20 @@ function validateMeetings(list, poll, old = []) {
     } else throw new HttpError(400, 'Invalid participants');
     return out;
   }).sort((x, y) => (x.date + pad(x.start ?? 0)).localeCompare(y.date + pad(y.start ?? 0)));
+}
+
+// inc = which parts of the answers go into the meeting's description (rendered live by meetingAnswerText):
+// { who: who's coming at its time, comments: answer comments, qs: [{ id, each: per person (else a summary) }] }.
+function validateInc(x) {
+  if (x == null) return undefined;
+  if (typeof x !== 'object' || Array.isArray(x)) throw new HttpError(400, 'Invalid answers to include');
+  const seen = new Set(), qs = [];
+  for (const q of Array.isArray(x.qs) ? x.qs.slice(0, MAX_QUESTIONS) : []) {
+    if (!q || !QID_RE.test(q.id || '') || seen.has(q.id)) continue;
+    seen.add(q.id); qs.push({ id: q.id, ...(q.each ? { each: true } : {}) });
+  }
+  const out = { ...(x.who ? { who: true } : {}), ...(x.comments ? { comments: true } : {}), ...(qs.length ? { qs } : {}) };
+  return Object.keys(out).length ? out : undefined;
 }
 
 // ---------- accounts and sessions ----------
@@ -2317,6 +2332,8 @@ async function getPoll(request, env, ctx, url, id) {
     instances: listed.map((i) => publicInstance(i, admin ? { responses: counts[i.id] || 0 } : {})),
     instance: publicInstance(sel), dates: datesOf(sel, poll),
   };
+  // Answers the organiser put into a meeting's description (live; shown to everyone who sees the meeting, like the emails and .ics).
+  await withAnswerTexts(env, poll, sel, out.instance);
   if (admin && poll.kind === 'series') {
     const n = Math.max(...all.map((i) => i.seq)) + 1;
     out.next = { startDate: periodStart(poll, n), endDate: periodEnd(poll, n), opens: openDate(poll, n) };
@@ -2529,7 +2546,8 @@ async function updateInstance(request, env, id, iid) {
   }
   const cols = Object.keys(u);
   if (cols.length) await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => u[c]), iid).run();
-  return json({ ok: true, instance: publicInstance(await loadInstance(env, id, iid)) });
+  const fresh = await loadInstance(env, id, iid);
+  return json({ ok: true, instance: await withAnswerTexts(env, poll, fresh, publicInstance(fresh)) });
 }
 
 async function deleteInstance(request, env, id, iid) {
@@ -2562,7 +2580,7 @@ function icsFold(line) {
 }
 // A weekly meeting's first date: its weekday, on or after repeat.from.
 const meetingStart = (mt) => (mt.repeat ? firstOnWeekday(mt.repeat.from, wdOf(mt.date)) : mt.date);
-function meetingToIcs(mt, poll, link) {
+function meetingToIcs(mt, poll, link, texts) {
   // Older single-day "all day" meetings of a poll that takes hours: export them over the poll's hours instead.
   if (mt.allDay && !mt.endDate && poll.answer_mode !== 'days' && poll.hour_end > poll.hour_start)
     mt = { ...mt, allDay: false, start: poll.hour_start, end: Math.min(24, poll.hour_end) };
@@ -2580,24 +2598,135 @@ function meetingToIcs(mt, poll, link) {
   }
   lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
-  lines.push(`DESCRIPTION:${icsEscape([mt.note, mt.extra, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
+  lines.push(`DESCRIPTION:${icsEscape([mt.note, mt.extra, texts && texts.get(mt.id) && `\n${texts.get(mt.id)}\n`, 'Who: ' + whoText(mt), link].filter(Boolean).join('\n'))}`, 'END:VEVENT');
   return lines;
 }
-function buildIcs(poll, meetings, link) {
+function buildIcs(poll, meetings, link, texts) {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//when-who//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-    `X-WR-CALNAME:${icsEscape(poll.title)}`, ...meetings.flatMap((mt) => meetingToIcs(mt, poll, link)), 'END:VCALENDAR'];
+    `X-WR-CALNAME:${icsEscape(poll.title)}`, ...meetings.flatMap((mt) => meetingToIcs(mt, poll, link, texts)), 'END:VCALENDAR'];
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
 const whoText = (mt) => (mt.participants === 'all' ? 'Everyone' : mt.participants.map((p) => p.name).join(', '));
+// ---- answers in a meeting's description (mt.inc), rendered live from the round's answers ----
+// The data one round needs: availability answers and form answers (with names), options people added.
+async function answerData(env, inst) {
+  const [{ results: responses }, { results: forms }] = await Promise.all([
+    env.DB.prepare('SELECT id, name, comment, entries FROM responses WHERE instance_id = ? ORDER BY created_at').bind(inst.id).all(),
+    env.DB.prepare('SELECT f.extra, p.name FROM form_answers f JOIN participants p ON p.id = f.participant_id WHERE f.instance_id = ? ORDER BY f.created_at').bind(inst.id).all(),
+  ]);
+  const added = new Map();
+  for (const f of forms) for (const [qid, list] of Object.entries(parseExtra(f.extra).add || {}))
+    if (Array.isArray(list)) added.set(qid, [...(added.get(qid) || []), ...list.filter((o) => o && typeof o.id === 'string' && typeof o.label === 'string')]);
+  return { responses: responses.map((r) => ({ ...r, entries: (() => { try { return JSON.parse(r.entries || '{}'); } catch { return {}; } })() })),
+    forms: forms.map((f) => ({ name: f.name, a: parseExtra(f.extra).a || {} })), added };
+}
+const ANS_L = {
+  en: { y: 'Coming', i: 'If needed', m: 'Maybe', n: 'Can’t', comments: 'Comments', yes: 'Yes', no: 'No', none: 'No answers yet' },
+  de: { y: 'Dabei', i: 'Wenn nötig', m: 'Vielleicht', n: 'Kann nicht', comments: 'Kommentare', yes: 'Ja', no: 'Nein', none: 'Noch keine Antworten' },
+};
+// A person's state for the meeting: y / i / m / n (worst over its hours and days; nothing marked = n).
+function meetState(entries, mt) {
+  const rank = { n: 0, m: 1, i: 2, y: 3 }, days = [];
+  for (let d = mt.date, k = 0; k < MAX_MEETING_DAYS && d <= (mt.endDate || mt.date); d = addDays(d, 1), k++) days.push(d);
+  let worst = 'y';
+  for (const d of days) {
+    const v = entries[d];
+    let st = 'n';
+    if (typeof v === 'string') st = rank[v] != null ? v : 'n';
+    else if (v && typeof v === 'object') {
+      const at = (h) => (['y', 'i', 'm'].find((s) => (v[s] || []).includes(h)) || 'n');
+      if (mt.allDay) st = ['y', 'i', 'm'].find((s) => (v[s] || []).length) || 'n';
+      else { st = 'y'; for (let h = mt.start; h < mt.end; h++) { const x = at(h); if (rank[x] < rank[st]) st = x; } }
+    }
+    if (rank[st] < rank[worst]) worst = st;
+  }
+  return worst;
+}
+// The date whose answer a per-date question ({ "YYYY-MM-DD": value }) shows: the meeting's, or the next one of a repeating meeting.
+function answerDate(vals) {
+  const ks = Object.keys(vals || {}).filter(isDate).sort(), today = now().slice(0, 10);
+  return ks.find((k) => k >= today) || ks[ks.length - 1];
+}
+function answerValueText(q, v, opts, L) {
+  if (Q_CHOICE.has(q.type)) return (Array.isArray(v) ? v : []).map((o) => opts.get(o)).filter(Boolean).join(', ');
+  if (q.type === 'rating') return `${v} / ${q.rating?.max || 5}`;
+  if (q.type === 'yesno') return v && typeof v === 'object' ? (v.y ? L.yes : L.no) + (v.y && v.n != null ? ` (${v.n})` : '') : '';
+  return typeof v === 'string' ? v : '';
+}
+// The text that mt.inc adds to the meeting's description ('' = nothing).
+function meetingAnswerText(poll, inst, mt, data) {
+  const inc = mt.inc;
+  if (!inc || mt.proposed || !data) return '';
+  const L = ANS_L[poll.lang === 'de' ? 'de' : 'en'], out = [];
+  if (inc.who) {
+    const rs = mt.participants === 'all' ? data.responses : data.responses.filter((r) => mt.participants.some((p) => p.id === r.id));
+    const by = { y: [], i: [], m: [], n: [] };
+    for (const r of rs) by[meetState(r.entries, mt)].push(r.name);
+    const lines = ['y', 'i', 'm', 'n'].filter((s) => by[s].length).map((s) => `${L[s]} (${by[s].length}): ${by[s].join(', ')}`);
+    if (lines.length) out.push(lines.join('\n'));
+  }
+  const qs = new Map(questionsOf(inst).map((q) => [q.id, q]));
+  for (const pick of inc.qs || []) {
+    const q = qs.get(pick.id);
+    if (!q || isAfter(q)) continue;
+    const opts = new Map([...(q.options || []), ...(data.added.get(q.id) || [])].map((o) => [o.id, o.label]));
+    const vals = data.forms.map((f) => {
+      let v = f.a[q.id];
+      if (q.link.each && v && typeof v === 'object' && !Array.isArray(v) && !('y' in v)) v = v[answerDate(v)];
+      return { name: f.name, v };
+    }).filter((x) => x.v !== undefined && x.v !== null && x.v !== '' && !(Array.isArray(x.v) && !x.v.length));
+    let body;
+    if (!vals.length) body = [L.none];
+    else if (pick.each) body = vals.map((x) => `${x.name}: ${answerValueText(q, x.v, opts, L)}`);
+    else if (Q_CHOICE.has(q.type)) {
+      const n = new Map();
+      for (const x of vals) for (const o of Array.isArray(x.v) ? x.v : []) n.set(o, (n.get(o) || 0) + 1);
+      body = [[...opts].filter(([id]) => n.get(id)).sort((a, b) => n.get(b[0]) - n.get(a[0])).map(([id, label]) => `${label} ${n.get(id)}`).join(' · ')];
+    } else if (q.type === 'rating') {
+      const ns = vals.map((x) => +x.v).filter((x) => x > 0);
+      body = [`Ø ${(ns.reduce((s, x) => s + x, 0) / ns.length).toFixed(1)} / ${q.rating?.max || 5} (${ns.length})`];
+    } else if (q.type === 'yesno') {
+      const yes = vals.filter((x) => x.v && x.v.y), sum = yes.reduce((s, x) => s + (+x.v.n || 0), 0);
+      body = [`${L.yes} ${yes.length} · ${L.no} ${vals.length - yes.length}${q.count && sum ? ` · ${q.count.label || '#'}: ${sum}` : ''}`];
+    } else body = vals.map((x) => `– ${answerValueText(q, x.v, opts, L)}`);
+    out.push([/[?:!.？！]$/.test(q.label) ? q.label : `${q.label}:`, ...body.filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))].join('\n'));
+  }
+  if (inc.comments) {
+    const rs = mt.participants === 'all' ? data.responses : data.responses.filter((r) => mt.participants.some((p) => p.id === r.id));
+    const cs = rs.filter((r) => (r.comment || '').trim());
+    if (cs.length) out.push([`${L.comments}:`, ...cs.map((r) => `  ${r.name}: ${r.comment.trim().replace(/\n/g, '\n  ')}`)].join('\n'));
+  }
+  const text = out.join('\n\n');
+  return text.length > 4000 ? text.slice(0, 3999) + '…' : text;
+}
+// Adds answersText to the meetings of pub (= publicInstance(inst)) that include answers.
+async function withAnswerTexts(env, poll, inst, pub) {
+  if (!pub.meetings.some((m) => m.inc && !m.proposed)) return pub;
+  const data = await answerData(env, inst);
+  for (const m of pub.meetings) { const t = meetingAnswerText(poll, inst, m, data); if (t) m.answersText = t; }
+  return pub;
+}
+// Map meeting id → answers text, for the confirmed meetings with inc in these instance rows (only those rounds are read).
+async function meetingAnswerTexts(env, poll, insts) {
+  const texts = new Map();
+  for (const inst of insts) {
+    const ms = JSON.parse(inst.meetings || '[]').filter((m) => m.inc && !m.proposed);
+    if (!ms.length) continue;
+    const data = await answerData(env, inst);
+    for (const m of ms) { const t = meetingAnswerText(poll, inst, m, data); if (t) texts.set(m.id, t); }
+  }
+  return texts;
+}
 async function calendar(request, env, url, id) {
   const poll = await loadPoll(env, id);
   if (!(await guardedPasswordOk(env, request, poll, url.searchParams.get('pw')))) throw new HttpError(401, 'Password required');
-  const { results } = await env.DB.prepare('SELECT id, meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
+  const { results } = await env.DB.prepare('SELECT id, meetings, questions FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
   let meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]')).filter((mt) => !mt.proposed);
   const only = url.searchParams.get('m');
   if (only) meetings = meetings.filter((mt) => mt.id === only);
+  const texts = await meetingAnswerTexts(env, poll, only ? results.filter((i) => JSON.parse(i.meetings || '[]').some((mt) => mt.id === only)) : results);
   const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0] ? meetingStart(meetings[0]) : ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
-  return new Response(buildIcs(poll, meetings, `${url.origin}/?p=${poll.id}`), {
+  return new Response(buildIcs(poll, meetings, `${url.origin}/?p=${poll.id}`, texts), {
     headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `${url.searchParams.get('download') ? 'attachment' : 'inline'}; filename="${name}.ics"`, 'cache-control': 'no-cache' },
   });
 }
@@ -2801,9 +2930,11 @@ async function sendInvite(request, env, url, id, iid, mid) {
     : { when: 'When', where: 'Where', map: 'Map', who: 'Who', all: 'Everyone', poll: 'Poll',
       ics: 'The calendar file is attached. Open it to add the meeting to your calendar.' };
   const who = mt.participants === 'all' ? L.all : whoText(mt);
-  const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `${L.who}: ${who}`, mt.note || mt.extra ? `\n${[mt.note, mt.extra].filter(Boolean).join('\n\n')}` : null,
+  const ans = mt.inc ? meetingAnswerText(poll, inst, mt, await answerData(env, inst)) : '', texts = new Map(ans ? [[mt.id, ans]] : []);
+  const desc = [mt.note, mt.extra, ans].filter(Boolean).join('\n\n');
+  const text = [`${mt.title || poll.title}`, '', `${L.when}: ${when}`, mt.location ? `${L.where}: ${mt.location}\n${L.map}: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mt.location)}` : null, `${L.who}: ${who}`, desc ? `\n${desc}` : null,
     '', L.ics, `${L.poll}: ${link}`].filter((x) => x !== null).join('\n') + footer(poll);
-  const ics = buildIcs(poll, [mt], link);
+  const ics = buildIcs(poll, [mt], link, texts);
   const sent = await sendMail(env, poll, { to: withMail.map((r) => r.email), subject: `${mt.title || poll.title}: ${when}`, text,
     attachments: [{ content: enc.encode(ics), filename: 'invite.ics', type: 'text/calendar', disposition: 'attachment' }], quota: true });
   mt.sentAt = now();
@@ -2823,9 +2954,10 @@ async function sendAllMeetings(request, env, url, id) {
   const extra = Array.isArray(b.emails) ? b.emails.filter((x) => typeof x === 'string').map((x) => x.trim().toLowerCase()).filter(Boolean) : [];
   if (ids.length > 500 || extra.length > 50) throw new HttpError(400, 'Too many people');
   if (extra.some((e) => !EMAIL_RE.test(e))) throw new HttpError(400, 'Invalid email');
-  const { results } = await env.DB.prepare('SELECT meetings FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
+  const { results } = await env.DB.prepare('SELECT id, meetings, questions FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
   const meetings = results.flatMap((i) => JSON.parse(i.meetings || '[]')).filter((mt) => !mt.proposed);
   if (!meetings.length) throw new HttpError(400, 'There are no meetings yet');
+  const texts = await meetingAnswerTexts(env, poll, results);
   const want = new Set(ids);
   const rows = ids.length ? (await participantRows(env, id, '')).filter((p) => want.has(p.id)) : [];
   const missing = rows.filter((p) => !EMAIL_RE.test(p.mail_to)).map((p) => p.name);
@@ -2855,14 +2987,14 @@ async function sendAllMeetings(request, env, url, id) {
   const sorted = [...meetings].sort((x, y) => meetingStart(x).localeCompare(meetingStart(y)) || (x.start || 0) - (y.start || 0));
   const upcoming = sorted.filter((mt) => lastDay(mt) >= today), past = sorted.length - upcoming.length;
   const block = (mt) => [`• ${mt.title || poll.title}`, `  ${meetingWhen(mt, poll.lang)}`, mt.location ? `  ${L.where}: ${mt.location}` : null,
-    `  ${L.who}: ${mt.participants === 'all' ? L.all : whoText(mt)}`, ...[mt.note, mt.extra].filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))]
+    `  ${L.who}: ${mt.participants === 'all' ? L.all : whoText(mt)}`, ...[mt.note, mt.extra, texts.get(mt.id)].filter(Boolean).map((x) => '  ' + x.replace(/\n/g, '\n  '))]
     .filter((x) => x !== null).join('\n');
   const text = [message || null, message ? '' : null, L.head(sorted.length), '', (upcoming.length ? upcoming : sorted).map(block).join('\n\n'),
     upcoming.length && past ? '\n' + L.past(past) : null, '', L.ics, '', L.sub, feed.replace(/^https?:/, 'webcal:'), `${L.google}: ${feed}`, '', `${L.poll}: ${link}`]
     .filter((x) => x !== null).join('\n') + L.footer;
   const name = poll.title.replace(/[^\w\- ]+/g, '').trim() || 'meetings';
   const sent = await sendMail(env, poll, { to, subject: L.subject, text, quota: true,
-    attachments: [{ content: enc.encode(buildIcs(poll, sorted, link)), filename: `${name}.ics` }] });
+    attachments: [{ content: enc.encode(buildIcs(poll, sorted, link, texts)), filename: `${name}.ics` }] });
   return json({ ok: true, sent, missing });
 }
 
@@ -4731,7 +4863,7 @@ function availabilitySummary(poll, dates, responses) {
 }
 const meetingOut = (mt) => ({ id: mt.id, date: mt.date, ...(mt.endDate ? { end_date: mt.endDate } : {}), weekday: mcpWd(mt.date),
   ...(mt.allDay ? { all_day: true } : { from: hourText(mt.start), to: hourText(mt.end) }), title: mt.title || undefined,
-  location: mt.location || undefined, note: mt.note || undefined, ...(mt.proposed ? { proposed: true, vote: mt.vote } : {}),
+  location: mt.location || undefined, note: mt.note || undefined, from_answers: mt.answersText || undefined, ...(mt.proposed ? { proposed: true, vote: mt.vote } : {}),
   ...(mt.repeat ? { repeat: mt.repeat } : {}) });
 const loadPollFor = (call, a) => callApi(call, 'GET', `/polls/${argId(a.poll_id)}${a.round_id ? '?i=' + argId(a.round_id, 'round_id') : ''}`, undefined, pwHeader(a));
 const pollIdProp = { poll_id: { type: 'string', description: 'Poll id (from list_polls or a poll link ?p=<id>)' } };

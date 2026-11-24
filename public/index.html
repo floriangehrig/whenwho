@@ -1331,6 +1331,12 @@
   .dfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
   .dfoot .btn svg{width:16px;height:16px}
   .mdesc{display:flex;flex-direction:column;gap:6px;margin-top:8px} .mdesc textarea{min-height:70px}
+  .inc{display:flex;flex-direction:column;gap:2px;padding-top:8px;border-top:1px solid var(--line)}
+  .inc-h{display:flex;align-items:center;gap:6px;font-weight:650;font-size:13.5px;margin-bottom:2px}
+  .mdesc label.inc-r{display:flex;align-items:center;gap:8px;margin:0;padding:4px 0;font-weight:500;font-size:14px;cursor:pointer;min-width:0}
+  .inc-r input[type=checkbox]{flex:none;width:16px;height:16px;margin:0} .inc-ic{flex:none;width:20px;text-align:center}
+  .inc-l{flex:1;min-width:0;overflow-wrap:anywhere} .inc-r select{flex:none;width:auto;margin:0;padding:3px 24px 3px 8px;font-size:12.5px;min-height:0}
+  .mans .mx-l{display:flex;align-items:center;gap:4px} .inc-warn[hidden]{display:none} .inc-warn{margin:6px 0 0;font-size:13px}
   /* organiser Meetings tab: scheduled meetings card + "Plan new meetings" in numbered steps */
   .mcard .mlist{padding:var(--s3) 0 0}
   .mcard .vpanel .mlist{padding:10px 10px 12px}
@@ -3086,6 +3092,7 @@ function renderPrivacy(){
         t('<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
+        t('<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.'),
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages are visible to the poll’s chat members.'),
         t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
@@ -4865,7 +4872,7 @@ function whenText(m){ const tm=m.allDay?' · '+t('all day'):` · ${hh(m.start)}�
   if(m.endDate) return `${longDay(m.date)} – ${longDay(m.endDate)}${tm}`;
   return `${longDay(m.date)}${tm}`; }
 // A meeting's full description: the shared one, then its own extra text below.
-function descOf(m){ return [m.note,m.extra].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
+function descOf(m){ return [m.note,m.extra,m.answersText].map(t=>(t||'').trim()).filter(Boolean).join('\n\n'); }
 function whoText(m){ return m.participants==='all'?t('Everyone'):m.participants.map(p=>p.name).join(', '); }
 const meetingLines=m=>[`${m.title||P.data.poll.title}`, whenText(m), m.location?`${t('Where:')} ${m.location}\n${t('Map:')} ${mapUrl(m.location)}`:'', `${t('Who:')} ${whoText(m)}`, descOf(m)].filter(Boolean);
 const joinLines=a=>a.filter((x,i,a)=>x!==''||a[i-1]!=='').join('\n');
@@ -4921,7 +4928,7 @@ function renderMeetings(listOnly){
     const calB=`<a class="qb" href="${esc(icsUrl(m.id,true))}" title="${t('Download calendar file (.ics)')}" aria-label="${t('Download calendar file (.ics)')}">${ICON.download}</a>`;
     const shareB=qb('data-copyinvite',m.id,shareIc,shareL);
     // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
-    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra?t('Edit description'):t('Add description'))+qb('data-qask',m.id,'ask',t('Ask people something about this meeting, e.g. vote on the place')):''}${
+    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra||m.inc?t('Edit description'):t('Add description'))+qb('data-qask',m.id,'ask',t('Ask people something about this meeting, e.g. vote on the place')):''}${
       d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}<span>${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span></span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
@@ -4931,7 +4938,7 @@ function renderMeetings(listOnly){
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
         <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
         ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${!sel&&!m.proposed&&d.emailEnabled&&canManage()?`<div class="msend">${m.sentAt?`<span class="muted small">${ICON.check} ${t('Invite emailed {when}',{when:new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'})})}</span>`:''}<button type="button" class="btn sm ghost withic" data-sendinvite="${m.id}">${ICON.send}<span>${m.sentAt?t('Send again'):t('Email invite')}</span></button></div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
-        ${edit?descEditor(m.id,m.note||'','',m.extra||''):m.note||m.extra?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}</div></div>`:''}${sel?'':qMeetChips(m)}</div></div>`; };
+        ${edit?descEditor(m.id,m.note||'','',m.extra||'',m.inc):m.note||m.extra||m.answersText?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}${m.answersText?`<div class="mnote mextra mans"><span class="mx-l">${t('From the answers')} · ${t('live')}${tip(t('Updated from the current answers each time the invite email, calendar file or this page is shown.'))}</span>${linkText(m.answersText)}</div>`:''}</div></div>`:''}${sel?'':qMeetChips(m)}</div></div>`; };
   const sb=(attr,v,ic,label)=>`<button type="button" ${attr}="${v}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
   const sa=(href,ic,label,tl=label)=>`<a href="${esc(href)}" title="${tl}" aria-label="${label}">${ICON[ic]}</a>`;
   const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sa(icsUrl(null,true),'download',t('Download all'))}${sel?'':sb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+sb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</div>`;
@@ -5816,11 +5823,29 @@ document.addEventListener('input',e=>{ const f={mb_loc:'loc',mb_desc:'desc',mb_n
   const g={mm_extra:'extra',mm_msg:'msg'}[e.target.id]; if(g&&P.mmail) P.mmail[g]=e.target.value; });
 // Inline editor for a meeting's description; id '*' = every scheduled meeting of this round.
 // For one meeting it also has the extra description, shown below the shared one.
-function descEditor(id,val,help,extra){
+// "From the answers": which parts of the answers go into this meeting's description (m.inc; the Worker renders them live).
+function incPicker(inc){
+  inc=inc||{}; const picked=new Map((inc.qs||[]).map(q=>[q.id,q])), qs=qList().filter(q=>!qAfter(q));
+  const row=(attr,on,ic,label,extra='')=>`<label class="inc-r"><input type="checkbox" ${attr}${on?' checked':''}><span class="inc-ic" aria-hidden="true">${ic}</span><span class="inc-l">${label}</span>${extra}</label>`;
+  const qrow=q=>{ const pk=picked.get(q.id), ow=q.vis==='owner';
+    return row(`data-incq="${q.id}"${ow?' data-incown':''}`,!!pk,esc(q.icon||'❓'),esc(q.label)+(ow?` <span class="opt">${t('only you see the answers')}</span>`:''),
+      `<select data-incmode="${q.id}" aria-label="${t('How to show the answers')}"><option value="">${t('Summary')}</option><option value="each"${pk&&pk.each?' selected':''}>${t('Per person')}</option></select>`); };
+  return `<div class="inc"><div class="inc-h">${t('From the answers')}${tip(t('Adds what people answered to this meeting’s description, invite email and calendar file. It stays up to date as answers come in.'))}</div>
+    ${row('data-incwho',inc.who,'👥',t('Who’s coming at this time'))}${row('data-inccom',inc.comments,'💬',t('Comments'))}${qs.map(qrow).join('')}
+    <div class="notice warn inc-warn" hidden>${t('Some of these answers are otherwise hidden. They will be shown to everyone who gets this meeting.')}</div></div>`;
+}
+function incRead(){ const box=document.querySelector('.mdesc .inc'); if(!box) return undefined;
+  const qs=[...box.querySelectorAll('[data-incq]')].filter(x=>x.checked).map(x=>{ const md=box.querySelector(`[data-incmode="${x.dataset.incq}"]`); return {id:x.dataset.incq,...(md&&md.value==='each'?{each:true}:{})}; });
+  const who=box.querySelector('[data-incwho]').checked, com=box.querySelector('[data-inccom]').checked;
+  return who||com||qs.length?{...(who?{who:true}:{}),...(com?{comments:true}:{}),...(qs.length?{qs}:{})}:undefined; }
+function incWarn(){ const box=document.querySelector('.mdesc .inc'); if(!box) return; const w=box.querySelector('.inc-warn'), any=box.querySelector('input:checked');
+  if(w) w.hidden=!(any&&(P.data.poll.hideResults||box.querySelector('[data-incown]:checked'))); }
+document.addEventListener('change',e=>{ if(e.target.closest&&e.target.closest('.mdesc .inc')) incWarn(); });
+function descEditor(id,val,help,extra,inc){
   return `<div class="mdesc"><label for="mdesc_t">${id==='*'?t('Description for all meetings'):t('Description')}</label>
     <textarea id="mdesc_t" maxlength="1000" rows="${Math.min(10,Math.max(3,String(val||'').split('\n').length+1))}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(val)}</textarea>
     ${id==='*'?'':`<label for="mdesc_x">${t('Extra description <span class="opt">this meeting only, shown below</span>')}</label>
-    <textarea id="mdesc_x" maxlength="1000" placeholder="${t('Anything that applies just to this date')}">${esc(extra||'')}</textarea>`}
+    <textarea id="mdesc_x" maxlength="1000" placeholder="${t('Anything that applies just to this date')}">${esc(extra||'')}</textarea>${incPicker(inc)}`}
     ${help?`<div class="help">${esc(help)}</div>`:''}
     <div class="row"><button class="btn sm primary" data-mdescsave="${id}">${t('Save')}</button><button class="btn sm" data-mdesccancel>${t('Cancel')}</button></div></div>`;
 }
@@ -8419,11 +8444,11 @@ document.addEventListener('click',async e=>{
   if(ds.schedule){ scheduleDay(ds.schedule); return; }
   if(ds.ov){ P.ovDay=P.ovDay===ds.ov?null:ds.ov; if(P.ovDay) showMonth(P.ovDay); renderBody(); return; }
   if(ds.clearrange!==undefined){ P.range=null; renderBody(); return; }
-  if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); const ta=$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
+  if(ds.mdesc){ P.mdesc=ds.mdesc; renderMeetings(); incWarn(); const ta=$('mdesc_t'); if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); } return; }
   if(ds.mdesccancel!==undefined){ P.mdesc=null; renderMeetings(); return; }
-  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*', xe=$('mdesc_x'), xv=xe?xe.value.trim():null;
+  if(ds.mdescsave){ const id=ds.mdescsave, v=$('mdesc_t').value.trim(), all=id==='*', xe=$('mdesc_x'), xv=xe?xe.value.trim():null, inc=all?null:incRead();
     tg.disabled=true; P.mdesc=null;
-    if(await saveMeetings(inst().meetings.map(m=>all?{...m,note:v}:m.id===id?{...m,note:v,extra:xv||undefined}:m))) toast(all?t('Description saved on all meetings'):t('Description saved'));
+    if(await saveMeetings(inst().meetings.map(m=>all?{...m,note:v}:m.id===id?{...m,note:v,extra:xv||undefined,inc}:m))) toast(all?t('Description saved on all meetings'):t('Description saved'));
     else { P.mdesc=id; tg.disabled=false; } return; }
   if(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite){
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;
@@ -8730,6 +8755,16 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+"From the answers": "Aus den Antworten",
+"live": "live",
+"Updated from the current answers each time the invite email, calendar file or this page is shown.": "Wird bei jeder Einladungs-E-Mail, Kalenderdatei und jedem Öffnen dieser Seite aus den aktuellen Antworten neu erstellt.",
+"only you see the answers": "nur du siehst die Antworten",
+"How to show the answers": "Wie die Antworten gezeigt werden",
+"Per person": "Pro Person",
+"Adds what people answered to this meeting’s description, invite email and calendar file. It stays up to date as answers come in.": "Fügt die Antworten der Leute zur Beschreibung, Einladungs-E-Mail und Kalenderdatei dieses Termins hinzu. Bleibt aktuell, wenn neue Antworten kommen.",
+"Who’s coming at this time": "Wer zu dieser Zeit kann",
+"Some of these answers are otherwise hidden. They will be shown to everyone who gets this meeting.": "Einige dieser Antworten sind sonst verborgen. Sie werden allen gezeigt, die diesen Termin bekommen.",
+"<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.": "<b>Antworten in Terminen:</b> Die Organisatorin oder der Organisator kann Teile der Antworten (wer kommt, Kommentare, Antworten auf Fragen, mit Namen) in die Beschreibung eines Termins übernehmen. Alle, die diesen Termin sehen oder seine Einladungs-E-Mail oder Kalenderdatei bekommen, sehen sie dann, auch wenn die Antworten der Umfrage sonst verborgen sind.",
 "This personal link no longer works. Ask the organiser for a new one.": "Dieser persönliche Link funktioniert nicht mehr. Bitte die Organisatorin oder den Organisator um einen neuen.",
 "Answering as <b>{name}</b>": "Du antwortest als <b>{name}</b>",
 "This is {name}’s personal link. If you’re someone else, answer under your own name.": "Das ist der persönliche Link von {name}. Wenn du jemand anderes bist, antworte unter deinem eigenen Namen.",

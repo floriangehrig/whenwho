@@ -155,6 +155,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   unanswered one of the last 14 days in a sheet (Skip = localStorage `qskip:<poll>`); `GET /api/polls/:id` sends `prevAfter` (the round
   before) so a meeting there opens that round. Ended meetings get a Rate chip; rating results show the average per meeting.
   Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
+- **Answers in a meeting** (meeting field `inc`, no table): the description editor's **From the answers** (`incPicker` / `incRead`) picks
+  `{ who, comments, qs: [{ id, each }] }` (who's coming at its time, answer comments, questions as summary or per person; not after-meeting ones).
+  The Worker renders it live (`meetingAnswerText`, data from `answerData`, `meetingAnswerTexts` for several rounds) into the .ics DESCRIPTION,
+  the invite / Email all emails and `answersText` on meetings in `GET /api/polls/:id` (card block, `descOf` for copy/share, MCP `from_answers`).
+  Shown to everyone who gets the meeting, even when answers are hidden (the editor warns).
 - **Fill with AI** (✨ in My answer): `POST /api/polls/:id/instances/:iid/fill-text` `{ text }` sends the text to
   Workers AI (binding `AI`, model `AI_MODEL`), which returns rules; the Worker expands them to `{ rules: [{ dates, hs, he, st }] }`
   and the page paints them onto the answer as a hand edit (Undo). Nothing is stored. Voice = the keyboard's own dictation
