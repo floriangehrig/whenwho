@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-wKYcyhEK3rrKGsiIjwl0x9/4DFmvNP3/SMEkE0Q6m+0=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-V3EQqMkP0SO0zggoVJ/kho3MNA9W+8nk/yP0GMdSQMM=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -458,12 +458,17 @@ async function insertInstance(env, poll, seq, fields, notified) {
     // After-meeting questions stay after-meeting questions (for all meetings of the new round) and keep who.
     const keepWho = (w) => (w && w.mode === 'people' ? w : { mode: !w || w.mode === 'free' || w.mode === 'meeting' ? 'all' : w.mode });
     const copyLink = (x) => (isAfter(x) ? { link: { to: 'after', ...(x.link.last ? { last: true } : {}) }, who: x.who || { mode: 'meeting' } } : { link: { to: 'poll' }, who: keepWho(x.who) });
-    const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false);
+    // Copies of every-round questions (tpl) don't come along: the poll's list adds them fresh below.
+    const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false && !q.tpl);
     const used = new Set(qs.map((q) => q.grp).filter(Boolean));
     const out = items.filter((x) => (x.type === 'group' ? used.has(x.id) : qs.some((q) => q.id === x.id)))
       .map((x) => (x.type === 'group' ? x : normQ(x)))
       .map(({ closed, at, ...q }) => ({ ...q, ...copyLink(q), at: now() }));
     if (out.length) fields = { ...fields, questions: JSON.stringify(out) };
+  }
+  if (poll.kind === 'series' && poll.round_questions) { // the poll's questions for every round
+    const items = itemsOf({ questions: fields.questions }), add = roundQuestionCopies(jsonList(poll.round_questions), items);
+    if (add.length) fields = { ...fields, questions: JSON.stringify([...items, ...add]) };
   }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
   const cols = Object.keys(inst);
@@ -561,7 +566,7 @@ function publicPoll(poll, admin, edit = admin) {
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
-  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions) }); // planner defaults for new meetings
+  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions), ...(poll.kind === 'series' ? { roundQuestions: jsonList(poll.round_questions) } : {}) }); // planner defaults for new meetings; series: questions for every round
   return p;
 }
 function publicInstance(inst, extra = {}) {
@@ -956,7 +961,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0034';
+const USER_DATA_REVIEWED = '0035';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1305,7 +1310,7 @@ function groupInput(b, partial, user) {
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
 const MAX_PRESETS = 50, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
-  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions'];
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions', 'roundQuestions'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
   if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
@@ -1315,7 +1320,33 @@ function presetQuestions(list) {
     return { ...x, link: after ? { to: 'after', ...(x.link.last ? { last: true } : {}) } : { to: 'poll' },
       who: { mode: after && x.who && (x.who.mode === 'meeting' || x.who.mode === 'free') ? x.who.mode : 'all' } };
   });
-  return validateQuestions(reset, [], [], new Set()).map(({ at, ...q }) => q);
+  return validateQuestions(reset, [], [], new Set()).map(({ at, tpl, ...q }) => q);
+}
+// Questions for every round of a series (poll setting round_questions): templates with a stable id; each new round gets a copy
+// (tpl = the template's id) linked to the whole poll, for everyone. People's own options live in their answers, so they start fresh.
+const MAX_ROUND_QS = 10;
+function roundQuestionTpls(list) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
+  if (list.length > MAX_ROUND_QS) throw new HttpError(400, `Up to ${MAX_ROUND_QS} questions for every round`);
+  const qs = list.filter((x) => x && typeof x === 'object' && x.type !== 'group')
+    .map(({ grp, own, tpl, ...x }) => ({ ...x, link: { to: 'poll' }, who: { mode: 'all' } }));
+  return validateQuestions(qs, [], [], new Set()).map(({ at, link, who, closed, repeat, ...q }) =>
+    q.options ? { ...q, options: q.options.map((o) => ({ label: o.label })) } : q);
+}
+// A round's copies of the templates it doesn't have yet (by tpl), within the per-round limit.
+function roundQuestionCopies(tpls, items) {
+  const have = new Set(items.map((x) => x.tpl).filter(Boolean)), t = now();
+  const labels = new Set(items.filter((x) => x.type !== 'group').map((x) => String(x.label || '').trim().toLowerCase())); // the same question asked by hand
+  let room = MAX_QUESTIONS - items.filter((x) => x.type !== 'group').length;
+  const out = [];
+  for (const x of tpls) {
+    if (!x || have.has(x.id) || labels.has(String(x.label || '').trim().toLowerCase()) || room <= 0) continue;
+    room--;
+    out.push({ ...x, id: randomId(8), tpl: x.id, link: { to: 'poll' }, who: { mode: 'all' }, at: t,
+      ...(x.options ? { options: x.options.map((o) => ({ id: randomId(8), label: o.label })) } : {}) });
+  }
+  return out;
 }
 // Questions for every new meeting (poll setting meet_questions, planner Details): templates without ids, links or who.
 // The page links them to the meetings it creates. Same checks as a round's questions.
@@ -1349,6 +1380,7 @@ function presetData(d) {
   if (out.folder !== undefined) { out.folder = str(out.folder, 40, 'Group').trim(); if (!out.folder) delete out.folder; } // the picker's group for my presets
   if (out.questions !== undefined) out.questions = presetQuestions(out.questions);
   if (out.meetQuestions !== undefined) { out.meetQuestions = meetQuestionTpls(out.meetQuestions); if (!out.meetQuestions.length) delete out.meetQuestions; }
+  if (out.roundQuestions !== undefined) { out.roundQuestions = out.kind === 'series' ? roundQuestionTpls(out.roundQuestions) : []; if (!out.roundQuestions.length) delete out.roundQuestions; }
   const s = JSON.stringify(out);
   if (s.length > 64000) throw new HttpError(413, 'This preset is too large');
   return s;
@@ -2361,6 +2393,7 @@ function readPollSettings(b, existing) {
   if (!existing || has('meetLocation')) p.meet_location = str(b.meetLocation, 200, 'Location');
   if (!existing || has('meetNote')) p.meet_note = str(b.meetNote, 1000, 'Description');
   if (has('meetQuestions')) { const l = meetQuestionTpls(b.meetQuestions); p.meet_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0033
+  if (has('roundQuestions') && kind === 'series') { const l = roundQuestionTpls(b.roundQuestions); p.round_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0035
   if (!existing || has('image')) { p.image = imageData(b.image, 'Picture'); p.image_at = p.image ? now() : null; }
   return p;
 }
@@ -2524,7 +2557,17 @@ async function updatePoll(request, env, id) {
   p.updated_at = now();
   const cols = Object.keys(p);
   await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
+  if (p.round_questions !== undefined) await addNewRoundQuestions(env, poll, p.round_questions);
   return json({ ok: true });
+}
+// Every-round questions that were just added to the list are asked in the current round too, if it's open (edits count from the next round).
+async function addNewRoundQuestions(env, poll, list) {
+  const old = new Set(jsonList(poll.round_questions).map((x) => x.id)), fresh = jsonList(list).filter((x) => !old.has(x.id));
+  if (!fresh.length) return;
+  const inst = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 1').bind(poll.id).first();
+  if (!inst || effStatus(inst) !== 'open') return;
+  const items = itemsOf(inst), add = roundQuestionCopies(fresh, items);
+  if (add.length) await env.DB.prepare('UPDATE instances SET questions = ? WHERE id = ? AND questions IS ?').bind(JSON.stringify([...items, ...add]), inst.id, inst.questions).run();
 }
 
 // The poll's picture. <img> can't send headers, so a password travels as ?pw= (like calendar.ics).
@@ -2654,7 +2697,7 @@ async function updateInstance(request, env, ctx, id, iid) {
   if (u.meetings) evs.push(...meetingEvents(JSON.parse(inst.meetings || '[]'), JSON.parse(u.meetings)));
   if (u.questions !== undefined) {
     const was = new Set(questionsOf(inst).map((q) => q.id)), added = (u.questions ? JSON.parse(u.questions) : []).filter((q) => q.type !== 'group' && !was.has(q.id));
-    if (added.length) evs.push({ kind: 'question_added', name: added.slice(0, 3).map((q) => q.label).join(' · ') + (added.length > 3 ? ' …' : '') });
+    if (added.length) evs.push({ kind: 'question_added', name: added.slice(0, 3).map((q) => roundText(q.label, poll, inst)).join(' · ') + (added.length > 3 ? ' …' : '') });
   }
   if (u.status && u.status !== effStatus(inst)) evs.push({ kind: u.status === 'closed' ? 'poll_closed' : 'poll_reopened' });
   for (const ev of evs) fireEvent(ctx, env, poll, { ...ev, iid, actor });
@@ -2825,7 +2868,7 @@ function meetingAnswerText(poll, inst, mt, data) {
       const yes = vals.filter((x) => x.v && x.v.y), sum = yes.reduce((s, x) => s + (+x.v.n || 0), 0);
       body = [`${L.yes}: ${yes.length}`, `${L.no}: ${vals.length - yes.length}`, q.count && sum ? `${q.count.label || '#'}: ${sum}` : ''];
     } else body = vals.map((x) => answerValueText(q, x.v, opts, L));
-    out.push(descSection('❓', q.label.replace(/:$/, ''), body.filter(Boolean).map(bullet).join('\n')));
+    out.push(descSection('❓', roundText(q.label, poll, inst).replace(/:$/, ''), body.filter(Boolean).map(bullet).join('\n')));
   }
   if (inc.comments) {
     const rs = mt.participants === 'all' ? data.responses : data.responses.filter((r) => mt.participants.some((p) => p.id === r.id));
@@ -3029,6 +3072,15 @@ function periodText(poll, inst) {
   }
   const f = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   return `${f(inst.start_date)} – ${f(inst.end_date)}`;
+}
+// Question text may name the round: {month} (the round's first month) and {dates} (its period). German aliases {monat} / {zeitraum}.
+// Stored raw, so a series copies the placeholders into every new round; filled in wherever the text is shown.
+const ROUND_TOK_RE = /\{(month|monat|dates|zeitraum)\}/gi;
+function roundText(s, poll, inst) {
+  if (!s || !inst || !inst.start_date || !s.includes('{')) return s;
+  return s.replace(ROUND_TOK_RE, (_, k) => (/^(month|monat)$/i.test(k)
+    ? new Date(inst.start_date + 'T00:00:00Z').toLocaleDateString(LOCALE[langOf(poll.lang)], { month: 'long', timeZone: 'UTC' })
+    : periodText(poll, inst)));
 }
 // Emails started by a person (invites) count against a daily cap per account, or per poll without one.
 async function mailQuota(env, poll, count) {
@@ -4116,7 +4168,7 @@ Calendars (Account page): connect Google or Outlook, or paste an iCal link; your
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone.
 
-QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked after a meeting has happened (e.g. "Rate the evening"). Results show bars and averages.
+QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked after a meeting has happened (e.g. "Rate the evening"). Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Rounds → Questions for every round is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
 
 PEOPLE tab. Add people (by email, from your contacts, groups or favourites), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
 
@@ -4486,6 +4538,7 @@ function validateQuestions(list, meetings, old = [], pids = new Set()) {
       icon: emojiIcon(q.icon, 'Icon') || undefined,
       req: q.req ? true : undefined, vis: q.vis === 'owner' ? 'owner' : 'all', closed: q.closed ? true : undefined,
       repeat: q.repeat === false ? false : undefined, at: prev.get(id)?.at || now() }; // at = when it was added
+    if (typeof q.tpl === 'string' && QID_RE.test(q.tpl)) out.tpl = q.tpl; // a copy of the poll's every-round question q.tpl (round_questions)
     if (typeof q.grp === 'string' && gset.has(q.grp)) { out.grp = q.grp; if (q.own) out.own = true; }
     linkWho(q, out, meetings, mids, pids);
     if (Q_CHOICE.has(q.type)) {
@@ -4600,7 +4653,7 @@ async function validateExtra(env, raw, inst, { fid = null, part = null, admin = 
       v = Object.keys(m).length ? m : undefined;
     } else v = qValue(q, a[q.id], valid);
     if (v !== undefined) outA[q.id] = v;
-    if (needReq && q.req && !admin && !q.link.each && !isAfter(q) && v === undefined) throw new HttpError(400, `Please answer: ${q.label}`, { code: 'question', question: q.id });
+    if (needReq && q.req && !admin && !q.link.each && !isAfter(q) && v === undefined) throw new HttpError(400, `Please answer: ${roundText(q.label, {}, inst)}`, { code: 'question', question: q.id });
   }
   const out = { ...(Object.keys(outA).length ? { a: outA } : {}), ...(Object.keys(outAdd).length ? { add: outAdd } : {}) };
   return Object.keys(out).length ? JSON.stringify(out) : null;
