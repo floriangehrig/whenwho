@@ -88,7 +88,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (`chat.unread` in `GET /api/polls/:id`, `unread` in `GET /api/me/polls`). 0016: `messages.ref` puts a message in a day / meeting
   thread (`d:YYYY-MM-DD` / `m:<meeting id>`), `reactions` (JSON emoji → user ids, sent as counts) via `POST .../chat/:mid/react`,
   `updated_at` makes `?after=` return changed reactions. `GET /api/polls/:id` adds `chat.last` (header peek) and `chat.refs` (thread counts).
-  The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. It is one
+  The page shows the chat in one drawer (round button bottom-right; bottom sheet on phones) instead of a card or tab. The button pops in, peeks out as a pill ("Chat" or the newest unread message, `chatPeek`) on opening a poll (once per tab, `sessionStorage peek:<poll>`) and when a message comes in, and a ring pulses while there are unread messages (`.ping`). It is one
   timeline: messages plus events worked out on the page (answers, grouped when close together; meetings by their `at` stamp; rounds by
   `createdAt`). Guests see only the events. Dates of the poll written in a message become chips that jump to that day.
   People who can chat don't get the Comment field under My answer.
@@ -188,6 +188,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (signed out too, by IP) sends only the text to Workers AI (`pollFromText`, `POLLGEN_SCHEMA`) and returns `{ data, startDate? }`, `data` in a
   preset's shape (checked by `presetData`; questions via the shared `aiQuestions`, in one questionnaire when the model names one). The page fills
   the form with `applyPreset` (Undo restores the snapshot); nothing is created or stored. Shares the `AI_PER_DAY` cap.
+- **Help assistant** (page + Worker, nothing stored): the app bar's ? (`tourButton`) is a menu **Ask for help** · **Take the tour** (just one when only
+  one applies; also in the account menu). `helpOpen` (dialog `#helpdlg`, classes `hx-*`, history in sessionStorage `help`) sends the last 8 turns and
+  the page kind (`helpPage`) to `POST /api/help`; the Worker answers from `HELP_DOC` (a plain-words guide to the site: **update it when you add a
+  main feature**) via Workers AI and may name one place to open (`show`, `HELP_SHOW`; the page's **Show me** button, `helpShow` / `helpCan`).
+  Own daily cap `HELP_PER_DAY` (40, `login_attempts` kind `help`). `GET /api/config` sends `help`.
 - **Presets** (`poll_presets`, 0025): saved starting points for new polls, per account (max 50): `data` = the New poll body without
   dates or password (`days` = length of a one-off range) plus `questions` (links reset by `presetQuestions`: meetings → whole poll,
   after-meeting ones kept, `people` → everyone). `GET|POST /api/me/presets` (POST with a name you already use replaces it),

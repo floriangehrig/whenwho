@@ -12,7 +12,7 @@
 //   GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET and / or MS_CLIENT_ID + MS_CLIENT_SECRET (secrets). Each provider shows up only when set.
 //   AI        (optional) Workers AI binding: "fill my answer from text" (typed or spoken). Without it the ✨ button is hidden.
 //   RETAIN_MONTHS (optional) delete polls with no activity for this many months, default 12; "0" turns it off
-//   AI_MODEL  (optional) Workers AI text model, default AI_MODEL below. AI_PER_DAY (optional) text fills per person per day, default 20
+//   AI_MODEL  (optional) Workers AI text model, default AI_MODEL below. AI_PER_DAY (optional) text fills per person per day, default 20. HELP_PER_DAY (optional) help assistant questions per day, default 40
 //
 // Accounts: anyone can sign in with a 6-digit code sent to their email (needs RESEND_API_KEY + MAIL_FROM).
 // Only signed-in users can create polls, and only the account that owns a poll can manage it.
@@ -36,6 +36,7 @@ const MAX_POLLS_PER_USER = 100;
 const MAIL_PER_DAY = 50;       // default for env.MAIL_PER_DAY (Resend's free plan allows 100 emails a day in total)
 const AI_PER_DAY = 20;         // default for env.AI_PER_DAY: text fills per account (or IP) per day (Workers AI free: 10,000 neurons/day)
 const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const HELP_PER_DAY = 40;       // default for env.HELP_PER_DAY: help assistant questions per account (or IP) per day
 
 export default {
   async fetch(request, env, ctx) {
@@ -64,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-SMDYXVdCfUVtVJrGgDyW+WMlmMgX1pzuH5+3epJ+KcE=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ijPAHCuFxO4B4Z5K8w447IdRqX4a/b9nCu60aOp1vWk=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -132,7 +133,8 @@ async function route(request, env, ctx, url) {
   if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
   if (!INTERNAL.has(request)) USERS.set(request, await getUser(env, cookies)); // MCP tool calls come with their user set (callApi)
-  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, personalLinks: !!env.LINK_KEY, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
+  if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, help: !!env.AI, personalLinks: !!env.LINK_KEY, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
+  if (parts[1] === 'help' && !parts[2]) { if (m === 'POST') return helpAsk(request, env); throw new HttpError(405, 'Method not allowed'); }
   if (parts[1] === 'oauth' && OAUTH[parts[2]] && m === 'GET') {
     if (parts[3] === 'start') return oauthStart(request, env, url, parts[2]);
     if (parts[3] === 'callback') return oauthCallback(request, env, url, parts[2]);
@@ -3733,19 +3735,22 @@ const nameTaken = (name, participantId, responseId) =>
 
 // ---------- Workers AI helpers (Fill with AI, Suggest with AI) ----------
 // Per account (or IP) per day, shared by both; login_attempts rows are kept for a day.
-async function aiQuota(request, env, user) {
-  const key = user ? 'u:' + user.id : clientIp(request), max = Number(env.AI_PER_DAY) || AI_PER_DAY;
+// kind 'help' (the help assistant) has its own, larger cap.
+async function aiQuota(request, env, user, kind = 'ai') {
+  const help = kind === 'help';
+  const key = user ? 'u:' + user.id : clientIp(request), max = Number(help ? env.HELP_PER_DAY : env.AI_PER_DAY) || (help ? HELP_PER_DAY : AI_PER_DAY);
   const since = new Date(Date.now() - 86400000).toISOString();
-  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, 'ai', since).first('n');
-  if (n >= max) throw new HttpError(429, `You can fill from text ${max} times a day. Try again tomorrow.`);
-  await recordFail(env, request, 'ai', key);
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = ? AND at > ?').bind(key, kind, since).first('n');
+  if (n >= max) throw new HttpError(429, help ? `You can ask the help assistant ${max} questions a day. Try again tomorrow.` : `You can fill from text ${max} times a day. Try again tomorrow.`);
+  await recordFail(env, request, kind, key);
 }
 // Runs the model with a JSON schema and returns the parsed object (or null).
+// text = the user's text, or a list of chat turns [{ role, content }].
 async function aiJson(env, system, text, schema, maxTokens = 600, temperature = 0) {
   let out;
   try {
     out = await env.AI.run(env.AI_MODEL || AI_MODEL, {
-      messages: [{ role: 'system', content: system }, { role: 'user', content: text }],
+      messages: [{ role: 'system', content: system }, ...(Array.isArray(text) ? text : [{ role: 'user', content: text }])],
       response_format: { type: 'json_schema', json_schema: schema },
       max_tokens: maxTokens, temperature,
     });
@@ -4036,6 +4041,66 @@ function pollGenPrompt(lang) {
     `Write everything in the language of the text (it may be ${lang === 'de' ? 'German or English' : 'English or German'}). Answer only with the JSON object.`,
   ].join('\n');
 }
+// ---------- help assistant (Workers AI) ----------
+// "How do I …?" questions about the site, from the ? menu in the app bar. The page sends the last few turns and which
+// page it's on; the model answers from HELP_DOC and may point at one place to open (show). Nothing is stored.
+const HELP_PAGES = ['home', 'new', 'account', 'poll-answer', 'poll-edit', 'poll-manage', 'other'];
+const HELP_SHOW = ['none', 'tour', 'new_poll', 'account', 'notifications', 'tab_answers', 'tab_meetings', 'tab_questions', 'tab_people', 'settings', 'chat', 'fill_ai'];
+const HELP_SCHEMA = {
+  type: 'object',
+  properties: { answer: { type: 'string' }, show: { type: 'string', enum: HELP_SHOW } },
+  required: ['answer', 'show'],
+};
+const HELP_DOC = `when-who is a free website for availability polls ("when is everyone free?") and for planning the meetings that follow.
+
+POLLS. New poll (button on the home page). Kinds: One-off (one date range, e.g. a trip), Recurring (a new round every week or month, e.g. a monthly club night; earlier answers and the chat are kept together; rounds are listed in Settings → Rounds, others switch rounds with the round chip in the header) and Weekly schedule (a typical week, to find a regular weekly slot). People answer by whole days, by hours, or both. Start from: pick a ready-made preset (about 20 kinds, with fitting questions) or one of your own; "Describe it" lets AI fill the form from a sentence. Save as preset keeps settings for next time. Optional: reply-by date (deadline), poll password, Only invited people can answer, Hide answers from respondents, Chat on/off, an emoji or picture icon. You need to sign in to create and manage polls; answering works without an account.
+
+SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes). There is no password.
+
+ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
+Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles.
+
+MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone.
+
+QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked after a meeting has happened (e.g. "Rate the evening"). Results show bars and averages.
+
+PEOPLE tab. Add people (by email, from your contacts, groups or favourites), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
+
+CHAT. The round button at the bottom right opens the poll's group chat (signed-in people; guests see what happens in the poll). Tag people with @, reply, react, attach meetings, write in a day's or meeting's thread. 🔔 in the chat header mutes it.
+
+NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from the Home Screen app: Share → Add to Home Screen; "Show me how" explains it) and optional email digests. Defaults in Account → Notifications; per poll with the 🔔 button in the poll header.
+
+SETTINGS (organiser only): title, dates, answer mode, deadline, password, invited only, hide answers, chat, rounds of a recurring poll, defaults for new meetings, delete the poll.
+
+ACCOUNT page: name, avatar, email change, calendars, contacts and groups, notifications, presets, Your data (download a copy, delete the account). Polls without activity for 12 months are deleted (the owner is emailed 14 days before).
+
+OTHER: Guided tour = the ? button → Take the tour. Language and light/dark theme are in the top bar. when-who is free; there is no app to install, but you can add it to the Home Screen.`;
+function helpPrompt(page, lang) {
+  return [
+    'You are the friendly help assistant of when-who. Answer the user\'s question about using when-who, using only the guide below.',
+    'Rules: be short (at most 120 words), concrete, with the button / tab names from the guide in bold (**like this**). Use plain sentences or a few short numbered steps.',
+    'If the guide doesn\'t cover it, say you\'re not sure and suggest the guided tour or contacting the site. Never invent features.',
+    'Only help with when-who. Politely decline anything else. Never ask for passwords, sign-in codes or other personal data.',
+    `Write in ${lang === 'de' ? 'German (use "du")' : 'English'}.`,
+    `The user is on: ${{ home: 'the home page (their polls)', new: 'the New poll page', account: 'their Account page', 'poll-answer': 'a poll, as someone answering it', 'poll-edit': 'a poll, as an editor', 'poll-manage': 'a poll they organise', other: 'another page' }[page]}.`,
+    `Set "show" to the one place that helps most (${HELP_SHOW.filter((x) => x !== 'none').join(', ')}; tab_* and settings, chat, fill_ai only on a poll page; settings only for organisers). Pick one whenever the answer is about a button, tab or page there (e.g. new_poll for making a poll, tab_meetings for picking a time); "none" only when nothing fits.`,
+    '', 'GUIDE:', HELP_DOC,
+  ].join('\n');
+}
+async function helpAsk(request, env) {
+  if (!env.AI) throw new HttpError(503, 'The help assistant isn’t available here');
+  const b = await body(request);
+  const list = Array.isArray(b.messages) ? b.messages.slice(-8) : [];
+  const msgs = list.map((x) => ({ role: x && x.role === 'assistant' ? 'assistant' : 'user', content: String((x && x.content) || '').trim().slice(0, 600) })).filter((x) => x.content);
+  if (!msgs.length || msgs[msgs.length - 1].role !== 'user') throw new HttpError(400, 'Type a question');
+  const page = HELP_PAGES.includes(b.page) ? b.page : 'other';
+  await aiQuota(request, env, userOf(request), 'help');
+  const r = await aiJson(env, helpPrompt(page, reqLang(request)), msgs, HELP_SCHEMA, 500, 0.2);
+  const answer = r && typeof r.answer === 'string' ? r.answer.trim().slice(0, 2000) : '';
+  if (!answer) throw new HttpError(502, 'Couldn’t understand that. Try saying it differently.');
+  return json({ answer, show: HELP_SHOW.includes(r.show) && r.show !== 'none' ? r.show : null });
+}
+
 async function pollFromText(request, env) {
   if (!env.AI) throw new HttpError(503, 'Filling from text isn’t available here');
   const b = await body(request);

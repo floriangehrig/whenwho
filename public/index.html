@@ -1384,6 +1384,18 @@
   .chatdock.dim{background:var(--card);color:var(--muted);border:1px solid var(--line);box-shadow:var(--shadow)}
   .chatdock.isopen{opacity:0;pointer-events:none;transform:scale(.8)}
   body:has(.savebar) .chatdock{bottom:calc(96px + env(safe-area-inset-bottom))}
+  /* stand out: pops in, peeks out as a pill ("Chat" or the newest message) for a few seconds, and a ring pulses while unread */
+  .chatdock{animation:cdIn .5s cubic-bezier(.3,1.5,.6,1) both;transition:transform .15s,opacity .15s,width .35s cubic-bezier(.3,1.2,.5,1),padding .35s}
+  @keyframes cdIn{from{transform:scale(.4);opacity:0}}
+  .chatdock .cd-peek{display:none;max-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;font-weight:600;text-align:left;line-height:1.2}
+  .chatdock .cd-peek b{font-weight:700;margin-right:4px}
+  .chatdock.peek{display:flex;width:auto;max-width:min(320px,calc(100vw - 32px));border-radius:999px;padding:0 18px 0 15px;gap:9px}
+  .chatdock.peek .cd-peek{display:block;max-width:260px;animation:cdText .35s ease both}
+  @keyframes cdText{from{opacity:0;max-width:0}}
+  .chatdock.ping:not(.dim):not(.isopen)::before{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid var(--accent);animation:cdPing 2.4s ease-out infinite;pointer-events:none}
+  @keyframes cdPing{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(1.55);opacity:0}}
+  .chatdock.peek.ping::before{animation-name:cdPingW} @keyframes cdPingW{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(1.15,1.5);opacity:0}}
+  @media (prefers-reduced-motion:reduce){ .chatdock,.chatdock .cd-peek,.chatdock.ping::before{animation:none!important;transition:none} }
   .chatback{display:none}
   .chatdrawer{position:fixed;top:0;right:0;bottom:0;z-index:70;width:min(400px,100vw);display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);
     box-shadow:var(--shadow-pop);transform:translateX(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
@@ -1998,6 +2010,26 @@
   /* Guided tour: a spotlight (hole) over the explained element and a bubble with Back / Next */
   .tourb{display:inline-flex;align-items:center;justify-content:center;width:34px;min-width:34px;height:34px;padding:0;border:0;border-radius:8px;background:none;color:#fff;cursor:pointer}
   .tourb:hover{background:rgba(255,255,255,.1)} .tourb svg{width:18px;height:18px}
+  /* ? in the app bar: Ask for help / Take the tour; the help assistant panel (bottom-right on desktop, bottom sheet on phones) */
+  .dd.helpdd{margin-top:0} .helpdd>summary.tourb{list-style:none} .helpdd>summary::-webkit-details-marker{display:none} .helpdd .ddp{min-width:210px} .helpdd .ddp.right{right:auto;left:50%;transform:translateX(-50%)}
+  .appbar .dd.helpdd>summary.tourb{padding:0;border:0;min-height:34px;gap:0;background:none} .appbar .dd.helpdd>summary::after{display:none} .helpdd>summary svg{flex:none}
+  .helpdd .menu a{display:flex;align-items:center;gap:9px} .helpdd .menu a svg{width:16px;height:16px;color:var(--accent)}
+  .helpdlg{margin:auto 20px calc(20px + env(safe-area-inset-bottom)) auto;width:min(400px,calc(100vw - 32px));height:min(600px,calc(100dvh - 40px));display:flex;flex-direction:column}
+  .helpdlg:not([open]){display:none} .helpdlg::backdrop{background:rgba(11,31,58,.25)}
+  .hx-h{display:flex;align-items:center;gap:8px;padding:12px 12px 10px 16px;border-bottom:1px solid var(--line)} .hx-h h2{margin:0;font-size:16px;display:flex;align-items:center;gap:7px} .hx-h h2 svg{width:18px;height:18px;color:var(--accent)}
+  .hx-list{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+  .hx-m{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14.5px;line-height:1.45;overflow-wrap:anywhere}
+  .hx-m.bot{align-self:flex-start;background:var(--empty);border-bottom-left-radius:4px} .hx-m.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .hx-m.err{background:color-mix(in srgb,var(--no) 12%,transparent);color:var(--ink)}
+  .hx-m .btn{margin-top:8px}
+  .hx-dots{display:inline-flex;gap:4px;padding:4px 0} .hx-dots i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:hxDot 1s infinite ease-in-out} .hx-dots i:nth-child(2){animation-delay:.15s} .hx-dots i:nth-child(3){animation-delay:.3s}
+  @keyframes hxDot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+  @media (prefers-reduced-motion:reduce){ .hx-dots i{animation:none} }
+  .hx-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+  .hx-f{display:flex;align-items:flex-end;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .hx-h [hidden]{display:none} .hx-f .btn{min-height:40px;padding:0 12px}
+  .hx-f textarea{flex:1;resize:none;min-height:40px;max-height:120px;margin:0}
+  @media (max-width:560px){ .helpdlg{margin:auto 0 0 0;width:100vw;max-width:100vw;height:min(80dvh,640px);border-radius:16px 16px 0 0;border-bottom:0} }
   .tour-ov{position:fixed;inset:0;z-index:200;background:transparent}
   .tour-ov.dim{background:rgba(6,12,26,.55)}
   .tour-hole{position:fixed;z-index:201;border-radius:12px;pointer-events:none;box-shadow:0 0 0 9999px rgba(6,12,26,.55);outline:2px solid var(--accent);outline-offset:2px;transition:top .2s,left .2s,width .2s,height .2s}
@@ -2148,6 +2180,7 @@ const ERR_DE = [
   [/^Too many requests\. Wait a minute and try again\.$/, ()=>'Zu viele Anfragen. Warte eine Minute und versuch es noch einmal.'],
   [/^Too many wrong passwords\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele falsche Passwörter. Versuch es in ${n} Minuten noch einmal.`],
   [/^Too many calendar imports\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Kalender-Importe. Versuch es in ${n} Minuten noch einmal.`],
+  [/^You can ask the help assistant (\d+) questions a day\. Try again tomorrow\.$/, (m,n)=>`Du kannst dem Hilfe-Assistenten ${n} Fragen am Tag stellen. Versuch es morgen wieder.`],
   [/^You can fill from text (\d+) times a day\. Try again tomorrow\.$/, (m,n)=>`Du kannst ${n}-mal am Tag per Text ausfüllen. Versuch es morgen wieder.`],
   [/^Too many tries\. Try again in (\d+) minutes\.$/, (m,n)=>`Zu viele Versuche. Versuch es in ${n} Minuten noch einmal.`],
   [/^Reconnect your (.+) calendar$/, (m,p)=>`Verbinde deinen ${p}-Kalender neu`],
@@ -2628,7 +2661,13 @@ function tourKey(){
   if(qs.has('privacy')||qs.has('imprint')||qs.has('rules')||!ME.user) return null;
   return qs.has('account')?'account':qs.has('new')?'new':'home';
 }
-function tourButton(){ return tourKey()?`<button type="button" class="tourb" data-tour title="${t('Guided tour')}" aria-label="${t('Guided tour')}">${ICON.ask}</button>`:''; }
+// ? in the app bar: a menu with Ask for help (the AI help assistant) and Take the tour; just one of them when only one applies.
+function tourButton(){
+  const tour=!!tourKey(), help=!!CONFIG.help;
+  if(tour&&help) return `<details class="dd helpdd"><summary class="tourb" title="${t('Help')}" aria-label="${t('Help')}">${ICON.ask}</summary>
+    <div class="ddp right menu"><a href="#" data-helpopen>${ICON.spark}${t('Ask for help')}</a><a href="#" data-tour>${ICON.tap}${t('Take the tour')}</a></div></details>`;
+  if(help) return `<button type="button" class="tourb" data-helpopen title="${t('Ask for help')}" aria-label="${t('Ask for help')}">${ICON.ask}</button>`;
+  return tour?`<button type="button" class="tourb" data-tour title="${t('Guided tour')}" aria-label="${t('Guided tour')}">${ICON.ask}</button>`:''; }
 const tourVis=el=>!!el&&el.getClientRects().length>0&&!el.closest('.hide,[hidden]');
 // Poll page helpers for go(): open a tab, a view of the Availability tab, a Meetings sub-view.
 const tgTab=k=>()=>{ if(P.atab!==k) setPollTab(k); };
@@ -2637,6 +2676,7 @@ const tgMsub=v=>()=>{ if(P.atab!=='meetings') setPollTab('meetings'); if(msub()!
 function tourSteps(key){
   const S=(sel,title,body,o={})=>Object.assign({sel,title,body},o);
   const end=S(null,t('That’s it!'),t('You can open this tour again any time with the ? button at the top of the page.'),{basic:1});
+  const help=S('.acct .tourb',t('Ask for help'),t('Stuck? Ask the help assistant any question about when-who in your own words, from the ? button.'),{when:()=>!!CONFIG.help});
   if(key==='home') return [
     S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.')),
@@ -2644,7 +2684,7 @@ function tourSteps(key){
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
     S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),
-    S('details.me',t('Add to Home Screen'),t('Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.'),{when:()=>hsCan()}),end];
+    S('details.me',t('Add to Home Screen'),t('Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.'),{when:()=>hsCan()}),help,end];
   if(key==='new') return [
     S(null,t('Create a poll'),t('A quick look at the New poll page.')),
     S('#prs',t('Start from'),t('Start from a ready-made preset (with fitting questions) or one you saved, or start empty.')),
@@ -2711,7 +2751,7 @@ function tourSteps(key){
     S('#savePreset',t('Save as preset'),t('Start your next poll from this one’s settings and questions.'),{go:tgTab('settings'),when:()=>man}),
     S('#chatdock',t('Chat'),guest?t('People who are signed in chat here. You see what happens in the poll: answers, meetings and rounds.'):t('Chat with everyone in the poll. Tag people with @ and reply to a day or a meeting.'),{go:tgView(editable()?'mine':'group'),when:()=>chatOn}),
     S('.su-btn',t('Create an account (optional)'),t('Your answers follow you to every device, and you can make polls of your own.'),{when:()=>guest}),
-    end];
+    help,end];
 }
 // ---- tour demos: a fake finger paints a few marks on My answer; everything is put back when the demo steps end ----
 const tsleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -3008,7 +3048,7 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}${hsCan()?`<a href="#" data-hsopen>${t('Add to Home Screen')}</a>`:''}
+    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${CONFIG.help?`<a href="#" data-helpopen>${t('Ask for help')}</a>`:''}${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}${hsCan()?`<a href="#" data-hsopen>${t('Add to Home Screen')}</a>`:''}
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -3319,7 +3359,7 @@ function renderPrivacy(){
       ${legalSec(t('AI assistants'),`<p>${t('You can connect an AI assistant (for example Claude or ChatGPT) to your account with MCP. It then acts for you: it can read what you can see in your polls (titles, dates, people’s names and answers, meetings) and answer polls, create polls, invite people and write chat messages in your name. That data goes to the assistant’s provider, who processes it under their own privacy policy; you choose the provider, and when-who sends nothing there unless you connect it. Disconnect it any time on your Account page.')}</p>`)}
       ${legalSec(t('Services we use'),legalUl([
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
-        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.'),
+        t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI, describe a new poll for AI to fill in or ask the help assistant, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions, poll settings or a help answer (for questions, together with the poll’s title; for the help assistant, the last few questions and answers of that conversation and which kind of page you are on). It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the hourly notification emails you asked for.'),
         t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
@@ -4831,7 +4871,7 @@ function render(){
   [nm,em].forEach(x=>{ if(x) x.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }); });
   if(d.isAdmin) wireAdmin();
   renderBody();
-  chatSync(); tourAuto();
+  chatSync(); tourAuto(); chatPeekAuto();
 }
 // "You" strip at the top of the Mine view: the name (and, for guests, email) that go with the answer.
 // Guests get a small card: name, email and an optional "Create account" (opens sign-up with both filled in).
@@ -7758,7 +7798,7 @@ function chatDock(){
   if(d.poll.allowComments===false){ document.body.classList.remove('chatopen'); return ''; } // the organiser turned the chat off
   const c=chatState(), can=chatCan(), n=can?(d.chat.unread||0):0, at=n&&d.chat.mentions;
   document.body.classList.toggle('chatopen',c.open);
-  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="count" id="chatn"${n?'':' hidden'}>${n}</span><span class="count at" id="chatat"${at?'':' hidden'} title="${t('You were tagged')}">@</span></button>
+  return `<button type="button" class="chatdock${can?'':' dim'}${c.open?' isopen':''}${n?' ping':''}${c.peek&&!c.open?' peek':''}" id="chatdock" data-chatopen aria-expanded="${c.open}" aria-controls="chatdrawer" title="${t('Chat')}" aria-label="${t('Chat')}">${ICON.chat}<span class="cd-peek" id="chatpeek" aria-hidden="true">${chatPeekText()}</span><span class="count" id="chatn"${n?'':' hidden'}>${n}</span><span class="count at" id="chatat"${at?'':' hidden'} title="${t('You were tagged')}">@</span></button>
     <div class="chatback${c.open?' open':''}" data-chatclose></div>
     <aside class="chatdrawer${c.open?' open':''}" id="chatdrawer" aria-label="${t('Chat')}"${c.open?'':' inert'}>
       <div class="cd-h"><span class="cd-grab" data-chatclose aria-hidden="true"></span>
@@ -7770,8 +7810,29 @@ function chatDock(){
       <div class="cd-ref" id="chatref"></div>
       <div id="chatbox" class="chatbox"></div></aside>`;
 }
+// The button's pill label: the newest unread message ("Name: text"), else just "Chat".
+function chatPeekText(){
+  const ch=P.data&&P.data.chat, l=ch&&ch.last;
+  if(chatCan()&&ch.unread&&l&&!l.mine&&l.body) return `<b>${esc(l.name||'?')}</b>${esc(plainText(l.body).slice(0,60))}`;
+  return esc(chatCan()?t('Chat'):t('What’s happening'));
+}
+// Slide the round button out into a pill for a few seconds (once per poll per tab on opening, and when a new message comes in).
+function chatPeek(ms){
+  const c=chatState(); if(c.open||TOUR.on) return;
+  const dk=$('chatdock'), lb=$('chatpeek'); if(!dk||!lb) return;
+  lb.innerHTML=chatPeekText(); c.peek=true; dk.classList.add('peek');
+  clearTimeout(c.peekT); c.peekT=setTimeout(chatUnpeek,ms||4000);
+}
+function chatUnpeek(){ const c=P.chat; if(c){ c.peek=false; clearTimeout(c.peekT); } const dk=$('chatdock'); if(dk) dk.classList.remove('peek'); }
+function chatPeekAuto(){
+  setTimeout(()=>{ if(!$('chatdock')||document.querySelector('dialog[open],.pigeon-ov')) return;
+    const k='peek:'+P.id; let seen=false; try{ seen=!!sessionStorage.getItem(k); sessionStorage.setItem(k,'1'); }catch{}
+    if(!seen||(P.data.chat&&P.data.chat.unread&&chatCan())) chatPeek(4000); },900);
+}
 function chatUnreadBadges(n){
-  const ch=P.data&&P.data.chat; if(ch){ ch.unread=n; if(!n) ch.mentions=0; }
+  const ch=P.data&&P.data.chat, was=ch?ch.unread||0:0; if(ch){ ch.unread=n; if(!n) ch.mentions=0; }
+  const dk=$('chatdock'); if(dk) dk.classList.toggle('ping',!!n&&chatCan());
+  if(n>was&&!(P.chat&&P.chat.open)) chatPeek(3000);
   const el=$('chatn'); if(el){ el.textContent=n; el.hidden=!n; }
   const a=$('chatat'); if(a) a.hidden=!(n&&ch&&ch.mentions);
 }
@@ -7785,6 +7846,7 @@ function chatSetOpen(on,ref){
   const dr=$('chatdrawer'), dk=$('chatdock'), bk=document.querySelector('.chatback');
   if(dr){ dr.classList.toggle('open',on); dr.inert=!on; }
   if(bk) bk.classList.toggle('open',on);
+  if(on) chatUnpeek();
   if(dk){ dk.classList.toggle('isopen',on); dk.setAttribute('aria-expanded',on); }
   if(on){ const box=$('chatbox'); if(box&&was) box.innerHTML=''; chatSync(); const ta=$('chatin'); if(ta&&!isPhone()) ta.focus(); }
   else { chatStop(); if(dk&&dr&&dr.contains(document.activeElement)) dk.focus(); }
@@ -8314,6 +8376,102 @@ function hsPhone(os){
         <div class="hs-tog"><span>${t('Open as Web App')}</span><i></i></div></div>
       ${home}${app}</div><div class="hs-nav"><i></i></div></div>`;
 }
+// ---- help assistant ----
+// Opened from the ? menu (data-helpopen). The question and the last few turns go to POST /api/help (Workers AI, not stored);
+// the answer may name one place to open (show), drawn as a Show me button. The conversation lives in this tab only (sessionStorage).
+const HELP={msgs:null,busy:false};
+function helpPage(){
+  const qs=new URLSearchParams(location.search);
+  if(qs.has('p')) return P.data&&!P.data.draft&&P.data.poll?(canManage()?'poll-manage':P.data.isAdmin?'poll-edit':'poll-answer'):'other';
+  if(qs.has('privacy')||qs.has('imprint')||qs.has('rules')) return 'other';
+  return qs.has('account')?'account':qs.has('new')?'new':'home';
+}
+function helpLoad(){ if(HELP.msgs) return; try{ HELP.msgs=JSON.parse(sessionStorage.getItem('help')||'[]').filter(m=>m&&typeof m.content==='string').slice(-16); }catch{ HELP.msgs=[]; } }
+function helpSave(){ try{ sessionStorage.setItem('help',JSON.stringify(HELP.msgs.slice(-16))); }catch{} }
+function helpSuggestions(){
+  const pg=helpPage();
+  if(pg==='poll-answer') return [t('How do I mark only some hours?'),t('How do I change my answer later?'),t('Can I see when I’m busy in my calendar?')];
+  if(pg==='poll-edit'||pg==='poll-manage') return [t('How do I pick a meeting time?'),t('How do I remind people who haven’t answered?'),t('How do I ask people a question?')];
+  if(pg==='new') return [t('Which kind of poll should I pick?'),t('How do I make a poll that repeats every month?'),t('Can people answer without an account?')];
+  if(pg==='account') return [t('How do I connect my calendar?'),t('How do I turn on notifications?'),t('How do I delete my account?')];
+  return [t('How do I make a poll?'),t('How do I make a weekly poll?'),t('How do I sign in?')];
+}
+// Which Show me targets work on this page.
+function helpCan(x){
+  const poll=!!(P.data&&!P.data.draft&&P.data.poll&&new URLSearchParams(location.search).has('p')), tabs=poll?pollTabList().map(y=>y[0]):[];
+  if(x==='tour') return !!tourKey();
+  if(x==='new_poll'||x==='account') return x==='new_poll'||!!ME.user;
+  if(x==='notifications') return !!ME.user;
+  if(x==='chat') return poll&&!!$('chatdock');
+  if(x==='fill_ai') return poll&&aiOk();
+  if(x==='tab_answers') return poll;
+  if(x==='settings') return tabs.includes('settings');
+  if(x.startsWith('tab_')) return tabs.includes(x.slice(4));
+  return false;
+}
+const HELP_GO=()=>({tour:t('Start the tour'),new_poll:t('New poll'),account:t('Open Account'),notifications:t('Notification settings'),tab_answers:t('Open Availability'),
+  tab_meetings:t('Open Meetings'),tab_questions:t('Open Questions'),tab_people:t('Open People'),settings:t('Open Settings'),chat:t('Open the chat'),fill_ai:t('Open Fill with AI')});
+function helpShow(x){
+  const d=$('helpdlg'); if(d&&d.open) d.close();
+  const poll=!!(P.data&&P.data.poll&&new URLSearchParams(location.search).has('p'));
+  if(x==='tour') tourStart();
+  else if(x==='new_poll') location.href='?new';
+  else if(x==='account') location.href='?account';
+  else if(x==='notifications'){ if(poll&&typeof ntOpen==='function') ntOpen(); else location.href='?account'; }
+  else if(x==='chat') chatSetOpen(true);
+  else if(x==='fill_ai'){ tgView('mine')(); if(!P.aiOpen){ P.aiOpen=true; renderBody(); } document.querySelector('[data-ai]')?.scrollIntoView({block:'center',behavior:'smooth'}); }
+  else if(x.startsWith('tab_')||x==='settings'){ const k=x==='settings'?'settings':x.slice(4); setPollTab(k); document.querySelector('.atabs')?.scrollIntoView({block:'start',behavior:'smooth'}); }
+}
+// The answer as safe HTML: escaped first, then **bold** and line breaks.
+const helpFmt=s=>esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+function helpDraw(){
+  const box=$('hx_list'); if(!box) return; helpLoad();
+  const go=HELP_GO();
+  let h=`<div class="hx-m bot">${t('Hi! Ask me anything about using when-who, like how to make a poll or pick a meeting time.')}</div>`;
+  if(!HELP.msgs.length) h+=`<div class="hx-sug">${helpSuggestions().map(q=>`<button type="button" class="qchip" data-helpq="${esc(q)}">${esc(q)}</button>`).join('')}</div>`;
+  h+=HELP.msgs.map(m=>`<div class="hx-m ${m.role==='user'?'me':m.err?'bot err':'bot'}">${m.role==='user'?esc(m.content):helpFmt(m.content)}${m.show&&helpCan(m.show)?`<div><button type="button" class="btn sm" data-helpshow="${esc(m.show)}">${esc(go[m.show]||t('Show me'))}</button></div>`:''}</div>`).join('');
+  if(HELP.busy) h+=`<div class="hx-m bot" aria-label="${t('Thinking…')}"><span class="hx-dots"><i></i><i></i><i></i></span></div>`;
+  box.innerHTML=h; box.scrollTop=box.scrollHeight;
+  const cl=$('hx_clear'); if(cl) cl.hidden=!HELP.msgs.length;
+  const sb=$('hx_send'); if(sb) sb.disabled=HELP.busy;
+}
+async function helpAsk(q){
+  q=(q||'').trim().slice(0,600); if(!q||HELP.busy) return; helpLoad();
+  HELP.msgs.push({role:'user',content:q}); HELP.busy=true; helpSave(); helpDraw();
+  try{
+    const r=await api('POST','/help',{page:helpPage(),messages:HELP.msgs.filter(m=>!m.err).slice(-8).map(m=>({role:m.role,content:m.content}))});
+    HELP.msgs.push({role:'assistant',content:r.answer,show:r.show||null});
+  }catch(ex){ HELP.msgs.push({role:'assistant',content:ex.message||t('Something went wrong. Try again.'),err:true}); }
+  HELP.busy=false; helpSave(); helpDraw();
+  if(!isPhone()) $('hx_in')?.focus();
+}
+function helpOpen(q){
+  let d=$('helpdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='helpdlg'; d.className='dlg helpdlg'; d.setAttribute('aria-labelledby','hx_t'); document.body.appendChild(d);
+    d.innerHTML=`<div class="hx-h"><h2 id="hx_t">${ICON.spark}${t('Help')}</h2>${tip(t('Your questions go to Cloudflare Workers AI to write an answer and aren’t stored. Answers can be wrong now and then.'),'right')}
+      <span class="ml-auto"></span><button type="button" class="qb" id="hx_clear" data-helpclear title="${t('Start over')}" aria-label="${t('Start over')}" hidden>${ICON.trash}</button>
+      <button type="button" class="qb" data-helpclose title="${t('Close')}" aria-label="${t('Close')}">${ICON.x}</button></div>
+      <div class="hx-list" id="hx_list" aria-live="polite"></div>
+      <form class="hx-f" id="hx_f"><textarea id="hx_in" rows="1" maxlength="600" placeholder="${t('Ask a question…')}" aria-label="${t('Ask a question…')}"></textarea>
+      <button type="submit" class="btn primary withic" id="hx_send" title="${t('Send')}" aria-label="${t('Send')}">${ICON.send}</button></form>`;
+    d.addEventListener('click',e=>{
+      if(e.target===d||e.target.closest('[data-helpclose]')){ d.close(); return; }
+      const q=e.target.closest('[data-helpq]'); if(q){ helpAsk(q.dataset.helpq); return; }
+      const g=e.target.closest('[data-helpshow]'); if(g){ helpShow(g.dataset.helpshow); return; }
+      if(e.target.closest('[data-helpclear]')){ HELP.msgs=[]; helpSave(); helpDraw(); $('hx_in')?.focus(); }
+    });
+    const ta=d.querySelector('#hx_in');
+    d.querySelector('#hx_f').addEventListener('submit',e=>{ e.preventDefault(); const v=ta.value; if(!v.trim()||HELP.busy) return; ta.value=''; ta.style.height=''; helpAsk(v); });
+    ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); d.querySelector('#hx_f').requestSubmit(); } });
+    ta.addEventListener('input',()=>{ ta.style.height=''; ta.style.height=Math.min(120,ta.scrollHeight)+'px'; });
+  }
+  helpDraw(); if(!d.open) d.showModal();
+  if(q) helpAsk(q); else if(!isPhone()) $('hx_in').focus(); else document.activeElement?.blur();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-helpopen]'); if(!b) return;
+  e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; helpOpen();
+});
 function hsOpen(os){
   HS.os=os||(hsAndroid()?'android':'ios'); HS.i=0; HS.play=!tourRM();
   let d=$('hsdlg');
@@ -9390,6 +9548,40 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+"Help": "Hilfe",
+"Ask for help": "Hilfe fragen",
+"Ask a question…": "Stell eine Frage …",
+"Can I see when I’m busy in my calendar?": "Kann ich sehen, wann ich laut Kalender keine Zeit habe?",
+"Can people answer without an account?": "Können Leute ohne Konto antworten?",
+"Hi! Ask me anything about using when-who, like how to make a poll or pick a meeting time.": "Hallo! Frag mich alles zur Nutzung von when-who, zum Beispiel wie du eine Umfrage erstellst oder einen Termin festlegst.",
+"How do I ask people a question?": "Wie stelle ich den Leuten eine Frage?",
+"How do I change my answer later?": "Wie ändere ich meine Antwort später?",
+"How do I connect my calendar?": "Wie verbinde ich meinen Kalender?",
+"How do I delete my account?": "Wie lösche ich mein Konto?",
+"How do I make a poll that repeats every month?": "Wie erstelle ich eine Umfrage, die sich jeden Monat wiederholt?",
+"How do I make a poll?": "Wie erstelle ich eine Umfrage?",
+"How do I make a weekly poll?": "Wie erstelle ich eine wöchentliche Umfrage?",
+"How do I mark only some hours?": "Wie markiere ich nur bestimmte Stunden?",
+"How do I pick a meeting time?": "Wie lege ich einen Termin fest?",
+"How do I remind people who haven’t answered?": "Wie erinnere ich Leute, die noch nicht geantwortet haben?",
+"How do I sign in?": "Wie melde ich mich an?",
+"How do I turn on notifications?": "Wie schalte ich Benachrichtigungen ein?",
+"Which kind of poll should I pick?": "Welche Art von Umfrage soll ich wählen?",
+"Notification settings": "Benachrichtigungen einstellen",
+"Open Account": "Konto öffnen",
+"Open Availability": "Verfügbarkeit öffnen",
+"Open Fill with AI": "Mit KI ausfüllen öffnen",
+"Open Meetings": "Termine öffnen",
+"Open People": "Personen öffnen",
+"Open Questions": "Fragen öffnen",
+"Open Settings": "Einstellungen öffnen",
+"Start the tour": "Tour starten",
+"Start over": "Neu anfangen",
+"Something went wrong. Try again.": "Etwas ist schiefgelaufen. Versuch es noch mal.",
+"Thinking…": "Denke nach …",
+"What’s happening": "Was passiert",
+"Stuck? Ask the help assistant any question about when-who in your own words, from the ? button.": "Nicht weiter? Stell dem Hilfe-Assistenten über den ?-Knopf jede Frage zu when-who in deinen eigenen Worten.",
+"Your questions go to Cloudflare Workers AI to write an answer and aren’t stored. Answers can be wrong now and then.": "Deine Fragen gehen an Cloudflare Workers AI, um eine Antwort zu schreiben, und werden nicht gespeichert. Antworten können ab und zu falsch sein.",
 "<b>Your overview:</b> which polls you hid from your list of polls. Only you see this, and showing a poll again removes it.": "<b>Deine Übersicht:</b> welche Umfragen du in deiner Umfrageliste ausgeblendet hast. Nur du siehst das; wenn du eine Umfrage wieder zeigst, wird der Eintrag gelöscht.",
 "Hidden": "Ausgeblendet",
 "Sort": "Sortieren",
@@ -9992,7 +10184,7 @@ function germanText(){ return {
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
-"<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI or describe a new poll for AI to fill in, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions or poll settings (for questions, together with the poll’s title). It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“, „Mit KI vorschlagen“ oder „Fragen mit KI erstellen“ nutzt oder eine neue Umfrage beschreibst, damit die KI sie ausfüllt, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten, Vorschläge, Fragenentwürfe oder Umfrage-Einstellungen macht (bei Fragen zusammen mit dem Titel der Umfrage). when-who speichert ihn nicht.",
+"<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI, describe a new poll for AI to fill in or ask the help assistant, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions, poll settings or a help answer (for questions, together with the poll’s title; for the help assistant, the last few questions and answers of that conversation and which kind of page you are on). It is not stored by when-who.": "<b>Cloudflare Workers AI</b>: Nur wenn du „Mit KI ausfüllen“, „Mit KI vorschlagen“ oder „Fragen mit KI erstellen“ nutzt, eine neue Umfrage beschreibst, damit die KI sie ausfüllt, oder den Hilfe-Assistenten fragst, wird der eingegebene Text an ein KI-Modell bei Cloudflare geschickt, das daraus Antworten, Vorschläge, Fragenentwürfe, Umfrage-Einstellungen oder eine Hilfe-Antwort macht (bei Fragen zusammen mit dem Titel der Umfrage; beim Hilfe-Assistenten die letzten Fragen und Antworten dieses Gesprächs und welche Art von Seite du gerade offen hast). when-who speichert ihn nicht.",
 "<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.": "<b>Google / Microsoft</b>: nur wenn du einen Kalender verbindest oder Kontakte importierst, wie oben beschrieben.",
 "The fonts are served by when-who itself; no third party is contacted when the page loads.": "Die Schriften liefert when-who selbst aus; beim Laden der Seite wird kein Dritter kontaktiert.",
 "Transfers outside the EU": "Übermittlung außerhalb der EU",
@@ -10106,6 +10298,8 @@ function germanText(){ return {
 "Nothing to redo": "Nichts zu wiederholen",
 "Reading…": "Wird gelesen…",
 "Filling from text isn’t available here": "Ausfüllen per Text ist hier nicht verfügbar",
+"The help assistant isn’t available here": "Der Hilfe-Assistent ist hier nicht verfügbar",
+"Type a question": "Gib eine Frage ein",
 "The text helper is busy or used up for today. Try again later.": "Die Texthilfe ist ausgelastet oder für heute aufgebraucht. Versuch es später noch einmal.",
 "Couldn’t understand that. Try saying it differently.": "Das war nicht zu verstehen. Versuch es anders zu formulieren.",
 "None of the poll’s days or hours match that.": "Keiner der Tage oder Stunden der Umfrage passt dazu.",
