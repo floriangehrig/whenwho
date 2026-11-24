@@ -3700,7 +3700,7 @@ function renderNew(){
       NA.undo=snap; NA.msg=t('Filled in. Check it, then create the poll.'); }
     catch(e){ NA.err=true; NA.msg=e.message; }
     NA.busy=false; aiDraw(); };
-  if($('npAiBtn')) $('npAiBtn').addEventListener('click',()=>{ NA.open=!NA.open; aiDraw(); if(NA.open) $('npAiText')?.focus(); });
+  if($('npAiBtn')) $('npAiBtn').addEventListener('click',()=>{ NA.open=!NA.open; aiDraw(); if(NA.open&&!TOUCH) $('npAiText')?.focus(); });
   $('npai').addEventListener('click',e=>{
     if(e.target.closest('[data-npaiclose]')){ NA.open=false; aiDraw(); $('npAiBtn')?.focus(); }
     else if(e.target.closest('[data-npaigo]')) aiGo();
@@ -5673,7 +5673,7 @@ function qAiPanel(){
       ${undo&&!r?`<button type="button" class="btn sm ghost" data-qaiundo>${t('Undo')}</button>`:''}
       ${A.msg&&!A.busy?`<span class="aif-msg${A.err?' err':''}">${esc(A.msg)}</span>`:''}</div></div></div>`;
 }
-function qAiOpen(){ P.qai=P.qai||{text:'',off:new Set()}; P.qedit=null; if(P.atab!=='questions') setPollTab('questions'); renderQuestions(true); $('qAiText')?.focus(); }
+function qAiOpen(){ P.qai=P.qai||{text:'',off:new Set()}; P.qedit=null; if(P.atab!=='questions') setPollTab('questions'); renderQuestions(true); if(!TOUCH) $('qAiText')?.focus(); }
 async function qAiGo(){
   const A=P.qai; if(!A||A.busy) return;
   const ta=$('qAiText'); if(ta) A.text=ta.value; const text=(A.text||'').trim();
@@ -5737,7 +5737,7 @@ document.addEventListener('click',e=>{
   if(e.target.id==='qai_grp'){ const gn=$('qai_gname'); if(gn) A.gname=gn.value; A.asGroup=e.target.checked; renderQuestions(true); return; }
   if(e.target.closest('[data-qaigo]')) qAiGo();
   else if(e.target.closest('[data-qaiadd]')) qAiAdd();
-  else if(e.target.closest('[data-qaiback]')){ A.res=null; A.msg=''; renderQuestions(true); $('qAiText')?.focus(); }
+  else if(e.target.closest('[data-qaiback]')){ A.res=null; A.msg=''; renderQuestions(true); if(!TOUCH) $('qAiText')?.focus(); }
   else if(e.target.closest('[data-qaiundo]')) qAiUndo();
   else if(e.target.closest('[data-qaiclose]')){ P.qai=null; renderQuestions(true); }
 });
@@ -6342,7 +6342,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } renderBody(); return; }
   if(!e.target.closest('.aif')) return;
   if(e.target.closest('[data-aigo]')) aiGo();
-  else if(e.target.closest('[data-aiclr]')){ P.aiText=''; P.aiMsg=''; P.aiErr=false; renderBody(); $('aiText')?.focus(); }
+  else if(e.target.closest('[data-aiclr]')){ P.aiText=''; P.aiMsg=''; P.aiErr=false; renderBody(); if(!TOUCH) $('aiText')?.focus(); }
   else if(e.target.closest('[data-aiundo]')&&P.aiUndo&&P.aiUndo.poll===P.id){ P.mine.entries=P.aiUndo.prev; changed(); P.aiUndo=null; P.aiMsg=t('Undone'); P.aiErr=false; renderBody(); }
 });
 document.addEventListener('input',e=>{ if(e.target.id==='aiText'){ P.aiText=e.target.value; const c=document.querySelector('[data-aiclr]'); if(c) c.hidden=!P.aiText; } });
@@ -7576,7 +7576,7 @@ function sugAiUndo(){
   P.sugDates=u.dates; sugSetMode(u.mode||'wd'); P.drafts=u.drafts; P.sugAiUndo=null; P.sugAiMsg=t('Undone'); P.sugAiErr=false; renderBody();
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest('[data-sugai]')){ P.sugAiOpen=!P.sugAiOpen; if(!P.sugAiUndo||P.sugAiUndo.poll!==P.id){ P.sugAiMsg=''; P.sugAiErr=false; } renderBody(); if(P.sugAiOpen) $('sugAiText')?.focus(); return; }
+  if(e.target.closest('[data-sugai]')){ P.sugAiOpen=!P.sugAiOpen; if(!P.sugAiUndo||P.sugAiUndo.poll!==P.id){ P.sugAiMsg=''; P.sugAiErr=false; } renderBody(); if(P.sugAiOpen&&!TOUCH) $('sugAiText')?.focus(); return; }
   if(!e.target.closest('.sugai')) return;
   if(e.target.closest('[data-sugaigo]')) sugAiGo();
   else if(e.target.closest('[data-sugaiundo]')) sugAiUndo();
