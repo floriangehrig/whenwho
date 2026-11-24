@@ -2274,16 +2274,17 @@ const qTokChips=()=>`<button type="button" class="qtok" data-qtok="{month}" titl
 const qHasTok=s=>/\{(month|monat|dates|zeitraum)\}/i.test(s||'');
 const qTokPrev=(s,i)=>i&&qHasTok(s)?t('This round: {text}',{text:qTx(s,i)}):'';
 let QTOK_LAST=null;
-document.addEventListener('focusin',e=>{ if(e.target.matches&&e.target.matches('[data-qtokscope] input[type=text]')) QTOK_LAST=e.target; });
+document.addEventListener('focusin',e=>{ if(e.target.matches&&e.target.matches('[data-qtokscope] input[type=text]:not(#qe_iconany)')) QTOK_LAST=e.target; });
 document.addEventListener('mousedown',e=>{ if(e.target.closest('[data-qtok]')) e.preventDefault(); }); // keep the caret in the field
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-qtok]'); if(!b) return; e.preventDefault();
   const sc=b.closest('[data-qtokscope]'); if(!sc) return; const row=b.closest('[data-qtokrow]')||sc;
-  const inp=QTOK_LAST&&row.contains(QTOK_LAST)&&document.contains(QTOK_LAST)?QTOK_LAST:row.querySelector('input[type=text]'); if(!inp) return;
-  const tok=b.dataset.qtok, a=inp.selectionStart??inp.value.length, z=inp.selectionEnd??a, pre=inp.value.slice(0,a), sp=pre&&!/\s$/.test(pre)?' ':'';
-  inp.value=pre+sp+tok+inp.value.slice(z); inp.focus(); const c=a+sp.length+tok.length; inp.setSelectionRange(c,c);
+  const inp=QTOK_LAST&&row.contains(QTOK_LAST)&&document.contains(QTOK_LAST)?QTOK_LAST:row.querySelector('[data-qtokmain]'); if(!inp) return;
+  const used=inp===QTOK_LAST, tok=b.dataset.qtok, a=used?inp.selectionStart??inp.value.length:inp.value.length, z=used?inp.selectionEnd??a:a, pre=inp.value.slice(0,a), sp=pre&&!/\s$/.test(pre)?' ':'';
+  const post=inp.value.slice(z), sp2=/^[\p{L}\p{N}{]/u.test(post)?' ':'';
+  inp.value=pre+sp+tok+sp2+post; inp.focus(); const c=a+sp.length+tok.length+sp2.length; inp.setSelectionRange(c,c);
   inp.dispatchEvent(new Event('input',{bubbles:true})); });
 document.addEventListener('input',e=>{ const sc=e.target.closest&&e.target.closest('[data-qtokscope]'); if(!sc||!P.data||P.data.draft||!inst()) return;
-  const row=e.target.closest('[data-qtokrow]')||sc, pv=row.querySelector('[data-qtokprev]'), f=row.querySelector('input[type=text]'); if(!pv||!f) return;
+  const row=e.target.closest('[data-qtokrow]')||sc, pv=row.querySelector('[data-qtokprev]'), f=row.querySelector('[data-qtokmain]'); if(!pv||!f) return;
   const s=qTokPrev(f.value,inst()); pv.textContent=s; pv.hidden=!s; });
 
 // ---------- dates ----------
@@ -5657,9 +5658,8 @@ async function qToRoundList(q){ const p=P.data.poll, cur=mqtClone(p.roundQuestio
   const [x]=mqtClone([q],false,10); if(!x) return;
   try{ await api('PATCH',`/polls/${P.id}`,{roundQuestions:[...cur,x]},headers());
     const d=await fetchPoll(), lbl=String(x.label).trim().toLowerCase(), tp=(d.poll.roundQuestions||[]).find(y=>!cur.some(c=>c.id===y.id)&&String(y.label).trim().toLowerCase()===lbl);
-    P.data.poll.roundQuestions=d.poll.roundQuestions;
     if(tp) await saveQuestions(qList().map(y=>y.id===q.id?{...y,tpl:tp.id,repeat:undefined}:y));
-    toast(t('Added to the questions for every round')); }
+    await loadPoll(false); toast(t('Added to the questions for every round')); }
   catch(ex){ toast(ex.message); } }
 function qCard(q,fill){
   const d=P.data, adm=d.isAdmin, fold=!fill&&!!P.qfold&&P.qopen!==q.id, as=qAnswers(q), n=((d.form||{}).rows||[]).length;
@@ -5989,7 +5989,7 @@ function qEditor(){
       :`${tog('qe_rep',e.repeat!==false,'repeat',t('Ask again in new rounds'))}`}<span class="qtoks">${qTokChips()}</span></div>
     <div class="muted small qtok-prev" data-qtokprev${pv?'':' hidden'}>${esc(pv)}</div>`;
   return `<${FT} class="meet qcard qedit" id="qeForm" data-qtokscope novalidate>${iconDd}<div class="mbody">
-    <div class="qe-top">${typeDd}<input type="text" id="qe_label" class="qe-label" maxlength="200" required value="${esc(e.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"></div>
+    <div class="qe-top">${typeDd}<input type="text" id="qe_label" class="qe-label" data-qtokmain maxlength="200" required value="${esc(e.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"></div>
     <input type="text" id="qe_help" maxlength="500" value="${esc(e.help||'')}" placeholder="${t('Note (optional)')}" aria-label="${t('Note (optional)')}">
     ${rep}
     ${choice?`<div class="qeopts">${opts.map((o,i)=>`<div class="qeopt${e.place?' locbox':''}"><span class="qmark ${ty==='check'?'box':'dot'}"></span><input type="text" data-qeo="${o.id}" id="qeo_${o.id}" maxlength="120" value="${esc(o.label)}" autocomplete="off" placeholder="${e.place?t('Place {n}',{n:i+1}):t('Option {n}',{n:i+1})}" aria-label="${t('Option {n}',{n:i+1})}">${e.place?`<div class="locsug" id="qeo_${o.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-qeorm="${o.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
@@ -8880,7 +8880,7 @@ function mqtInner(pre){ const l=MQT[pre]||[];
       <button type="button" class="btn sm ghost withic qeadd" data-mqtoadd="${i}">${ICON.plus}<span>${x.place?t('Place'):t('Option')}</span></button>
       <div class="qetog mqt-addo">${ICON.users}<label for="${pre}_mqa_${i}">${x.place?t('People can suggest places'):t('People can add options')}</label><label class="sw"><input type="checkbox" id="${pre}_mqa_${i}" data-mqtaddo="${i}"${x.add?' checked':''}><span></span></label></div></div>`:'';
     const rd=mqtRound(pre), pv=rd&&P.data&&!P.data.draft?qTokPrev(x.label,inst()):'';
-    return `<div class="mqt-r"${rd?' data-qtokscope data-qtokrow':''}><div class="mqt-top"><label class="mqt-k" title="${t(kd[2])}">${ICON[kd[1]]}<select data-mqtkind="${i}" aria-label="${t('Type')}">${kinds}</select></label><input type="text" id="${pre}_mql_${i}" data-mqtl="${i}" maxlength="200" value="${esc(x.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"><button type="button" class="qb" data-mqtrm="${i}" title="${t('Remove question')}" aria-label="${t('Remove question')}">${ICON.x}</button></div>${rd?`<div class="qtoks mqt-toks">${qTokChips()}<span class="muted small qtok-prev" data-qtokprev${pv?'':' hidden'}>${esc(pv)}</span></div>`:''}${opts}</div>`; }).join('');
+    return `<div class="mqt-r"${rd?' data-qtokscope data-qtokrow':''}><div class="mqt-top"><label class="mqt-k" title="${t(kd[2])}">${ICON[kd[1]]}<select data-mqtkind="${i}" aria-label="${t('Type')}">${kinds}</select></label><input type="text" id="${pre}_mql_${i}" data-mqtl="${i}" data-qtokmain maxlength="200" value="${esc(x.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"><button type="button" class="qb" data-mqtrm="${i}" title="${t('Remove question')}" aria-label="${t('Remove question')}">${ICON.x}</button></div>${rd?`<div class="qtoks mqt-toks">${qTokChips()}<span class="muted small qtok-prev" data-qtokprev${pv?'':' hidden'}>${esc(pv)}</span></div>`:''}${opts}</div>`; }).join('');
   const add=l.length<mqtMax(pre)?`<details class="dd qmore mqt-add"><summary class="btn sm ghost withic">${ICON.plus}<span>${t('Question')}</span></summary><div class="ddp menu pickm">${MQT_KINDS.map(([v,ic,lb])=>`<button type="button" data-mqtadd="${v}">${ICON[ic]}<span class="grow">${t(lb)}</span></button>`).join('')}${ME.user?`<div class="menu-sep"></div><button type="button" data-mqtprs>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>`:''}</div></details>`:'';
   return `${rows}${add}`; }
 function mqtDraw(pre,focus){ const box=$(pre+'_mqt'); if(!box) return; box.innerHTML=mqtInner(pre);
