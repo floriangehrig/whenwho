@@ -1984,6 +1984,7 @@ function setLang(l){ try{ if(l==='system') localStorage.removeItem('lang'); else
 document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-setlang]'); if(b){ e.preventDefault(); setLang(b.dataset.setlang); } });
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
+  [/^“(.+)” is already in this poll with another email address\. Use that address, or add something to your name\.$/, (m,n)=>`„${n}“ ist mit einer anderen E-Mail-Adresse schon in dieser Umfrage. Nimm diese Adresse oder ergänze deinen Namen.`],
   [/^You can have at most (\d+) presets$/, (m,n)=>`Du kannst höchstens ${n} Vorlagen haben`],
   [/^Up to (\d+) questionnaires per round$/, (m,n)=>`Höchstens ${n} Fragebögen pro Runde`],
   [/^“(.+)” has already answered these questions\. If that's you, open the poll on the device you used, or answer under another name\.$/, (m,n)=>`„${n}“ hat diese Fragen schon beantwortet. Wenn du das bist, öffne die Umfrage auf dem Gerät, mit dem du geantwortet hast, oder antworte unter einem anderen Namen.`],
@@ -3089,7 +3090,7 @@ function renderPrivacy(){
       ${legalSec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op}):''}${addr?'<br>'+addr:''}</p>
         <p>${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')} ${t('See also the <a href="?imprint">legal notice</a>.')}</p>`)}
       ${legalSec(t('What we store'),legalUl([
-        t('<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
+        t('<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts, and to signed-in people who can see the people or answers of a poll you are in. Sign-in codes are stored only as a hash and expire after 10 minutes.'),
         t('<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.'),
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.'),
@@ -4522,15 +4523,16 @@ async function save(retried){
   const em=(P.mine.email||'').trim(), key=respKey(), had=!!P.myResp;
   const body={name:P.mine.name, email:EMAIL_RE.test(em)?em:'', comment:P.mine.comment, entries:P.mine.entries,
     fill:qfActive()?{rules:P.qfApplied.map(r=>({pat:r.pat||null,hs:r.hs,he:r.he,st:r.st||'y',...(r.off?{off:true}:{})})),...qfLayersNow()}:null};
-  let msg, retry=false, ok=false;
+  let msg, retry=false, ok=false, savedAs='';
   try{
     if(P.myResp){ const r=await api('PUT',`/polls/${P.id}/responses/${P.myResp.id}`,body,headers());
       if(!P.myResp.account && !P.myResp.editKey && r.name){ P.myResp.name=r.name; store.set(key,P.myResp); } }
     else { const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/responses`,body,headers());
-      if(ME.user) P.myResp={id:r.id,account:true}; else { P.myResp={id:r.id,editKey:r.editKey,name:r.name}; store.set(key,P.myResp); } nameHint(); }
+      if(ME.user) P.myResp={id:r.id,account:true}; else { P.myResp={id:r.id,editKey:r.editKey,name:r.name}; store.set(key,P.myResp); }
+      if(!ME.user&&r.name&&r.name!==body.name.trim()){ P.mine.name=r.name; const ni=$('name'); if(ni) ni.value=r.name; savedAs=r.name; } nameHint(); }
     if(!ME.user){ store.set('myName',P.mine.name); if(body.email) store.set('myEmail',body.email); }
     ok=true; msg = em&&!body.email ? 'Saved, but that email doesn’t look right' : 'Saved ✓';
-    toast(had?t('Answer updated'):t('Answer sent')); refreshResults();
+    toast(savedAs?t('Answer sent as {name} (the name this email has in the poll)',{name:savedAs}):had?t('Answer updated'):t('Answer sent')); refreshResults();
   }catch(e){
     P.dirty=true;
     if(e.status===404 && P.myResp){ store.del(key); P.myResp=null; retry=true; }
@@ -6754,7 +6756,7 @@ function renderGroup(el){
   const withC=sel().filter(r=>r.comment);
   if(withC.length) h+=`<details class="asec comments"${P.cOpen?' open':''} data-keep="cOpen">${secH('chat',t('Comments'),{count:withC.length,summary:true})}${withC.map(r=>`<div class="c"><b>${esc(r.name)}:</b> ${esc(r.comment)}</div>`).join('')}</details>`;
   if(canManage()) h+=`<details class="asec"${P.rOpen?' open':''} data-keep="rOpen">${secH('gear',t('Manage answers'),{count:all,summary:true})}<ul class="list">${d.responses.map(r=>
-    `<li><span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString(LOC))}</span>${ib('trash',t('Delete'),`data-delresp="${esc(r.id)}"`,'sm ghost danger')}</li>`).join('')}</ul></details>`;
+    `<li>${r.avatar||r.avatarImg?avatarOf(r):''}<span class="grow">${esc(r.name)}${r.email?` <span class="muted small">· ${esc(r.email)}</span>`:''}</span><span class="muted small">${esc(new Date(r.updatedAt).toLocaleDateString(LOC))}</span>${ib('trash',t('Delete'),`data-delresp="${esc(r.id)}"`,'sm ghost danger')}</li>`).join('')}</ul></details>`;
   el.innerHTML=h;
   wireWho();
   const da=$('dpAns'); if(da) da.addEventListener('toggle',()=>{ P.dpAnsOpen=da.open; try{ localStorage.setItem('dpAns',da.open?'1':'0'); }catch(e){} });
@@ -7997,7 +7999,7 @@ function viewerPeople(){
   const ps=P.data.people||[], n=ps.filter(x=>x.answered).length, series=P.data.poll.kind==='series';
   const ans=series?t('Answered the current round'):t('Answered');
   return `<div class="card-h"><h2 class="grow">${t('People')}</h2><span class="muted small">${t('{n} of {total} answered',{n,total:ps.length})}</span></div>
-    ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b>${roleTag(x.role)}</span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
+    ${ps.length?`<ul class="list pplist">${ps.map(x=>`<li>${tile({img:x.avatarImg,emoji:x.avatar,text:x.name,seed:x.name},'avatar')}<span class="grow minw pname"><b>${esc(x.name)}</b>${roleTag(x.role)}</span>${x.answered?`<span class="pst y" title="${esc(ans)}" role="img" aria-label="${esc(ans)}">${ICON.check}</span>`:`<span class="pst o" title="${esc(t('Not answered yet'))}" role="img" aria-label="${esc(t('Not answered yet'))}"></span>`}</li>`).join('')}</ul>`
       :`<div class="empty-v"><span class="ev-ic">${ICON.users}</span><b>${t('Nobody is in this poll yet.')}</b></div>`}`;
 }
 // Settings rows (New poll and Settings): icon, title + hint (+ ⓘ tip), then the controls (.mrow-n = extra control, .sw = switch).
@@ -8130,7 +8132,7 @@ function renderParts(){
       <div class="menu-h row tight">${t('Role')}${tip(t('Give people who answer with an account a role, so they can help organise. Only you can change roles.'),'right')}</div>
       ${['','viewer','editor','admin'].map(r=>`<button type="button" role="menuitemradio" aria-checked="${(p.role||'')===r}" data-prole="${esc(p.id)}" data-r="${r}" title="${esc(r?roleHelp(r):t('Answers like everyone else'))}">${r?ICON[ROLE_IC[r]]:ICON.user}<span class="grow">${r?esc(roleName(r)):t('No role')}</span>${(p.role||'')===r?ICON.check:''}</button>`).join('')}</div></details>`;
   const view=p=>`<li class="${sel.has(p.id)?'on':''}">${man?`<input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="${t('Select {name}',{name:esc(p.name)})}">`:''}
-      ${partStatus(p,series)}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
+      ${partStatus(p,series)}${p.avatar||p.avatarImg?avatarOf(p):''}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
       <span class="acts">${rmenu(p)}${!man?'':`${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
         <details class="dd more pmore${here&&!p.account&&CONFIG.personalLinks?' plk':''}"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
@@ -9532,7 +9534,7 @@ function germanText(){ return {
 "For questions about your data or to have it deleted, write to {email}.": "Bei Fragen zu deinen Daten oder um sie löschen zu lassen, schreib an {email}.",
 "For questions about your data or to have it deleted, reply to any email from when-who.": "Bei Fragen zu deinen Daten oder um sie löschen zu lassen, antworte auf eine beliebige E-Mail von when-who.",
 "What we store": "Was wir speichern",
-"<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name, das Profilbild und die Beschreibung, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Deine Beschreibung siehst nur du. Dein Profilbild sehen angemeldete Personen, die deine E-Mail-Adresse in ihren Kontakten haben. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
+"<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts, and to signed-in people who can see the people or answers of a poll you are in. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name, das Profilbild und die Beschreibung, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Deine Beschreibung siehst nur du. Dein Profilbild sehen angemeldete Personen, die deine E-Mail-Adresse in ihren Kontakten haben, und angemeldete Personen, die die Teilnehmenden oder Antworten einer Umfrage sehen, in der du bist. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
 "<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.": "<b>Umfragen und Antworten:</b> was du in einer Umfrage eingibst: Titel, Termine, Namen und E-Mail-Adressen der Personen, die du hinzufügst, Verfügbarkeiten, Kommentare und Chatnachrichten.",
 "<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
 "<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto, die Schlüssel der Umfragen, die du beantwortet hast, und welche Rundgänge du schon gesehen hast. Das bleibt auf deinem Gerät.",
@@ -9643,6 +9645,7 @@ function germanText(){ return {
 "Answer by ": "Antwort bis ",
 "Answer by {date}": "Antwort bis {date}",
 "Answer sent": "Antwort gesendet",
+"Answer sent as {name} (the name this email has in the poll)": "Antwort gesendet als {name} (der Name dieser E-Mail-Adresse in der Umfrage)",
 "Answer updated": "Antwort aktualisiert",
 "Answered": "Hat geantwortet",
 "Answered the current round": "Hat die aktuelle Runde beantwortet",

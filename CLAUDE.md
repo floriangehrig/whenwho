@@ -50,6 +50,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **One email = one person:** adding someone by an email that has an account adds the account (`upsertPeople`); signing in or changing the
   account email claims that address's guest rows in every poll (`claimGuestRows`, a few merges per call, the rest lazily in `accountRow`);
   the page shows each address once across contact sections (`cgDedup`).
+  Guests too: a guest answering with an address already in the poll becomes that row under its saved name (`guestRowsByEmail` in
+  `createResponse`; a name match with another address is refused, `name_other_email`); new guest rows keep their address.
+  Old splits are merged by `mergeEmailDupes` (People tab, managers opening the poll, daily 04:00 UTC sweep `mergeEmailDupesAll`).
+  Signed-in callers get account avatars on people and answers (`avOut`: People tab, `people`, `responses`).
 - **Personal links** (0031, needs secret `LINK_KEY`; without it `GET /api/config` sends `personalLinks: false` and nothing changes): a guest row's
   own link `/?p=<poll>#k=<pid>.<token>`, token = HMAC(`LINK_KEY`, poll:pid:`participants.link_ver`) (`linkToken` / `personalLink`), so nothing
   secret is stored; `POST .../participants/:pid/link/reset` bumps `link_ver` (old link dead), `GET .../link` returns it (People ⋯ menu, manage).

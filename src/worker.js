@@ -64,7 +64,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-6l75B6O6hJRaIKh/O1fJ7E7LKnvmW7EWWM5ME2qjdgQ=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-aXYyUiuxwOY3kLBbpHs2DJsu1pC3XBm/nl3SNtRtz7o=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1105,6 +1105,9 @@ async function accountsByEmail(env, emails) {
   }
   return out;
 }
+// An account's avatar on a person in a poll (People tab, answers): only for signed-in callers, like contacts and chat.
+const AV_COLS = 'u.id AS av_uid, u.avatar AS av, LENGTH(u.avatar_img) AS av_img';
+const avOut = (r, on) => (on && r.av_uid ? { avatar: r.av || '', avatarImg: r.av_img ? `/api/users/${r.av_uid}/avatar?v=${r.av_img}` : '' } : {});
 const withAccount = (accts, x) => { const a = x && x.email && accts.get(x.email.toLowerCase()); return a ? { ...x, ...a } : x; };
 async function userAvatar(request, env, uid) {
   requireUser(request);
@@ -2313,6 +2316,7 @@ async function getPoll(request, env, ctx, url, id) {
   if (!admin) await checkPassword(env, request, poll);
   // The owner opened a poll that was about to be deleted for being old: keep it (counts as activity).
   if (caps.own && poll.retention_warned_at) await env.DB.prepare('UPDATE polls SET retention_warned_at = NULL, updated_at = ? WHERE id = ?').bind(now(), id).run();
+  if (caps.manage) await mergeEmailDupes(env, id, 3).catch((e) => console.error('dupes', e)); // one email = one person
   const created = await ensureCurrent(env, poll);
   if (created) ctx.waitUntil(notifyOpened(env, poll, created, url.origin).catch((e) => console.error(e)));
   const { results: all } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq').bind(id).all();
@@ -2360,19 +2364,20 @@ async function getPoll(request, env, ctx, url, id) {
     }
   }
   if (admin || !poll.hide_results) {
-    const { results } = await env.DB.prepare('SELECT id, name, email, comment, entries, votes, updated_at FROM responses WHERE instance_id = ? ORDER BY created_at').bind(sel.id).all();
-    const props = proposedIds(sel);
+    const { results } = await env.DB.prepare(`SELECT r.id, r.name, r.email, r.comment, r.entries, r.votes, r.updated_at, ${AV_COLS} FROM responses r
+      LEFT JOIN participants p ON p.id = r.participant_id LEFT JOIN users u ON u.id = p.user_id WHERE r.instance_id = ? ORDER BY r.created_at`).bind(sel.id).all();
+    const props = proposedIds(sel), signedIn = !!userOf(request);
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
-      ...(caps.manage ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}) }));
+      ...(caps.manage ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}), ...avOut(r, signedIn) }));
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
     out.participantCount = await env.DB.prepare('SELECT COUNT(*) AS n FROM participants WHERE poll_id = ?').bind(id).first('n');
     if (!caps.edit) { // read-only People tab (everyone, and viewers): names, roles and whether they answered this round (no ids or emails)
       const { results: pp } = await env.DB.prepare(
-        `SELECT p.name, p.user_id IS NOT NULL AS account, p.role, EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS answered
-         FROM participants p WHERE p.poll_id = ? ORDER BY p.name COLLATE NOCASE`).bind(sel.id, id).all();
-      out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered, ...(p.account && POLL_ROLES.includes(p.role) ? { role: p.role } : {}) }));
+        `SELECT p.name, p.user_id IS NOT NULL AS account, p.role, EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = p.id AND r.instance_id = ?) AS answered,
+           ${AV_COLS} FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? ORDER BY p.name COLLATE NOCASE`).bind(sel.id, id).all();
+      out.people = pp.map((p) => ({ name: p.name, account: !!p.account, answered: !!p.answered, ...(p.account && POLL_ROLES.includes(p.role) ? { role: p.role } : {}), ...avOut(p, signedIn) }));
     }
     // Busy hours others chose to share with this poll (same visibility as answers; the caller's own is left out).
     const caller = userOf(request);
@@ -3238,6 +3243,7 @@ async function runScheduled(env) {
     ]);
   } catch (e) { console.error('cleanup', e); }
   if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
+  if (new Date().getUTCHours() === 4) { try { await mergeEmailDupesAll(env); } catch (e) { console.error('dupes', e); } }
   try { await answerDigests(env); } catch (e) { console.error('digest', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
@@ -3290,6 +3296,11 @@ const guestRowsOf = (env, pollId, mail) => env.DB.prepare(
   `SELECT * FROM participants pa WHERE pa.poll_id = ? AND pa.user_id IS NULL AND (LOWER(TRIM(pa.email)) = ?
      OR EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = pa.id AND LOWER(TRIM(r.email)) = ?)) ORDER BY pa.created_at`)
   .bind(pollId, mail, mail).all().then((r) => r.results);
+// Guest rows of one address, the one to keep first: rows the organiser saved with it (participants.email), oldest first,
+// then rows that only answered with it.
+const guestRowsByEmail = async (env, pollId, mail) => (await guestRowsOf(env, pollId, mail.trim().toLowerCase()))
+  .sort((a, b) => (a.email && a.email.trim().toLowerCase() === mail.trim().toLowerCase() ? 0 : 1) - (b.email && b.email.trim().toLowerCase() === mail.trim().toLowerCase() ? 0 : 1)
+    || (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
 // The signed-in account's person in this poll: its own row, else a guest row with its email (which becomes the
 // account's). Guest rows with that email next to the account's row (duplicates from before) are merged into it.
 // null = not in this poll yet.
@@ -3815,13 +3826,23 @@ async function createResponse(request, env, ctx, id, iid) {
     const ap = acct && await accountParticipant(env, id, acct.id);
     if (ap && !(await answerIn(env, ap.id, iid))) part = ap;
     else {
-      // Same name as an existing guest: that's this person (e.g. the next round of a series),
-      // unless they already answered this round.
-      part = await findParticipant(env, id, nameKey(name));
+      // One email = one person: a guest row with this address (added by the organiser, or an earlier answer) is this
+      // person, under the name it already has here (the organiser's saved name wins over the typed one).
+      const byMail = mail ? await guestRowsByEmail(env, id, mail) : [];
+      part = byMail.shift() || null;
+      if (part) for (const g of byMail.slice(0, 3)) await mergeInto(env, g, part); // duplicates from before
+      else {
+        // Same name as an existing guest: that's this person (e.g. the next round of a series), unless that row
+        // has another email address (then it's someone else).
+        part = await findParticipant(env, id, nameKey(name));
+        if (part && mail && part.email && part.email.trim().toLowerCase() !== mail.toLowerCase())
+          throw new HttpError(409, `“${part.name}” is already in this poll with another email address. Use that address, or add something to your name.`, { code: 'name_other_email' });
+      }
       if (part) {
         const existing = await answerIn(env, part.id, iid);
         if (existing) throw nameTaken(part.name, part.id, existing);
-      } else part = await newParticipant(env, id, name);
+        if (mail && !part.email) await env.DB.prepare("UPDATE participants SET email = ? WHERE id = ? AND COALESCE(email, '') = ''").bind(mail, part.id).run();
+      } else part = await newParticipant(env, id, name, mail || '');
       if (acct && !ap) await linkGuestToAccount(env, id, part.id, mail);
     }
   }
@@ -4365,7 +4386,7 @@ const latestInstance = (env, pollId) => env.DB.prepare('SELECT * FROM instances 
 // and whether they answered `instId` (`here`).
 async function participantRows(env, pollId, instId) {
   const { results } = await env.DB.prepare(
-    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, p.role, p.link_ver, u.email AS ue, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
+    `SELECT p.id, p.name, p.email, p.user_id, p.invited_at, p.group_id, p.role, p.link_ver, u.email AS ue, ${AV_COLS}, COUNT(r.id) AS rounds, MAX(r.updated_at) AS last,
        (SELECT r2.email FROM responses r2 WHERE r2.participant_id = p.id AND r2.email != '' ORDER BY r2.updated_at DESC LIMIT 1) AS answer_email,
        (SELECT r3.email FROM responses r3 WHERE r3.participant_id = p.id ORDER BY r3.updated_at DESC LIMIT 1) AS re,
        EXISTS (SELECT 1 FROM responses r4 WHERE r4.participant_id = p.id AND r4.instance_id = ?) AS here
@@ -4376,12 +4397,13 @@ async function participantRows(env, pollId, instId) {
 async function listParticipants(request, env, id) {
   const poll = await adminPoll(request, env, id, 'see');
   const mails = await isAdmin(request, env, poll, 'manage'); // viewers and editors see the list without addresses
+  if (mails) await mergeEmailDupes(env, id).catch((e) => console.error('dupes', e));
   const inst = await latestInstance(env, id);
   const rows = await participantRows(env, id, inst && inst.id);
   const { results: groups } = await env.DB.prepare('SELECT group_id AS id, name, icon FROM poll_groups WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
   return json({ groups, participants: rows.map((p) => ({ id: p.id, name: p.name, email: mails ? p.email || p.answer_email || '' : '', account: !!p.user_id,
     role: p.user_id && POLL_ROLES.includes(p.role) ? p.role : '', isOwner: !!p.user_id && p.user_id === poll.owner_id,
-    rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to, groupId: p.group_id || null })) });
+    rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to, groupId: p.group_id || null, ...avOut(p, true) })) });
 }
 // People from the page: [{ name, email }] (email required, except friends picked by { uid }). Legacy: "Anna\nBen, ben@example.com".
 function peopleInput(b) {
@@ -4538,6 +4560,36 @@ async function mergeInto(env, src, dst) {
     env.DB.prepare('UPDATE participants SET group_id = COALESCE(group_id, ?) WHERE id = ?').bind(src.group_id || null, dst.id),
   ]);
   return drop.length;
+}
+
+// One email = one person, for data from before guests were matched by email: people in a poll who share an address
+// (the account's own, a guest row's saved one, or else the address of its latest answer) become one. The account's
+// row wins, then the row the organiser saved with that address (its name stays), then the oldest. At most `limit` merges
+// per call (each costs a few queries; the Free plan allows 50 per request), the rest on the next call.
+const EMAIL_OF_ROW = `LOWER(TRIM(COALESCE(u.email, NULLIF(TRIM(pa.email), ''),
+  (SELECT r.email FROM responses r WHERE r.participant_id = pa.id AND r.email != '' ORDER BY r.updated_at DESC LIMIT 1), '')))`;
+async function mergeEmailDupes(env, pollId, limit = 5) {
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM (SELECT pa.*, ${EMAIL_OF_ROW} AS em, NULLIF(TRIM(pa.email), '') IS NOT NULL AS saved
+       FROM participants pa LEFT JOIN users u ON u.id = pa.user_id WHERE pa.poll_id = ?)
+     WHERE em != '' AND em IN (SELECT em FROM (SELECT ${EMAIL_OF_ROW} AS em FROM participants pa LEFT JOIN users u ON u.id = pa.user_id
+       WHERE pa.poll_id = ?) GROUP BY em HAVING COUNT(*) > 1)
+     ORDER BY em, user_id IS NULL, saved DESC, created_at`).bind(pollId, pollId).all();
+  let n = 0, keep = null;
+  for (const r of results) {
+    if (!keep || keep.em !== r.em) { keep = r; continue; }
+    if (r.user_id) continue; // two accounts never merge
+    if (n++ >= limit) break;
+    await mergeInto(env, r, keep);
+  }
+  return n;
+}
+// Daily: polls that still have people split in two by address (polls nobody opens get cleaned too).
+async function mergeEmailDupesAll(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT DISTINCT poll_id FROM (SELECT pa.poll_id, ${EMAIL_OF_ROW} AS em FROM participants pa LEFT JOIN users u ON u.id = pa.user_id)
+     WHERE em != '' GROUP BY poll_id, em HAVING COUNT(*) > 1 LIMIT 8`).all();
+  for (const r of results) await mergeEmailDupes(env, r.poll_id, 4);
 }
 
 // ---------- MCP: AI assistants (Claude, ChatGPT, …) use an account through the Model Context Protocol ----------
