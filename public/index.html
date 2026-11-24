@@ -2723,7 +2723,7 @@ function tourSteps(key){
   const help=S('.acct .tourb',t('Ask for help'),t('Stuck? Ask the help assistant any question about when-who in your own words, from the ? button.'),{when:()=>!!CONFIG.help});
   if(key==='home') return [
     S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
-    S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.')),
+    S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.'),{demo:demoNewBtn}),
     S('#hp_own_tools',t('Find your polls'),t('Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
@@ -2732,13 +2732,13 @@ function tourSteps(key){
   if(key==='new') return [
     S(null,t('Create a poll'),t('A quick look at the New poll page.')),
     S('#prs',t('Start from'),t('Start from a ready-made preset (with fitting questions) or one you saved, or start empty.')),
-    S('#npAiBtn',t('Describe it'),t('Or describe the poll in your own words and let AI fill in the form and questions. You check everything before creating it.')),
+    S('#npAiBtn',t('Describe it'),t('Or describe the poll in your own words and let AI fill in the form and questions. You check everything before creating it.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{also:'#prs',go:tgNewDemo,demo:demoDescribe}),
     S('[data-nset="details"]',t('Details'),t('Title, an icon or picture, and an optional description.')),
     S('[data-nset="when"]',t('Dates'),t('One date range, a new round every week or month, or a regular weekly slot.')),
     S('[data-nset="answering"]',t('Answering'),t('Whole days or hours, which days and times are offered, chat, required email or invited people only.')),
     S('[data-nset="questions"]',t('Questions'),t('Add a short form to the poll: choices, ratings, text, or questions asked after a meeting.')),
     S('#prSave',t('Save as preset'),t('Keep these settings to start the next poll from them.')),
-    S('#createBtn',t('Create poll'),t('Creates the poll. Then share the link or add people to invite them.')),end];
+    S('#createBtn',t('Create poll'),t('Creates the poll. Then share the link or add people to invite them.'),{go:tgTitleDemo,demo:demoCreate}),end];
   if(key==='account') return [
     S(null,t('Your account'),t('A quick look at your account page.')),
     S('#pf',t('Profile'),t('Your name and picture, shown to others in polls and chats. You can also change your email address here.')),
@@ -2765,24 +2765,24 @@ function tourSteps(key){
       {also:'#dgrid',go:tgDemo('days'),demo:demoRange,when:()=>editable()}),
     S('#grid',t('Hours to fine-tune'),t('Switch to hours to mark only certain times of a day: drag down over the hours you can make. Tap a day’s name to mark the whole day.'),
       {also:'.iseg:not(.brush)',go:tgDemo('slots'),demo:demoHours,when:()=>editable()&&ansMode()!=='days',basic:ansMode()==='slots'?1:0}),
-    S('[data-qf]',t('Quick fill'),t('Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.'),{go:tgView('mine')}),
-    S('[data-ai]',t('Fill with AI'),t('Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.'),{go:tgView('mine')}),
+    S('[data-qf]',t('Quick fill'),t('Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.'),{go:tgQfDemo,demo:demoQuickFill}),
+    S('[data-ai]',t('Fill with AI'),t('Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgAiDemo,demo:demoAiFill}),
     S('[data-hint]',t('See the others'),t('Show where the others are free while you answer, to find a time that suits everyone.'),{go:tgView('mine')}),
     S('[data-busytoggle]',t('Busy times'),t('Hours you’re busy in your calendars are greyed out. You can also share them with this poll.'),{go:tgView('mine'),when:()=>!!document.querySelector('[data-busytoggle]')}),
     S('#saveBtn',t('Send your answer'),t('Saves your answer. You can come back and change it any time while the poll is open.'),{go:tgView('mine'),basic:1}),
     S('[data-tab="group"]',t('Results'),t('Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.'),{go:tgView('group')}),
     // Meetings: everyone sees the list; editors also the planner.
     S('#pane-meetings',t('Meetings'),t('The times the organiser picked. When there are options to vote on, pick the ones that suit you. Add meetings to your calendar from here.'),{go:tgTab('meetings'),when:()=>!edit}),
-    S('#mplan',t('Plan meetings'),t('Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.'),{go:tgMsub('plan'),when:()=>edit}),
-    S('[data-sugopen]',t('Quick Suggest'),t('Let when-who find the best times for the people, days and hours you pick.'),{go:tgMsub('plan'),when:()=>edit}),
-    S('[data-sugai]',t('Suggest with AI'),t('Describe what you need, like “2 evening meetings a week, not Fridays”, and it sets up the suggestions.'),{go:tgMsub('plan'),when:()=>edit}),
+    S('#mplan',t('Plan meetings'),t('Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.'),{go:tgPlanDemo,demo:demoPlan,when:()=>edit}),
+    S('[data-sugopen]',t('Quick Suggest'),t('Let when-who find the best times for the people, days and hours you pick.'),{go:tgPlanDemo,demo:demoSuggest,when:()=>edit}),
+    S('[data-sugai]',t('Suggest with AI'),t('Describe what you need, like “2 evening meetings a week, not Fridays”, and it sets up the suggestions.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgPlanDemo,demo:demoSugAi,when:()=>edit}),
     S('#meetings .mqask',t('Ask about a meeting'),t('Let people vote on the place, or ask anything else about one meeting. The question shows right in the meeting, where people answer it.'),{go:tgMsub('list'),when:()=>edit}),
     S('#meetings .mqx-q',t('Questions in meetings'),t('Some meetings ask you something, like where to meet. Answer right there and press Send.'),{go:tgTab('meetings'),when:()=>!edit}),
     S('[data-msub="list"]',t('Your meetings'),t('Confirmed and proposed meetings: add a place and notes, send invites and export them to calendars.'),{go:tgMsub('list'),when:()=>edit}),
     // Questions
     S('#pane-questions',t('Questions'),t('A short form from the organiser. Fill it in, then see everyone’s results.'),{go:tgTab('questions'),when:()=>!edit&&qList().length>0}),
     S('.qaskdd',t('Ask questions'),t('Add questions or whole questionnaires, or start from a preset. Questions can be about the poll, about meetings, or asked after a meeting.'),{go:tgTab('questions'),when:()=>edit}),
-    S('[data-qai]',t('Generate with AI'),t('Describe what you want to know and get draft questions to pick from.'),{go:tgTab('questions'),when:()=>edit}),
+    S('[data-qai]',t('Generate with AI'),t('Describe what you want to know and get draft questions to pick from.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgQaiDemo,demo:demoQAi,when:()=>edit}),
     // People
     S('#pane-people',t('People'),t('Who is in this poll and who has answered.'),{go:tgTab('people'),when:()=>!man&&!!d.people}),
     S('[data-paddopen]',t('Add people'),t('Add people by email, from your contacts or a group. Then invite them and send reminders to those who haven’t answered.'),{go:tgTab('people'),when:()=>man}),
@@ -2797,29 +2797,69 @@ function tourSteps(key){
     S('.su-btn',t('Create an account (optional)'),t('Your answers follow you to every device, and you can make polls of your own.'),{when:()=>guest}),
     help,end];
 }
-// ---- tour demos: a fake finger paints a few marks on My answer; everything is put back when the demo steps end ----
+// ---- tour demos: a fake finger shows a feature on the real page (opens its panel, paints marks, drafts meetings). Nothing is
+// saved and no AI request is sent (the AI demos play an example). A demo step's go() saves what the demo may change with
+// tourKeep; it is all put back whenever the step is left or replayed, or the tour ends (tourDemoRestore).
 const tsleep=ms=>new Promise(r=>setTimeout(r,ms));
 const tourRM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-function tourDemoSnap(){ if(!TOUR.snap) TOUR.snap={e:P.mine.entries,mode:P.mode,brush:P.brush,ar:P.arange,an:P.aanchor,dirty:P.dirty}; }
-function tourDemoRestore(){ const s=TOUR.snap; tourPtr(null); if(!s) return; TOUR.snap=null;
-  Object.assign(P,{mode:s.mode,brush:s.brush,arange:s.ar,aanchor:s.an,dirty:s.dirty}); P.mine.entries=s.e; histReset(); renderBody(); }
+const tourOnPoll=()=>new URLSearchParams(location.search).has('p')&&!!P.data&&!P.data.draft;
+let NEWDEMO=null; // set by renderNew: fills the New poll form like Describe it (from a preset) and puts it back
+// snap() saves the state and returns what puts it back; once per key until the next restore.
+function tourKeep(k,snap){ const ks=TOUR.keep||(TOUR.keep=[]); if(ks.some(x=>x.k===k)) return; ks.push({k,fn:snap()}); }
+function tourDemoRestore(){ tourPtr(null); const ks=TOUR.keep; TOUR.keep=null; TOUR.snap=null; if(!ks||!ks.length) return;
+  ks.reverse().forEach(x=>{ try{ x.fn(); }catch(e){} }); if(tourOnPoll()){ histReset(); renderBody(); } }
+// My answer: marks, mode, brush, Quick fill and Fill with AI.
+function tourDemoSnap(){ tourKeep('ans',()=>{ const q=PAT.qf;
+  const s=TOUR.snap={e:P.mine.entries,mode:P.mode,brush:P.brush,ar:P.arange,an:P.aanchor,dirty:P.dirty,
+    qf:{qfOpen:P.qfOpen,qfs:P.qfs,qfApplied:P.qfApplied,qfBase:P.qfBase,qfLast:P.qfLast,qfOver:P.qfOver,qfFor:P.qfFor},
+    pat:q&&{...q,wd:new Set(q.wd),dom:[...q.dom],rules:q.rules&&q.rules.map(r=>({...r})),editRef:null},
+    ai:{aiOpen:P.aiOpen,aiText:P.aiText,aiMsg:P.aiMsg,aiErr:P.aiErr,aiUndo:P.aiUndo,aiBusy:false}};
+  return ()=>{ Object.assign(P,{mode:s.mode,brush:s.brush,arange:s.ar,aanchor:s.an,dirty:s.dirty},s.qf,s.ai); P.mine.entries=s.e;
+    if(s.pat) PAT.qf=s.pat; else delete PAT.qf; }; }); }
 // go() of a demo step: My answer in that mode, the answer as it was, Available, tap mode.
 const tgDemo=mode=>()=>{ tgView('mine')(); tourDemoSnap();
   Object.assign(P,{mode:ansMode()==='both'?mode:P.mode,brush:'y',arange:false,aanchor:null}); P.mine.entries=TOUR.snap.e; renderBody(); };
+const tgQfDemo=()=>{ tgView('mine')(); tourDemoSnap(); qfReset(); Object.assign(P,{qfOpen:false,qfs:'y',aiOpen:false}); renderBody(); };
+const tgAiDemo=()=>{ tgView('mine')(); tourDemoSnap(); Object.assign(P,{aiOpen:false,aiText:'',aiMsg:'',aiErr:false,aiUndo:null,qfOpen:false}); renderBody(); };
+// Meetings planner: drafts, Quick Suggest (settings in localStorage too) and Suggest with AI. Demos start with none of them.
+const tgPlanDemo=()=>{ tgMsub('plan')(); tourKeep('plan',()=>{ const g=PAT.sug, opt=store.get('sugopt',null);
+    const s={drafts:P.drafts.slice(),dmeta:P.dmeta,dvote:P.dvote,sugOpen:P.sugOpen,sugDates:P.sugDates,sugMode:P.sugMode,sugModeFor:P.sugModeFor,
+      sugAiOpen:P.sugAiOpen,sugAiText:P.sugAiText,sugAiMsg:P.sugAiMsg,sugAiErr:P.sugAiErr,sugAiUndo:P.sugAiUndo,sugAiBusy:false}, pat=g&&{...g,wd:new Set(g.wd),dom:[...g.dom]};
+    return ()=>{ Object.assign(P,s); if(opt) store.set('sugopt',opt); else store.del('sugopt'); if(pat) PAT.sug=pat; else delete PAT.sug; }; });
+  Object.assign(P,{drafts:[],dvote:false,sugOpen:false,sugDates:null,sugAiOpen:false,sugAiText:'',sugAiMsg:'',sugAiErr:false,sugAiUndo:null}); sugSetMode('wd');
+  store.set('sugopt',{...SUG0}); delete PAT.sug; renderBody(); };
+const tgQaiDemo=()=>{ tgTab('questions')(); tourKeep('qai',()=>{ const a=P.qai, q=P.qedit; return ()=>{ P.qai=a; P.qedit=q; if(tourOnPoll()) renderQuestions(true); }; });
+  P.qai=null; renderQuestions(true); };
+const tgNewDemo=()=>{ if(!NEWDEMO) return; const nd=NEWDEMO; tourKeep('new',()=>{ const u=nd.snap(); return ()=>nd.restore(u); }); nd.close(); };
+const tgTitleDemo=()=>{ if(!$('title')) return; tourKeep('title',()=>{ const v=$('title').value; return ()=>{ const x=$('title'); if(x&&x.value!==v){ x.value=v; x.dispatchEvent(new Event('input',{bubbles:true})); } }; }); };
 function tourPtr(el,down){ let p=$('tourptr'); if(!el){ if(p) p.remove(); return; }
   if(!p){ document.body.insertAdjacentHTML('beforeend','<div class="tour-ptr" id="tourptr" aria-hidden="true"></div>'); p=$('tourptr'); }
   const r=el.getBoundingClientRect(); p.style.left=Math.round(r.left+r.width/2)+'px'; p.style.top=Math.round(r.top+r.height/2)+'px'; p.classList.toggle('down',!!down); }
 function tourTap(){ const p=$('tourptr'); if(!p) return; p.classList.remove('tap'); void p.offsetWidth; p.classList.add('tap'); }
-// Helpers the demos share. alive() turns false when the step is left; w() then stops the demo before it paints again.
+// Helpers the demos share. alive() turns false when the step is left; w() then stops the demo before it changes anything again.
 function demoKit(alive){
-  const w=async ms=>{ await tsleep(tourRM()?Math.min(ms,150):ms); if(!alive()) throw 'tour'; };
-  const to=async(el,ms=420,down)=>{ tourInView(el); tourPlace(); tourPtr(el,down); await w(ms); };
-  const press=async(sel,on)=>{ const b=document.querySelector(sel); if(!b) return; await to(b); tourTap(); on(); await w(250); };
-  const brush=v=>press(`.brush [data-brush="${v}"]`,()=>{ P.brush=v; document.querySelectorAll('.brush [data-brush]').forEach(x=>x.classList.toggle('on',x.dataset.brush===v)); });
-  const mode=r=>press(`.brush [data-arange="${r?1:0}"]`,()=>{ P.arange=r; document.querySelectorAll('.brush [data-arange]').forEach(x=>{ const on=x.dataset.arange===(r?'1':'0'); x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); });
+  const w=async ms=>{ await tsleep(tourRM()?Math.min(ms,150):ms); if(!alive()) throw 'tour'; tourPlace(); };
+  const q=x=>typeof x==='string'?[...document.querySelectorAll(x)].find(tourVis)||null:x;
+  const to=async(el,ms=420,down,mode)=>{ tourInView(el,mode); tourPlace(); tourPtr(el,down); await w(ms); };
+  // tap = press it for real (local things only: panels, presets, Add, Suggest); poke = just show the tap.
+  const tap=async(x,ms=350)=>{ const el=q(x); if(!el) return false; await to(el); tourTap(); el.click(); await w(ms); return true; };
+  const poke=async(x,n=1)=>{ const el=q(x); if(!el) return false; await to(el,420,false,'center'); for(let i=0;i<n;i++){ tourTap(); await w(450); } return true; };
+  const type=async(x,text)=>{ const el=q(x); if(!el) return false; await to(el,300); tourTap();
+    const put=n=>{ el.value=text.slice(0,n); el.dispatchEvent(new Event('input',{bubbles:true})); };
+    if(tourRM()) put(text.length); else for(let i=1;i<=text.length;i++){ put(i); await w(28); }
+    await w(350); return true; };
+  // spot: the highlight also covers this element (alone = only this one), found again after the page redraws.
+  const spot=(sel,alone)=>{ const el=q(sel); if(alone){ if(!el) return; TOUR.elSel=sel; TOUR.el=el; TOUR.also=null; TOUR.alsoSel=null; }
+    else { TOUR.alsoSel=sel; TOUR.also=el; } if(el) tourInView(el); tourPlace(); };
+  const busy=async(set,ms=1000)=>{ set(true); await w(ms); set(false); }; // the AI "Reading…" moment
+  const brushTap=v=>{ const b=document.querySelector(`.brush [data-brush="${v}"]`); return b?to(b).then(async()=>{ tourTap(); P.brush=v; document.querySelectorAll('.brush [data-brush]').forEach(x=>x.classList.toggle('on',x.dataset.brush===v)); await w(250); }):null; };
+  const mode=async r=>{ const b=document.querySelector(`.brush [data-arange="${r?1:0}"]`); if(!b) return; await to(b); tourTap();
+    P.arange=r; document.querySelectorAll('.brush [data-arange]').forEach(x=>{ const on=x.dataset.arange===(r?'1':'0'); x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); await w(250); };
   const days=()=>[...document.querySelectorAll('#dgrid .day[data-day]')].filter(tourVis);
   const dayPaint=(el,v)=>{ const k=el.dataset.day; setEntry(k,v); const st=statusOf(P.mine.entries[k],k); el.classList.remove('y','i','m','part'); if(st.cls) el.classList.add(st.cls); };
-  return {w,to,brush,mode,days,dayPaint};
+  // The first of these days on My answer (day tile, or its first marked hour), to point at what a demo filled in.
+  const mark=ks=>{ for(const k of ks){ const el=q(`#dgrid .day[data-day="${k}"]`)||q(`#grid .slot[data-k="${k}"].sy`)||q(`#grid .slot[data-k="${k}"].si`); if(el) return el; } return null; };
+  return {w,q,to,tap,poke,type,spot,busy,mark,brush:brushTap,mode,days,dayPaint};
 }
 async function demoDays(alive){
   const K=demoKit(alive), c=K.days(); if(!c.length) return;
@@ -2848,6 +2888,87 @@ async function demoHours(alive){
   const before=col[col.indexOf(run[0])-2]; if(before){ await K.brush('i'); await K.to(before); tourTap(); paint(before,'i'); }
   await K.w(700); tourPtr(null);
 }
+// Quick fill: open it, pick Weekdays (and evenings), Add the rule, then switch its colour.
+async function demoQuickFill(alive){
+  const K=demoKit(alive); if(!editable()) return;
+  await K.w(400); if(!await K.tap('[data-qf]',450)) return; K.spot('.qf');
+  if(P.data.dates.some(k=>wdOf(k)<5)) await K.tap('.qf [data-patpre="qf"][data-v="wk"]');
+  await K.tap('.qf [data-patpre="qf"][data-v="eve"]');
+  await K.w(300); await K.tap('.qf [data-qfadd]',700); K.spot('#dgrid,#grid');
+  const r=PAT.qf&&PAT.qf.rules&&PAT.qf.rules[0], ks=r?P.data.dates.filter(k=>matchPat(k,r.pat)):[];
+  await K.poke('.qf .qfl-r'); let m=K.mark(ks); if(m) await K.to(m,1100);
+  await K.tap('.qf [data-qfl="brush"]',500); m=K.mark(ks); if(m) await K.to(m,1300); tourPtr(null);
+}
+// Fill with AI: types an example and fills it in on the page (no request).
+async function demoAiFill(alive){
+  const K=demoKit(alive); if(!editable()) return;
+  const p=P.data.poll, ds=P.data.dates||[], we=ds.filter(k=>wdOf(k)>=5), hrs=ansMode()!=='days';
+  const ex=we.length?{text:hrs?t('Weekends, not before 10'):t('Weekends'),dates:we,hs:hrs?Math.max(10,p.hourStart):p.hourStart}
+    :{text:hrs?t('Every day from 6 pm'):t('Every day'),dates:ds,hs:hrs?Math.max(18,p.hourStart):p.hourStart};
+  if(ex.hs>=p.hourEnd) ex.hs=p.hourStart;
+  await K.w(400); if(!await K.tap('[data-ai]',450)) return; K.spot('.aif');
+  await K.type('#aiText',ex.text); await K.poke('[data-aigo]');
+  await K.busy(b=>{ P.aiBusy=b; renderBody(); });
+  aiApply({rules:[{dates:ex.dates,hs:ex.hs,he:p.hourEnd,st:'y'}]}); renderBody(); K.spot('#dgrid,#grid'); await K.w(900);
+  const m=K.mark(ex.dates); if(m) await K.to(m,1600); tourPtr(null);
+}
+// Planner: drag down the busiest hours of a day (or tap a day) for a draft, then show Schedule (not pressed).
+async function demoPlan(alive){
+  const K=demoKit(alive); await K.w(400);
+  const g=[...document.querySelectorAll('#pgrid .slot[data-k]')].filter(tourVis);
+  if(g.length){ const n=x=>parseInt(x.textContent,10)||0, best=g.reduce((a,x)=>n(x)>n(a)?x:a,g[0]);
+    const k=best.dataset.k, h=+best.dataset.h, col=g.filter(x=>x.dataset.k===k), at=hr=>col.find(x=>+x.dataset.h===hr);
+    const run=at(h+1)?[best,at(h+1)]:at(h-1)?[at(h-1),best]:[best];
+    await K.to(run[0],420,true); for(const el of run){ await K.to(el,260,true); el.classList.add('dr'); } await K.w(250);
+    addDraft(k,false,+run[0].dataset.h,+run[run.length-1].dataset.h+1); }
+  else { const c=[...document.querySelectorAll('#pcal [data-pday]')].filter(tourVis); if(!c.length) return;
+    const el=c[Math.min(2,c.length-1)]; await K.to(el); tourTap(); addDraft(el.dataset.pday,true); }
+  renderBody(); await K.w(700); await K.poke('#drafts .dft'); await K.poke('[data-savedrafts]',2); tourPtr(null);
+}
+// Quick Suggest: open it, weekdays, Suggest (drafts only; nothing is scheduled).
+async function demoSuggest(alive){
+  const K=demoKit(alive); await K.w(400); if(!await K.tap('[data-sugopen]',450)) return; K.spot('#sugp');
+  if(P.data.dates.some(k=>wdOf(k)<5)) await K.tap('#sugp [data-patpre="sug"][data-v="wk"]');
+  await K.tap('#sugp [data-suggest]',900); K.spot('#mplan');
+  await K.poke('#drafts .dft'); await K.poke('[data-savedrafts]'); tourPtr(null);
+}
+// Suggest with AI: types an example and sets Quick Suggest as the AI would (no request).
+async function demoSugAi(alive){
+  const K=demoKit(alive), p=P.data.poll, hrs=p.answerMode!=='days';
+  await K.w(400); if(!await K.tap('[data-sugai]',450)) return; K.spot('.sugai');
+  await K.type('#sugAiText',hrs?t('2 evening meetings a week, not on Fridays'):t('2 meetings a week, not on Fridays')); await K.poke('[data-sugaigo]');
+  await K.busy(b=>{ P.sugAiBusy=b; renderBody(); });
+  let hs=p.hourStart, he=p.hourEnd; if(hrs&&Math.max(18,hs)<Math.min(22,he)){ hs=Math.max(18,hs); he=Math.min(22,he); }
+  sugAiApply({s:{n:2,per:'week'},wd:[0,1,2,3,5,6],hs,he}); renderBody(); K.spot('#mplan');
+  await K.w(1200); await K.poke('#drafts .dft'); tourPtr(null);
+}
+// Generate questions with AI: types an example and shows a preset's questions to pick from (never added).
+async function demoQAi(alive){
+  const K=demoKit(alive); await K.w(400); if(!await K.tap('[data-qai]',450)) return; K.spot('.qai');
+  await K.type('#qAiText',t('Dinner after the hike: where to eat, food preferences, plus-ones')); await K.poke('[data-qaigo]');
+  const A=P.qai, pr=builtinPresets().find(x=>x.id==='b_dinner'); if(!A||!pr) return; A.text=$('qAiText')?.value||'';
+  await K.busy(b=>{ A.busy=b; renderQuestions(true); });
+  qAiShow(A,{group:null,questions:JSON.parse(JSON.stringify(pr.data.questions))}); renderQuestions(true);
+  await K.w(900); await K.tap('.qai [data-qaipick="1"]',700); await K.tap('.qai [data-qaipick="1"]',500); await K.poke('.qai [data-qaiadd]'); tourPtr(null);
+}
+// New poll: Describe it fills the form (from a built-in preset here), then shows what it filled in.
+async function demoDescribe(alive){
+  const K=demoKit(alive), nd=NEWDEMO; if(!nd) return;
+  await K.w(400); if(!await K.tap('#npAiBtn',400)) return;
+  await K.type('#npAiText',t('Monthly game night on weekday evenings. People vote on the game and say if they bring snacks.')); await K.poke('[data-npaigo]');
+  await K.busy(nd.busy); const pr=builtinPresets().find(x=>x.id==='b_games'); if(pr) nd.fill(pr); await K.w(700);
+  // What it filled in, on the preview card: title and settings, then the questions.
+  for(const s of ['.new-sum','#sumQs details']){ K.spot(s,true); if(await K.poke(s)) await K.w(700); }
+  tourPtr(null);
+}
+async function demoCreate(alive){
+  const K=demoKit(alive), ti=$('title'); await K.w(400);
+  // No title yet: type one (the field may be folded away, so the finger stays on the preview, which shows it).
+  if(ti&&!ti.value.trim()){ const card=K.q('.new-sum'); if(card){ K.spot('.new-sum',true); await K.to(card,400,false,'center'); }
+    const tx=t('Team lunch'); for(let i=1;i<=tx.length;i++){ ti.value=tx.slice(0,i); ti.dispatchEvent(new Event('input',{bubbles:true})); await K.w(45); } await K.w(500); }
+  K.spot('#createBtn',true); await K.poke('#createBtn',2); tourPtr(null);
+}
+async function demoNewBtn(alive){ const K=demoKit(alive); await K.w(500); await K.poke('.hero-me .btn.primary',2); tourPtr(null); }
 function tourStart(key,auto){
   key=key||tourKey(); if(!key||TOUR.on) return;
   // Started by itself for someone answering: only the few steps needed to answer (the ? button shows the whole tour).
@@ -2865,7 +2986,7 @@ async function tourShow(i,dir){
   const n=TOUR.steps.length; if(i<0) i=0;
   if(i>=n){ tourEnd(); return; }
   const s=TOUR.steps[i]; TOUR.i=i; TOUR.dir=dir; const did=++TOUR.demoId;
-  tourPtr(null); if(!s.demo) tourDemoRestore();
+  tourDemoRestore(); TOUR.elSel=TOUR.alsoSel=null;
   try{ if(s.go) s.go(); }catch(e){}
   let el=null;
   if(s.sel){ for(let k=0;k<12;k++){ el=[...document.querySelectorAll(s.sel)].find(tourVis); if(el) break; await new Promise(r=>setTimeout(r,100)); if(!TOUR.on||TOUR.i!==i) return; }
@@ -2900,8 +3021,9 @@ function tourInView(el,mode){
 function tourPlace(){
   if(!TOUR.on) return; const b=$('tourb'), h=$('tourhole'), el=TOUR.el; if(!b||!h) return;
   if(!el||!b.classList||b.classList.contains('center')) return;
-  if(!el.isConnected){ const s=TOUR.steps[TOUR.i]; const nx=s&&[...document.querySelectorAll(s.sel)].find(tourVis); if(!nx) return; TOUR.el=nx; return tourPlace(); }
+  if(!el.isConnected){ const s=TOUR.steps[TOUR.i], sel=TOUR.elSel||(s&&s.sel); const nx=sel&&[...document.querySelectorAll(sel)].find(tourVis); if(!nx) return; TOUR.el=nx; return tourPlace(); }
   // The hole covers the element and, for demos, the toolbar that goes with it (TOUR.also).
+  if(TOUR.alsoSel&&!(TOUR.also&&TOUR.also.isConnected)) TOUR.also=[...document.querySelectorAll(TOUR.alsoSel)].find(tourVis)||null;
   const r0=el.getBoundingClientRect(), a=TOUR.also&&TOUR.also.isConnected?TOUR.also.getBoundingClientRect():null;
   const r=a?{left:Math.min(r0.left,a.left),top:Math.min(r0.top,a.top),right:Math.max(r0.right,a.right),bottom:Math.max(r0.bottom,a.bottom)}:{left:r0.left,top:r0.top,right:r0.right,bottom:r0.bottom};
   r.width=r.right-r.left; r.height=r.bottom-r.top;
@@ -2917,7 +3039,7 @@ function tourPlace(){
   b.style.top=y+'px'; b.style.left=x+'px';
 }
 function tourEnd(){
-  if(!TOUR.on) return; TOUR.demoId++; tourDemoRestore(); TOUR.on=false; TOUR.el=null; TOUR.also=null;
+  if(!TOUR.on) return; TOUR.demoId++; tourDemoRestore(); TOUR.on=false; TOUR.el=null; TOUR.also=null; TOUR.elSel=TOUR.alsoSel=null;
   ['tourov','tourhole','tourb'].forEach(id=>{ const x=$(id); if(x) x.remove(); });
   const bk=TOUR.back; TOUR.back=null;
   if(bk&&P.data){ try{ if(bk.msub&&P.msub!==bk.msub&&P.data.isAdmin) setMsub(bk.msub,false); if(P.atab!==bk.atab) setPollTab(bk.atab); if(P.tab!==bk.tab){ P.tab=bk.tab; } renderBody(); }catch(e){} }
@@ -3864,7 +3986,12 @@ function renderNew({edit=null}={}){
       NA.undo=snap; NA.msg=t('Filled in. Check it, then create the poll.'); }
     catch(e){ NA.err=true; NA.msg=e.message; }
     NA.busy=false; aiDraw(); };
-  if($('npAiBtn')) $('npAiBtn').addEventListener('click',()=>{ NA.open=!NA.open; aiDraw(); if(NA.open&&!TOUCH) $('npAiText')?.focus(); });
+  // For the tour's demo: fills the form like Describe it would (from a built-in preset), and puts it all back after.
+  NEWDEMO={snap:aiSnap, close:()=>{ NA.open=false; NA.busy=false; NA.text=''; NA.msg=''; NA.err=false; NA.undo=null; aiDraw(); },
+    busy:b=>{ NA.busy=b; aiDraw(); },
+    fill:pr=>{ const snap=aiSnap(); applyPreset({data:pr.data}); NP.pick='blank'; field(); patRefresh('np'); sum(); NA.undo=snap; NA.msg=t('Filled in. Check it, then create the poll.'); aiDraw(); },
+    restore:u=>{ aiRestore(u); NEWDEMO.close(); }};
+  if($('npAiBtn')) $('npAiBtn').addEventListener('click',()=>{ NA.open=!NA.open; aiDraw(); if(NA.open&&!TOUCH&&!TOUR.on) $('npAiText')?.focus(); });
   $('npai').addEventListener('click',e=>{
     if(e.target.closest('[data-npaiclose]')){ NA.open=false; aiDraw(); $('npAiBtn')?.focus(); }
     else if(e.target.closest('[data-npaigo]')) aiGo();
@@ -5885,11 +6012,12 @@ async function qAiGo(){
   const ta=$('qAiText'); if(ta) A.text=ta.value; const text=(A.text||'').trim();
   if(!text){ A.err=true; A.msg=t('Describe what you want to ask first.'); renderQuestions(true); $('qAiText')?.focus(); return; }
   A.busy=true; A.err=false; A.msg=''; renderQuestions(true);
-  try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/questions-text`,{text},headers());
-    A.res=r; A.off=new Set(); A.asGroup=!!r.group&&r.questions.length>1; A.gname=r.group?r.group.label:''; A.gicon=r.group&&r.group.icon; }
+  try{ qAiShow(A,await api('POST',`/polls/${P.id}/instances/${inst().id}/questions-text`,{text},headers())); }
   catch(e){ A.err=true; A.msg=e.message; }
   A.busy=false; renderQuestions(true);
 }
+// Draft questions to pick from (from the Worker, or the tour's demo).
+function qAiShow(A,r){ A.res=r; A.off=new Set(); A.asGroup=!!r.group&&r.questions.length>1; A.gname=r.group?r.group.label:''; A.gicon=r.group&&r.group.icon; }
 async function qAiAdd(){
   const A=P.qai; if(!A||!A.res||A.busy) return;
   const gn=$('qai_gname'); if(gn) A.gname=gn.value.trim();
@@ -6542,13 +6670,15 @@ async function aiGo(){
   if(!text){ P.aiErr=true; P.aiMsg=t('Type when you’re free first.'); renderBody(); $('aiText')?.focus(); return; }
   if(P.aiBusy) return;
   P.aiBusy=true; P.aiErr=false; P.aiMsg=''; renderBody();
-  try{
-    const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/fill-text`,{text},headers());
-    const prev=Object.assign({},P.mine.entries), {en,n}=aiApplyRules(r.rules||[]);
-    if(!qfSame(en,prev)){ P.mine.entries=en; changed(); P.aiUndo={poll:P.id,prev}; } else P.aiUndo=null;
-    P.aiMsg=n?(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n})):t('No days in this poll match');
-  }catch(e){ P.aiErr=true; P.aiMsg=e.message; }
+  try{ aiApply(await api('POST',`/polls/${P.id}/instances/${inst().id}/fill-text`,{text},headers())); }
+  catch(e){ P.aiErr=true; P.aiMsg=e.message; }
   P.aiBusy=false; renderBody();
+}
+// The Worker's rules onto My answer (as a hand edit, with Undo). The tour's demo calls it with rules made on the page.
+function aiApply(r){
+  const prev=Object.assign({},P.mine.entries), {en,n}=aiApplyRules(r.rules||[]);
+  if(!qfSame(en,prev)){ P.mine.entries=en; changed(); P.aiUndo={poll:P.id,prev}; } else P.aiUndo=null;
+  P.aiMsg=n?(n===1?t('Filled {n} day',{n}):t('Filled {n} days',{n})):t('No days in this poll match');
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-ai]')){ P.aiOpen=!P.aiOpen; if(!P.aiUndo||P.aiUndo.poll!==P.id){ P.aiMsg=''; P.aiErr=false; } renderBody(); return; }
@@ -7770,16 +7900,18 @@ async function sugAiGo(){
   if(!text){ P.sugAiErr=true; P.sugAiMsg=t('Describe the meetings first.'); renderBody(); $('sugAiText')?.focus(); return; }
   if(P.sugAiBusy||!sel().length) return;
   P.sugAiBusy=true; P.sugAiErr=false; P.sugAiMsg=''; renderBody();
-  try{
-    const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/suggest-text`,{text,people:sel().length},headers());
-    P.sugAiUndo={poll:P.id,opts:store.get('sugopt',null),pat:sugPatSnap(),dates:P.sugDates,mode:sugMode(),drafts:P.drafts.slice()};
-    store.set('sugopt',Object.assign({},SUG0,r.s||{}));
-    P.sugOpen=true; sugPanel(); // makes PAT.sug for this poll
-    if(PAT.sug){ PAT.sug.wd=new Set(r.wd&&r.wd.length?r.wd:[0,1,2,3,4,5,6]); PAT.sug.hs=r.hs; PAT.sug.he=r.he; }
-    P.sugDates=r.dates&&r.dates.length?{poll:P.id,set:new Set(r.dates)}:null; sugSetMode(P.sugDates?'dates':'wd');
-    P.sugAiMsg=suggestDrafts()||'';
-  }catch(e){ P.sugAiErr=true; P.sugAiMsg=e.message; }
+  try{ sugAiApply(await api('POST',`/polls/${P.id}/instances/${inst().id}/suggest-text`,{text,people:sel().length},headers())); }
+  catch(e){ P.sugAiErr=true; P.sugAiMsg=e.message; }
   P.sugAiBusy=false; renderBody();
+}
+// The Worker's settings into Quick Suggest, then Suggest (Undo kept). The tour's demo calls it with made-up settings.
+function sugAiApply(r){
+  P.sugAiUndo={poll:P.id,opts:store.get('sugopt',null),pat:sugPatSnap(),dates:P.sugDates,mode:sugMode(),drafts:P.drafts.slice()};
+  store.set('sugopt',Object.assign({},SUG0,r.s||{}));
+  P.sugOpen=true; sugPanel(); // makes PAT.sug for this poll
+  if(PAT.sug){ PAT.sug.wd=new Set(r.wd&&r.wd.length?r.wd:[0,1,2,3,4,5,6]); PAT.sug.hs=r.hs; PAT.sug.he=r.he; }
+  P.sugDates=r.dates&&r.dates.length?{poll:P.id,set:new Set(r.dates)}:null; sugSetMode(P.sugDates?'dates':'wd');
+  P.sugAiMsg=suggestDrafts()||'';
 }
 function sugAiUndo(){
   const u=P.sugAiUndo; if(!u||u.poll!==P.id) return;
@@ -9672,6 +9804,14 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+"Just an example: nothing is sent or saved.": "Nur ein Beispiel: Nichts wird gesendet oder gespeichert.",
+"Weekends, not before 10": "Am Wochenende, nicht vor 10",
+"Every day from 6 pm": "Jeden Tag ab 18 Uhr",
+"2 evening meetings a week, not on Fridays": "2 Abendtermine pro Woche, nicht freitags",
+"2 meetings a week, not on Fridays": "2 Termine pro Woche, nicht freitags",
+"Dinner after the hike: where to eat, food preferences, plus-ones": "Essen nach der Wanderung: wo wir essen, Essenswünsche, Begleitung",
+"Monthly game night on weekday evenings. People vote on the game and say if they bring snacks.": "Monatlicher Spieleabend an Wochentagabenden. Alle stimmen über das Spiel ab und sagen, ob sie Snacks mitbringen.",
+"Team lunch": "Team-Mittagessen",
 "Help": "Hilfe",
 "Ask for help": "Hilfe fragen",
 "Ask a question…": "Stell eine Frage …",

@@ -253,7 +253,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   or Take the tour in the account menu. When you add a main feature, add a step for it.
   Demo steps (`demo`, people who can answer): a fake finger (`tourPtr`, `demoKit`) paints days (`demoDays`), shows tap vs range
   (`demoRange`) and fine-tunes hours (`demoHours`) on My answer; `tourDemoSnap` / `tourDemoRestore` put the answer, mode, brush and
-  undo history back when the demo steps end, nothing is saved. The answer brush always starts in tap mode (range isn't remembered).
+  undo history back when the demo steps end, nothing is saved.
+  More demos drive the real panels (`demoKit`: `tap` clicks local controls, `poke` only shows a tap, `type`, `spot` widens the highlight):
+  Quick fill, Fill with AI, Plan meetings (draws a draft, points at Schedule), Quick Suggest, Suggest with AI, Generate questions with AI,
+  and on the New poll page Describe it / Create poll. AI demos never call the Worker: they play an example through the same apply code
+  (`aiApply`, `sugAiApply`, `qAiShow`, `NEWDEMO.fill`). Each step's `go()` saves what it may change with `tourKeep(key, snap)`;
+  `tourDemoRestore` puts it all back on every step change, ↻ and when the tour ends. The answer brush always starts in tap mode (range isn't remembered).
 - **To do** (page only, people answering; not organisers): `todoList()` works out what's still open for me in this round from page state
   (availability not sent, required questions empty `qReqOpen`, vote groups without my vote, after-meeting questions via `qPromptPick(true)`).
   `todoSync()` draws the `#todo` strip under the header chips (amber when the deadline is today / tomorrow) and the `.tdot` dots on the tabs;
