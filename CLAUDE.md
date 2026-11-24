@@ -46,7 +46,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `friends` (0010): friend requests between accounts. A request goes to an email (`to_email`; `to_id` once that address has an account),
   `status` `pending` → `ok` when the other person accepts on their Account page. `POST /api/me/friends` answers the same whether or not
   the address has an account (no probing). Picking a friend in a poll's People tab adds them as their account (`people: [{ uid }]`).
-  `contacts` in `GET /api/me/friends` = guests the owner added to their polls by email (from `participants`, not stored separately).
+  `contacts` in `GET /api/me/friends` = people in the owner's polls with an address, guests and accounts (from `participants`, not stored separately).
+  **One email = one person:** adding someone by an email that has an account adds the account (`upsertPeople`); signing in or changing the
+  account email claims that address's guest rows in every poll (`claimGuestRows`, a few merges per call, the rest lazily in `accountRow`);
+  the page shows each address once across contact sections (`cgDedup`).
   The page no longer shows friend requests (API kept): the Account page's **Contacts** card and the Add-people popup share one
   contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
   people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).

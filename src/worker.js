@@ -63,7 +63,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-FjIoyuh+zPi2La6P/r3DHnO+xR04wnrzTiJcUoJPops=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-NiWcTgdEbyWqLFoZpnhwoWGTYz069SJQ7/qmcxwtwg4=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -759,6 +759,7 @@ async function verifyLoginCode(request, env, url) {
   await env.DB.prepare('INSERT INTO users (id, email, name, created_at, last_login_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO UPDATE SET last_login_at = excluded.last_login_at')
     .bind('u_' + randomId(16), addr, signupName, t, t).run();
   const user = await env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(addr).first();
+  await claimGuestRows(env, user).catch((e) => console.error('claimGuestRows', e)); // never blocks signing in
   return json({ user: { email: user.email } }, 200, { 'set-cookie': await startSession(env, url, user.id) });
 }
 // { everywhere: true } ends all sessions of this account (e.g. after using a shared computer).
@@ -891,6 +892,7 @@ async function verifyEmailChange(request, env, url) {
     // Friend requests that already reached this account follow it (to_id stays the same).
     env.DB.prepare('UPDATE OR IGNORE friends SET to_email = ? WHERE to_id = ?').bind(addr, user.id),
   ]);
+  await claimGuestRows(env, { id: user.id, email: addr }).catch((e) => console.error('claimGuestRows', e));
   // Let the old address know, in case it wasn't them.
   if (emailEnabled(env)) {
     const de = reqLang(request) === 'de', site = siteUrl(env, url.origin), help = env.CONTACT_EMAIL;
@@ -1098,11 +1100,13 @@ async function listFriends(request, env) {
   const { results: outgoing } = await env.DB.prepare(
     "SELECT id, to_email, created_at FROM friends WHERE status = 'pending' AND from_id = ? ORDER BY created_at DESC").bind(user.id).all();
   const sugg = await friendSuggestions(env, user);
-  // Contacts: guests I added to my polls by email (no account needed), newest name per address. Friends' addresses are left out.
+  // Contacts: people in my polls with an address, guests and accounts alike (so a guest who signs up stays a contact), one
+  // per address: the account's profile name, else the newest name I gave them. Friends' addresses are left out.
   const { results: guests } = await env.DB.prepare(
-    `SELECT pa.name, LOWER(TRIM(pa.email)) AS email, MAX(pa.created_at) AS at FROM participants pa JOIN polls p ON p.id = pa.poll_id
-     WHERE p.owner_id = ? AND pa.user_id IS NULL AND pa.email != '' GROUP BY LOWER(TRIM(pa.email))
-     ORDER BY pa.name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
+    `SELECT COALESCE(NULLIF(u.name, ''), pa.name) AS name, LOWER(TRIM(COALESCE(u.email, pa.email))) AS email, MAX(pa.created_at) AS at
+     FROM participants pa JOIN polls p ON p.id = pa.poll_id LEFT JOIN users u ON u.id = pa.user_id
+     WHERE p.owner_id = ? AND COALESCE(u.email, pa.email, '') != '' GROUP BY LOWER(TRIM(COALESCE(u.email, pa.email)))
+     ORDER BY name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
   const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
   const { results: favs } = await env.DB.prepare('SELECT id, name, email FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
   const { results: grps } = await env.DB.prepare('SELECT id, name, icon, members FROM contact_groups WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
@@ -2985,12 +2989,14 @@ async function newParticipant(env, pollId, name, mail = '', userId = null) {
 // A guest who gives the email of an existing account: their answers belong to that account, signed in or not.
 const accountByEmail = (env, mail) => mail
   ? env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(mail.trim().toLowerCase()).first() : null;
+// Turns a guest row into the row of account u ({ id, email }). A statement, so callers can batch it.
+const toAccountRow = (env, partId, u) => env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
+  .bind(u.id, acctKey(u.id), u.email, partId);
 // Links a guest participant to the account with this email, unless the account is already someone in this poll.
 async function linkGuestToAccount(env, pollId, partId, mail) {
   const acct = await accountByEmail(env, mail);
   if (!acct || !partId || await accountParticipant(env, pollId, acct.id)) return;
-  await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
-    .bind(acct.id, acctKey(acct.id), acct.email, partId).run();
+  await toAccountRow(env, partId, acct).run();
 }
 // Guest rows that are this account's person: added by the organiser with its email, or a guest who answered with it.
 const guestRowsOf = (env, pollId, mail) => env.DB.prepare(
@@ -3005,12 +3011,29 @@ async function accountRow(env, pollId, user) {
   const guests = await guestRowsOf(env, pollId, user.email.toLowerCase());
   if (!part && guests.length) {
     part = guests.shift();
-    await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ? AND user_id IS NULL')
-      .bind(user.id, acctKey(user.id), user.email, part.id).run();
+    await toAccountRow(env, part.id, user).run();
     Object.assign(part, { user_id: user.id, name_key: acctKey(user.id), email: user.email });
   }
   for (const g of guests) await mergeInto(env, g, part);
   return part;
+}
+// After sign-in (or a new account email): every poll's guest rows with this address become the account's person right away,
+// so the polls show up in the account's list and nobody appears twice. One statement for polls where the account isn't
+// anyone yet (the oldest guest row there becomes its row); leftover duplicates next to an account row are merged, a few
+// per call (each merge costs queries; the Free plan allows 50 per request) and the rest when that poll is opened (accountRow).
+const GUEST_MATCH = `pa.user_id IS NULL AND (LOWER(TRIM(pa.email)) = ?2
+  OR EXISTS (SELECT 1 FROM responses r WHERE r.participant_id = pa.id AND LOWER(TRIM(r.email)) = ?2))`;
+async function claimGuestRows(env, user) {
+  const mail = user.email.toLowerCase();
+  await env.DB.prepare(
+    `UPDATE participants SET user_id = ?1, name_key = ?3, email = ?4 WHERE user_id IS NULL AND id IN (
+       SELECT id FROM (SELECT pa.id, ROW_NUMBER() OVER (PARTITION BY pa.poll_id ORDER BY pa.created_at) AS n FROM participants pa
+         WHERE ${GUEST_MATCH} AND NOT EXISTS (SELECT 1 FROM participants x WHERE x.poll_id = pa.poll_id AND x.user_id = ?1))
+       WHERE n = 1)`).bind(user.id, mail, acctKey(user.id), user.email).run();
+  const { results } = await env.DB.prepare(
+    `SELECT pa.*, a.id AS dst_id, a.name AS dst_name FROM participants pa JOIN participants a ON a.poll_id = pa.poll_id AND a.user_id = ?1
+     WHERE ${GUEST_MATCH} ORDER BY pa.created_at LIMIT 5`).bind(user.id, mail).all();
+  for (const g of results) await mergeInto(env, g, { id: g.dst_id, name: g.dst_name });
 }
 // Name a signed-in person answers under: the profile name, else the typed one, else the name they already have in
 // this poll (e.g. the one the organiser gave them), else the start of their email. Accounts made before sign-up asked
@@ -3026,7 +3049,7 @@ async function requireInvited(env, poll, user, admin) {
   if (await accountParticipant(env, poll.id, user.id)) return;
   const g = await env.DB.prepare('SELECT id FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(poll.id, user.email.toLowerCase()).first();
   if (!g) throw new HttpError(403, 'Only invited people can answer this poll, and this account isn’t invited.', { code: 'not_invited' });
-  await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(user.id, acctKey(user.id), user.email, g.id).run();
+  await toAccountRow(env, g.id, user).run();
 }
 // ---------- shared busy hours ----------
 // PUT /api/polls/:id/instances/:iid/busy { share, hours? }: the caller's account participant turns sharing on / off.
@@ -3832,7 +3855,7 @@ async function updateResponse(request, env, id, rid) {
   const user = userOf(request);
   // A guest who signs in and edits their own answer: link that person to the account (if it has none in this poll yet).
   if (user && own && cur && !cur.user_id && !(await accountParticipant(env, id, user.id))) {
-    stmts.push(env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(user.id, acctKey(user.id), user.email, cur.id));
+    stmts.push(toAccountRow(env, cur.id, user));
     cur.user_id = user.id; cur.name_key = acctKey(user.id);
   }
   if (cur && cur.user_id) {
@@ -3948,9 +3971,16 @@ function peopleInput(b) {
 // Adds people, or finds them if they're already in the poll (same email, or same guest name).
 // A guest found by name without an email gets the new one. Returns the participant ids per person (null = skipped).
 // A friend ({ uid }, accepted friends of `me` only) is added as their account, so their signed-in answer lands in the same row.
+// So is an email that has an account: one email = one person (a guest row with it becomes the account's row).
 async function upsertPeople(env, id, people, me = null) {
   const added = [], updated = [], skipped = [], ids = [];
   const friends = people.some((x) => x.uid) ? new Map((me ? await friendRows(env, me.id) : []).map((u) => [u.id, u])) : null;
+  const accts = new Map(), mails = [...new Set(people.filter((x) => !x.uid && x.email).map((x) => x.email.toLowerCase()))];
+  for (let i = 0; i < mails.length; i += 90) {
+    const part = mails.slice(i, i + 90);
+    const { results } = await env.DB.prepare(`SELECT id, email FROM users WHERE LOWER(email) IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    for (const u of results) accts.set(u.email.toLowerCase(), u);
+  }
   for (const x of people) {
     if (x.uid) {
       const f = friends.get(x.uid);
@@ -3961,24 +3991,30 @@ async function upsertPeople(env, id, people, me = null) {
       // A guest row with their address (added by email earlier) becomes their account's row.
       p = await env.DB.prepare('SELECT * FROM participants WHERE poll_id = ? AND user_id IS NULL AND LOWER(email) = ? LIMIT 1').bind(id, mail).first();
       if (p) {
-        await env.DB.prepare('UPDATE participants SET user_id = ?, name_key = ?, email = ? WHERE id = ?').bind(f.id, acctKey(f.id), f.email, p.id).run();
+        await toAccountRow(env, p.id, f).run();
         updated.push(p.name); ids.push(p.id); continue;
       }
       p = await newParticipant(env, id, name, f.email, f.id);
       added.push(name); ids.push(p.id); continue;
     }
+    const acct = x.email ? accts.get(x.email.toLowerCase()) : null;
+    // The account's own row first, then a guest row with the address.
     let p = x.email ? await env.DB.prepare(
-      `SELECT p.* FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? AND (LOWER(p.email) = ? OR LOWER(u.email) = ?) LIMIT 1`)
-      .bind(id, x.email, x.email).first() : null;
+      `SELECT p.* FROM participants p LEFT JOIN users u ON u.id = p.user_id WHERE p.poll_id = ? AND (LOWER(p.email) = ? OR LOWER(u.email) = ?)
+       ORDER BY p.user_id IS NULL LIMIT 1`).bind(id, x.email, x.email).first() : null;
+    if (p && !p.user_id && acct) { await toAccountRow(env, p.id, acct).run(); updated.push(p.name); ids.push(p.id); continue; }
     if (!p) {
       p = await findParticipant(env, id, nameKey(x.name));
       if (p && x.email) {
         if (p.email && p.email.toLowerCase() !== x.email) { skipped.push(`${x.name} (already there with another email)`); ids.push(null); continue; }
-        if (!p.email) { await env.DB.prepare('UPDATE participants SET email = ? WHERE id = ?').bind(x.email, p.id).run(); updated.push(x.name); ids.push(p.id); continue; }
+        if (!p.email) {
+          await (acct ? toAccountRow(env, p.id, acct) : env.DB.prepare('UPDATE participants SET email = ? WHERE id = ?').bind(x.email, p.id)).run();
+          updated.push(x.name); ids.push(p.id); continue;
+        }
       }
     }
     if (p) { skipped.push(p.name); ids.push(p.id); continue; }
-    p = await newParticipant(env, id, x.name, x.email);
+    p = await newParticipant(env, id, x.name, acct ? acct.email : x.email, acct ? acct.id : null);
     added.push(x.name); ids.push(p.id);
   }
   return { added, updated, skipped, ids };

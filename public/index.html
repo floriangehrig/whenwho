@@ -3630,8 +3630,13 @@ function contactGroups(imported,keep){
   const F=FRIENDS||{};
   return [{ic:'star',title:t('Favourites'),list:(F.favourites||[]).map(f=>({name:f.name,email:f.email,avatar:f.avatar,avatarImg:f.avatarImg}))},
     {ic:'users',title:t('From your polls'),list:[...(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true})),...(F.contacts||[])]},
-    {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)}));
+    {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)})).map(cgDedup());
 }
+// One email = one person: a contact already shown in an earlier section is left out of later ones (its avatar fills gaps).
+function cgDedup(){ const seen=new Map();
+  return g=>({...g,list:g.list.filter(f=>{ const k=f.email?String(f.email).toLowerCase():''; if(!k) return true;
+    const had=seen.get(k); if(!had){ seen.set(k,f); return true; }
+    if(!had.avatar&&f.avatar) had.avatar=f.avatar; if(!had.avatarImg&&f.avatarImg) had.avatarImg=f.avatarImg; return false; })}); }
 // Group headers + rows. items collects the people shown (rows refer to them by index), acts(f,i) = the row's buttons,
 // head(g) = extra buttons in a group header.
 function contactListHtml(groups,items,acts,head){
