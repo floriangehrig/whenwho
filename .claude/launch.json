@@ -218,6 +218,16 @@
       ],
       "port": 8788,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-mcp",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd .claude/worktrees/mcp && exec npx wrangler dev --port 8785 --var TURNSTILE_SECRET: --var SITE_URL:http://localhost:8785"
+      ],
+      "port": 8785,
+      "autoPort": false
     }
   ]
 }
