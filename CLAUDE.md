@@ -179,7 +179,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   for each new meeting, or one linked to all of them with **One question for all** (`dm.qOne`) (`mqtQuestions`).
   **Questions in every round** (series): a question with `repeat !== false` is copied into the next round (`insertInstance`; editor switch
   `qe_rep` at the top, ⋯ Ask in every round / Only this round, 🔁 Every round tag `qEvery`). 0035 `polls.round_questions` = up to 10 templates
-  with stable ids (`roundQuestionTpls`, sent as `roundQuestions`, editors of a series; presets too), edited in Settings → Rounds and New poll
+  with stable ids (`roundQuestionTpls`, sent as `roundQuestions`, editors of a series; presets too), edited in Settings → Questions and New poll → Questions
   (Recurring) with the same mqt engine (prefix `r` / `nr`, `roundQsRows`). Every new round gets fresh copies marked `tpl` = template id
   (`roundQuestionCopies`, skips ones the round has by `tpl` or same label); `tpl` copies aren't repeat-copied, so changing or deleting one
   round's copy doesn't change later rounds. Saving the list adds new templates to the current open round too (`addNewRoundQuestions`).

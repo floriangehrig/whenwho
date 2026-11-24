@@ -1118,6 +1118,7 @@
   .tile-i{width:100%;height:100%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;background:linear-gradient(135deg,var(--t,var(--accent)),color-mix(in srgb,var(--t,var(--accent)) 70%,#0B1F3A))}
   .tile-i.plus{background:transparent;color:var(--accent)} .tile-i.plus svg{width:22px;height:22px}
   .tile-e{font-size:24px;line-height:1}
+  .tile-i,.tile-e{text-box:trim-both cap alphabetic} /* centre the letter / emoji by its cap height, not the font's ascent and descent */
   .tile.has-e{background:color-mix(in srgb,var(--accent) 10%,var(--card));box-shadow:inset 0 0 0 1px var(--line)}
   .tile.sm{width:32px;height:32px;border-radius:9px} .tile.sm .tile-i{font-size:13px} .tile.sm .tile-e{font-size:17px}
   .tile.lg{width:60px;height:60px;border-radius:16px} .tile.lg .tile-i{font-size:24px} .tile.lg .tile-e{font-size:32px}
@@ -3742,14 +3743,13 @@ function renderNew({edit=null}={}){
         ${srow('cal',t('First month'),'',`<span class="mrow-n"><input type="month" id="first" aria-labelledby="firstLbl"></span>`,{tid:'firstLbl'})}
         ${dayRows('openDays','dlDays',11,4)}
         <p class="help small ser-next" id="serNext" aria-live="polite"></p>
-        ${roundQsRows('nr',[])}
       </div>`,'',NOPEN)}
     ${sset('answering','check',t('Answering'),`
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'days',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true,hours:false})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
     ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[]),'',NOPEN)}
-    ${sset('questions','ask',t('Questions'),`<div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
+    ${sset('questions','ask',t('Questions'),`<div id="nrBox" class="hide">${roundQsRows('nr',[])}</div><div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
     ${mail?sset('email','mail',t('Email'),mailRows({notify:'notify',remind:'remind',days:'remindDays',notifyOn:true,remindOn:true,n:2,notifyHidden:true}),'',NOPEN):''}
@@ -3885,7 +3885,7 @@ function renderNew({edit=null}={}){
   f.addEventListener('change',e=>{ const n=e.target.name||e.target.id;
     if(e.target.type==='radio') e.target.closest('.choice').querySelectorAll('.ch').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
     if(e.target.id==='unit') setUnit();
-    if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('weeklyBox').classList.toggle('hide',v!=='weekly'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series');
+    if(n==='kind'){ const v=getR('kind'); $('seriesBox').classList.toggle('hide',v!=='series'); $('nrBox').classList.toggle('hide',v!=='series'); $('singleBox').classList.toggle('hide',v!=='single'); $('weeklyBox').classList.toggle('hide',v!=='weekly'); if(mail) $('notifyRow').classList.toggle('hide',v!=='series');
       PAT.np.noDom=v==='weekly'; patRefresh('np',true);
       if(v==='weekly'&&getR('ans')==='days') f.querySelector('[data-for="ans"] [data-sans="slots"]').click(); }
     if(n==='ans') patShowHours('np',getR('ans')!=='days');
@@ -5652,7 +5652,7 @@ const qEvery=q=>P.data.poll.kind==='series'&&(!!q.tpl||q.repeat!==false);
 function qRepMenu(q){ if(P.data.poll.kind!=='series'||P.data.draft) return '';
   if(q.tpl) return canManage()?`<button type="button" data-sroundgo>${ICON.repeat}<span class="grow">${t('Edit for all rounds')}</span></button>`:'';
   return `<button type="button" data-qrep="${q.id}">${ICON.repeat}<span class="grow">${q.repeat===false?t('Ask in every round'):t('Only this round')}</span></button>${canManage()?`<button type="button" data-qtoround="${q.id}">${ICON.plus}<span class="grow">${t('Add to every-round list')}</span></button>`:''}`; }
-// Copy q into the poll's every-round list (Settings → Rounds) and mark this round's q as that list's copy.
+// Copy q into the poll's every-round list (Settings → Questions) and mark this round's q as that list's copy.
 async function qToRoundList(q){ const p=P.data.poll, cur=mqtClone(p.roundQuestions,true,10);
   if(cur.length>=10){ toast(t('Up to {n} questions for every round',{n:10})); return; }
   const [x]=mqtClone([q],false,10); if(!x) return;
@@ -5679,7 +5679,7 @@ function qCard(q,fill){
   const inh=q.grp&&!q.own&&qGroups().some(g=>g.id===q.grp); // Applies to / Who come from the questionnaire (shown on it)
   const chips=[inh?'':qLinkChip(q),
     q.link.each?`<span>${ICON.repeat}<span>${t('Each date')}</span></span>`:'',
-    adm&&qEvery(q)?`<span class="qevery" title="${q.tpl?t('From the list in Settings → Rounds'):t('Asked again in new rounds')}">${ICON.repeat}<span>${t('Every round')}</span></span>`:'',
+    adm&&qEvery(q)?`<span class="qevery" title="${q.tpl?t('From the list in Settings → Questions'):t('Asked again in new rounds')}">${ICON.repeat}<span>${t('Every round')}</span></span>`:'',
     !inh&&q.who.mode!=='all'?`<span>${ICON[q.who.mode==='people'?'user':'users']}<span>${esc(qWhoText(q))}</span></span>`:'',
     !fill&&as&&n?`<span>${ICON.check}<span>${t('{a}/{b} answered',{a:as.length,b:n})}</span></span>`:'',
     q.vis==='owner'?`<span>${ICON.lock}<span>${adm?t('Only you see the answers'):t('Only the organiser sees the answers')}</span></span>`:''].filter(Boolean).join('');
@@ -5858,7 +5858,7 @@ function qDraftSet(items,keepEdit){ const gs=[], qs=[];
   P.data.instance.questions=qs.map(q=>{ const g=q.grp&&gm.get(q.grp); if(q.grp&&!g){ const {grp,own,...r}=q; return r; } return g&&!q.own?{...q,link:g.link,who:g.who}:q; });
   if(!keepEdit) P.qedit=null; renderQuestions(true); }
 const qDraftItems=()=>[...qGroups(),...qList()];
-const Q_TPL={ place:()=>({type:'radio',place:true,add:true,label:t('Where shall we meet?'),options:[]}), radio:()=>({type:'radio',label:'',options:[]}),
+const Q_TPL={ place:()=>({type:'radio',place:true,add:true,label:t('Where shall we meet?'),options:[]}), radio:()=>({type:'radio',label:'',options:[]}), check:()=>({type:'check',label:'',options:[]}),
   rating:()=>({type:'rating',label:t('How did you like it?'),rating:{max:5}}), long:()=>({type:'long',label:''}),
   yesno:()=>({type:'yesno',label:t('Are you bringing someone?'),count:{label:t('How many guests?'),max:20}}), group:()=>({type:'group',label:''}) };
 // ---- Generate with AI (organiser ✨): the Worker turns "dinner after the hike: where, diet, plus-ones" into draft questions
@@ -8770,6 +8770,7 @@ function adminPanes(){
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`):''}
     ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions)),`${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
+    ${man&&series?sset('questions','ask',t('Questions'),roundQsRows('r',mqtClone(p.roundQuestions,true,10)),(p.roundQuestions||[]).length?ICON.repeat:''):''}
     ${man?sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
       p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:''):''}
@@ -8849,10 +8850,10 @@ document.addEventListener('click',e=>{
   if(k){ const w=$('pkwrap'), open=w.hidden; w.hidden=!open; k.setAttribute('aria-expanded',open); }
 });
 // A collapsible Settings section (open state kept while the page is open). body is trusted markup; extra = icons shown when closed.
-const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',meetdef:'#0ea5a4',privacy:'#e0912b',email:'#e0508f'};
+const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',answering:'#16a34a',meetdef:'#0ea5a4',questions:'#6366f1',privacy:'#e0912b',email:'#e0508f'};
 // open: a fixed open map (New poll), so the open state isn't kept in P.
 // Settings / New poll → Meetings: location and description filled into the planner for every new meeting.
-// Series: questions asked in every round (Settings → Rounds, New poll → Dates when Recurring). Prefix r / nr.
+// Series: questions asked in every round (Settings → Questions, New poll → Questions when Recurring). Prefix r / nr.
 function roundQsRows(pre,qs){
   return `<div class="mdef-q rqs"><div class="srow-l mdef-h">${ICON.repeat}<span>${t('Questions for every round')}</span>${tip(t('Each new round gets these questions, fresh, even when a round’s copy was changed or deleted. ＋ Month / ＋ Dates fill in the round, e.g. “What songs should we practice in {month}?”. New ones are added to the current round too; changes count from the next round.'))}</div>${mqtBox(pre,qs)}</div>`;
 }
@@ -8865,8 +8866,8 @@ function meetDefRows(pre,loc,note,qs){
 // ---- Questions for new meetings: templates (a question without id, link or who), max 5. Edited in Settings / New poll → Meetings
 // and Plan new → Details (prefix 'dm', the list is P.dmeta.qs). MQT[pre] = the live list; typing writes into it at once.
 // Prefixes: s / n / dm = questions for new meetings (5), r / nr = questions for every round of a series (10, with template ids and placeholders).
-const MQT={}, MQT_MAX=5, mqtRound=pre=>pre==='r'||pre==='nr', mqtMax=pre=>mqtRound(pre)?10:MQT_MAX, MQT_KINDS=[['place','pin','Vote on the place'],['radio','radio','Multiple choice'],['yesno','users','Yes / no'],['long','note','Text'],['rating','star','Rating']];
-const mqtKind=x=>x.place?'place':x.type==='check'||x.type==='select'?'radio':x.type==='short'?'long':x.type;
+const MQT={}, MQT_MAX=5, mqtRound=pre=>pre==='r'||pre==='nr', mqtMax=pre=>mqtRound(pre)?10:MQT_MAX, MQT_KINDS=[['place','pin','Vote on the place'],['radio','radio','Multiple choice'],['check','check','Checkboxes'],['yesno','users','Yes / no'],['long','note','Text'],['rating','star','Rating']];
+const mqtKind=x=>x.place?'place':x.type==='select'?'radio':x.type==='short'?'long':x.type;
 const mqtClone=(l,keepId=false,max=MQT_MAX)=>(Array.isArray(l)?l:[]).map(qRawOf).filter(x=>x&&x.type!=='group').slice(0,max).map(({id,at,link,who,grp,own,closed,repeat,tpl,...x})=>JSON.parse(JSON.stringify({...(keepId&&id?{id}:{}),...x,...(x.options?{options:x.options.map(o=>({label:o.label}))}:{})})));
 const mqtNew=k=>{ const x=Q_TPL[k](); if(k==='rating') x.label=''; return x; };
 // For saving: no empty labels or options. err() = why it can't be saved yet ('' = fine).
@@ -8876,7 +8877,7 @@ function mqtBox(pre,list){ if(list!==undefined) MQT[pre]=list; if(!MQT[pre]) MQT
 function mqtInner(pre){ const l=MQT[pre]||[];
   const rows=l.map((x,i)=>{ const k=mqtKind(x), kd=MQT_KINDS.find(z=>z[0]===k)||MQT_KINDS[1], choice=Q_CHOICE.has(x.type);
     const kinds=MQT_KINDS.map(([v,,lb])=>`<option value="${v}"${v===k?' selected':''}>${t(lb)}</option>`).join('');
-    const opts=choice?`<div class="mqt-o">${(x.options||[]).map((o,j)=>`<div class="qeopt${x.place?' locbox':''}"><span class="qmark dot"></span><input type="text" id="${pre}_mqo_${i}_${j}" data-mqto="${i}:${j}" maxlength="120" autocomplete="off" value="${esc(o.label||'')}" placeholder="${x.place?t('Place {n}',{n:j+1}):t('Option {n}',{n:j+1})}" aria-label="${t('Option {n}',{n:j+1})}">${x.place?`<div class="locsug" id="${pre}_mqo_${i}_${j}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-mqtorm="${i}:${j}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
+    const opts=choice?`<div class="mqt-o">${(x.options||[]).map((o,j)=>`<div class="qeopt${x.place?' locbox':''}"><span class="qmark ${x.type==='check'?'box':'dot'}"></span><input type="text" id="${pre}_mqo_${i}_${j}" data-mqto="${i}:${j}" maxlength="120" autocomplete="off" value="${esc(o.label||'')}" placeholder="${x.place?t('Place {n}',{n:j+1}):t('Option {n}',{n:j+1})}" aria-label="${t('Option {n}',{n:j+1})}">${x.place?`<div class="locsug" id="${pre}_mqo_${i}_${j}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-mqtorm="${i}:${j}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
       <button type="button" class="btn sm ghost withic qeadd" data-mqtoadd="${i}">${ICON.plus}<span>${x.place?t('Place'):t('Option')}</span></button>
       <div class="qetog mqt-addo">${ICON.users}<label for="${pre}_mqa_${i}">${x.place?t('People can suggest places'):t('People can add options')}</label><label class="sw"><input type="checkbox" id="${pre}_mqa_${i}" data-mqtaddo="${i}"${x.add?' checked':''}><span></span></label></div></div>`:'';
     const rd=mqtRound(pre), pv=rd&&P.data&&!P.data.draft?qTokPrev(x.label,inst()):'';
@@ -8920,7 +8921,6 @@ function roundsSection(p){
   return sset('rounds','repeat',t('Rounds'),
     `<div id="series"></div>
     ${canManage()?`<h3 class="srounds-sub">${t('Schedule for new rounds')}</h3>
-    ${roundQsRows('r',mqtClone(p.roundQuestions,true,10))}
     <div class="mrows">${dayRows('s_open','s_dld',p.openDays,p.deadlineDays??'',t('Applies to rounds opened from now on. To change the dates of an existing round, use the pencil above. To change how often it repeats, create a new series.'))}</div>`:''}`,
     `<span class="muted small">${n===1?t('1 round'):t('{n} rounds',{n})}${open?` · ${t('{n} open',{n:open})}`:''}</span>`);
 }
@@ -10220,7 +10220,7 @@ function germanText(){ return {
 "Each new round gets these questions, fresh, even when a round’s copy was changed or deleted. ＋ Month / ＋ Dates fill in the round, e.g. “What songs should we practice in {month}?”. New ones are added to the current round too; changes count from the next round.": "Jede neue Runde bekommt diese Fragen neu, auch wenn die Kopie einer Runde geändert oder gelöscht wurde. ＋ Monat / ＋ Zeitraum setzen die Runde ein, z. B. „Welche Songs sollen wir im {month} üben?“. Neue Fragen kommen auch in die aktuelle Runde; Änderungen gelten ab der nächsten Runde.",
 "Asked again in new rounds": "Wird in neuen Runden wieder gefragt",
 "Only asked in this round": "Nur in dieser Runde gefragt",
-"From the list in Settings → Rounds": "Aus der Liste unter Einstellungen → Runden",
+"From the list in Settings → Questions": "Aus der Liste unter Einstellungen → Fragen",
 "Every round": "Jede Runde",
 "Ask in every round": "In jeder Runde fragen",
 "Only this round": "Nur diese Runde",
