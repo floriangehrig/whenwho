@@ -1043,6 +1043,7 @@
   .dp-rows.days{grid-template-columns:minmax(0,1fr) max-content}
   .dp-r{display:contents} .dp-r.no>*{opacity:.55}
   .dp-n{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .dp-r>.dp-n{display:flex;align-items:center;gap:6px} .dp-n .tile.avatar{width:20px;height:20px;flex:none} .dp-n .tile.avatar .tile-i{font-size:9.5px} .dp-n .tile.avatar .tile-e{font-size:12px}
   .dp-all .dp-n{font-size:12px;color:var(--muted);font-weight:600;overflow:visible;display:inline-flex;align-items:center;gap:4px}
   .dp-s{display:block;min-width:0}
   .dp-i{justify-self:end;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--line)}
@@ -6632,7 +6633,7 @@ function stats(k, rs=sel()){
   const list=rs.map(r=>{ const v=(r.entries||{})[k];
     const x=fromMap(hourMap(v,k),k); if(x==='y') full++; else if(x==='i') ifn++; else if(x==='m') maybe++; else if(x) part++; else no++;
     hourMap(v,k).forEach((s,h)=>{ const i=h-H[0]; if(i<0||i>=H.length) return; if(s==='y'||s==='i') cy[i]++; if(s==='i') ci[i]++; else if(s==='m') cm[i]++; });
-    return {id:r.id,name:r.name||t('Someone'),v}; });
+    return {id:r.id,name:r.name||t('Someone'),v,avatar:r.avatar,avatarImg:r.avatarImg}; });
   // Best hours: the most people free, and among those the fewest who'd only come "if needed".
   const peak=Math.max(0,...cy), peakIfn=peak?Math.min(...H.map((h,i)=>cy[i]===peak?ci[i]:Infinity)):0;
   const bestHours=peak?H.filter((h,i)=>cy[i]===peak&&ci[i]===peakIfn):[];
@@ -6734,7 +6735,7 @@ function renderGroup(el){
     const stIc={y:'✓',i:'◔',m:'?',part:'◐'};
     const ansOpen=P.dpAnsOpen??(()=>{ try{ const v=localStorage.getItem('dpAns'); if(v!=null) return v==='1'; }catch(e){} return !matchMedia('(max-width:560px)').matches; })();
     const rows=s.list.map(x=>({x,c:counts(x.v,k)})).sort((a,b)=>(b.c.y+b.c.i)-(a.c.y+a.c.i)||b.c.m-a.c.m).map(({x})=>{ const st=statusOf(x.v,k), tt=esc(x.name+' · '+(st.t||t('Not available')));
-      return `<div class="dp-r${st.cls?'':' no'}"><span class="dp-n" title="${tt}">${esc(x.name)}</span>${slotsOn?`<span class="dp-s" title="${tt}">${hourStrip(x.v,k,H)}</span>`:`<span class="dp-i sc-${st.cls||'n'}" title="${tt}" aria-label="${esc(st.t||t('Not available'))}">${stIc[st.cls]||'✕'}</span>`}</div>`; }).join('');
+      return `<div class="dp-r${st.cls?'':' no'}"><span class="dp-n" title="${tt}">${tile({img:x.avatarImg,emoji:x.avatar,text:x.name,seed:x.name},'avatar')}<span class="ell">${esc(x.name)}</span></span>${slotsOn?`<span class="dp-s" title="${tt}">${hourStrip(x.v,k,H)}</span>`:`<span class="dp-i sc-${st.cls||'n'}" title="${tt}" aria-label="${esc(st.t||t('Not available'))}">${stIc[st.cls]||'✕'}</span>`}</div>`; }).join('');
     const bars=slotsOn?`<div class="dp-rows dp-allg"><div class="dp-r dp-all"><span class="dp-n">${t('Everyone')}${pick?tip(t('Drag across the bars to pick the meeting time.')):''}</span><div class="bars${pick?' pick':''}" id="ovbars">${s.cy.map((c,i)=>{ const m=s.cm[i], f=s.ci[i]; return `<div class="stack${inR(H[i])?' in':''}" data-bh="${H[i]}" title="${hh(H[i])} · ${esc(freeTip(c,f,m,tot))}"><div class="bar${s.peak&&c===s.peak&&f===s.peakIfn?' best':''}" style="height:${tot?(c-f)/tot*100:0}%"></div>${f?`<div class="bar ibar" style="height:${f/tot*100}%"></div>`:''}<div class="bar mbar" style="height:${tot?m/tot*100:0}%"></div></div>`; }).join('')}</div></div>
       <div class="dp-r dp-hl"><span></span><div class="barl">${H.map(x=>`<span${inR(x)?' class="in"':''}>${x}</span>`).join('')}</div></div></div>`:'';
     const anim=P.ovShown!==k; P.ovShown=k; // slide in only when a day opens, not on every redraw
