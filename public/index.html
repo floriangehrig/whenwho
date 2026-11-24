@@ -1283,6 +1283,8 @@
   .pgrid :is(.slot,.hd).dp:not(.dr,.da){background:var(--sel-bg);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent)}
   .pgrid .hd{position:relative}
   :is(.pgrid .slot,.pgrid .hd,#pcal .day)[data-dn]::after{content:attr(data-dn);position:absolute;top:1px;right:1px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:var(--accent);color:#fff;font:700 9px/13px system-ui,sans-serif;text-align:center;pointer-events:none}
+  .pn-acts{display:flex;align-items:center;gap:4px;margin-left:auto}
+  .dmenu.pmergem{min-width:300px;max-height:min(420px,70vh);overflow:auto;z-index:95} .dmenu .pmr>.tile.avatar{width:30px;height:30px;min-width:30px;font-size:13px;flex:none} .pmergem input[type=search]{margin:2px 4px 6px;width:calc(100% - 8px)} .pmr{width:100%;text-align:left;background:none;border:0;cursor:pointer;color:inherit;font:inherit;min-height:44px} .pmr:hover,.pmr:focus-visible{background:var(--accent-weak)} .pmr .minw{display:flex;flex-direction:column}
   .watchm{min-width:260px} .watchr{display:flex;align-items:center;gap:8px;min-height:38px;padding:2px 6px} .watchr>svg{width:16px;height:16px;flex:none;color:var(--accent)} .watchr>.tip{position:static} .watchn{padding:4px 6px}
   .watchchip{cursor:pointer;font-family:inherit} .watchchip:hover,.watchchip.on{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);color:#fff}
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
@@ -8136,8 +8138,9 @@ function renderParts(){
       ${partStatus(p,series)}${p.avatar||p.avatarImg?avatarOf(p):''}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
       <span class="acts">${rmenu(p)}${!man?'':`${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
-        <details class="dd more pmore${here&&!p.account&&CONFIG.personalLinks?' plk':''}"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
+        <details class="dd more pmore${(here&&!p.account&&CONFIG.personalLinks)||(pmCanFrom(p)&&pmTargets(p).length)?' plk':''}"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
           ${here&&!p.account&&CONFIG.personalLinks?`<button type="button" data-plink="${esc(p.id)}" title="${esc(t('Opening it answers as {name}, no name to type. Send it only to them.',{name:p.name}))}">${ICON.link}<span>${t('Copy personal link')}</span></button><button type="button" data-plinkreset="${esc(p.id)}" title="${esc(t('Makes a new link. The old one stops working.'))}">${ICON.undo}<span>${t('New personal link')}</span></button>`:''}
+          ${pmCanFrom(p)&&pmTargets(p).length?`<button type="button" data-pmerge="${esc(p.id)}" title="${esc(t('{name} answered without an email address. Move the answer to the invited person it belongs to.',{name:p.name}))}">${ICON.users}<span>${t('This is someone invited…')}</span></button>`:''}
           <span class="pm-n"><button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></span></div></details>`}</span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
         <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
@@ -8147,6 +8150,8 @@ function renderParts(){
   // People added but never emailed: say so and offer to invite them all (the poll link plus the organiser's name).
   const fresh=man&&srv?ps.filter(p=>p.canMail&&p.email&&!p.invitedAt&&!p.answeredNow):[];
   const nudge=fresh.length&&!sel.size?`<div class="pnudge">${ICON.send}<span class="grow minw">${fresh.length===1?t('{name} hasn’t been invited yet.',{name:esc(fresh[0].name)}):t('{n} people haven’t been invited yet.',{n:fresh.length})}</span><button type="button" class="btn sm primary withic" data-pinvfresh>${ICON.send}<span>${fresh.length===1?t('Send invite'):t('Invite {n}',{n:fresh.length})}</span></button></div>`:'';
+  const mg=man&&!sel.size?pmSuggest():null;
+  const mnudge=mg?`<div class="pnudge">${ICON.users}<span class="grow minw">${t('Did {from} answer as {to} ({email})?',{from:`<b>${esc(mg.from.name)}</b>`,to:`<b>${esc(mg.to.name)}</b>`,email:esc(mg.to.email)})}</span><span class="pn-acts"><button type="button" class="btn sm primary" data-pmergeok="${esc(mg.from.id)}" data-to="${esc(mg.to.id)}">${t('Merge')}</button>${ib('x',t('Not the same person'),`data-pmergeno="${esc(mg.from.id)}" data-to="${esc(mg.to.id)}"`,'sm ghost')}</span></div>`:'';
   const tools=!man?`<div class="ptools"><span class="grow muted small">${t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered})}</span></div>`:!ps.length?`<div class="ptools"><span class="grow muted">${t('Nobody yet. Add people or share the link.')}</span>${addBtn}</div>`:`<div class="ptools">
       <label class="check m0 psall"><input type="checkbox" data-pselall ${sel.size===ps.length?'checked':''} aria-label="${t('Select all')}"> ${sel.size?`<span>${t('{n} selected',{n:sel.size})}</span>`
         :(()=>{ const tx=series?t('{people} · {n} answered this round',{people:plural(ps.length,t('person'),t('people')),n:answered}):t('{people} · {n} answered',{people:plural(ps.length,t('person'),t('people')),n:answered});
@@ -8155,7 +8160,7 @@ function renderParts(){
       ${sel.size?`${srv?`<button type="button" class="btn sm primary withic" data-pmailsel ${selMail.length?'':'disabled'} aria-label="${t('Email {n}',{n:selMail.length})}">${ICON.send}<span>${t('Email {n}',{n:selMail.length})}</span></button>`
           :`<button type="button" class="btn sm withic" data-pmailapp ${selMail.length?'':'disabled'} title="${t('Opens your email app with their addresses in BCC')}">${ICON.mail}<span>${t('Email {n}',{n:selMail.length})}</span></button>`}
         ${ME.user?ib('users',t('Save as group'),'data-psavegrp','sm ghost'):''}${ib('x',t('Clear selection'),'data-pselnone','sm ghost')}`
-      :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>${t(`Email {n}<span class="bl"> who haven't answered</span>`,{n:waiting.length})}</span></button>`:''}${addBtn}</div>${nudge}`;
+      :waiting.length?`<button type="button" class="btn sm withic" ${srv?'data-premind':'data-pmailapp="waiting"'} title="${esc(waiting.map(p=>p.name).join(', '))}">${ICON[srv?'bell':'mail']}<span>${t(`Email {n}<span class="bl"> who haven't answered</span>`,{n:waiting.length})}</span></button>`:''}${addBtn}</div>${nudge}${mnudge}`;
   // Linked groups first (header row + their people, collapsible), then everyone else.
   const row=p=>PEOPLE.edit===p.id?edit(p):view(p), shut=pgShut();
   const gh=(PEOPLE.groups||[]).map(g=>{ const ms=ps.filter(p=>p.groupId===g.id), open=!shut.has(g.id), all=ms.length&&ms.every(p=>sel.has(p.id));
@@ -8174,6 +8179,60 @@ function renderParts(){
   PEOPLE.focus=false;
   pdRender();
 }
+// ---- "This is someone invited…": someone answered with a name but no email (e.g. the plain link, "Bobby"), while the
+// organiser added them by email ("Robert"). Merging moves the answers to the invited person (POST .../merge, mergeInto in
+// the Worker: their name and email stay, the email-less row goes; where both answered a round, the newer answer stays).
+const pmKey=n=>String(n||'').trim().toLowerCase().replace(/\s+/g,' ');
+function nameLike(a,b){ a=pmKey(a); b=pmKey(b); if(!a||!b) return false; if(a===b) return true;
+  const fa=a.split(' ')[0], fb=b.split(' ')[0];
+  return fa===fb||(Math.min(fa.length,fb.length)>=3&&(fa.startsWith(fb)||fb.startsWith(fa))); }
+const pmCanFrom=p=>!p.account&&!p.email&&p.rounds>0;
+// People it could be: everyone else with an email (not answered first, likely names on top).
+function pmTargets(p){
+  return ((PEOPLE&&PEOPLE.parts)||[]).filter(q=>q.id!==p.id&&q.email)
+    .map(q=>({q,s:(nameLike(p.name,q.name)?0:2)+(q.rounds?1:0)})).sort((x,y)=>x.s-y.s||x.q.name.localeCompare(y.q.name,LOC)).map(x=>x.q);
+}
+const pmNo=()=>{ try{ return new Set(JSON.parse(localStorage.getItem('pmergeNo:'+PEOPLE.id)||'[]')); }catch(e){ return new Set(); } };
+// One clear match for the banner: an email-less answer whose name fits exactly one invited person who hasn't answered.
+function pmSuggest(){
+  const ps=(PEOPLE&&PEOPLE.parts)||[], no=pmNo();
+  for(const p of ps.filter(pmCanFrom)){
+    const m=ps.filter(q=>q.id!==p.id&&q.email&&!q.rounds&&nameLike(p.name,q.name));
+    if(m.length===1&&!no.has(p.id+'>'+m[0].id)) return {from:p,to:m[0]};
+  }
+  return null;
+}
+async function pmMerge(fromId,toId){
+  const ps=PEOPLE.parts||[], a=ps.find(x=>x.id===fromId), b=ps.find(x=>x.id===toId); if(!a||!b) return;
+  if(!confirm(t('Move {from}’s answers to {to} ({email})? {from} is removed from the list.',{from:a.name,to:b.name,email:b.email})
+    +(b.rounds?'\n\n'+t('{to} has answered too: where both answered the same round, the newer answer is kept.',{to:b.name}):''))) return;
+  closeDraftMenu();
+  try{ const r=await api('POST',`/polls/${PEOPLE.id}/participants/${encodeURIComponent(a.id)}/merge`,{into:b.id},pollHeaders(PEOPLE.id));
+    await peopleChanged(r.removedAnswers?t('Merged into {name}. {n} older answer(s) replaced.',{name:b.name,n:r.removedAnswers}):t('Merged into {name}',{name:b.name})); }
+  catch(ex){ toast(ex.message); }
+}
+// Picker: the people it could be, anchored under the row.
+function pmPick(fromId,anchor){
+  closeDraftMenu();
+  const p=(PEOPLE.parts||[]).find(x=>x.id===fromId); if(!p) return;
+  const all=pmTargets(p);
+  const el=document.createElement('div'); el.id='dmenu'; el.className='dmenu pmergem'; el.setAttribute('role','dialog'); el.setAttribute('aria-label',t('Who is {name}?',{name:p.name}));
+  const list=q=>all.filter(x=>!q||pmKey(x.name+' '+x.email).includes(pmKey(q))).map(x=>`<button type="button" class="dm-r pmr" data-pmergeto="${esc(x.id)}">${avatarOf(x)}<span class="grow minw"><b class="ell">${esc(x.name)}</b><span class="muted small ell">${esc(x.email)}</span></span>${x.rounds?`<span class="pst y" title="${esc(t('Answered'))}">${ICON.check}</span>`:''}${nameLike(p.name,x.name)?`<span class="tag">${t('likely')}</span>`:''}</button>`).join('')||`<p class="help m0 watchn">${t('Nobody found')}</p>`;
+  el.innerHTML=`<div class="dm-h">${t('Who is {name}?',{name:esc(p.name)})}</div>${all.length>8?`<input type="search" id="pm_q" placeholder="${esc(t('Search'))}" aria-label="${esc(t('Search'))}" autocomplete="off">`:''}<div class="pml">${list('')}</div>`;
+  el.dataset.y=scrollY; document.body.appendChild(el);
+  if(matchMedia('(max-width:620px)').matches) el.classList.add('sheet');
+  else { const r=anchor.getBoundingClientRect(), w=el.offsetWidth, h=el.offsetHeight;
+    el.style.left=Math.max(8,Math.min(innerWidth-w-8,r.right-w))+'px'; el.style.top=(r.bottom+6+h<innerHeight?r.bottom+6:Math.max(8,r.top-6-h))+'px'; }
+  el.onclick=e=>{ e.stopPropagation(); const b=e.target.closest('[data-pmergeto]'); if(b) pmMerge(p.id,b.dataset.pmergeto); };
+  const q=$('pm_q'); if(q){ q.oninput=()=>{ el.querySelector('.pml').innerHTML=list(q.value); }; if(!TOUCH) q.focus({preventScroll:true}); }
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-pmerge],[data-pmergeok],[data-pmergeno]'); if(!b||!PEOPLE) return;
+  e.preventDefault(); const ds=b.dataset;
+  if(ds.pmerge){ const dd=b.closest('details'); const li=b.closest('li')||b; if(dd) dd.open=false; pmPick(ds.pmerge,li); return; }
+  if(ds.pmergeok){ pmMerge(ds.pmergeok,ds.to); return; }
+  if(ds.pmergeno){ const s=pmNo(); s.add(ds.pmergeno+'>'+ds.to); try{ localStorage.setItem('pmergeNo:'+PEOPLE.id,JSON.stringify([...s])); }catch(x){} renderParts(); }
+});
 // Collapsed linked groups in the People list, per poll (localStorage pgrp:<poll>).
 function pgShut(){ try{ return new Set(JSON.parse(localStorage.getItem('pgrp:'+PEOPLE.id)||'[]')); }catch(e){ return new Set(); } }
 function pgToggle(gid){ const s=pgShut(); s.has(gid)?s.delete(gid):s.add(gid); try{ localStorage.setItem('pgrp:'+PEOPLE.id,JSON.stringify([...s])); }catch(e){} renderParts(); }
@@ -10765,7 +10824,19 @@ function germanText(){ return {
 "Get notified": "Benachrichtigt werden",
 "Get an email or a notification when someone answers or changes their answer. Everyone who can see the answers can switch it on for themselves.": "Bekomm eine E-Mail oder Benachrichtigung, wenn jemand antwortet oder die Antwort ändert. Alle, die die Antworten sehen können, können das für sich einschalten.",
 "<b>Answer notifications (only if you switch them on for a poll):</b> that you want an email and/or a notification when someone answers that poll, and when the last email was sent. The email lists the names of the people who answered or changed their answer. Switch it off with the bell at the top of the poll.": "<b>Benachrichtigungen zu Antworten (nur wenn du sie für eine Umfrage einschaltest):</b> dass du eine E-Mail und/oder Benachrichtigung bekommen möchtest, wenn jemand in dieser Umfrage antwortet, und wann die letzte E-Mail verschickt wurde. Die E-Mail nennt die Namen der Personen, die geantwortet oder ihre Antwort geändert haben. Ausschalten kannst du sie mit der Glocke oben in der Umfrage.",
-"Only people who can see the answers can get notified about them.": "Nur wer die Antworten sehen kann, kann über sie benachrichtigt werden."}; }
+"Only people who can see the answers can get notified about them.": "Nur wer die Antworten sehen kann, kann über sie benachrichtigt werden.",
+"{name} answered without an email address. Move the answer to the invited person it belongs to.": "{name} hat ohne E-Mail-Adresse geantwortet. Verschieb die Antwort zur eingeladenen Person, zu der sie gehört.",
+"This is someone invited…": "Ist eine eingeladene Person …",
+"Did {from} answer as {to} ({email})?": "Hat {to} ({email}) als {from} geantwortet?",
+"Merge": "Zusammenführen",
+"Not the same person": "Nicht dieselbe Person",
+"Move {from}’s answers to {to} ({email})? {from} is removed from the list.": "Die Antworten von {from} zu {to} ({email}) verschieben? {from} wird aus der Liste entfernt.",
+"{to} has answered too: where both answered the same round, the newer answer is kept.": "{to} hat auch geantwortet: Wo beide dieselbe Runde beantwortet haben, bleibt die neuere Antwort.",
+"Merged into {name}. {n} older answer(s) replaced.": "Mit {name} zusammengeführt. {n} ältere Antwort(en) ersetzt.",
+"Merged into {name}": "Mit {name} zusammengeführt",
+"Who is {name}?": "Wer ist {name}?",
+"likely": "wahrscheinlich",
+"Nobody found": "Niemand gefunden"}; }
 })();
 </script>
 </body>

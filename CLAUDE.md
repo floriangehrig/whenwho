@@ -50,6 +50,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **One email = one person:** adding someone by an email that has an account adds the account (`upsertPeople`); signing in or changing the
   account email claims that address's guest rows in every poll (`claimGuestRows`, a few merges per call, the rest lazily in `accountRow`);
   the page shows each address once across contact sections (`cgDedup`).
+  Someone who answered without an email (plain link, other name) can be merged into an invited person by the organiser:
+  People tab ⋯ → **This is someone invited…** (`pmPick`, banner `pmSuggest` for one clear name match) → `POST .../participants/:pid/merge` (`mergeInto`).
   Guests too: a guest answering with an address already in the poll becomes that row under its saved name (`guestRowsByEmail` in
   `createResponse`; a name match with another address is refused, `name_other_email`); new guest rows keep their address.
   Old splits are merged by `mergeEmailDupes` (People tab, managers opening the poll, daily 04:00 UTC sweep `mergeEmailDupesAll`).
