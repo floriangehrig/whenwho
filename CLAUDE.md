@@ -158,7 +158,13 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   answerable in a closed round (`saveForm` `onlyAfter`); series copies keep them as after-questions. On open, `qAfterPrompt` asks the newest
   unanswered one of the last 14 days in a sheet (Skip = localStorage `qskip:<poll>`); `GET /api/polls/:id` sends `prevAfter` (the round
   before) so a meeting there opens that round. Ended meetings get a Rate chip; rating results show the average per meeting.
-  Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`). Meeting cards link to their questions.
+  Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`).
+  **Questions in meetings**: questions linked to a meeting are embedded in its card and in vote option rows (`qMeetBlock`, wrapper
+  `[data-mqx]`, one line per question there until tapped, `P.mqopen`): people answer there with the counts showing (`qBody(q, true, px, live)`,
+  `px` = id prefix so the tab and the card don't share ids) and Send (`qSend`); guests with no name yet get Answer → Questions tab.
+  The organiser's **Ask ▾** on a card (`qMeetAsk`: place vote, choice, yes/no, text, rating, from a preset linked to it via `qPresetAdd(pr, mid)`)
+  and ✎ open the editor inside the card (`qOpenEditor(q, mid)` → `P.qedit.inMeet`). `renderQuestions` draws the tab (`renderQuestionsTab`,
+  without the editor when it's in a card) and then `qMeetRefresh` (only the `[data-mqx]` blocks, focus kept by `keepFocus`).
 - **Answers in a meeting** (meeting field `inc`, no table): the meeting editor's (✎ on a card, also holds the location; ＋ Add place opens it) and
   Plan new → Details' (`#dm_inc`, `P.dmeta.inc`, set on every new meeting) **From the answers** (`incPicker` / `incRead(box)`) picks
   `{ who, comments, qs: [{ id, each }] }` (who's coming at its time, answer comments, questions as summary or per person; not after-meeting ones).
