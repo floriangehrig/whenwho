@@ -1769,7 +1769,17 @@
   .hseg button svg{width:15px;height:15px} .hseg button:disabled{opacity:.35;cursor:default} .hseg button:disabled:hover{color:var(--muted)}
   /* answer toolbar: brush · fill tools (✨ ⚡) · undo/redo are grey groups of one height */
   .ws-tools.tbar>.seg{height:38px;align-items:center} .ws-tools.tbar>.seg.hseg button{height:100%}
-  .tseg button{position:relative;white-space:nowrap;width:auto!important} .tseg button svg{width:16px;height:16px;flex:none} .tseg .tsl{margin-left:6px}
+  .tseg button{position:relative;white-space:nowrap;width:auto!important} .tseg button svg{width:16px;height:16px;flex:none}
+  /* ✨ / ⚡: the main fill tools, labelled, with glowing icons */
+  .ws-tools.tbar .seg.tseg button{padding:0 11px;gap:6px}
+  /* Every ✨ AI (.xai) and ⚡ Quick (.xqk) opener: ink label, coloured icon with a slow glow */
+  .xai,.xqk{color:var(--ink)!important;font-weight:600} .xai svg{--gl:#8b5cf6} .xqk svg{--gl:#f59e0b}
+  .xai svg,.xqk svg{color:var(--gl);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--gl) 70%,transparent));animation:tglow 2.4s ease-in-out infinite}
+  .xqk svg{animation-delay:-1.2s}
+  .xai:hover svg,.xqk:hover svg,.xai.on svg,.xqk.on svg,.xai[aria-expanded="true"] svg,.xqk[aria-expanded="true"] svg{filter:drop-shadow(0 0 7px var(--gl))}
+  .xai:disabled svg,.xqk:disabled svg{animation:none;filter:none;opacity:.6}
+  @keyframes tglow{50%{filter:drop-shadow(0 0 8px color-mix(in srgb,var(--gl) 95%,transparent))}}
+  @media (prefers-reduced-motion:reduce){.xai svg,.xqk svg{animation:none!important}}
   .bestcard{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:14px;border-radius:var(--r-lg);background:var(--yes-bg);border:1px solid var(--yes);flex-wrap:wrap} .bestcard>.btn{flex:none;margin-left:auto}
   .bestcard .bc-ic{font-size:20px;color:var(--yes-dark)} .bestcard .bc-l{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--yes-dark)}
   .bestcard .bc-w{display:block;font-size:16px;cursor:pointer} .bestcard .bc-s{display:block;font-size:13px;color:var(--ink-2)}
@@ -2001,7 +2011,7 @@
     .ws-tools.tbar .seg.brush button{width:24px;min-width:24px;padding:0} .ws-tools.tbar .seg.brush button.amode{width:22px;min-width:22px}
     .ws-tools.tbar .brush .asep{margin:6px 1px}
     .ws-tools.tbar .btn.sm.ib,.ws-tools.tbar .badgeb{width:28px;min-width:28px}
-    .ws-tools.tbar .seg.hseg button{width:22px} .ws-tools.tbar .seg.tseg button{width:28px!important} .tseg .tsl{display:none}
+    .ws-tools.tbar .seg.hseg button{width:22px} .ws-tools.tbar .seg.tseg button{width:28px!important;padding:0} .tseg .tsl{display:none}
     .ws-tools.tbar>.seg{height:34px}
   }
   .langb{font-weight:650;letter-spacing:.3px;min-width:36px;justify-content:center;gap:5px}
@@ -3944,7 +3954,7 @@ function renderNew({edit=null}={}){
   Object.assign(P,{id:'new',atab:'questions',qview:'results',qedit:null,qai:null,qdd:null,qfold:false,form:{extra:{},can:null},
     data:{draft:true,isAdmin:true,poll:{kind:'single',title:''},instance:{id:'new',meetings:[],questions:[],groups:[]},instances:[]}});
   $app.innerHTML=`${appbar()}${band}
-    <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"><div class="prs-row"><div id="prsF" class="grow prs-fw"></div>${CONFIG.aiFill?`<button type="button" class="prs-ai" id="npAiBtn" aria-expanded="false" aria-controls="npai" title="${t('Describe your poll and let AI fill in the form')}">${ICON.spark}<span>${t('Describe it')}</span></button>`:''}</div><div id="npai"></div></div><form id="f" class="new-grid" novalidate>
+    <main class="wrap"><div class="card prs" id="prs" aria-label="${t('Start from')}"><div class="prs-row"><div id="prsF" class="grow prs-fw"></div>${CONFIG.aiFill?`<button type="button" class="prs-ai xai" id="npAiBtn" aria-expanded="false" aria-controls="npai" title="${t('Describe your poll and let AI fill in the form')}">${ICON.spark}<span>${t('Describe it')}</span></button>`:''}</div><div id="npai"></div></div><form id="f" class="new-grid" novalidate>
     <div class="card sform new-form">
     ${sset('details','edit',t('Details'),`
       <div class="ttl-row"><button type="button" class="ttl-ic" data-pktog aria-expanded="false" aria-controls="pkwrap" title="${t('Icon or picture')}" aria-label="${t('Icon or picture')}"><span id="iconTile"></span><span class="ttl-ed">${ICON.edit}</span></button>
@@ -5936,7 +5946,7 @@ function renderQuestionsTab(){
   const view=d.draft?'results':mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
   const fold=!fill&&qs.length?`<button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${P.qfold?t('Show details'):t('Compact view')}" aria-label="${P.qfold?t('Show details'):t('Compact view')}">${ICON[P.qfold?'grow':'shrink']}</button>`:'';
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qAiOk()?`<button type="button" class="btn sm withic gtool qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qAiOk()?`<button type="button" class="btn sm withic gtool xai qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
   const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
@@ -6684,9 +6694,9 @@ function renderMine(el){
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
-  const qfIc=`<button type="button" class="${qfN?'badgeb ':''}${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}<span class="tsl">${t('Quick fill')}</span>${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
+  const qfIc=`<button type="button" class="xqk ${qfN?'badgeb ':''}${P.qfOpen?'on':''}" data-qf aria-expanded="${!!P.qfOpen}" title="${esc(t('Quick fill…'))}" aria-label="${esc(t('Quick fill…'))}">${ICON.zap}<span class="tsl">${t('Quick fill')}</span>${qfN?`<span class="badge">${qfN}</span>`:''}</button>`;
   const clrL=qfN?t('Clear my own marks'):t('Clear all'), clrIc=`<button type="button" class="hx" data-bulk="clear" title="${esc(clrL)}" aria-label="${esc(clrL)}">${ICON.x}</button>`;
-  const aiIc=aiOk()?`<button type="button" class="${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill with AI'))}" aria-label="${esc(t('Fill with AI'))}">${ICON.spark}<span class="tsl">${t('AI')}</span></button>`:'';
+  const aiIc=aiOk()?`<button type="button" class="xai ${P.aiOpen?'on':''}" data-ai aria-expanded="${!!P.aiOpen}" title="${esc(t('Fill with AI'))}" aria-label="${esc(t('Fill with AI'))}">${ICON.spark}<span class="tsl">${t('AI')}</span></button>`:'';
   const helpTxt=P.mode==='days'
     ?`${TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.')} ${t('Tapping a day with the same colour clears it.')} ${t('Blank = not available.')}${am==='both'?' '+t('Switch to 🕒 to mark only certain hours.'):''}${am!=='days'?' '+t('On days with only some hours, the line shows your day from 0 to 24 h.'):''}${on?` ${t('3/5 = how many of the {n} others are free at the best time.',{n})}`:''}`
     :`${TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.')} ${t('Painting over the same colour clears it.')} ${t('Tap a day’s name to mark the whole day.')} ${t('Blank = not available.')}${on?` ${t('Numbers = how many of the {n} others are free (+ maybe).',{n})}`:''}`;
@@ -7874,7 +7884,7 @@ function sugPanel(){
 function sugRedraw(){ const el=$('sugp'); if(el) el.outerHTML=sugPanel(); const b=document.querySelector('[data-sugopen]'); if(b){ const n=sugCustom(); b.querySelector('.badge')?.remove(); b.classList.toggle('badgeb',!!n); if(n) b.insertAdjacentHTML('beforeend',`<span class="badge">${n}</span>`); } }
 function sugButton(){
   const n=sugCustom(), tot=sel().length;
-  return `<button type="button" class="btn sm withic ib gtool${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Quick Suggest: best times…'))}" aria-label="${esc(t('Quick Suggest: best times…'))}">${ICON.zap}<span class="bl">${t('Quick Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
+  return `<button type="button" class="btn sm withic ib gtool xqk${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Quick Suggest: best times…'))}" aria-label="${esc(t('Quick Suggest: best times…'))}">${ICON.zap}<span class="bl">${t('Quick Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-sugopen]')){ P.sugOpen=!P.sugOpen; renderBody(); return; }
@@ -7987,7 +7997,7 @@ function suggestSlots(rs,o,pat,hs,he,need,only,per,bucket){
 const sugAiOk=()=>!!CONFIG.aiFill;
 function sugAiBtn(){
   if(!sugAiOk()) return '';
-  return `<button type="button" class="btn sm withic ib gtool ${P.sugAiOpen?'on':''}" data-sugai aria-expanded="${!!P.sugAiOpen}" title="${esc(t('Suggest with AI'))}" aria-label="${esc(t('Suggest with AI'))}">${ICON.spark}</button>`;
+  return `<button type="button" class="btn sm withic ib gtool xai ${P.sugAiOpen?'on':''}" data-sugai aria-expanded="${!!P.sugAiOpen}" title="${esc(t('Suggest with AI'))}" aria-label="${esc(t('Suggest with AI'))}">${ICON.spark}</button>`;
 }
 function sugAi(){
   if(!P.sugAiOpen||!sugAiOk()) return '';
@@ -10695,7 +10705,7 @@ function germanText(){ return {
 "Set by Suggest with AI. Remove it to look at every date again.": "Von „Mit KI vorschlagen“ gesetzt. Entfernen, um wieder alle Tage zu berücksichtigen.",
 "Any date": "Jedes Datum",
 "Only": "Nur",
-"Quick fill": "Schnell ausfüllen",
+"Quick fill": "Schnellfüllen",
 "Type when you’re free first.": "Schreib zuerst, wann du Zeit hast.",
 "Type (or dictate with your keyboard) when you’re free. The text is sent to Cloudflare Workers AI to read it, and isn’t stored. Check the result before sending your answer.": "Schreib (oder diktier mit der Tastatur), wann du Zeit hast. Der Text wird zum Auslesen an Cloudflare Workers AI geschickt und nicht gespeichert. Prüf das Ergebnis, bevor du deine Antwort sendest.",
 "e.g. weekdays after 6 pm, Saturday morning maybe, not on the 12th": "z. B. werktags ab 18 Uhr, Samstagvormittag vielleicht, nicht am 12.",
