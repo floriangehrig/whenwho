@@ -1129,7 +1129,8 @@
   .band .tile{box-shadow:0 0 0 3px rgba(255,255,255,.14)}
   .band .tile.has-e{background:rgba(255,255,255,.95)}
   .appbar .tile.has-e{background:#fff}
-  .hero-me{display:flex;gap:20px;align-items:center}
+  .hero-me{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:20px;align-items:center}
+  .hero-me>.row{grid-column:2}
   .hero-me h1{margin-top:4px}
   .bio{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin:6px 0 0;padding:3px 8px 3px 0;border:0;background:none;color:inherit;opacity:.85;font:inherit;font-size:14.5px;text-align:left;cursor:pointer;border-radius:8px;overflow-wrap:anywhere}
   .bio svg{width:14px;height:14px;flex:none;opacity:.6} .bio:hover{opacity:1} .bio:hover svg{opacity:1} .bio.empty{opacity:.6;font-style:italic}
@@ -1637,7 +1638,7 @@
   /* ---------- small screens ---------- */
   @media (max-width:560px){
     h1{font-size:25px}
-    .hero-me{gap:14px} .hero-me .tile.avatar.xl{width:56px;height:56px} .poll-h{gap:12px} .poll-h .tile.lg{width:48px;height:48px}
+    .hero-me{column-gap:14px} .hero-me .tile.avatar.xl{width:56px;height:56px} .poll-h{gap:12px} .poll-h .tile.lg{width:48px;height:48px}
     .band{padding:26px 0 68px}
     .card{padding:18px 16px}
     .appbar-in{gap:10px}
@@ -3499,7 +3500,7 @@ function renderHome(){
     <section class="band"><div class="wrap">
       ${ME.user?`<div class="hero-me">${avatarOf(ME.user,'xl')}<div><div class="eyebrow">${t('Your polls')}</div><h1>${t('Hi, {name}',{name:esc(displayName(ME.user))})}</h1>
         <p class="lead">${server.length?(nOpen?t('You have {polls}, {open} open right now.',{polls:plural(server.length,t('poll'),t('polls')),open:nOpen}):t('You have {polls}.',{polls:plural(server.length,t('poll'),t('polls'))})):t('Create your first poll and share the link.')}</p>
-        ${newBtn(t('New poll'))}</div></div>`
+        </div>${newBtn(t('New poll'))}</div>`
       :`<div class="eyebrow">${t('Availability polls')}</div>
       <h1>${t('Find a time that works for everyone')}</h1>
       <p class="lead">${t('Create a poll, share the link and see at a glance when everyone’s free and who can make it. Answering doesn’t need an account.')}</p>
