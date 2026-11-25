@@ -42,7 +42,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   or with the email of a guest row the owner added (that row then becomes the account's). The owner can always answer.
   Adding people (`POST .../participants`, invites) requires an email address, except friends picked by `uid`.
 - **Overview** (home page, signed in): Your polls / Polls you answered each get a toolbar (`homeTools`: title search, All / Open / Closed / Hidden,
-  kind, sort; `HOME_V`, kept in localStorage `hpv` without the search) and a ⋯ menu per card (Copy share link, Hide from overview).
+  kind, sort; `HOME_V`, kept in localStorage `hpv` without the search) and a ⋯ menu per card (Copy share link, Hide from overview; on your own polls Delete poll, in red).
   Hidden polls are per account in `poll_hidden` (0034), set by `PUT /api/me/polls/:id/hidden { hidden }`; `GET /api/me/polls` marks them `hidden: true`.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
