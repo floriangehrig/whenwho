@@ -164,9 +164,11 @@
   .pd-list .list{margin:0} .pd-list .list li{gap:10px;align-items:center;padding:6px 4px}
   .pd-list .pmain{display:flex;flex-direction:column;min-width:0} .pd-list .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pd-list .acts{flex:none;display:flex;gap:2px} .pd-list .help{padding-top:12px;margin:0}
-  .qb.fav[aria-pressed=true] svg{fill:currentColor}
-  .pd-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
-  .pplist .qb.fav[aria-pressed=true],.acct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:#E0A100}
+  .pd-list .qb.fav[aria-pressed=true],.pplist .qb.fav[aria-pressed=true],.acct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:var(--accent)}
+  .ct-note{font-style:italic}
+  .ct-ask{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:12.5px;color:var(--muted)}
+  .ct-ask .btn{min-height:26px;padding:2px 8px;font-size:12px}
+  .ct-ask b{color:var(--text)}
   .pd-add.ct-add,.dlg .padd.cal-f{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
   .dlg-act{display:flex;justify-content:flex-end} .dlg-act .btn{min-width:110px;justify-content:center}
   .dlg-s{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;margin-top:4px}
@@ -2186,7 +2188,7 @@ const ERR_DE = [
   [/^Up to (\d+) options per question$/, (m,n)=>`Höchstens ${n} Optionen pro Frage`],
   [/^At most (\d+) quick fill rules$/, (m,n)=>`Höchstens ${n} Regeln für Schnell ausfüllen`],
   [/^(.+) needs an email address$/, (m,n)=>`${n} braucht eine E-Mail-Adresse`],
-  [/^You can have at most (\d+) favourites$/, (m,n)=>`Du kannst höchstens ${n} Favoriten haben`],
+  [/^You can have at most (\d+) (?:favourites|contacts)$/, (m,n)=>`Du kannst höchstens ${n} Kontakte speichern`],
   [/^You can have at most (\d+) groups$/, (m,n)=>`Du kannst höchstens ${n} Gruppen haben`],
   [/^A group can have at most (\d+) people$/, (m,n)=>`Eine Gruppe kann höchstens ${n} Personen haben`],
   [/^Allow when-who to read your (Google|Outlook) contacts$/, (m,p)=>`Erlaube when-who, deine ${p}-Kontakte zu lesen`],
@@ -2542,6 +2544,8 @@ Object.assign(ICON,{
   tap:svgI('<path d="M9 11.5V5.2a1.7 1.7 0 0 1 3.4 0v5.3"/><path d="M12.4 10.2a1.7 1.7 0 0 1 3.4 0v1.3M15.8 11a1.7 1.7 0 0 1 3.4 0v3.5c0 4-2.6 6.5-6.2 6.5h-1c-2 0-3.3-.8-4.5-2.4L4.4 15a1.6 1.6 0 0 1 2.5-2L9 15"/><path d="M5 4.5 3.5 3M14.5 4.5 16 3M9.8 1.5V.8" opacity=".7"/>'),
   brush:svgI('<path d="M19.5 3.5a2.1 2.1 0 0 1 3 3L13 16l-3-3z"/><path d="M10 13c-2.2 0-3.8 1.6-3.8 3.8 0 1.5-1 2.5-2.7 2.9 1.1 1.4 2.8 2.3 4.7 2.3 3 0 5-2.1 5-5z"/>'),
   user:svgI('<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'),
+  userplus:svgI('<circle cx="10" cy="8" r="4"/><path d="M3 20.5a7 7 0 0 1 12.5-4.3M19 14v6M16 17h6"/>'),
+  usercheck:svgI('<circle cx="10" cy="8" r="4"/><path d="M3 20.5a7 7 0 0 1 12.5-4.3M15.5 18l2 2 4-4.5"/>'),
   eye:svgI('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   unlock:svgI('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.5"/>'),
   next:svgI('<path d="M5 12h12M13 7l5 5-5 5"/>'),
@@ -2761,7 +2765,7 @@ function tourSteps(key){
     S(null,t('Your account'),t('A quick look at your account page.')),
     S('#pf',t('Profile'),t('Your name and picture, shown to others in polls and chats. You can also change your email address here.')),
     S('#calcard',t('Calendars'),t('Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.')),
-    S('#ctcard',t('Contacts'),t('Favourites, people from your polls and groups, to add many people to a poll at once.')),
+    S('#ctcard',t('Contacts'),t('Saved contacts, people from your polls and groups, to add many people to a poll at once. ✎ edits a contact.')),
     S('#pushsec',t('Notifications'),t('Get chat messages as notifications on this device, even when when-who is closed.')),
     S('#mcpcard',t('AI assistants'),t('Connect Claude, ChatGPT or another assistant to read and answer your polls, create new ones and set meetings by chatting.')),
     S('#datacard',t('Your data'),t('Download everything we store about you, or delete your account.')),end];
@@ -3554,7 +3558,7 @@ function renderHome(){
     </div></main>${siteFoot()}`;
 }
 
-const PRIVACY_UPDATED='2026-11-24';
+const PRIVACY_UPDATED='2026-11-25';
 const siteFoot = () => `<footer class="site-foot"><a href="?imprint">${t('Legal notice')}</a><a href="?privacy">${t('Privacy policy')}</a><a href="?rules">${t('Rules')}</a></footer>`;
 // Shared pieces of the legal pages. Values come from OPERATOR_NAME / OPERATOR_ADDRESS / OPERATOR_PHONE / CONTACT_EMAIL / DPA_NAME (wrangler.toml, via /api/config).
 const legalMail = () => CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
@@ -3616,7 +3620,7 @@ function renderPrivacy(){
         t('<b>Questions:</b> if an organiser asks questions (for example a place to vote on, dietary needs or a plus-one), your answers and the options you suggest are stored for that round under your name, separately from your availability. The organiser decides per question who may answer and whether everyone who can see the answers sees them or only the organiser, so only share what you want them to know.'),
         t('<b>Answers in meetings:</b> an organiser can add parts of the answers (who’s coming, comments, answers to questions, with names) to a meeting’s description. Everyone who sees that meeting or gets its invite email or calendar file then sees them, also when the poll’s answers are otherwise hidden.'),
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages, with the writer’s name, are visible to everyone who can open the poll (on invite-only polls: the organiser and the invited people); only signed-in people can write.'),
-        t('<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
+        t('<b>Contacts:</b> the contacts you save (name, email address and an optional private note that only you see), which name to use for them in your polls, the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). In polls you manage, a saved contact can be shown to you under your name for them. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you save them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
         t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
@@ -4226,7 +4230,8 @@ function renderCreated(id, body, kind){
 const CALUI={edit:null};
 // ---------- contacts ----------
 // FRIENDS: GET /me/friends result { favourites, contacts, friends, … }, loaded once per page. The page shows it as
-// contacts: favourites, people from your polls (guests added by email + accounts that were friends) and imported ones.
+// contacts: saved contacts (`favourites`, editable: name, email, note, namePref), people from your polls
+// (guests added by email + accounts that were friends) and imported ones.
 let FRIENDS=null;
 async function loadFriends(force){
   if(!ME.user) return null;
@@ -4243,12 +4248,12 @@ function contactKeep(q,skip){
   const seen=new Set(); q=String(q||'').trim().toLowerCase();
   return f=>{ const k=f.email?f.email.toLowerCase():'n:'+f.name.toLowerCase();
     if(seen.has(k)||isMe(f.email)||(skip&&skip(f,k))) return false;
-    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
+    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)&&!(f.note||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
 }
-// [{ic,title,list,imp}]: Favourites, From your polls, Imported (imported = this page's list).
+// [{ic,title,list,imp}]: Contacts (saved), From your polls, Imported (imported = this page's list).
 function contactGroups(imported,keep){
   const F=FRIENDS||{};
-  return [{ic:'star',title:t('Favourites'),list:(F.favourites||[]).map(f=>({name:f.name,email:f.email,avatar:f.avatar,avatarImg:f.avatarImg}))},
+  return [{ic:'usercheck',title:t('Saved'),list:(F.favourites||[]).map(f=>({id:f.id,saved:true,name:f.name,email:f.email,note:f.note||'',namePref:f.namePref||'',other:f.other||'',avatar:f.avatar,avatarImg:f.avatarImg}))},
     {ic:'users',title:t('From your polls'),list:[...(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true})),...(F.contacts||[])]},
     {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)})).map(cgDedup());
 }
@@ -4258,13 +4263,13 @@ function cgDedup(){ const seen=new Map();
     const had=seen.get(k); if(!had){ seen.set(k,f); return true; }
     if(!had.avatar&&f.avatar) had.avatar=f.avatar; if(!had.avatarImg&&f.avatarImg) had.avatarImg=f.avatarImg; return false; })}); }
 // Group headers + rows. items collects the people shown (rows refer to them by index), acts(f,i) = the row's buttons,
-// head(g) = extra buttons in a group header.
-function contactListHtml(groups,items,acts,head){
+// head(g) = extra buttons in a group header, more(f) = extra lines under the name. A saved contact's note shows under its email.
+function contactListHtml(groups,items,acts,head,more){
   let h='';
   for(const g of groups){ if(!g.list.length) continue;
     h+=`<div class="cgrp">${ICON[g.ic]}<span class="grow">${esc(g.title)} <span class="muted">(${g.list.length})</span></span>${head?head(g):''}</div><ul class="list">`
       +g.list.slice(0,300).map(f=>{ const i=items.push(f)-1;
-        return `<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(f.name)}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}</span>
+        return `<li>${avatarOf(f)}<span class="grow pmain"><b class="ell">${esc(f.name)}</b>${f.email?`<span class="muted small ell">${esc(f.email)}</span>`:''}${f.note?`<span class="muted small ell ct-note">${esc(f.note)}</span>`:''}${more?more(f):''}</span>
           <span class="acts">${acts(f,i)}</span></li>`; }).join('')+'</ul>'; }
   return h;
 }
@@ -4319,15 +4324,16 @@ async function importContacts(k,btn,st,render,fileId,ret){
   finally{ st.busy=''; if(btn) btn.disabled=false; render(); }
 }
 
-// Account page Contacts card: the people you have (favourites + people from your polls), narrowed by the filter and the search.
-// Its ＋ opens the Add-contacts popup: type someone in (saved as a favourite) or import and star who to keep.
+// Account page Contacts card: the people you have (saved contacts + people from your polls), narrowed by the filter and the search.
+// Its ＋ opens the Add-contacts popup: type someone in (saved) or import and save who to keep. ✎ on a saved one = ctEdit.
+// A saved contact who goes by another name in your polls (`other`) asks which name to use (ctAsk → namePref).
 const CT={q:'',filter:'all',imported:[],items:[],dItems:[],busy:''};
 try{ const f=localStorage.getItem('ct_filter'); if(f==='fav'||f==='polls') CT.filter=f; }catch(e){}
 function renderContactsCard(){
   renderCtDlg();
   const box=$('ctbox'); if(!box) return;
   if(!box.dataset.ready){ box.dataset.ready='1';
-    const seg=[['all','',t('All')],['fav','star',t('Favourites')],['polls','users',t('From your polls')]];
+    const seg=[['all','',t('All')],['fav','usercheck',t('Saved')],['polls','users',t('From your polls')]];
     box.innerHTML=`<div class="acct-tools" id="ct_tools" hidden><label class="pd-q">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
         <div class="seg" role="group">${seg.map(([k,ic,l])=>`<button type="button" data-ctf="${k}" aria-pressed="false">${ic?`<span class="segic">${ICON[ic]}</span>`:''}<span>${esc(l)}</span></button>`).join('')}</div></div>
       <div id="ct_grps" class="acct-list grp-wrap"></div><div id="ct_list" class="acct-list"></div>`; }
@@ -4341,21 +4347,75 @@ function renderContactsCard(){
     <button type="button" class="btn sm primary withic" data-ctopen>${ICON.plus}<span>${t('Add contacts')}</span></button></div>`; return; }
   const all=contactGroups([],contactKeep(q)).slice(0,2), groups=CT.filter==='fav'?[all[0]]:CT.filter==='polls'?[all[1]]:all, favs=favEmails();
   CT.items=[];
-  const h=contactListHtml(groups,CT.items,f=>f.email?favBtn(f,favs)+grpBtn(f):'');
-  list.innerHTML=h||`<p class="help">${q?t('Nobody found.'):CT.filter==='fav'?t('No favourites yet. Star people to keep them here.'):t('Nobody from your polls yet.')}</p>`;
+  const h=contactListHtml(groups,CT.items,f=>!f.email?'':f.saved?pqb('edit',t('Edit {name}',{name:f.name}),`data-ctedit="${esc(f.id)}"`)+grpBtn(f):favBtn(f,favs)+grpBtn(f),null,ctAsk);
+  list.innerHTML=h||`<p class="help">${q?t('Nobody found.'):CT.filter==='fav'?t('No saved contacts yet. Save people to keep them here.'):t('Nobody from your polls yet.')}</p>`;
+}
+// "Goes by X in your polls": Use X (follow their name) / Keep mine (and show it for them in polls you manage).
+function ctAsk(f){
+  if(!f.saved||!f.other||f.namePref) return '';
+  return `<span class="ct-ask"><span>${t('Goes by <b>{name}</b> in your polls',{name:esc(f.other)})}</span>
+    <button type="button" class="btn sm" data-ctname="theirs" data-ctid="${esc(f.id)}">${esc(t('Use “{name}”',{name:f.other}))}</button>
+    <button type="button" class="btn sm" data-ctname="mine" data-ctid="${esc(f.id)}">${esc(t('Keep “{name}”',{name:f.name}))}</button>
+    ${tip(t('Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.'),'right')}</span>`;
+}
+async function ctNamePref(id,pref,btn){
+  const f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.id===id); if(!f) return; if(btn) btn.disabled=true;
+  try{ await api('PATCH','/me/favourites/'+encodeURIComponent(id),pref==='theirs'&&f.other?{namePref:pref,name:f.other}:{namePref:pref});
+    await loadFriends(true); renderContactsCard(); if(PEOPLE&&PEOPLE.parts) loadParts(); }
+  catch(ex){ toast(ex.message); if(btn) btn.disabled=false; }
+}
+// Edit a saved contact: name, email (the key: must not be saved already), note, which name to use, remove.
+function ctEdit(id){
+  const f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.id===id); if(!f) return;
+  let d=$('cedlg');
+  if(!d){ d=document.createElement('dialog'); d.id='cedlg'; d.className='dlg'; d.setAttribute('aria-labelledby','ce_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  const pref=f.namePref||'', seg=f.other||pref?`<div class="dlg-s">${ICON.user}${t('Name in your polls')}${tip(t('Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.'),'right')}</div>
+      <div class="seg" role="group">${[['mine',t('Keep my name')],['theirs',f.other?t('Use “{name}”',{name:f.other}):t('Use theirs')]].map(([k,l])=>`<button type="button" data-cepref="${k}" aria-pressed="${pref===k}" class="${pref===k?'on':''}"><span>${esc(l)}</span></button>`).join('')}</div>`:'';
+  d.innerHTML=`<div class="dlg-h"><h2 id="ce_h">${t('Edit contact')}</h2>${pqb('x',t('Close'),'data-ceclose=""')}</div>
+    <div class="dlg-b">
+      <div class="pd-add ct-add"><input type="text" id="ce_n" maxlength="60" value="${esc(f.name)}" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off">
+        <input type="email" id="ce_e" maxlength="200" value="${esc(f.email)}" placeholder="${t('Email')}" aria-label="${t('Email')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <input type="text" id="ce_note" class="mt-2" maxlength="120" value="${esc(f.note||'')}" placeholder="${t('Note (only you see it)')}" aria-label="${t('Note')}" autocomplete="off">
+      ${seg}
+      <div class="err" id="ce_err"></div>
+      <div class="dlg-act"><button type="button" class="btn danger withic" data-cedel>${ICON.trash}<span>${t('Remove contact')}</span></button><span class="grow"></span>
+        <button type="button" class="btn primary withic" data-cesave>${ICON.check}<span>${t('Save')}</span></button></div>
+    </div>`;
+  d.dataset.id=id; d.dataset.pref=pref;
+  if(!d.open) d.showModal(); if(!TOUCH) $('ce_n').focus();
+}
+async function ctEditSave(btn){
+  const d=$('cedlg'), err=$('ce_err'); err.textContent='';
+  const mail=$('ce_e').value.trim().toLowerCase(), name=$('ce_n').value.trim().slice(0,60)||(EMAIL_RE.test(mail)?nameFromEmail(mail):'');
+  if(!EMAIL_RE.test(mail)){ err.textContent=mail?t("That email address doesn't look right."):t('Every person needs an email address.'); $('ce_e').focus(); return; }
+  if(isMe(mail)){ err.textContent=t('That’s your own address'); $('ce_e').focus(); return; }
+  const b={name,email:mail,note:$('ce_note').value}; if(d.dataset.pref) b.namePref=d.dataset.pref;
+  btn.disabled=true;
+  try{ await api('PATCH','/me/favourites/'+encodeURIComponent(d.dataset.id),b); d.close(); await loadFriends(true); renderContactsCard(); toast(t('Contact saved')); if(PEOPLE&&PEOPLE.parts) loadParts(); }
+  catch(ex){ err.textContent=ex.message; }
+  finally{ btn.disabled=false; }
+}
+async function ctEditDel(btn){
+  const d=$('cedlg'), f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.id===d.dataset.id); if(!f) return;
+  if(!confirm(t('Remove {name} from your contacts?',{name:f.name}))) return;
+  btn.disabled=true;
+  try{ await api('DELETE','/me/favourites/'+encodeURIComponent(f.id)); d.close(); await loadFriends(true); renderContactsCard(); toast(t('Removed from contacts')); }
+  catch(ex){ toast(ex.message); btn.disabled=false; }
 }
 // The Add-contacts popup: a new person (saved as a favourite), import buttons, and the imported list to star from.
 function ctOpen(){
   let d=$('ctdlg');
   if(!d){ d=document.createElement('dialog'); d.id='ctdlg'; d.className='dlg'; d.setAttribute('aria-labelledby','ct_h'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
-  d.innerHTML=`<div class="dlg-h"><h2 id="ct_h">${t('Add contacts')}</h2>${tip(t('People you add here become favourites: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you star them.'),'right')}${pqb('x',t('Close'),'data-ctclose=""')}</div>
+  d.innerHTML=`<div class="dlg-h"><h2 id="ct_h">${t('Add contacts')}</h2>${tip(t('People you add here are saved as contacts: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you save them.'),'right')}${pqb('x',t('Close'),'data-ctclose=""')}</div>
     <div class="dlg-b">
       <div class="dlg-s">${ICON.plus}${t('New contact')}</div>
       <div class="pd-add ct-add"><input type="text" id="ct_n" maxlength="60" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off" enterkeyhint="next">
         <input type="email" id="ct_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
 </div>
-      <div class="dlg-act"><button type="button" class="btn primary withic" data-ctadd title="${t('Add to favourites')}">${ICON.plus}<span>${t('Add')}</span></button></div>
+      <input type="text" id="ct_note" class="mt-2" maxlength="120" placeholder="${t('Note (only you see it)')}" aria-label="${t('Note')}" autocomplete="off">
+      <div class="dlg-act"><button type="button" class="btn primary withic" data-ctadd title="${t('Save to contacts')}">${ICON.plus}<span>${t('Add')}</span></button></div>
       <div class="err" id="ct_err"></div>
       <div class="dlg-s">${ICON.upload}${t('Import')}</div>
       <div class="pd-imp">${contactImportButtons('data-ctimp')}<input type="file" id="ct_file" accept=".vcf,text/vcard,text/x-vcard" hidden></div>
@@ -4369,7 +4429,7 @@ function renderCtDlg(){
   const favs=favEmails(), keep=contactKeep(''), list=CT.imported.filter(keep);
   CT.dItems=[];
   let h=contactListHtml([{ic:'upload',title:t('Imported'),list}],CT.dItems,f=>f.email?favBtn(f,favs):`<span class="muted small">${t('no email')}</span>`,
-    g=>g.list.filter(f=>f.email&&!favs.has(f.email.toLowerCase())).length>1?`<button type="button" class="btn sm withic" data-ctstarall>${ICON.star}<span>${t('Star all')}</span></button>`:'');
+    g=>g.list.filter(f=>f.email&&!favs.has(f.email.toLowerCase())).length>1?`<button type="button" class="btn sm withic" data-ctstarall>${ICON.userplus}<span>${t('Save all')}</span></button>`:'');
   if(CT.busy) h=`<p class="help">${esc(CT.busy)}</p>`+h;
   box.innerHTML=h;
 }
@@ -4378,21 +4438,28 @@ async function contactAdd(btn){
   const mail=m.value.trim().toLowerCase(), name=n.value.trim().slice(0,60)||(EMAIL_RE.test(mail)?nameFromEmail(mail):'');
   if(!EMAIL_RE.test(mail)){ err.textContent=mail?t("That email address doesn't look right."):t('Every person needs an email address.'); m.focus(); return; }
   btn.disabled=true;
-  try{ await api('POST','/me/favourites',{name,email:mail}); n.value=''; m.value=''; await loadFriends(true); renderContactsCard(); toast(t('Added to favourites')); n.focus(); }
+  const note=$('ct_note');
+  try{ await api('POST','/me/favourites',{name,email:mail,note:note?note.value:''}); n.value=''; m.value=''; if(note) note.value=''; await loadFriends(true); renderContactsCard(); toast(t('Saved to contacts')); n.focus(); }
   catch(ex){ err.textContent=ex.message; }
   finally{ btn.disabled=false; }
 }
-// Star every imported contact with an email (one request each; stops at the first error, e.g. the favourites cap).
+// Save every imported contact with an email (one request each; stops at the first error, e.g. the contacts cap).
 async function ctStarAll(btn){
   const favs=favEmails(), rows=CT.imported.filter(f=>f.email&&!favs.has(f.email.toLowerCase())); let n=0;
   btn.disabled=true;
   try{ for(const f of rows){ await api('POST','/me/favourites',{name:f.name.slice(0,60),email:f.email}); n++; } }
   catch(ex){ toast(ex.message); }
-  await loadFriends(true); renderContactsCard(); if(n) toast(t('{n} added to favourites',{n}));
+  await loadFriends(true); renderContactsCard(); if(n) toast(t('{n} saved to contacts',{n}));
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-ctadd],[data-ctimp],[data-ctf],[data-ctopen],[data-ctclose],[data-ctstarall]'); if(!b) return; const d=b.dataset;
-  if(d.ctopen!==undefined) ctOpen();
+  const b=e.target.closest('[data-ctadd],[data-ctimp],[data-ctf],[data-ctopen],[data-ctclose],[data-ctstarall],[data-ctedit],[data-ctname],[data-ceclose],[data-cesave],[data-cedel],[data-cepref]'); if(!b) return; const d=b.dataset;
+  if(d.ctedit) ctEdit(d.ctedit);
+  else if(d.ctname) ctNamePref(d.ctid,d.ctname,b);
+  else if(d.ceclose!==undefined) $('cedlg').close();
+  else if(d.cesave!==undefined) ctEditSave(b);
+  else if(d.cedel!==undefined) ctEditDel(b);
+  else if(d.cepref){ $('cedlg').dataset.pref=d.cepref; b.parentElement.querySelectorAll('[data-cepref]').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-pressed',String(on)); }); }
+  else if(d.ctopen!==undefined) ctOpen();
   else if(d.ctclose!==undefined) $('ctdlg').close();
   else if(d.ctf){ CT.filter=d.ctf; try{ localStorage.setItem('ct_filter',CT.filter); }catch(ex){} renderContactsCard(); }
   else if(d.ctstarall!==undefined) ctStarAll(b);
@@ -4748,7 +4815,7 @@ function renderAccount(){
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
       <div class="card span" id="pushsec" hidden></div>
-      <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
+      <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Saved contacts come first when you add people to a poll; ✎ edits name, email and a private note. <b>From your polls</b> lists the people you added to your polls by email. Save anyone to keep them.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
         <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
         <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
@@ -4879,7 +4946,15 @@ const instLabel = i => P.data.poll.kind==='weekly' ? t('A typical week') : P.dat
 async function openPoll(id){ P.id=id; P.atab=store.get('atab:'+id,'answers'); if(P.atab==='chat'){ P.atab='answers'; store.set('chatOpen:'+id,true); } // the Chat tab is now the drawer P.tab=store.get('view:'+id,'mine');
   P.msub=null; if(P.tab==='plan'){ P.tab='group'; P.atab='meetings'; P.msub='plan'; } // the old "★ Schedule" view now lives in the Meetings tab
   P.password=store.get('pw:'+id,null); await loadPoll(true); }
-async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return normRole(await api('GET',`/polls/${P.id}${q}`,null,headers())); }
+async function fetchPoll(){ const q=P.iid?`?i=${encodeURIComponent(P.iid)}`:''; return cnPoll(normRole(await api('GET',`/polls/${P.id}${q}`,null,headers()))); }
+// My contact names (saved contacts set to "keep my name"; only sent to people who manage the poll): `cnames` keys are a participant
+// id, "r:<response id>" or "u:<user id>". cnSet shows my name and keeps theirs in `theirName` (tips, renaming them).
+function cnSet(o,cn,key){ const n=cn&&o&&cn[key]; if(n&&n!==o.name){ if(!o.theirName) o.theirName=o.name; o.name=n; } return o; }
+function cnPoll(d){ const cn=d&&d.cnames; if(!cn) return d;
+  for(const r of d.responses||[]) cnSet(r,cn,'r:'+r.id);
+  for(const b of d.busy||[]) cnSet(b,cn,b.pid);
+  return d; }
+const cnTip=p=>p&&p.theirName?` title="${esc(t('Your contact name. They call themselves “{name}”.',{name:p.theirName}))}"`:'';
 // Roles (owner › admin › editor › viewer). The Worker sends `can` = { see, edit, manage, own }; the page's organiser view
 // (`isAdmin`) is for editors and up, viewers get everyone's view but see what organisers see (hidden answers, all rounds).
 function normRole(d){ if(d&&!d.draft){ const a=!!d.isAdmin; d.can=d.can||{see:a,edit:a,manage:a,own:a}; d.isAdmin=!!d.can.edit; } return d; }
@@ -8305,6 +8380,7 @@ async function chatFetch(full){
     if(full){
       const unread=(P.data.chat&&P.data.chat.unread)||0;
       c.msgs=r.messages.concat((c.msgs||[]).filter(m=>m.tmp)); c.people=r.people||{}; c.members=r.members||[];
+      const cn=P.data&&P.data.cnames; if(cn) for(const u in c.people) cnSet(c.people[u],cn,'u:'+u);
       // "New" divider above the first unread message from someone else.
       c.newId=null; if(unread){ let k=0; for(let i=r.messages.length-1;i>=0;i--){ if(!r.messages[i].mine&&++k===unread){ c.newId=r.messages[i].id; break; } } }
     } else {
@@ -9246,9 +9322,9 @@ function peoplePanel(id,o){
 }
 async function loadParts(){
   const el=$('parts'); if(!el||!PEOPLE) return; const id=PEOPLE.id;
-  loadFriends();
+  if(!FRIENDS) loadFriends().then(r=>{ if(r&&PEOPLE&&PEOPLE.id===id&&PEOPLE.parts) renderParts(); }); // save toggles need the contacts
   if(PEOPLE.parts) renderParts();
-  try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants; PEOPLE.groups=r.groups||[]; }
+  try{ const r=await api('GET',`/polls/${id}/participants`,null,pollHeaders(id)); if(!PEOPLE||PEOPLE.id!==id) return; PEOPLE.parts=r.participants.map(p=>cnSet(p,r.cnames,p.id)); PEOPLE.groups=r.groups||[]; }
   catch(e){ el.innerHTML=`<p class="err">${esc(e.message)}</p>`; return; }
   renderParts();
 }
@@ -9276,7 +9352,7 @@ function renderParts(){
       <div class="menu-h row tight">${t('Role')}${tip(t('Give people who answer with an account a role, so they can help organise. Only you can change roles.'),'right')}</div>
       ${['','viewer','editor','admin'].map(r=>`<button type="button" role="menuitemradio" aria-checked="${(p.role||'')===r}" data-prole="${esc(p.id)}" data-r="${r}" title="${esc(r?roleHelp(r):t('Answers like everyone else'))}">${r?ICON[ROLE_IC[r]]:ICON.user}<span class="grow">${r?esc(roleName(r)):t('No role')}</span>${(p.role||'')===r?ICON.check:''}</button>`).join('')}</div></details>`;
   const view=p=>`<li class="${sel.has(p.id)?'on':''}">${man?`<input type="checkbox" data-psel="${esc(p.id)}" ${sel.has(p.id)?'checked':''} aria-label="${t('Select {name}',{name:esc(p.name)})}">`:''}
-      ${partStatus(p,series)}${p.avatar||p.avatarImg?avatarOf(p):''}<span class="grow pmain"><span class="pname"><b class="ell">${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
+      ${partStatus(p,series)}${p.avatar||p.avatarImg?avatarOf(p):''}<span class="grow pmain"><span class="pname"><b class="ell"${cnTip(p)}>${esc(p.name)}</b>${p.account?`<span class="pacct" title="${t('Signed in: identified by their account, not by name')}">${ICON.users}</span>`:''}${roleTag(p.isOwner?'owner':p.role)}</span>
         <span class="muted small ell">${p.email?`${esc(p.email)} · `:''}${p.rounds?`<span title="${t('{answers}, last {date}',{answers:esc(plural(p.rounds,t('answer'),t('answers'))),date:esc(new Date(p.lastAnswered).toLocaleDateString(LOC))})}">${p.rounds}× · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}</span>`:t('no answers yet')}</span></span>
       <span class="acts">${rmenu(p)}${!man?'':`${ME.user&&p.email?favBtn(p,favs):''}${p.canMail&&p.email?pqb(srv?'send':'mail',srv?(p.invitedAt?t('Send the invite again'):t('Send invite')):t('Email {name}',{name:p.name}),`data-pinvite="${esc(p.id)}"`):''}<span class="pact-w">${pqb('edit',t('Rename'),`data-pedit="${esc(p.id)}"`)}${pqb('trash',t('Remove'),`data-pdel="${esc(p.id)}"`,' danger')}</span>
         <details class="dd more pmore${(here&&!p.account&&CONFIG.personalLinks)||(pmCanFrom(p)&&pmTargets(p).length)?' plk':''}"><summary class="qb" title="${t('More')}" aria-label="${esc(t('More')+': '+p.name)}">${ICON.more}</summary><div class="ddp menu">
@@ -9284,7 +9360,7 @@ function renderParts(){
           ${pmCanFrom(p)&&pmTargets(p).length?`<button type="button" data-pmerge="${esc(p.id)}" title="${esc(t('{name} answered without an email address. Move the answer to the invited person it belongs to.',{name:p.name}))}">${ICON.users}<span>${t('This is someone invited…')}</span></button>`:''}
           <span class="pm-n"><button type="button" data-pedit="${esc(p.id)}">${ICON.edit}<span>${t('Rename')}</span></button><button type="button" class="danger" data-pdel="${esc(p.id)}">${ICON.trash}<span>${t('Remove')}</span></button></span></div></details>`}</span></li>`;
   const edit=p=>`<li class="pediting"><span class="padd grow">
-        <input type="text" id="pe_n" maxlength="60" value="${esc(p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
+        <input type="text" id="pe_n" maxlength="60" value="${esc(p.theirName||p.name)}" aria-label="${t('Name')}" data-pekey="${esc(p.id)}" autocomplete="off">
         <input type="email" id="pe_e" maxlength="200" value="${esc(p.email||'')}" aria-label="${t('Email')}" placeholder="${t('Email (optional)')}" data-pekey="${esc(p.id)}" autocomplete="off" autocapitalize="off" spellcheck="false"${p.account?` readonly title="${t('Linked to their account')}"`:''}></span>
       <span class="acts">${pqb('check',t('Save'),`data-psave="${esc(p.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-pcancel=""')}</span></li>`;
   const addBtn=`<button type="button" class="btn primary withic padd-lbl" data-paddopen aria-haspopup="dialog">${ICON.plus}<span>${t('Add people')}</span></button>`;
@@ -9393,19 +9469,19 @@ async function pgLink(gid,btn){
 }
 // After a change: on the poll page reload the poll (Answers and Meetings use the list too), else just the list.
 async function peopleChanged(msg){ if(msg) toast(msg); if(PEOPLE.id===P.id&&P.data) await loadPoll(false); else await loadParts(); }
-// ---- Add-people popup (+ at the top of the list): name + email (or a pasted list), then favourites, friends,
-// people added by email before and imported contacts (phone, vCard file, Google / Outlook), each with + to add and ☆ to star.
+// ---- Add-people popup (+ at the top of the list): name + email (or a pasted list), then saved contacts, friends,
+// people added by email before and imported contacts (phone, vCard file, Google / Outlook), each with + to add and a save toggle (favBtn).
 // Imported contacts stay in this page; only the people picked are sent to the server.
 const PD={q:'',items:[],imported:[],busy:'',gopen:new Set(),gshut:new Set()};
 const favEmails=()=>new Set(((FRIENDS&&FRIENDS.favourites)||[]).map(f=>f.email.toLowerCase()));
 const favBtn=(p,favs)=>{ const on=favs.has(String(p.email).toLowerCase());
-  return `<button type="button" class="qb tog fav" data-pfav="${esc(p.email)}" data-pfavname="${esc(p.name||'')}" aria-pressed="${on}" title="${on?t('Remove from favourites'):t('Add to favourites')}" aria-label="${esc(on?t('Remove {name} from favourites',{name:p.name||p.email}):t('Add {name} to favourites',{name:p.name||p.email}))}">${ICON.star}</button>`; };
+  return `<button type="button" class="qb tog fav" data-pfav="${esc(p.email)}" data-pfavname="${esc(p.name||'')}" aria-pressed="${on}" title="${on?t('Remove from contacts'):t('Save to contacts')}" aria-label="${esc(on?t('Remove {name} from contacts',{name:p.name||p.email}):t('Save {name} to contacts',{name:p.name||p.email}))}">${on?ICON.usercheck:ICON.userplus}</button>`; };
 async function favToggle(btn){
   const mail=btn.dataset.pfav.toLowerCase(), name=btn.dataset.pfavname||'';
   if(!ME.user) return; if(!FRIENDS) await loadFriends(); btn.disabled=true;
   const f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.email===mail);
   try{ if(f) await api('DELETE','/me/favourites/'+encodeURIComponent(f.id)); else await api('POST','/me/favourites',{name:name.slice(0,60),email:mail});
-    await loadFriends(true); toast(f?t('Removed from favourites'):t('Added to favourites'));
+    await loadFriends(true); toast(f?t('Removed from contacts'):t('Saved to contacts'));
     if(PEOPLE&&PEOPLE.parts) renderParts(); else pdRender(); renderContactsCard(); }
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
@@ -9421,7 +9497,7 @@ function pdOpen(){
     <div class="dlg-b">
       <div class="pd-add"><input type="text" id="pd_n" maxlength="2000" placeholder="${t('Name, or paste a list')}" aria-label="${t('Name, or paste a list')}" autocomplete="off" enterkeyhint="done">
         <input type="email" id="pd_e" maxlength="200" placeholder="${t('Email')}" aria-label="${t('Email')}" required autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
-        ${ME.user?`<button type="button" class="qb tog fav" id="pd_fav" aria-pressed="false" title="${t('Also save to favourites')}" aria-label="${t('Also save to favourites')}">${ICON.star}</button>`:''}
+        ${ME.user?`<button type="button" class="qb tog fav" id="pd_fav" aria-pressed="false" title="${t('Also save to contacts')}" aria-label="${t('Also save to contacts')}">${ICON.userplus}</button>`:''}
         <button type="button" class="btn primary padd-btn" data-padd title="${t('Add')}" aria-label="${t('Add')}">${ICON.plus}</button></div>
       <div class="err" id="pd_err"></div>
       <div class="pd-imp">
@@ -9444,7 +9520,7 @@ function pdRender(){
   let h=(ME.user?pdGroupsHtml(q,inPoll):'')+contactListHtml(groups,PD.items,(f,i)=>`${ME.user&&f.email?favBtn(f,favs):''}${pqb('plus',t('Add {name}',{name:f.name}),`data-pdi="${i}"`,' ok')}`,
     g=>g.imp&&g.list.length>1?`<button type="button" class="btn sm" data-pdall>${t('Add all')}</button>`:'');
   if(PD.busy) h=`<p class="help mt-0">${esc(PD.busy)}</p>`+h;
-  box.innerHTML=h||`<p class="help mt-0">${q?t('Nobody found.'):ME.user?t('Your favourites, people from your polls and imported contacts show up here.'):t('Imported contacts show up here.')}</p>`;
+  box.innerHTML=h||`<p class="help mt-0">${q?t('Nobody found.'):ME.user?t('Your saved contacts, people from your polls and imported contacts show up here.'):t('Imported contacts show up here.')}</p>`;
 }
 // vCard 2.1 / 3.0 / 4.0: FN (or N) and every EMAIL of each card. Quoted-printable names are decoded as UTF-8.
 function parseVcf(text){
@@ -9525,7 +9601,7 @@ async function peopleSave(id){
   const name=$('pe_n').value.trim(), mail=p.account?p.email:$('pe_e').value.trim();
   if(!name){ toast(t('Every person needs a name')); $('pe_n').focus(); return; }
   if(mail&&!EMAIL_RE.test(mail)){ toast(t("That email address doesn't look right")); $('pe_e').focus(); return; }
-  if(name===p.name&&(mail||'')===(p.email||'')){ PEOPLE.edit=null; renderParts(); return; }
+  if(name===(p.theirName||p.name)&&(mail||'')===(p.email||'')){ PEOPLE.edit=null; renderParts(); return; }
   try{ await api('PATCH',`/polls/${PEOPLE.id}/participants/${id}`,{name,email:mail},pollHeaders(PEOPLE.id)); PEOPLE.edit=null; await peopleChanged(t('Saved')); }
   catch(ex){ toast(ex.message); }
 }
@@ -10140,7 +10216,7 @@ function germanText(){ return {
 "A quick look at your account page.": "Ein kurzer Blick auf deine Kontoseite.",
 "Your name and picture, shown to others in polls and chats. You can also change your email address here.": "Dein Name und Bild, die andere in Umfragen und Chats sehen. Hier kannst du auch deine E-Mail-Adresse ändern.",
 "Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.": "Verbinde Google oder Outlook oder füge iCal-Links hinzu. Belegte Stunden werden beim Antworten ausgegraut, und du kannst Antworten daraus vorausfüllen.",
-"Favourites, people from your polls and groups, to add many people to a poll at once.": "Favoriten, Leute aus deinen Umfragen und Gruppen, um viele Personen auf einmal zu einer Umfrage hinzuzufügen.",
+"Saved contacts, people from your polls and groups, to add many people to a poll at once. ✎ edits a contact.": "Gespeicherte Kontakte, Leute aus deinen Umfragen und Gruppen, um viele Personen auf einmal zu einer Umfrage hinzuzufügen. ✎ bearbeitet einen Kontakt.",
 "Download everything we store about you, or delete your account.": "Lade alles herunter, was wir über dich speichern, oder lösche dein Konto.",
 "A quick look at everything you can do in this poll, from answering to planning meetings.": "Ein kurzer Blick auf alles, was du in dieser Umfrage tun kannst, vom Antworten bis zum Planen von Treffen.",
 "A quick look at how to answer this poll. It takes about a minute.": "Ein kurzer Blick darauf, wie du diese Umfrage beantwortest. Dauert etwa eine Minute.",
@@ -10651,7 +10727,7 @@ function germanText(){ return {
 "Authorities, the European Commission and users can reach us at {email}, in German or English.": "Behörden, die Europäische Kommission und Nutzer erreichen uns unter {email}, auf Deutsch oder Englisch.",
 "See also the <a href=\"?imprint\">legal notice</a>.": "Siehe auch das <a href=\"?imprint\">Impressum</a>.",
 "<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages, with the writer’s name, are visible to everyone who can open the poll (on invite-only polls: the organiser and the invited people); only signed-in people can write.": "<b>Chat:</b> Nachrichten, Reaktionen und Antworten im Chat einer Umfrage und wann du ihn zuletzt gelesen hast (für die Zahl ungelesener Nachrichten). Nachrichten mit dem Namen der Person, die sie geschrieben hat, sieht jede Person, die die Umfrage öffnen kann (bei Umfragen nur für Eingeladene: die Organisation und die Eingeladenen); schreiben können nur Angemeldete.",
-"<b>Contacts:</b> your favourite contacts and the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you star them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.": "<b>Kontakte:</b> deine Favoriten und die Gruppen, die du anlegst, und welche deiner Gruppen mit deinen Umfragen verknüpft sind (deren Personen folgen dann Änderungen an der Gruppe). Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du markierst sie mit einem Stern oder fügst sie einer Umfrage oder Gruppe hinzu; ihre E-Mail-Adressen werden einmal mit when-who-Konten abgeglichen, um die Profilbilder dieser Personen zu zeigen.",
+"<b>Contacts:</b> the contacts you save (name, email address and an optional private note that only you see), which name to use for them in your polls, the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). In polls you manage, a saved contact can be shown to you under your name for them. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you save them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.": "<b>Kontakte:</b> die Kontakte, die du speicherst (Name, E-Mail-Adresse und eine optionale private Notiz, die nur du siehst), welcher Name in deinen Umfragen für sie verwendet wird, die Gruppen, die du anlegst, und welche deiner Gruppen mit deinen Umfragen verknüpft sind (deren Personen folgen dann Änderungen an der Gruppe). In Umfragen, die du verwaltest, kann dir ein gespeicherter Kontakt unter deinem Namen für ihn angezeigt werden. Kontakte, die du von deinem Handy, aus einer .vcf-Datei oder aus einem Google- oder Microsoft-Konto importierst, bleiben nur in deinem Browser und werden von when-who nicht gespeichert, außer du speicherst sie oder fügst sie einer Umfrage oder Gruppe hinzu; ihre E-Mail-Adressen werden einmal mit when-who-Konten abgeglichen, um die Profilbilder dieser Personen zu zeigen.",
 "<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.": "<b>Geteilte belegte Zeiten (nur wenn du das für eine Umfrage einschaltest):</b> die Stunden, in denen du an den Tagen dieser Runde belegt bist, ohne Termindetails, sichtbar für alle, die die Antworten dieser Umfrage sehen.",
 "<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).": "<b>Sicherheit:</b> deine IP-Adresse, um fehlgeschlagene Anmeldeversuche und KI-Ausfüllungen zu begrenzen (nach 24 Stunden gelöscht), und ein Protokoll, wer Einladungs-E-Mails verschickt hat, für ein Tageslimit (nach 2 Tagen gelöscht).",
 "<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.": "<b>Cloudflare</b>: Hosting und Datenbank sowie Turnstile, eine Prüfung, die Bots von der Anmeldung abhält. Turnstile wird erst geladen, wenn du die Anmeldung öffnest.",
@@ -10901,14 +10977,14 @@ function germanText(){ return {
 "Your rights": "Deine Rechte",
 "when-who only reads when you’re busy and never stores your events. <a href=\"?privacy\">Privacy policy</a>": "when-who liest nur, wann du belegt bist, und speichert deine Termine nie. <a href=\"?privacy\">Datenschutzerklärung</a>",
 "Add people": "Personen hinzufügen",
-"Remove from favourites": "Aus Favoriten entfernen",
-"Add to favourites": "Zu Favoriten hinzufügen",
-"Remove {name} from favourites": "{name} aus Favoriten entfernen",
-"Add {name} to favourites": "{name} zu Favoriten hinzufügen",
-"Removed from favourites": "Aus Favoriten entfernt",
-"Added to favourites": "Zu Favoriten hinzugefügt",
+"Remove from contacts": "Aus Kontakten entfernen",
+"Save to contacts": "In Kontakten speichern",
+"Remove {name} from contacts": "{name} aus Kontakten entfernen",
+"Save {name} to contacts": "{name} in Kontakten speichern",
+"Removed from contacts": "Aus Kontakten entfernt",
+"Saved to contacts": "In Kontakten gespeichert",
 "Phone": "Telefon",
-"Also save to favourites": "Auch in Favoriten speichern",
+"Also save to contacts": "Auch in Kontakten speichern",
 "Pick people from your phone’s contacts": "Personen aus den Kontakten deines Telefons wählen",
 "Pick a .vcf file exported from your contacts app (iPhone, Mac, Android, Outlook)": "Eine .vcf-Datei aus deiner Kontakte-App wählen (iPhone, Mac, Android, Outlook)",
 "Your Google contacts (asks Google for permission the first time)": "Deine Google-Kontakte (beim ersten Mal fragt Google um Erlaubnis)",
@@ -11313,7 +11389,7 @@ function germanText(){ return {
 "Loading…": "Lädt…",
 "Contacts": "Kontakte",
 "Couldn’t load your contacts.": "Deine Kontakte konnten nicht geladen werden.",
-"Your favourites, people from your polls and imported contacts show up here.": "Hier erscheinen deine Favoriten, Personen aus deinen Umfragen und importierte Kontakte.",
+"Your saved contacts, people from your polls and imported contacts show up here.": "Hier erscheinen deine gespeicherten Kontakte, Personen aus deinen Umfragen und importierte Kontakte.",
 "From your polls": "Aus deinen Umfragen",
 "Pick someone from the list": "Wähl jemanden aus der Liste",
 "Enter an email address": "Gib eine E-Mail-Adresse ein",
@@ -11950,13 +12026,30 @@ function germanText(){ return {
 "Add calendar": "Kalender hinzufügen",
 "New contact": "Neuer Kontakt",
 "no email": "keine E-Mail",
-"Star all": "Alle markieren",
-"{n} added to favourites": "{n} zu Favoriten hinzugefügt",
+"Edit {name}": "{name} bearbeiten",
+"Goes by <b>{name}</b> in your polls": "Heißt in deinen Umfragen <b>{name}</b>",
+"Use “{name}”": "„{name}“ übernehmen",
+"Keep “{name}”": "„{name}“ behalten",
+"Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.": "Behalten: Umfragen, die du verwaltest, zeigen die Person mit deinem Namen (ihr eigener Name im Tipp). Übernehmen: Dein Kontakt folgt dem Namen, den die Person verwendet.",
+"Name in your polls": "Name in deinen Umfragen",
+"Keep my name": "Meinen Namen behalten",
+"Use theirs": "Ihren Namen übernehmen",
+"Edit contact": "Kontakt bearbeiten",
+"Note (only you see it)": "Notiz (nur du siehst sie)",
+"Remove contact": "Kontakt entfernen",
+"Contact saved": "Kontakt gespeichert",
+"Remove {name} from your contacts?": "{name} aus deinen Kontakten entfernen?",
+"Your contact name. They call themselves “{name}”.": "Dein Kontaktname. Die Person nennt sich „{name}“.",
+"That address is already in your contacts": "Diese Adresse ist schon in deinen Kontakten",
+"Contact not found": "Kontakt nicht gefunden",
+"Pick which name to use": "Wähle, welcher Name verwendet wird",
+"Save all": "Alle speichern",
+"{n} saved to contacts": "{n} in Kontakten gespeichert",
 "No contacts yet. Add people or import them from your phone or mail account.": "Noch keine Kontakte. Füge Personen hinzu oder importiere sie von deinem Handy oder Mail-Konto.",
-"No favourites yet. Star people to keep them here.": "Noch keine Favoriten. Markiere Personen mit dem Stern, um sie hier zu behalten.",
+"No saved contacts yet. Save people to keep them here.": "Noch keine gespeicherten Kontakte. Speichere Personen, um sie hier zu behalten.",
 "Nobody from your polls yet.": "Noch niemand aus deinen Umfragen.",
-"People you add here become favourites: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you star them.": "Personen, die du hier hinzufügst, werden Favoriten: Sie stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst. Importierte Kontakte werden nur hier in deinem Browser angezeigt, bis du sie mit dem Stern markierst.",
-"Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.": "Favoriten (★) stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst. <b>Aus deinen Umfragen</b> zeigt die Personen, die du per E-Mail zu deinen Umfragen hinzugefügt hast. Markiere jemanden mit dem Stern, um ihn zum Favoriten zu machen.",
+"People you add here are saved as contacts: they come first when you add people to a poll. Imported contacts are only shown here, in your browser, until you save them.": "Personen, die du hier hinzufügst, werden als Kontakte gespeichert: Sie stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst. Importierte Kontakte werden nur hier in deinem Browser angezeigt, bis du sie speicherst.",
+"Saved contacts come first when you add people to a poll; ✎ edits name, email and a private note. <b>From your polls</b> lists the people you added to your polls by email. Save anyone to keep them.": "Gespeicherte Kontakte stehen ganz oben, wenn du Leute zu einer Umfrage hinzufügst; ✎ bearbeitet Name, E-Mail und eine private Notiz. <b>Aus deinen Umfragen</b> zeigt die Personen, die du per E-Mail zu deinen Umfragen hinzugefügt hast. Speichere jemanden, um ihn zu behalten.",
 "No calendars yet. Add one to see when you’re busy while you answer polls.": "Noch keine Kalender. Füge einen hinzu, um beim Beantworten von Umfragen zu sehen, wann du belegt bist.",
 "Sign in to your calendar": "Beim Kalender anmelden",
 "Or paste a calendar link": "Oder einen Kalenderlink einfügen",

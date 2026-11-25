@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ISFIaNifRG1qZ8P7nR374ZorMfGGeGkOx8Bsg7T3n9o=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-+yf130aqlMUo6ZqKTHxlfma3W19aM+6F0fR16L/dTq4=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -181,6 +181,7 @@ async function route(request, env, ctx, url) {
     }
     if (parts[2] === 'favourites') {
       if (!parts[3] && m === 'POST') return addFavourite(request, env);
+      if (parts[3] && !parts[4] && m === 'PATCH') return editFavourite(request, env, parts[3]);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteFavourite(request, env, parts[3]);
     }
     if (parts[2] === 'groups') {
@@ -996,7 +997,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0036';
+const USER_DATA_REVIEWED = '0037';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1208,13 +1209,33 @@ async function listFriends(request, env) {
      WHERE p.owner_id = ? AND COALESCE(u.email, pa.email, '') != '' GROUP BY LOWER(TRIM(COALESCE(u.email, pa.email)))
      ORDER BY name COLLATE NOCASE LIMIT 500`).bind(user.id).all();
   const known = new Set([user.email.toLowerCase(), ...friends.map((u) => u.email.toLowerCase())]);
-  const { results: favs } = await env.DB.prepare('SELECT id, name, email FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
+  const { results: favs } = await env.DB.prepare('SELECT id, name, email, note, name_pref FROM favourites WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
+  // The name a saved contact goes by in polls I own (their account name, else the newest name they answered under, else
+  // the poll's name for them). Only from people in my polls: never an account name looked up by address alone
+  // (saving an address must not reveal whose account it is).
+  const { results: seen } = favs.length ? await env.DB.prepare(
+    `SELECT LOWER(TRIM(COALESCE(u.email, pa.email))) AS email, COALESCE(NULLIF(u.name, ''), r.name, pa.name) AS name,
+       MAX(COALESCE(r.updated_at, pa.created_at)) AS at
+     FROM participants pa JOIN polls p ON p.id = pa.poll_id LEFT JOIN users u ON u.id = pa.user_id
+       LEFT JOIN responses r ON r.participant_id = pa.id
+     WHERE p.owner_id = ?1 AND LOWER(TRIM(COALESCE(u.email, pa.email))) IN (SELECT email FROM favourites WHERE user_id = ?1)
+     GROUP BY LOWER(TRIM(COALESCE(u.email, pa.email)))`).bind(user.id).all() : { results: [] };
+  const seenName = new Map(seen.map((g) => [g.email, String(g.name || '').trim()]));
+  for (const f of favs) {
+    const other = seenName.get(f.email) || '';
+    f.other = other && other.toLowerCase() !== f.name.toLowerCase() ? other : '';
+    if (f.other && f.name_pref === 'theirs') { // follow their name
+      await env.DB.prepare('UPDATE favourites SET name = ? WHERE id = ?').bind(other.slice(0, 60), f.id).run();
+      f.name = other.slice(0, 60); f.other = '';
+    }
+  }
   const { results: grps } = await env.DB.prepare('SELECT id, name, icon, members FROM contact_groups WHERE user_id = ? ORDER BY name COLLATE NOCASE').bind(user.id).all();
   const groups = grps.map((g) => ({ id: g.id, name: g.name, icon: g.icon, members: jsonList(g.members) }));
   const contacts = guests.filter((g) => EMAIL_RE.test(g.email) && !known.has(g.email)).map((g) => ({ name: g.name, email: g.email }));
   const accts = await accountsByEmail(env, [...favs, ...contacts, ...groups.flatMap((g) => g.members)].map((x) => x && x.email));
   return json({
-    favourites: favs.map((f) => withAccount(accts, { id: f.id, name: f.name, email: f.email })),
+    favourites: favs.map((f) => withAccount(accts, { id: f.id, name: f.name, email: f.email, note: f.note || '',
+      namePref: f.name_pref || '', ...(f.other ? { other: f.other } : {}) })),
     groups: groups.map((g) => ({ ...g, members: g.members.map((x) => withAccount(accts, x)) })),
     contacts: contacts.map((x) => withAccount(accts, x)),
     friends: friends.map((u) => ({ id: u.fid, ...personOut(u) })),
@@ -1293,10 +1314,14 @@ async function deleteFriend(request, env, fid) {
   await env.DB.prepare('DELETE FROM friends WHERE id = ? AND (from_id = ? OR to_id = ?)').bind(fid, user.id, user.id).run();
   return json({ ok: true });
 }
-// ---------- favourites ----------
-// A private starred list (name + email) per account, shown first when adding people. Nobody is told.
+// ---------- favourites (shown as "Contacts") ----------
+// A private saved list (name + email + note) per account, shown first when adding people. Nobody is told.
+// The email is the key (one row per address). name_pref: '' = ask when they go by another name in my polls,
+// 'mine' = keep my name (also shown for them in polls I manage, contactNames), 'theirs' = follow their name.
 const MAX_FAVOURITES = 500;
-// Body: { name, email }. Starring an address again updates the name.
+const NAME_PREFS = ['', 'mine', 'theirs'];
+const favNote = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, 120);
+// Body: { name, email, note? }. Saving an address again updates the name (and the note when sent).
 async function addFavourite(request, env) {
   const user = requireUser(request);
   const b = await body(request);
@@ -1304,13 +1329,46 @@ async function addFavourite(request, env) {
   if (!addr) throw new HttpError(400, 'Enter an email address');
   if (addr === user.email.toLowerCase()) throw new HttpError(400, 'That’s your own address');
   const name = String(b.name || '').trim().slice(0, 60) || addr.split('@')[0];
+  const note = b.note === undefined ? null : favNote(b.note);
   const had = await env.DB.prepare('SELECT id FROM favourites WHERE user_id = ? AND email = ?').bind(user.id, addr).first('id');
-  if (had) { await env.DB.prepare('UPDATE favourites SET name = ? WHERE id = ?').bind(name, had).run(); return json({ id: had }); }
+  if (had) {
+    await env.DB.prepare('UPDATE favourites SET name = ?, note = COALESCE(?, note) WHERE id = ?').bind(name, note, had).run();
+    return json({ id: had });
+  }
   const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favourites WHERE user_id = ?').bind(user.id).first('n');
-  if (n >= MAX_FAVOURITES) throw new HttpError(409, `You can have at most ${MAX_FAVOURITES} favourites`);
+  if (n >= MAX_FAVOURITES) throw new HttpError(409, `You can have at most ${MAX_FAVOURITES} contacts`);
   const id = randomId(12);
-  await env.DB.prepare('INSERT INTO favourites (id, user_id, name, email, created_at) VALUES (?, ?, ?, ?, ?)').bind(id, user.id, name, addr, now()).run();
+  await env.DB.prepare('INSERT INTO favourites (id, user_id, name, email, note, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(id, user.id, name, addr, note || '', now()).run();
   return json({ id });
+}
+// Body: any of { name, email, note, namePref }. The new email must not be saved already (one address = one contact).
+async function editFavourite(request, env, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Contact not found');
+  const row = await env.DB.prepare('SELECT * FROM favourites WHERE id = ? AND user_id = ?').bind(fid, user.id).first();
+  if (!row) throw new HttpError(404, 'Contact not found');
+  const b = await body(request), has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+  let addr = row.email, name = row.name, note = row.note || '', pref = row.name_pref || '';
+  if (has('email')) {
+    addr = email(String(b.email || '')).toLowerCase();
+    if (!addr) throw new HttpError(400, 'Enter an email address');
+    if (addr === user.email.toLowerCase()) throw new HttpError(400, 'That’s your own address');
+    if (addr !== row.email) {
+      const dup = await env.DB.prepare('SELECT id FROM favourites WHERE user_id = ? AND email = ?').bind(user.id, addr).first('id');
+      if (dup) throw new HttpError(409, 'That address is already in your contacts');
+      pref = ''; // another person now: ask again
+    }
+  }
+  if (has('name')) name = String(b.name || '').trim().slice(0, 60) || addr.split('@')[0];
+  if (has('note')) note = favNote(b.note);
+  if (has('namePref')) {
+    if (!NAME_PREFS.includes(b.namePref)) throw new HttpError(400, 'Pick which name to use');
+    pref = b.namePref;
+  }
+  await env.DB.prepare('UPDATE favourites SET name = ?, email = ?, note = ?, name_pref = ? WHERE id = ?')
+    .bind(name, addr, note, pref, fid).run();
+  return json({ ok: true });
 }
 async function deleteFavourite(request, env, fid) {
   const user = requireUser(request);
@@ -2565,11 +2623,13 @@ async function getPoll(request, env, ctx, url, id) {
     }
   }
   if (admin || !poll.hide_results) {
-    const { results } = await env.DB.prepare(`SELECT r.id, r.name, r.email, r.comment, r.entries, r.votes, r.updated_at, ${AV_COLS} FROM responses r
+    const { results } = await env.DB.prepare(`SELECT r.id, r.name, r.email, r.comment, r.entries, r.votes, r.updated_at, r.participant_id, ${AV_COLS} FROM responses r
       LEFT JOIN participants p ON p.id = r.participant_id LEFT JOIN users u ON u.id = p.user_id WHERE r.instance_id = ? ORDER BY r.created_at`).bind(sel.id).all();
     const props = proposedIds(sel), signedIn = !!userOf(request);
     out.responses = results.map((r) => ({ id: r.id, name: r.name, comment: r.comment, entries: JSON.parse(r.entries), updatedAt: r.updated_at,
       ...(caps.manage ? { email: r.email } : {}), ...(props.size ? { votes: parseVotes(r.votes, props) } : {}), ...avOut(r, signedIn) }));
+    // My contact names for people (only where I may see their addresses anyway).
+    if (caps.manage) { const cn = await contactNames(env, userOf(request), id, results); if (cn) out.cnames = cn; }
     // Names already used in this poll (any round), so people can pick themselves. Account answers are found by account instead.
     const { results: ps } = await env.DB.prepare('SELECT id, name FROM participants WHERE poll_id = ? AND user_id IS NULL ORDER BY name COLLATE NOCASE').bind(id).all();
     out.participants = ps;
@@ -4318,7 +4378,7 @@ MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times fr
 
 QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
 
-PEOPLE tab. Add people (by email, from your contacts, groups or favourites), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
+PEOPLE tab. Add people (by email, from your saved contacts or groups), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
 
 CHAT. The round button at the bottom right opens the poll's group chat (signed-in people write; guests can read along and see what happens in the poll). Tag people with @, reply, react, attach meetings, write in a day's or meeting's thread. 🔔 in the chat header mutes it.
 
@@ -4326,7 +4386,7 @@ NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from t
 
 SETTINGS (organiser only): title, dates, answer mode, deadline, password, invited only, hide answers, chat, rounds of a recurring poll, defaults for new meetings, delete the poll.
 
-ACCOUNT page: name, avatar, email change, calendars, contacts and groups, notifications, presets, Your data (download a copy, delete the account). Polls without activity for 12 months are deleted (the owner is emailed 14 days before).
+ACCOUNT page: name, avatar, email change, calendars, contacts (save people, ✎ edit name / email / a private note; when a contact goes by another name in your polls, pick Use theirs or Keep mine, which also shows your name for them in polls you manage) and groups, notifications, presets, Your data (download a copy, delete the account). Polls without activity for 12 months are deleted (the owner is emailed 14 days before).
 
 OTHER: Guided tour = the ? button → Take the tour. Language and light/dark theme are in the top bar. when-who is free; there is no app to install, but you can add it to the Home Screen.`;
 function helpPrompt(page, lang) {
@@ -5046,6 +5106,23 @@ async function participantRows(env, pollId, instId) {
      WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(instId || '', pollId).all();
   return results.map((p) => ({ ...p, mail_to: (p.ue || (p.re !== null ? p.re : p.email) || '').trim() }));
 }
+// My names for people in a poll (saved contacts set to "keep my name"), for people whose address I may see anyway (manage).
+// Keys: participant id, "r:<response id>" and "u:<user id>" (chat authors). Only names that differ from theirs.
+async function contactNames(env, user, pollId, responses) {
+  if (!user) return null;
+  const { results } = await env.DB.prepare(
+    `SELECT pa.id, pa.user_id, pa.name AS theirs, f.name FROM participants pa LEFT JOIN users u ON u.id = pa.user_id
+     JOIN favourites f ON f.user_id = ? AND f.name_pref = 'mine' AND f.email = LOWER(TRIM(COALESCE(u.email, pa.email)))
+     WHERE pa.poll_id = ?`).bind(user.id, pollId).all();
+  if (!results.length) return null;
+  const out = {}, byPid = new Map(results.map((r) => [r.id, r.name]));
+  for (const r of results) {
+    if (r.name !== r.theirs) out[r.id] = r.name;
+    if (r.user_id) out['u:' + r.user_id] = r.name;
+  }
+  for (const r of responses || []) { const n = byPid.get(r.participant_id); if (n && n !== r.name) out['r:' + r.id] = n; }
+  return Object.keys(out).length ? out : null;
+}
 async function listParticipants(request, env, id) {
   const poll = await adminPoll(request, env, id, 'see');
   const mails = await isAdmin(request, env, poll, 'manage'); // viewers and editors see the list without addresses
@@ -5053,7 +5130,8 @@ async function listParticipants(request, env, id) {
   const inst = await latestInstance(env, id);
   const rows = await participantRows(env, id, inst && inst.id);
   const { results: groups } = await env.DB.prepare('SELECT group_id AS id, name, icon FROM poll_groups WHERE poll_id = ? ORDER BY name COLLATE NOCASE').bind(id).all();
-  return json({ groups, participants: rows.map((p) => ({ id: p.id, name: p.name, email: mails ? p.email || p.answer_email || '' : '', account: !!p.user_id,
+  const cnames = mails ? await contactNames(env, userOf(request), id) : null;
+  return json({ groups, ...(cnames ? { cnames } : {}), participants: rows.map((p) => ({ id: p.id, name: p.name, email: mails ? p.email || p.answer_email || '' : '', account: !!p.user_id,
     role: p.user_id && POLL_ROLES.includes(p.role) ? p.role : '', isOwner: !!p.user_id && p.user_id === poll.owner_id,
     rounds: p.rounds, lastAnswered: p.last, invitedAt: p.invited_at || null, answeredNow: !!p.here, canMail: !!p.mail_to, groupId: p.group_id || null, ...avOut(p, true) })) });
 }

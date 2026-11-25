@@ -68,8 +68,14 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   Invites, reminders and round-opened emails give each guest with an email their own message via `sendMail({ links })` →
   `sendEmailBatch` (Resend `/emails/batch`, one subrequest per 100); accounts and the rest get the BCC copy as before.
   The page no longer shows friend requests (API kept): the Account page's **Contacts** card and the Add-people popup share one
-  contacts engine (`contactGroups` / `contactListHtml`): favourites (`favourites`, 0013; the card shows only these until Show all),
-  people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless starred).
+  contacts engine (`contactGroups` / `contactListHtml`): saved contacts (`favourites`, 0013),
+  people from your polls (`contacts` + accepted `friends`) and contacts imported in the browser (never stored unless saved).
+  **Contacts** = the `favourites` table (name kept for the table and `/api/me/favourites`; the UI says Contacts / Saved): one row per
+  address (the key), editable via `PATCH /api/me/favourites/:id { name, email, note, namePref }` (Contacts card ✎ → `ctEdit`; 0037 `note`,
+  `name_pref`). `GET /api/me/friends` adds `other` = the name the address goes by in polls I own (account name, else newest answer name);
+  the card asks Use theirs / Keep mine (`ctAsk`). `theirs` follows their name; `mine` relabels them for me in polls I manage:
+  `cnames` (`contactNames`, manage only, never to viewers) in `GET /api/polls/:id` / `.../participants`, applied by `cnSet` / `cnPoll`
+  (answers, busy, People tab, chat), their own name kept in `theirName`.
 - `contact_groups` (0019): private named sets of people per account (`name`, `icon` emoji, `members` JSON `[{name,email}]`; max 50 groups,
   100 people each), sent as `groups` in `GET /api/me/friends`, managed via `POST /api/me/groups`, `PATCH|DELETE /api/me/groups/:id`.
   The Contacts card shows them as a rail of tiles (editor dialog `grpOpen`; 👥 on a contact row = its Groups sheet); the Add-people popup
