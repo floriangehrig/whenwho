@@ -6678,7 +6678,7 @@ function renderMine(el){
   // One toolbar row: mode (icons) · brush swatches · others toggle · tools (inline on desktop, ⋯ menu on phones) · ⓘ.
   // Show / hide switches (others' answers, my busy times) live in their own row under the toolbar, with short labels.
   const othTog=`<button type="button" class="btn sm withic vt${on?' on':''}" data-hint aria-pressed="${on}" title="${on?t('Hide where the others are available'):t('Show where the others are available')}" aria-label="${on?t('Hide others ({n})',{n}):t('Show others ({n})',{n})}">${ICON.users}<span>${t('Others')}</span><i class="vtn">${n<nAll?`${n}/${nAll}`:nAll}</i></button>`;
-  const othBtn=!nAll?'':nAll<2?othTog:vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
+  const othBtn=!nAll?'':vtSplit(othTog,'hdd',P.hddOpen,t('Choose people'),'hwho',othAll.map(r=>({id:r.id,label:esc(r.name||t('Someone')),on:!P.hintOff.has(r.id)})));
   const modeSeg=am==='both'?`<div class="seg iseg" role="group" aria-label="${t('Answer by')}">
       <button data-mode="days" class="${P.mode==='days'?'on':''}" title="${t('Whole days')}" aria-label="${t('Whole days')}"><span class="segic">${ICON.day}</span><span class="bl">${t('Days')}</span></button><button data-mode="slots" class="${P.mode==='slots'?'on':''}" title="${t('Time slots')}" aria-label="${t('Time slots')}"><span class="segic">${ICON.clock}</span><span class="bl">${t('Hours')}</span></button></div>`:'';
   const brushSeg=`<div class="seg iseg brush" role="group" aria-label="${t('Brush')}">${[['0','tap',P.mode==='slots'?t('Tap: mark hours one by one (tap or drag)'):t('Tap: mark days one by one (tap or drag)')],['1','brush',P.mode==='slots'?t('Range: tap the first and the last hour, everything between is filled'):t('Range: tap the first and the last day, everything between is filled')]].map(([v,ic,lb])=>{ const on=P.arange===(v==='1');
@@ -6697,7 +6697,11 @@ function renderMine(el){
     bzMenu+=`<div class="ddsec">${ddList(t('Own'),'bcal',bzCals.map(c=>({id:c.id,label:`${esc(c.name)}<span class="muted small">${esc(calSource(CALS.list,c))}</span>`,on:!bzOff.has(c.id)})))}
       <label class="ddsw${can?'':' dis'}" title="${esc(t('People who can see this poll’s answers see which hours you’re busy in your calendars (the ones picked above). No event titles. Updated each time you open the poll.'))}"><input type="checkbox" data-bshare ${me.shareBusy?'checked':''} ${can?'':'disabled'}> <span class="minw">${t('Share my busy hours with this poll')}<span class="muted small">${can?t('Others see when, not what'):t('Save your answer first')}</span></span></label></div>`; }
   if(bzPpl.length||bzMine) bzMenu+=`<div class="ddsec">${ddList(t('Others'),'bppl',bzPpl.map(x=>({id:x.pid,label:`${esc(x.name||t('Someone'))}<span class="muted small">${esc(t('updated {when}',{when:agoText(x.updatedAt)}))}</span>`,on:!bpOff.has(x.pid)})),1)}${bzPpl.length?'':`<p class="muted small ddnone">${t('Nobody in this poll shares their busy times yet')}</p>`}</div>`;
-  const bzBtn=!(bzMine||bzPpl.length)?'':vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
+  // Other polls: my meetings and available / if needed hours elsewhere (only for me), one switch + which polls.
+  const pbCan=!!(ME.user&&editable()), pbIs=pbOn(), pbO=pbOff();
+  if(pbCan) bzMenu+=`<div class="ddsec">${ddList(t('Other polls'),'bpoll',pbIs?PBUSY.polls.map(p=>({id:p.id,label:`${p.icon?esc(p.icon)+' ':''}${esc(p.title)}`,on:!pbO.has(p.id)})):[])}${pbIs&&PBUSY.list&&!PBUSY.polls.length?`<p class="muted small ddnone">${t('Nothing in your other polls on these dates')}</p>`:''}
+    <label class="ddsw" title="${esc(t('Meetings you’re in and hours you marked available or if needed in your other polls (rounds still open). Only you see this.'))}"><input type="checkbox" data-bpolls ${pbIs?'checked':''}> <span class="minw">${t('Show my other polls')}<span class="muted small">${t('Meetings and my answers')}</span></span></label></div>`;
+  const bzBtn=!(bzMine||bzPpl.length||pbCan)?'':vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
   const qfN=qfActive()?P.qfApplied.filter(r=>!r.off).length:0;
@@ -6723,7 +6727,7 @@ function renderMine(el){
     :(TOUCH?t('Pick a colour, then tap hours, or press and hold and drag to paint several.'):t('Pick a colour, then drag (or tap) across the hours you can make.'))}</span></p>`;
   h+=vrow(modeSeg,`${othBtn}${bzBtn}`,pager);
   // Legend above the grid: colours, then only the markers this view can show right now.
-  const bzShown=busyOn()&&BUSY.list&&busyPicked().length&&BUSY.key===busyKey(), obShown=othBusyPicked().length>0;
+  const bzShown=busyOn()&&busyAll().length>0, obShown=othBusyPicked().length>0;
   const partDays=P.mode==='days'&&d.dates.some(k=>statusOf(me[k],k).cls==='part');
   h+=legend('yes','ifn','maybe','blank',md.size?'meeting':'',on&&P.mode==='days'?'othn':'',partDays?'myline':'',bzShown?'busy':'',obShown?'obusy':'');
   if(P.mode==='days'){
@@ -7169,11 +7173,12 @@ async function calendarEvents(c,from,to){
 }
 const BUSY={key:'',list:null,loading:false};
 const showBusy=()=>store0('showBusy')!==false;
-const busyOn=()=>!!(ME.user&&ME.user.calendarsAuto&&P.data&&editable()&&showBusy());
+const busyOn=()=>!!(ME.user&&(ME.user.calendarsAuto||pbOn())&&P.data&&editable()&&showBusy());
 const busyKey=()=>[P.id,inst().id,...calWindow()].join('|');
 // Fetches the busy times once per poll round (cached for 10 minutes in this tab), then redraws.
 async function loadBusy(force){
   if(!busyOn()&&!shareOn()) return;
+  loadPollBusy(force); if(!ME.user.calendarsAuto) return;
   const key=busyKey(); if(!force&&BUSY.key===key&&(BUSY.list||BUSY.loading)){ if(BUSY.list&&BUSY.ok) busySync(); return; }
   BUSY.key=key; BUSY.list=null; BUSY.ok=false;
   if(!force){ try{ const c=JSON.parse(sessionStorage.getItem('busy')||'null'); if(c&&c.key===key&&Date.now()-c.at<600000){ BUSY.list=c.list; BUSY.ok=true; busySync(); if(c.list.length) setTimeout(()=>{ if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody(); }); return; } }catch(e){} }
@@ -7190,7 +7195,39 @@ async function loadBusy(force){
   if(BUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
 }
 // The busy events for one hour (or a whole day), for the hatch and its tooltip. Empty when the grey-out is off.
-function busyFor(k,h){ return busyOn()&&BUSY.list&&BUSY.key===busyKey()?busyHit(busyPicked(),k,h):[]; }
+function busyFor(k,h){ return busyOn()?busyHit(busyAll(),k,h):[]; }
+// ---------- busy from my other polls (Busy ▾ → Other polls) ----------
+// Confirmed meetings I'm in and hours I marked available / if needed in other open rounds (GET /api/me/poll-busy),
+// turned into the same [startMs, endMs, label, source, id] tuples as calendar events (id = 'poll:<poll id>').
+// Only shown to me: not shared with the poll (busyHoursMap uses calendars only), not used by "From calendar".
+const PBUSY={key:'',list:null,polls:[],loading:false,at:0};
+const pbOn=()=>!!(ME.user&&store0('busyPolls')===true);
+const pbOff=()=>new Set(store0('busyPollOff')||[]);
+async function loadPollBusy(force){
+  if(!pbOn()||!P.data||!editable()) return;
+  const key=busyKey(); if(!force&&PBUSY.key===key&&(PBUSY.loading||(PBUSY.list&&Date.now()-PBUSY.at<600000))) return;
+  PBUSY.key=key; PBUSY.loading=true;
+  const [a,b]=calWindow(), from=isoL(new Date(a)), to=addDaysL(isoL(new Date(b)),-1);
+  try{
+    const r=await api('GET',`/me/poll-busy?from=${from}&to=${to}&skip=${encodeURIComponent(P.id)}`);
+    if(PBUSY.key!==key) return;
+    const at=(d,h)=>{ const x=parseD(d); x.setHours(h); return x.getTime(); }, out=[];
+    (r.items||[]).forEach(it=>{ const src=it.title||'', id='poll:'+it.poll;
+      if(it.kind==='meeting'){ const lb=it.mtitle?t('Meeting “{title}”',{title:it.mtitle}):t('Meeting');
+        out.push(it.allDay?[parseD(it.date).getTime(),parseD(addDaysL(it.date,1)).getTime(),lb,src,id]:[at(it.date,it.hs),at(it.date,it.he),lb,src,id]); return; }
+      let s=null, prev=null;
+      [...(it.hours||[]),99].forEach(h=>{ if(s!==null&&h!==prev+1){ out.push([at(it.date,s),at(it.date,prev+1),t('Your answer'),src,id]); s=null; } if(s===null) s=h; prev=h; }); });
+    PBUSY.list=out; PBUSY.polls=r.polls||[]; PBUSY.at=Date.now();
+  }catch(e){ if(PBUSY.key===key){ PBUSY.list=[]; PBUSY.polls=[]; } toast(e.message); }
+  finally{ if(PBUSY.key===key) PBUSY.loading=false; }
+  if(PBUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
+}
+function pbPicked(){ if(!pbOn()||!PBUSY.list||PBUSY.key!==busyKey()) return []; const off=pbOff(); return off.size?PBUSY.list.filter(x=>!off.has(x[4].slice(5))):PBUSY.list; }
+// Calendar events + other polls, memoised (busyFor runs for every hour of the grid).
+let BUSYA={a:null,b:null,o:'',list:[]};
+function busyAll(){ const a=BUSY.list&&BUSY.key===busyKey()&&ME.user&&ME.user.calendarsAuto?busyPicked():null, b=pbOn()&&PBUSY.key===busyKey()?PBUSY.list:null, o=localStorage.getItem('busyPollOff')||'';
+  if(BUSYA.a!==a||BUSYA.b!==b||BUSYA.o!==o) BUSYA={a,b,o,list:[...(a||[]),...pbPicked()]};
+  return BUSYA.list; }
 // ---------- busy hours shared with the poll ----------
 // Mine: with sharing on, the hours I'm busy (picked calendars, every date of the round) go to the Worker, only when they changed
 // (or every 6 h, so "updated" stays fresh). Others': P.data.busy = [{pid, name, hours: {date: [h]}, updatedAt}].
@@ -7391,9 +7428,13 @@ document.addEventListener('toggle',e=>{ const x=e.target; if(x.id==='hdd') P.hdd
 document.addEventListener('change',e=>{ const cb=e.target, ds=cb.dataset||{};
   if(ds.hwho){ const off=new Set(P.hintOff); if(cb.checked) off.delete(ds.hwho); else off.add(ds.hwho); setHintOff(off); }
   else if(ds.bcal){ const off=busyOff(); if(cb.checked) off.delete(ds.bcal); else off.add(ds.bcal); setBusyOff(off); }
+  else if(ds.bpoll){ const off=pbOff(); if(cb.checked) off.delete(ds.bpoll); else off.add(ds.bpoll); setPollOff(off); }
+  else if(ds.bpolls!==undefined){ try{ localStorage.setItem('busyPolls',JSON.stringify(cb.checked)); if(cb.checked) localStorage.setItem('showBusy','true'); }catch(e){} P.bddOpen=true; renderBody(); loadBusy(); }
   else if(ds.bppl){ const off=busyPplOff(); if(cb.checked) off.delete(ds.bppl); else off.add(ds.bppl); setBusyPplOff(off); }
   else if(ds.bshare!==undefined) setShareBusy(cb.checked,cb); });
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall],[data-bpplall]'); if(!b) return; e.preventDefault();
+function setPollOff(off){ try{ localStorage.setItem('busyPollOff',JSON.stringify([...off])); }catch(e){} P.bddOpen=true; renderBody(); }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-hwhoall],[data-bcalall],[data-bpplall],[data-bpollall]'); if(!b) return; e.preventDefault();
+  if(b.dataset.bpollall!==undefined){ setPollOff(b.dataset.bpollall==='1'?new Set():new Set(PBUSY.polls.map(p=>p.id))); return; }
   if(b.dataset.hwhoall!==undefined) setHintOff(b.dataset.hwhoall==='1'?new Set():new Set(others().map(r=>r.id)));
   else if(b.dataset.bpplall!==undefined) setBusyPplOff(new Set(),b.dataset.bpplall!=='1');
   else setBusyOff(b.dataset.bcalall==='1'?new Set():new Set((CALS.list?CALS.list.calendars:[]).filter(c=>c.auto).map(c=>c.id))); });
@@ -11882,6 +11923,12 @@ function germanText(){ return {
 "Show busy times": "Belegte Zeiten zeigen",
 "Own": "Eigene",
 "Nobody in this poll shares their busy times yet": "Noch niemand in dieser Umfrage teilt seine belegten Zeiten",
+"Other polls": "Andere Umfragen",
+"Show my other polls": "Meine anderen Umfragen zeigen",
+"Meetings and my answers": "Termine und meine Antworten",
+"Nothing in your other polls on these dates": "In deinen anderen Umfragen ist an diesen Tagen nichts",
+"Meetings you’re in and hours you marked available or if needed in your other polls (rounds still open). Only you see this.": "Termine, an denen du teilnimmst, und Stunden, die du in deinen anderen Umfragen als verfügbar oder notfalls markiert hast (nur offene Runden). Nur du siehst das.",
+"Meeting “{title}”": "Termin „{title}“",
 "Share my busy hours with this poll": "Meine belegten Stunden mit dieser Umfrage teilen",
 "Others see when, not what": "Andere sehen wann, nicht was",
 "Save your answer first": "Speichere zuerst deine Antwort",

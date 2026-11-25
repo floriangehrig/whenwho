@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-SdLlR61qfGqKgVXKcqFZ0TupCjjlLY1E58CTfP7e9zA=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ISFIaNifRG1qZ8P7nR374ZorMfGGeGkOx8Bsg7T3n9o=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -158,6 +158,7 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'email' && parts[3] === 'verify' && !parts[4] && m === 'POST') return verifyEmailChange(request, env, url);
     if (parts[2] === 'polls' && !parts[3] && m === 'GET') return myPolls(request, env);
     if (parts[2] === 'polls' && parts[3] && parts[4] === 'hidden' && !parts[5] && m === 'PUT') return setPollHidden(request, env, parts[3]);
+    if (parts[2] === 'poll-busy' && !parts[3] && m === 'GET') return pollBusy(request, env, url);
     if (parts[2] === 'export' && !parts[3] && m === 'GET') return exportMe(request, env);
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
@@ -2348,6 +2349,52 @@ async function myPolls(request, env) {
       ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p), ...hd(p) })),
   });
 }
+// GET /api/me/poll-busy?from=&to=&skip= — when I'm busy because of my other polls (Busy ▾ → Other polls on the answer page):
+// confirmed meetings I'm in (any round), and hours I marked available / if needed in rounds that are still open
+// (weekly polls' answers have no real dates, so only their meetings count). Read only, nothing stored.
+// items: { poll, title, kind: 'meeting', date, allDay, hs?, he? } | { poll, title, kind: 'answer', date, hours }.
+async function pollBusy(request, env, url) {
+  const user = requireUser(request);
+  const from = url.searchParams.get('from'), to = url.searchParams.get('to'), skip = url.searchParams.get('skip') || '';
+  if (!isDate(from) || !isDate(to) || to < from || daysBetween(from, to) > 400) throw new HttpError(400, 'Invalid dates');
+  const { results: rows } = await env.DB.prepare(
+    `SELECT p.id AS pid, p.title, p.icon, p.kind, p.owner_id, p.answer_mode, p.hour_start, p.hour_end, p.day_pattern,
+       i.id AS iid, i.start_date, i.end_date, i.status, i.meetings
+     FROM polls p JOIN instances i ON i.poll_id = p.id
+     WHERE p.id != ?2 AND (p.owner_id = ?1 OR p.id IN (SELECT poll_id FROM participants WHERE user_id = ?1))
+       AND ((i.start_date <= ?4 AND i.end_date >= ?3) OR i.start_date = '${WEEK0}' OR i.meetings LIKE '%"repeat"%')
+     LIMIT 500`).bind(user.id, skip, from, to).all();
+  if (!rows.length) return json({ polls: [], items: [] });
+  const { results: rs } = await env.DB.prepare(
+    `SELECT r.id, r.instance_id, r.entries FROM responses r JOIN participants pa ON pa.id = r.participant_id WHERE pa.user_id = ?`).bind(user.id).all();
+  const resp = new Map(rs.map((r) => [r.instance_id, r]));
+  const items = [], used = new Map();
+  const add = (row, it) => { if (items.length < 5000) { items.push({ poll: row.pid, title: row.title, ...it }); used.set(row.pid, row); } };
+  for (const row of rows) {
+    const mine = resp.get(row.iid), own = row.owner_id === user.id;
+    for (const mt of jsonList(row.meetings)) {
+      if (mt.proposed) continue;
+      if (!own && mt.participants !== 'all' && !(mine && Array.isArray(mt.participants) && mt.participants.some((x) => x.id === mine.id))) continue;
+      const t = { kind: 'meeting', mtitle: mt.title || '', allDay: !!mt.allDay, ...(mt.allDay ? {} : { hs: mt.start, he: mt.end }) };
+      if (mt.repeat && isDate(mt.repeat.from)) {
+        for (let d = firstOnWeekday(mt.repeat.from, wdOf(mt.date)), i = 0; i < 520 && d <= to && (!mt.repeat.until || d <= mt.repeat.until); i++, d = addDays(d, 7 * (mt.repeat.every || 1)))
+          if (d >= from) add(row, { ...t, date: d });
+      } else {
+        const last = mt.allDay && mt.endDate ? mt.endDate : mt.date;
+        for (let d = mt.date > from ? mt.date : from; d <= last && d <= to; d = addDays(d, 1)) add(row, { ...t, date: d });
+      }
+    }
+    if (!mine || row.start_date === WEEK0 || effStatus(row) !== 'open') continue;
+    let en = {}; try { en = JSON.parse(mine.entries || '{}') || {}; } catch (e) {}
+    const pat = patternOf(row);
+    for (const [d, v] of Object.entries(en)) {
+      if (!isDate(d) || d < from || d > to) continue;
+      const hours = v === 'y' || v === 'i' ? hoursOn(row, pat, d) : v && typeof v === 'object' ? [...(v.y || []), ...(v.i || [])].filter(Number.isInteger).sort((x, y) => x - y) : [];
+      if (hours.length) add(row, { kind: 'answer', date: d, hours });
+    }
+  }
+  return json({ polls: [...used.values()].map((r) => ({ id: r.pid, title: r.title, icon: r.icon || '' })), items });
+}
 // Hide a poll from (or show it again on) my overview. Only polls I own or am in; nothing else changes.
 async function setPollHidden(request, env, id) {
   const user = requireUser(request);
@@ -4265,7 +4312,7 @@ POLLS. New poll (button on the home page). Which days and times: a list of rules
 SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes). There is no password.
 
 ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
-Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles.
+Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles. Busy ▾ → Other polls (signed in) also greys out meetings you're in and hours you marked available / if needed in your other open polls; only you see that.
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
 

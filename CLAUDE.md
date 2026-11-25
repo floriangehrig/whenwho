@@ -110,6 +110,10 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The Busy ▾ in My answer has two sections: **Own** (my auto calendars + the Share switch) and **Others** (people who share; All / None /
   one by one, picks in localStorage `busyPplOff:<poll>`, `"*"` = None so later sharers stay hidden too); their hours
   show with accent stripes the other way (`obusy` / `.obm`).
+  A third section **Other polls** (signed in, switch in localStorage `busyPolls`, polls left out in `busyPollOff`) greys out my own
+  busy hours from my other polls: `GET /api/me/poll-busy?from&to&skip` (`pollBusy`, read only) = confirmed meetings I'm in (any round,
+  repeats expanded) + hours I marked y / i in open rounds (not weekly polls). The page turns them into busy tuples (`PBUSY`, `loadPollBusy`,
+  merged with calendars by `busyAll`); never shared with the poll (`busyHoursMap` stays calendars only). The Others ▾ (`hdd`) shows from 1 other.
 - **Push notifications** (0028, Web Push): `push_subs` = one row per browser that turned on chat notifications (endpoint + p256dh / auth keys,
   `lang`; max 10 per account). `POST|DELETE /api/me/push`, `POST /api/me/push/test`. Endpoints must be on a known push host (`PUSH_HOST_RE`,
   the Worker POSTs to them). `postChat` runs `pushChat` in `waitUntil`: every chat member's devices (`CHAT_MEMBERS_SQL` + owner) except the writer
