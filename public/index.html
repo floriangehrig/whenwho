@@ -1313,8 +1313,11 @@
   .ntch{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--muted);justify-self:center} .ntch svg{width:14px;height:14px}
   .ntl{display:flex;align-items:center;gap:8px;min-height:36px;font-size:14px;min-width:0} .ntl>svg{width:16px;height:16px;flex:none;color:var(--accent)} .ntl>.tip{position:static}
   .ntc{justify-self:center} .ntg .seg.ntseg button{padding:4px 8px;font-size:12px;min-height:0} .ntdev{display:flex;align-items:center;gap:6px} .ntdev>svg{width:14px;height:14px;color:var(--yes,#2e9e5b)} .ntown{margin-top:4px}
-  .ntl>.ell{min-width:0} .ntwrap{container-type:inline-size} .ntg select.ntsel{width:auto;min-height:0;display:none;font:inherit;font-size:13px;padding:5px 6px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);max-width:110px}
-  @container (max-width:460px){ .ntg{gap:4px 10px} .ntch span{display:none} .ntg .seg.ntseg{display:none} .ntg select.ntsel{display:inline-block} .ntl{font-size:13.5px;gap:6px} .ntl>.ell{white-space:normal;overflow:visible;line-height:1.2} .ntl>.tip{display:none} }
+  .ntl>.ell{min-width:0} .ntwrap{container-type:inline-size} .ntg select.ntsel{width:auto;min-height:0;height:30px;margin:0;display:none;font:inherit;font-size:13px;padding:0 22px 0 8px;border-radius:8px;border:1px solid var(--line);background-color:var(--card);background-position:right 6px center;color:var(--ink)}
+  @media (pointer:coarse){ .ntg select.ntsel{font-size:16px;height:32px} }
+  @container (max-width:460px){ .ntg{grid-template-columns:minmax(0,1fr) auto auto;gap:2px 12px} .ntg.one{grid-template-columns:minmax(0,1fr) auto}
+    .ntch{flex-direction:column;gap:1px;font-size:11px;line-height:1.1} .ntg .seg.ntseg{display:none} .ntg select.ntsel{display:inline-block}
+    .ntl{font-size:13.5px;gap:6px;min-height:40px} .ntl>.ell{white-space:normal;overflow:hidden;line-height:1.25;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} }
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
   .dmenu .dm-h{padding:4px 8px 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
   .dmenu .dm-r{display:flex;align-items:center;gap:8px;padding:2px 2px 2px 8px;border-radius:10px;font-size:14px;font-variant-numeric:tabular-nums}
@@ -3399,7 +3402,8 @@ function pollCard(p,answered){
       ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
     <details class="dd qmore pc-copy pc-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-copy="${esc(shareLink(p.id))}">${ICON.link}<span class="grow">${t('Copy share link')}</span></button>
-      <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button></div></details></div>`;
+      <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button>${answered?'':`
+      <div class="menu-sep"></div><button type="button" class="danger" data-hpdel="${esc(p.id)}">${ICON.trash}<span class="grow">${p.kind==='series'?t('Delete all rounds'):t('Delete poll')}</span></button>`}</div></details></div>`;
 }
 // Home lists page after HOME_PAGE polls (own = Your polls, ans = Polls you answered). The page sticks until reload.
 // Each list has a toolbar (homeTools): title search, status (all = not hidden | open | closed | hidden), kind and sort.
@@ -3463,9 +3467,14 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-hpg]'); i
   const h=box.parentNode.querySelector('.card-h'); if(h&&h.getBoundingClientRect().top<0) h.scrollIntoView({block:'start'}); });
 document.addEventListener('input',e=>{ const i=e.target.closest('[data-hpq]'); if(!i) return; const k=i.dataset.hpq; HOME_V[k].q=i.value; HOME_PG[k]=0; homeDraw(k,false); });
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-hpst],[data-hpkind],[data-hpsort],[data-hpclear],[data-hphide]'); if(!b) return;
+  const b=e.target.closest('[data-hpst],[data-hpkind],[data-hpsort],[data-hpclear],[data-hphide],[data-hpdel]'); if(!b) return;
   const dd=b.closest('details[open]'); if(dd) dd.open=false;
   const ds=b.dataset;
+  if(ds.hpdel){ const id=ds.hpdel, p=(ME.polls||[]).find(x=>x.id===id); if(!p) return;
+    if(!confirm(p.kind==='series'?t('Delete this poll with all its rounds and all answers? This can’t be undone.'):t('Delete this poll and all answers? This can’t be undone.'))) return;
+    try{ await api('DELETE','/polls/'+encodeURIComponent(id)); ME.polls=ME.polls.filter(x=>x.id!==id); homeDraw('own'); toast(t('Poll deleted')); }
+    catch(ex){ toast(ex.message); }
+    return; }
   if(ds.hphide){ const id=ds.hphide, ps=[...(ME.polls||[]),...(ME.answered||[])].filter(p=>p.id===id); if(!ps.length) return;
     const was=!!ps[0].hidden, set=h=>{ ps.forEach(p=>{ if(h) p.hidden=true; else delete p.hidden; }); ['own','ans'].forEach(k=>homeDraw(k)); };
     set(!was); toast(was?t('Shown on your overview again'):t('Hidden. Find it under Hidden.'));
@@ -3475,7 +3484,7 @@ document.addEventListener('click',async e=>{
   if(ds.hpst) v.st=ds.v; else if(ds.hpkind) v.kind=ds.v; else if(ds.hpsort) v.sort=ds.v; else { v.q=''; v.st='all'; v.kind='all'; }
   HOME_PG[k]=0; homeSave(); homeDraw(k);
 });
-// The ⋯ menu on a poll card closes after Copy share link.
+// The ⋯ menu on a poll card closes after any item (Copy share link, Hide, Delete).
 document.addEventListener('click',e=>{ const m=e.target.closest('.pc-more[open] .ddp button'); if(m) m.closest('details').open=false; });
 
 function renderHome(){
@@ -5235,7 +5244,7 @@ function ntGrid(prefs,types,{push,mail}){
     if(k==='chat'){ const v=prefs.chat[c], al=esc(R.chat[1]+' · '+(c==='p'?t('Notification'):t('Email'))), L=[['all',t('All')],['mentions','@'],['off',t('Off')]];
       // Segmented on wide grids, a small dropdown when the grid is narrow (container query).
       return `<span class="seg ntseg" role="radiogroup" aria-label="${al}">${L.map(([x,l])=>`<button type="button" role="radio" aria-checked="${v===x}" class="${v===x?'on':''}" data-ntk="chat" data-ntc="${c}" data-ntv="${x}" title="${esc(x==='mentions'?t('Only when someone @mentions you'):l)}">${l}</button>`).join('')}</span>`
-        +`<select class="ntsel" data-ntk="chat" data-ntc="${c}" aria-label="${al}">${L.map(([x,l])=>`<option value="${x}"${v===x?' selected':''}>${x==='mentions'?'@ '+t('Mentions'):l}</option>`).join('')}</select>`; }
+        +`<select class="ntsel" data-ntk="chat" data-ntc="${c}" aria-label="${al}">${L.map(([x,l])=>`<option value="${x}"${v===x?' selected':''}>${l}</option>`).join('')}</select>`; }
     const v=!!prefs[k][c], lb=R[k][1]+' · '+(c==='p'?t('Notification'):t('Email'));
     return `<label class="sw" title="${esc(lb)}"><input type="checkbox" data-ntk="${k}" data-ntc="${c}"${v?' checked':''} aria-label="${esc(lb)}"><span></span></label>`;
   };
@@ -11003,6 +11012,7 @@ function germanText(){ return {
 "Delete": "Löschen",
 "Delete meeting": "Termin löschen",
 "Delete poll": "Umfrage löschen",
+"Poll deleted": "Umfrage gelöscht",
 "Delete the poll for {label} and its {n}? This can’t be undone.": "Umfrage für {label} und ihre {n} löschen? Das kann nicht rückgängig gemacht werden.",
 "Delete this meeting?": "Diesen Termin löschen?",
 "Delete this poll and all answers? This can’t be undone.": "Diese Umfrage und alle Antworten löschen? Das kann nicht rückgängig gemacht werden.",
