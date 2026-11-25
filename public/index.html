@@ -2176,6 +2176,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
 // Server error messages are English; translate the fixed ones (in DE) and the ones with variable parts (patterns below).
 const ERR_DE = [
   [/^“(.+)” is already in this poll with another email address\. Use that address, or add something to your name\.$/, (m,n)=>`„${n}“ ist mit einer anderen E-Mail-Adresse schon in dieser Umfrage. Nimm diese Adresse oder ergänze deinen Namen.`],
+  [/^A poll can cover at most (\d+) days$/, (m,n)=>`Eine Umfrage kann höchstens ${n} Tage umfassen`],
   [/^You can have at most (\d+) presets$/, (m,n)=>`Du kannst höchstens ${n} Vorlagen haben`],
   [/^Up to (\d+) questionnaires per round$/, (m,n)=>`Höchstens ${n} Fragebögen pro Runde`],
   [/^“(.+)” has already answered these questions\. If that's you, open the poll on the device you used, or answer under another name\.$/, (m,n)=>`„${n}“ hat diese Fragen schon beantwortet. Wenn du das bist, öffne die Umfrage auf dem Gerät, mit dem du geantwortet hast, oder antworte unter einem anderen Namen.`],
@@ -3931,7 +3932,7 @@ function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon','meetLocation','meetNote']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
   if((p.meetQuestions||[]).length) out.meetQuestions=mqtClone(p.meetQuestions);
   if((p.roundQuestions||[]).length) out.roundQuestions=mqtClone(p.roundQuestions,false,10);
-  if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(92,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
+  if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(365,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
   const qs=[...(i.groups||[]),...(i.questions||[])].map(qRawOf).map(({at,closed,tpl,...q})=>q); if(qs.length) out.questions=qs;
   return out; }
 
@@ -10907,8 +10908,8 @@ function germanText(){ return {
 "<b>Tap a day</b> to add or remove an all-day meeting. Darker = more of them are free.": "<b>Tipp auf einen Tag</b>, um einen ganztägigen Termin hinzuzufügen oder zu entfernen. Dunkler = mehr von ihnen frei.",
 "A meeting must end after it starts": "Ein Termin muss nach seinem Beginn enden",
 "A new poll every week or month, like a monthly club night": "Jede Woche oder jeden Monat eine neue Umfrage, z. B. ein monatlicher Clubabend",
-"A poll can cover at most 13 weeks": "Eine Umfrage kann höchstens 13 Wochen umfassen",
-"A poll can cover at most 3 months": "Eine Umfrage kann höchstens 3 Monate umfassen",
+"A poll can cover at most 52 weeks": "Eine Umfrage kann höchstens 52 Wochen umfassen",
+"A poll can cover at most 12 months": "Eine Umfrage kann höchstens 12 Monate umfassen",
 "A poll can have at most 100 meetings ({n} already scheduled).": "Eine Umfrage kann höchstens 100 Termine haben ({n} schon geplant).",
 "A typical week": "Eine typische Woche",
 "A typical week, repeating": "Eine typische Woche, wiederkehrend",

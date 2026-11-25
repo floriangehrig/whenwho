@@ -19,7 +19,7 @@
 // Without RESEND_API_KEY + MAIL_FROM, codes are written to the log (local development only).
 // Answers given while signed in belong to the account (its email), so names don't have to be unique for them.
 
-const MAX_RANGE_DAYS = 92;
+const MAX_RANGE_DAYS = 365;
 const MAX_RESPONSES = 300;
 const MAX_MEETINGS = 100;
 const MAX_MEETING_DAYS = 62; // longest multi-day meeting
@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-WOq7HJxPHV1c+a1sisGNlyGeeL/9cefOdgewjqqKe68=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-oUFnJh2qmALdjepD1idmYbbnzFGlv8dy8jKKc3pzPo0=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -2354,8 +2354,8 @@ function readPollSettings(b, existing) {
         if (!isDate(b.firstStart)) throw new HttpError(400, 'Pick the first start date');
         p.anchor = b.firstStart;
       }
-      if (p.unit === 'week' && p.every * 7 > MAX_RANGE_DAYS) throw new HttpError(400, 'A poll can cover at most 13 weeks');
-      if (p.unit === 'month' && p.every > 3) throw new HttpError(400, 'A poll can cover at most 3 months');
+      if (p.unit === 'week' && p.every * 7 > MAX_RANGE_DAYS) throw new HttpError(400, 'A poll can cover at most 52 weeks');
+      if (p.unit === 'month' && p.every > 12) throw new HttpError(400, 'A poll can cover at most 12 months');
     }
   }
   if (kind === 'series') {
@@ -4187,7 +4187,7 @@ function pollGenPrompt(lang) {
     'kind: single = one date range to find a date in (a trip, a party, one meeting); series = a new poll every week or month for something that happens',
     'again and again (monthly club night, weekly training: unit week | month, every = 1 unless said); weekly = find a fixed regular weekly slot (a typical week, no dates).',
     'For single: start_date = first day of the range (YYYY-MM-DD, "" = today) and days = how many days the range covers (default 14; "next week" = next Monday, 7 days;',
-    '"in March" = March 1st, 31 days; at most 92). For series and weekly: start_date "" and days 0.',
+    '"in March" = March 1st, 31 days; at most 365). For series and weekly: start_date "" and days 0.',
     'answer_mode: days = whole days (trips, day events, anything over several days); slots = hours (meetings, dinners, evenings, calls); both = days and hours.',
     'weekdays = which days are offered: "all", "weekdays", "weekend" or names (mon tue wed thu fri sat sun). "Not on Friday" = the other six.',
     'from / to = hours offered (24-hour clock, "to" exclusive, 0-24). "Morning" = 8-12, "afternoon" = 12-17, "evening" = 17-22, "lunch" = 12-14; default 8 to 24.',
@@ -5541,7 +5541,7 @@ const MCP_TOOLS = [
   { name: 'create_poll', title: 'Create a poll', description: 'Create a one-off availability poll for a date range (owned by my account). Returns its id and link to share.',
     inputSchema: { type: 'object', properties: {
       title: { type: 'string', description: 'Title, max 120 characters' }, description: { type: 'string', description: 'Optional description, max 1000 characters' },
-      start_date: { type: 'string', description: 'First date, YYYY-MM-DD' }, end_date: { type: 'string', description: 'Last date, YYYY-MM-DD (at most 92 days after start)' },
+      start_date: { type: 'string', description: 'First date, YYYY-MM-DD' }, end_date: { type: 'string', description: 'Last date, YYYY-MM-DD (at most 365 days after start)' },
       weekdays: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 }, description: 'Only these weekdays (0 = Monday … 6 = Sunday); default all' },
       answer_type: { type: 'string', enum: ['days', 'slots', 'both'], description: 'days = whole days only, slots = hours, both (default)' },
       hour_start: { type: 'integer', minimum: 0, maximum: 23, description: 'First hour people can pick (default 8)' },
