@@ -1118,7 +1118,7 @@
   .tile img{width:100%;height:100%;object-fit:cover;display:block}
   .tile-i{width:100%;height:100%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;background:linear-gradient(135deg,var(--t,var(--accent)),color-mix(in srgb,var(--t,var(--accent)) 70%,#0B1F3A))}
   .tile-i.plus{background:transparent;color:var(--accent)} .tile-i.plus svg{width:22px;height:22px}
-  .tile-e{font-size:24px;line-height:1}
+  .tile-e{font-size:24px;line-height:1;translate:0 var(--ey,0)}
   .tile-i,.tile-e{text-box:trim-both cap alphabetic} /* centre the letter / emoji by its cap height, not the font's ascent and descent */
   .tile.has-e{background:color-mix(in srgb,var(--accent) 10%,var(--card));box-shadow:inset 0 0 0 1px var(--line)}
   .tile.sm{width:32px;height:32px;border-radius:9px} .tile.sm .tile-i{font-size:13px} .tile.sm .tile-e{font-size:17px}
@@ -3145,9 +3145,28 @@ const displayName = u => (u&&(u.name||(u.email||'').split('@')[0]))||'';
 const TINTS=['#1F5EFF','#0E9F8E','#7C4DFF','#E2683C','#D23F7E','#2F8FD8','#5B6CFF','#1E7B4E'];
 const tintOf = seed => { let h=0; for(const c of String(seed||'')) h=(h*31+c.charCodeAt(0))>>>0; return TINTS[h%TINTS.length]; };
 const initialOf = t => esc((String(t||'?').trim().match(/\p{L}|\p{N}/u)||['?'])[0].toUpperCase());
+// Some emoji are drawn off-centre in their own square (🦡 sits at the bottom). Measure the visible pixels once on a canvas
+// and return how far (em) to shift it so the drawing, not the glyph box, is centred; 0 when it already looks centred.
+const EMOJI_NUDGE=new Map();
+function emojiNudge(e){
+  if(EMOJI_NUDGE.has(e)) return EMOJI_NUDGE.get(e);
+  let n=0;
+  try{
+    if(CSS.supports('text-box','trim-both cap alphabetic')){
+      const S=100, cv=document.createElement('canvas'); cv.width=S*2; cv.height=S*2;
+      const c=cv.getContext('2d',{willReadFrequently:true}); c.font=`${S}px ${getComputedStyle(document.body).fontFamily}`; c.textBaseline='alphabetic';
+      const cap=c.measureText('H').actualBoundingBoxAscent; c.fillText(e,S/2,S*1.5);
+      const d=c.getImageData(0,0,S*2,S*2).data; let top=-1,bot=-1;
+      for(let y=0;y<S*2;y++){ for(let x=0;x<S*2;x++) if(d[(y*S*2+x)*4+3]>20){ if(top<0) top=y; bot=y; break; } }
+      if(top>=0&&cap>0){ const ink=(S*1.5-top-(bot-S*1.5))/2; const v=(ink-cap/2)/S; if(Math.abs(v)>=.03) n=Math.round(v*1000)/1000; }
+    }
+  }catch(_){ n=0; }
+  EMOJI_NUDGE.set(e,n); return n;
+}
 // A square/round tile: picture (with fallback underneath), emoji, or initial on a colour.
 function tile({img,emoji,text,seed},cls=''){
-  const base = emoji ? `<span class="tile-e">${esc(emoji)}</span>` : `<span class="tile-i" style="--t:${tintOf(seed||text)}">${initialOf(text)}</span>`;
+  const ny = emoji ? emojiNudge(emoji) : 0;
+  const base = emoji ? `<span class="tile-e"${ny?` style="--ey:${ny}em"`:''}>${esc(emoji)}</span>` : `<span class="tile-i" style="--t:${tintOf(seed||text)}">${initialOf(text)}</span>`;
   return `<span class="tile ${cls}${emoji?' has-e':''}">${base}${img?`<img src="${esc(img)}" alt="" loading="lazy">`:''}</span>`;
 }
 const avatarOf = (u,cls='') => tile({img:u&&u.avatarImg,emoji:u&&u.avatar,text:displayName(u),seed:u&&u.email},'avatar '+cls);
