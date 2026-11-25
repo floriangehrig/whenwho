@@ -517,6 +517,12 @@
   .vtsplit .vtdd .ddp label.ddsw{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:6px 0;padding-top:8px;padding-bottom:8px;align-items:flex-start}
   .vtsplit .vtdd .ddp label.ddsw:first-child{border-top:0;margin-top:0;padding-top:2px} .vtsplit .vtdd .ddp label.ddsw:last-child{border-bottom:0;margin-bottom:0;padding-bottom:2px}
   .vtsplit .vtdd .ddp label.ddsw.dis{opacity:.6}
+  /* Other polls: which kinds grey out (my answers / meetings), with a count each */
+  .vtsplit .vtdd .ddp .ddkinds{display:flex;flex-wrap:wrap;gap:0 10px;border-top:1px dashed var(--line);margin-top:6px;padding-top:6px}
+  .vtsplit .vtdd .ddp .ddkinds label{flex:1 1 auto} .vtsplit .vtdd .ddp .ddkinds label .minw{flex-direction:row;align-items:center}
+  .vtsplit .vtdd .ddp .ddkinds .vtn{font-style:normal;font-size:11px;font-weight:650;min-width:18px;margin-left:6px;padding:0 5px;border-radius:999px;background:var(--sunken);color:var(--muted);text-align:center}
+  /* Account → Calendars: the Other polls switch under the list */
+  .bp-row{border-top:1px solid var(--line);margin-top:var(--s3);padding-top:16px;align-items:center;gap:8px;flex-wrap:nowrap} .bp-row>.tip{position:static}
   /* Account: Contacts and Calendars share one look: header with count + ＋, optional toolbar, grouped list of what you have */
   .card-h .qb.add{width:34px;height:34px;border-radius:50%;background:var(--accent);border-color:var(--accent);color:#fff}
   .card-h .qb.add:hover{filter:brightness(1.08)}
@@ -4818,7 +4824,9 @@ function renderAccount(){
       <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Saved contacts come first when you add people to a poll; ✎ edits name, email and a private note. <b>From your polls</b> lists the people you added to your polls by email. Save anyone to keep them.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
         <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
-        <div id="calbox"><p class="help">${t('Loading…')}</p></div></div>
+        <div id="calbox"><p class="help">${t('Loading…')}</p></div>
+        <div class="row bp-row"><span class="grow">${t('Show my busy hours from other polls')}</span>${tip(t('While you answer a poll, the meetings you’re in and the hours you answered in your other open polls are greyed out. Only you see this. You can also switch it in the poll’s Busy ▾ menu.'),'left')}
+          <label class="sw" title="${esc(t('Show my busy hours from other polls'))}"><input type="checkbox" id="bp_cb"${u.busyPolls?' checked':''} aria-label="${esc(t('Show my busy hours from other polls'))}"><span></span></label></div></div>
       <div class="card span" id="mcpcard"><div class="card-h"><h2 class="grow">${t('AI assistants')}<span class="count" id="mcp_count" hidden></span></h2>${tip(t('Use when-who from Claude, ChatGPT or another AI assistant that supports MCP: add a custom connector with this address, then sign in here when it asks. It can then read your polls, answer them, create polls, invite people and set meetings for you.'),'left')}</div>
         <div class="row mcp-url"><code class="grow ell" id="mcp_url">${esc(location.origin)}/mcp</code>${pqb('copy',t('Copy address'),'id="mcp_copy"')}</div>
         <div id="mcpbox"></div></div>
@@ -4839,6 +4847,7 @@ function renderAccount(){
         </form></div>
     </div></main>${siteFoot()}`;
   renderCalCard(); renderContactsCard(); renderMcpCard();
+  $('bp_cb').onchange=async e=>{ const cb=e.currentTarget; cb.disabled=true; await setBusyPolls(cb.checked); cb.checked=pbOn(); cb.disabled=false; };
   // Your data: download a copy (JSON), or delete the account after a code sent to its address.
   pushSecDraw();
   $('dl_btn').onclick=async e=>{ const btn=e.currentTarget; btn.disabled=true;
@@ -6774,8 +6783,12 @@ function renderMine(el){
   if(bzPpl.length||bzMine) bzMenu+=`<div class="ddsec">${ddList(t('Others'),'bppl',bzPpl.map(x=>({id:x.pid,label:`${esc(x.name||t('Someone'))}<span class="muted small">${esc(t('updated {when}',{when:agoText(x.updatedAt)}))}</span>`,on:!bpOff.has(x.pid)})),1)}${bzPpl.length?'':`<p class="muted small ddnone">${t('Nobody in this poll shares their busy times yet')}</p>`}</div>`;
   // Other polls: my meetings and available / if needed hours elsewhere (only for me), one switch + which polls.
   const pbCan=!!(ME.user&&editable()), pbIs=pbOn(), pbO=pbOff();
-  if(pbCan) bzMenu+=`<div class="ddsec">${ddList(t('Other polls'),'bpoll',pbIs?PBUSY.polls.map(p=>({id:p.id,label:`${p.icon?esc(p.icon)+' ':''}${esc(p.title)}`,on:!pbO.has(p.id)})):[])}${pbIs&&PBUSY.list&&!PBUSY.polls.length?`<p class="muted small ddnone">${t('Nothing in your other polls on these dates')}</p>`:''}
-    <label class="ddsw" title="${esc(t('Meetings you’re in and hours you marked available or if needed in your other polls (rounds still open). Only you see this.'))}"><input type="checkbox" data-bpolls ${pbIs?'checked':''}> <span class="minw">${t('Show my other polls')}<span class="muted small">${t('Meetings and my answers')}</span></span></label></div>`;
+  // Kinds: my answers in open rounds / meetings I'm in (counted over the polls ticked below).
+  const pbK=pbKOff(), pbL=pbIs&&PBUSY.list&&PBUSY.key===busyKey()?PBUSY.list.filter(x=>!pbO.has(x[4].slice(5))):[], pbN=k=>new Set(pbL.filter(x=>x[5]===k).map(x=>x[0]+'|'+x[4])).size;
+  const pbKinds=pbIs&&PBUSY.polls.length?`<div class="ddkinds">${[['answer',t('My answers'),t('Hours you marked available or if needed in rounds that are still open')],['meeting',t('Meetings'),t('Meetings you’re in')]].map(([k,lb,tt])=>
+    `<label title="${esc(tt)}"><input type="checkbox" data-bpkind="${k}" ${pbK.has(k)?'':'checked'}> <span class="minw">${lb}<i class="vtn">${pbN(k)}</i></span></label>`).join('')}</div>`:'';
+  if(pbCan) bzMenu+=`<div class="ddsec">${ddList(t('Other polls'),'bpoll',pbIs?PBUSY.polls.map(p=>({id:p.id,label:`${p.icon?esc(p.icon)+' ':''}${esc(p.title)}`,on:!pbO.has(p.id)})):[])}${pbIs&&PBUSY.list&&!PBUSY.polls.length?`<p class="muted small ddnone">${t('Nothing in your other polls on these dates')}</p>`:''}${pbKinds}
+    <label class="ddsw" title="${esc(t('Meetings you’re in and hours you marked available or if needed in your other open polls. Only you see this. Also in Account → Calendars.'))}"><input type="checkbox" data-bpolls ${pbIs?'checked':''}> <span class="minw">${t('Show my other polls')}<span class="muted small">${t('Meetings and my answers')}</span></span></label></div>`;
   const bzBtn=!(bzMine||bzPpl.length||pbCan)?'':vtSplitRaw(bzTog,'bdd',P.bddOpen,t('Choose busy times'),bzMenu);
   // Icon-only tools: label lives in the tooltip / aria-label.
   const io=(icon,label,attrs,cls='')=>`<button type="button" class="btn sm withic ib ${cls}" ${attrs} title="${esc(label)}" aria-label="${esc(label)}">${ICON[icon]}</button>`;
@@ -7276,8 +7289,17 @@ function busyFor(k,h){ return busyOn()?busyHit(busyAll(),k,h):[]; }
 // turned into the same [startMs, endMs, label, source, id] tuples as calendar events (id = 'poll:<poll id>').
 // Only shown to me: not shared with the poll (busyHoursMap uses calendars only), not used by "From calendar".
 const PBUSY={key:'',list:null,polls:[],loading:false,at:0};
-const pbOn=()=>!!(ME.user&&store0('busyPolls')===true);
+// On / off is an account setting (users.busy_polls: Account → Calendars, or the switch in Busy ▾); which polls and kinds show is per device.
+const pbOn=()=>!!(ME.user&&ME.user.busyPolls);
 const pbOff=()=>new Set(store0('busyPollOff')||[]);
+const pbKOff=()=>new Set(store0('busyPollKinds')||[]);
+async function setBusyPolls(on){
+  if(!ME.user) return; const was=!!ME.user.busyPolls; ME.user.busyPolls=on;
+  if(on) try{ localStorage.setItem('showBusy','true'); }catch(e){}
+  try{ await api('PATCH','/me',{busyPolls:on}); }catch(e){ ME.user.busyPolls=was; toast(e.message); }
+}
+// The switch used to live in this browser only (localStorage busyPolls): move it to the account once.
+function pbLegacy(){ if(!ME.user||store0('busyPolls')!==true) return; try{ localStorage.removeItem('busyPolls'); }catch(e){} if(!ME.user.busyPolls) setBusyPolls(true); }
 async function loadPollBusy(force){
   if(!pbOn()||!P.data||!editable()) return;
   const key=busyKey(); if(!force&&PBUSY.key===key&&(PBUSY.loading||(PBUSY.list&&Date.now()-PBUSY.at<600000))) return;
@@ -7289,18 +7311,18 @@ async function loadPollBusy(force){
     const at=(d,h)=>{ const x=parseD(d); x.setHours(h); return x.getTime(); }, out=[];
     (r.items||[]).forEach(it=>{ const src=it.title||'', id='poll:'+it.poll;
       if(it.kind==='meeting'){ const lb=it.mtitle?t('Meeting “{title}”',{title:it.mtitle}):t('Meeting');
-        out.push(it.allDay?[parseD(it.date).getTime(),parseD(addDaysL(it.date,1)).getTime(),lb,src,id]:[at(it.date,it.hs),at(it.date,it.he),lb,src,id]); return; }
+        out.push(it.allDay?[parseD(it.date).getTime(),parseD(addDaysL(it.date,1)).getTime(),lb,src,id,'meeting']:[at(it.date,it.hs),at(it.date,it.he),lb,src,id,'meeting']); return; }
       let s=null, prev=null;
-      [...(it.hours||[]),99].forEach(h=>{ if(s!==null&&h!==prev+1){ out.push([at(it.date,s),at(it.date,prev+1),t('Your answer'),src,id]); s=null; } if(s===null) s=h; prev=h; }); });
+      [...(it.hours||[]),99].forEach(h=>{ if(s!==null&&h!==prev+1){ out.push([at(it.date,s),at(it.date,prev+1),t('Your answer'),src,id,'answer']); s=null; } if(s===null) s=h; prev=h; }); });
     PBUSY.list=out; PBUSY.polls=r.polls||[]; PBUSY.at=Date.now();
   }catch(e){ if(PBUSY.key===key){ PBUSY.list=[]; PBUSY.polls=[]; } toast(e.message); }
   finally{ if(PBUSY.key===key) PBUSY.loading=false; }
   if(PBUSY.key===key&&P.data&&!document.querySelector('.painting')) renderBody();
 }
-function pbPicked(){ if(!pbOn()||!PBUSY.list||PBUSY.key!==busyKey()) return []; const off=pbOff(); return off.size?PBUSY.list.filter(x=>!off.has(x[4].slice(5))):PBUSY.list; }
+function pbPicked(){ if(!pbOn()||!PBUSY.list||PBUSY.key!==busyKey()) return []; const off=pbOff(), ko=pbKOff(); return off.size||ko.size?PBUSY.list.filter(x=>!off.has(x[4].slice(5))&&!ko.has(x[5])):PBUSY.list; }
 // Calendar events + other polls, memoised (busyFor runs for every hour of the grid).
 let BUSYA={a:null,b:null,o:'',list:[]};
-function busyAll(){ const a=BUSY.list&&BUSY.key===busyKey()&&ME.user&&ME.user.calendarsAuto?busyPicked():null, b=pbOn()&&PBUSY.key===busyKey()?PBUSY.list:null, o=localStorage.getItem('busyPollOff')||'';
+function busyAll(){ const a=BUSY.list&&BUSY.key===busyKey()&&ME.user&&ME.user.calendarsAuto?busyPicked():null, b=pbOn()&&PBUSY.key===busyKey()?PBUSY.list:null, o=(localStorage.getItem('busyPollOff')||'')+'|'+(localStorage.getItem('busyPollKinds')||'');
   if(BUSYA.a!==a||BUSYA.b!==b||BUSYA.o!==o) BUSYA={a,b,o,list:[...(a||[]),...pbPicked()]};
   return BUSYA.list; }
 // ---------- busy hours shared with the poll ----------
@@ -7504,7 +7526,8 @@ document.addEventListener('change',e=>{ const cb=e.target, ds=cb.dataset||{};
   if(ds.hwho){ const off=new Set(P.hintOff); if(cb.checked) off.delete(ds.hwho); else off.add(ds.hwho); setHintOff(off); }
   else if(ds.bcal){ const off=busyOff(); if(cb.checked) off.delete(ds.bcal); else off.add(ds.bcal); setBusyOff(off); }
   else if(ds.bpoll){ const off=pbOff(); if(cb.checked) off.delete(ds.bpoll); else off.add(ds.bpoll); setPollOff(off); }
-  else if(ds.bpolls!==undefined){ try{ localStorage.setItem('busyPolls',JSON.stringify(cb.checked)); if(cb.checked) localStorage.setItem('showBusy','true'); }catch(e){} P.bddOpen=true; renderBody(); loadBusy(); }
+  else if(ds.bpolls!==undefined){ const p=setBusyPolls(cb.checked); P.bddOpen=true; renderBody(); loadBusy(); p.then(()=>{ if(!!ME.user.busyPolls!==cb.checked){ P.bddOpen=true; renderBody(); } }); }
+  else if(ds.bpkind){ const off=pbKOff(); if(cb.checked) off.delete(ds.bpkind); else off.add(ds.bpkind); try{ localStorage.setItem('busyPollKinds',JSON.stringify([...off])); }catch(e){} P.bddOpen=true; renderBody(); }
   else if(ds.bppl){ const off=busyPplOff(); if(cb.checked) off.delete(ds.bppl); else off.add(ds.bppl); setBusyPplOff(off); }
   else if(ds.bshare!==undefined) setShareBusy(cb.checked,cb); });
 function setPollOff(off){ try{ localStorage.setItem('busyPollOff',JSON.stringify([...off])); }catch(e){} P.bddOpen=true; renderBody(); }
@@ -10010,7 +10033,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     history.replaceState(null,'',`?p=${encodeURIComponent(pid)}`); }
   try{ Object.assign(ME, await api('GET','/me')); }catch(e){}
   if(ME.user){
-    pushResync();
+    pushResync(); pbLegacy();
     if(store.get('myPolls',[]).some(p=>p.adminKey)) await claimLocalPolls();
     try{ Object.assign(ME, await api('GET','/me/polls')); }catch(e){}
   }
@@ -12003,7 +12026,12 @@ function germanText(){ return {
 "Show my other polls": "Meine anderen Umfragen zeigen",
 "Meetings and my answers": "Termine und meine Antworten",
 "Nothing in your other polls on these dates": "In deinen anderen Umfragen ist an diesen Tagen nichts",
-"Meetings you’re in and hours you marked available or if needed in your other polls (rounds still open). Only you see this.": "Termine, an denen du teilnimmst, und Stunden, die du in deinen anderen Umfragen als verfügbar oder notfalls markiert hast (nur offene Runden). Nur du siehst das.",
+"Meetings you’re in and hours you marked available or if needed in your other open polls. Only you see this. Also in Account → Calendars.": "Termine, an denen du teilnimmst, und Stunden, die du in deinen anderen offenen Umfragen als verfügbar oder notfalls markiert hast. Nur du siehst das. Auch unter Konto → Kalender.",
+"My answers": "Meine Antworten",
+"Hours you marked available or if needed in rounds that are still open": "Stunden, die du in noch offenen Runden als verfügbar oder notfalls markiert hast",
+"Meetings you’re in": "Termine, an denen du teilnimmst",
+"Show my busy hours from other polls": "Belegte Stunden aus meinen anderen Umfragen zeigen",
+"While you answer a poll, the meetings you’re in and the hours you answered in your other open polls are greyed out. Only you see this. You can also switch it in the poll’s Busy ▾ menu.": "Beim Beantworten einer Umfrage werden Termine, an denen du teilnimmst, und die Stunden, die du in deinen anderen offenen Umfragen angegeben hast, ausgegraut. Nur du siehst das. Du kannst es auch im Menü Belegt ▾ der Umfrage umschalten.",
 "Meeting “{title}”": "Termin „{title}“",
 "Share my busy hours with this poll": "Meine belegten Stunden mit dieser Umfrage teilen",
 "Others see when, not what": "Andere sehen wann, nicht was",

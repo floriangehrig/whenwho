@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-+yf130aqlMUo6ZqKTHxlfma3W19aM+6F0fR16L/dTq4=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-lQgY5fRps8zh6fiuWSIZNR7mD6mW7YO7qTLcLCRsD9Q=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -738,10 +738,10 @@ async function getUser(env, cookies) {
   const token = cookies.ww_session;
   if (!token || token.length > 100) return null;
   const s = await env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.avatar, u.bio, u.created_at, u.avatar_img IS NOT NULL AS has_img
+    `SELECT u.id, u.email, u.name, u.avatar, u.bio, u.created_at, u.avatar_img IS NOT NULL AS has_img, u.busy_polls
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`)
     .bind(await sha256('session:' + token), now()).first();
-  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', bio: s.bio || '', hasImg: !!s.has_img, created: s.created_at } : null;
+  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', bio: s.bio || '', hasImg: !!s.has_img, created: s.created_at, busyPolls: !!s.busy_polls } : null;
 }
 const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
 // login_attempts doubles as a rate-limit log; `key` is an IP or 'e:' + hash of an email address.
@@ -869,10 +869,10 @@ async function me(request, env) {
   const cal = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(auto) AS auto, (SELECT url FROM user_calendars WHERE user_id = ?1 AND url IS NOT NULL ORDER BY position, created_at LIMIT 1) AS url FROM user_calendars WHERE user_id = ?1').bind(u.id).first();
   // Feed URLs are secrets: the page only learns which host the first one points at.
   return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', bio: u.bio, since: u.created,
-    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0,
+    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0, busyPolls: !!u.busyPolls,
     friendRequests: (await friendRequestCount(env, u)) || 0 } });
 }
-// Body: { name?, bio? (one line, shown only to the person), avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or '') }. A new name also renames the account's answers.
+// Body: { name?, bio? (one line, shown only to the person), avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or ''), busyPolls? (grey out busy hours from my other polls) }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
   const user = requireUser(request);
   const b = await body(request), u = {};
@@ -880,6 +880,7 @@ async function updateProfile(request, env) {
   if (b.bio !== undefined) u.bio = str(b.bio, 160, 'Description').replace(/\s+/g, ' ').trim();
   if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
   if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
+  if (b.busyPolls !== undefined) u.busy_polls = b.busyPolls ? 1 : 0;
   if (b.icalUrl !== undefined) u.ical_url = b.icalUrl === '' || b.icalUrl === null ? null : icalUrl(b.icalUrl);
   // Older pages save a single link here: it becomes one of the account's calendars too.
   if (u.ical_url) await insertIcal(env, user.id, u.ical_url, '');
@@ -997,7 +998,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0037';
+const USER_DATA_REVIEWED = '0038';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -4372,7 +4373,7 @@ POLLS. New poll (button on the home page). Which days and times: a list of rules
 SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes). There is no password.
 
 ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
-Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles. Busy ▾ → Other polls (signed in) also greys out meetings you're in and hours you marked available / if needed in your other open polls; only you see that.
+Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles. Busy ▾ → Other polls (signed in) also greys out meetings you're in and hours you marked available / if needed in your other open polls; only you see that. It is off at first: switch it on there or in Account → Calendars (Show my busy hours from other polls). The Busy ▾ menu can limit it to My answers or Meetings, and to certain polls.
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
 

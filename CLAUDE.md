@@ -116,7 +116,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   The Busy ▾ in My answer has two sections: **Own** (my auto calendars + the Share switch) and **Others** (people who share; All / None /
   one by one, picks in localStorage `busyPplOff:<poll>`, `"*"` = None so later sharers stay hidden too); their hours
   show with accent stripes the other way (`obusy` / `.obm`).
-  A third section **Other polls** (signed in, switch in localStorage `busyPolls`, polls left out in `busyPollOff`) greys out my own
+  A third section **Other polls** (signed in; on / off is the account setting `users.busy_polls` (0038, default off, `busyPolls` in `GET|PATCH /api/me`,
+  also a switch in Account → Calendars, `setBusyPolls`); polls left out in localStorage `busyPollOff`, kinds **My answers** / **Meetings** left out in
+  `busyPollKinds`, tuple field 5 = `'answer'|'meeting'`) greys out my own
   busy hours from my other polls: `GET /api/me/poll-busy?from&to&skip` (`pollBusy`, read only) = confirmed meetings I'm in (any round,
   repeats expanded) + hours I marked y / i in open rounds (not weekly polls). The page turns them into busy tuples (`PBUSY`, `loadPollBusy`,
   merged with calendars by `busyAll`); never shared with the poll (`busyHoursMap` stays calendars only). The Others ▾ (`hdd`) shows from 1 other.
