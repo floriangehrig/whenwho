@@ -228,6 +228,24 @@
       ],
       "port": 8785,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-busy",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8784",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8784",
+        "--persist-to",
+        ".wrangler/busy-state"
+      ],
+      "port": 8784,
+      "autoPort": false
     }
   ]
 }
