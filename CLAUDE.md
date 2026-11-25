@@ -259,6 +259,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and on the New poll page Describe it / Create poll. AI demos never call the Worker: they play an example through the same apply code
   (`aiApply`, `sugAiApply`, `qAiShow`, `NEWDEMO.fill`). Each step's `go()` saves what it may change with `tourKeep(key, snap)`;
   `tourDemoRestore` puts it all back on every step change, ↻ and when the tour ends. The answer brush always starts in tap mode (range isn't remembered).
+  Example-data demos: Busy times (`demoBusy`: example calendar events in `BUSY` with `ok: false` so `busySync` never PUTs, an example
+  calendar in `CALS`, an example sharer in `P.data.busy`), See the others (`demoOthers`, two example answers when nobody else answered),
+  Results (opens the best day), Add people (`pdlg` shown non-modal, `.tour-nm`, so the tour stays on top; Add not pressed) and Chat (types, never sends).
 - **To do** (page only, people answering; not organisers): `todoList()` works out what's still open for me in this round from page state
   (availability not sent, required questions empty `qReqOpen`, vote groups without my vote, after-meeting questions via `qPromptPick(true)`).
   `todoSync()` draws the `#todo` strip under the header chips (amber when the deadline is today / tomorrow) and the `.tdot` dots on the tabs;

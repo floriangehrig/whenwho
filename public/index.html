@@ -2039,6 +2039,7 @@
   .hx-f textarea{flex:1;resize:none;min-height:40px;max-height:120px;margin:0}
   @media (max-width:560px){ .helpdlg{margin:auto 0 0 0;width:100vw;max-width:100vw;height:min(80dvh,640px);border-radius:16px 16px 0 0;border-bottom:0} }
   .tour-ov{position:fixed;inset:0;z-index:200;background:transparent}
+  dialog.tour-nm{position:fixed;inset:0;margin:auto;z-index:150} /* a demo's popup, shown under the tour */
   .tour-ov.dim{background:rgba(6,12,26,.55)}
   .tour-hole{position:fixed;z-index:201;border-radius:12px;pointer-events:none;box-shadow:0 0 0 9999px rgba(6,12,26,.55);outline:2px solid var(--accent);outline-offset:2px;transition:top .2s,left .2s,width .2s,height .2s}
   .tour-b{position:fixed;z-index:202;width:min(360px,calc(100vw - 24px));padding:16px 16px 12px;border-radius:16px;background:var(--card);color:var(--ink);box-shadow:var(--shadow-pop,0 16px 40px rgba(0,0,0,.3));border:1px solid var(--line)}
@@ -2767,10 +2768,10 @@ function tourSteps(key){
       {also:'.iseg:not(.brush)',go:tgDemo('slots'),demo:demoHours,when:()=>editable()&&ansMode()!=='days',basic:ansMode()==='slots'?1:0}),
     S('[data-qf]',t('Quick fill'),t('Fill many days at once with rules, like “every weekday from 6 pm”. Your own marks stay on top.'),{go:tgQfDemo,demo:demoQuickFill}),
     S('[data-ai]',t('Fill with AI'),t('Or just write (or dictate) when you’re free, like “weekends, not before 10”, and it fills in your answer.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgAiDemo,demo:demoAiFill}),
-    S('[data-hint]',t('See the others'),t('Show where the others are free while you answer, to find a time that suits everyone.'),{go:tgView('mine')}),
-    S('[data-busytoggle]',t('Busy times'),t('Hours you’re busy in your calendars are greyed out. You can also share them with this poll.'),{go:tgView('mine'),when:()=>!!document.querySelector('[data-busytoggle]')}),
+    S('[data-hint]',t('See the others'),t('Show where the others are free while you answer, to find a time that suits everyone.'),{go:tgOthersDemo,demo:demoOthers,when:()=>editable()&&!!P.data.responses}),
+    S('[data-busytoggle]',t('Busy times'),t('Hours you’re busy in your calendars are greyed out, and people can share theirs with this poll (when, not what). Connect a calendar on your Account page.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgBusyDemo,demo:demoBusy,when:()=>editable()}),
     S('#saveBtn',t('Send your answer'),t('Saves your answer. You can come back and change it any time while the poll is open.'),{go:tgView('mine'),basic:1}),
-    S('[data-tab="group"]',t('Results'),t('Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.'),{go:tgView('group')}),
+    S('[data-tab="group"]',t('Results'),t('Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.'),{go:tgResultsDemo,demo:demoResults}),
     // Meetings: everyone sees the list; editors also the planner.
     S('#pane-meetings',t('Meetings'),t('The times the organiser picked. When there are options to vote on, pick the ones that suit you. Add meetings to your calendar from here.'),{go:tgTab('meetings'),when:()=>!edit}),
     S('#mplan',t('Plan meetings'),t('Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.'),{go:tgPlanDemo,demo:demoPlan,when:()=>edit}),
@@ -2785,7 +2786,7 @@ function tourSteps(key){
     S('[data-qai]',t('Generate with AI'),t('Describe what you want to know and get draft questions to pick from.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgQaiDemo,demo:demoQAi,when:()=>edit}),
     // People
     S('#pane-people',t('People'),t('Who is in this poll and who has answered.'),{go:tgTab('people'),when:()=>!man&&!!d.people}),
-    S('[data-paddopen]',t('Add people'),t('Add people by email, from your contacts or a group. Then invite them and send reminders to those who haven’t answered.'),{go:tgTab('people'),when:()=>man}),
+    S('[data-paddopen]',t('Add people'),t('Add people by email, from your contacts or a group. Then invite them and send reminders to those who haven’t answered.'),{go:tgPeopleDemo,demo:demoAddPeople,when:()=>man}),
     S('#parts',t('Roles'),t('Give people who answer with an account a role with the menu next to their name: viewers see all answers, editors plan meetings and questions, admins manage the poll.'),{go:tgTab('people'),when:()=>isOwnerP()}),
     // Settings
     S('[data-sset="rounds"],[data-sset="dates"]',series?t('Rounds'):t('Dates'),series?t('Every round of this poll, when new rounds open, and questions asked in every round (like “What songs should we practice in {month}?”).'):t('Change the dates and the deadline.'),{go:tgTab('settings'),when:()=>edit}),
@@ -2793,7 +2794,7 @@ function tourSteps(key){
     S('[data-sset="privacy"]',t('Privacy'),t('Hide the answers from everyone but the organisers, or protect the poll with a password.'),{go:tgTab('settings'),when:()=>man}),
     S('[data-sset="email"]',t('Email'),t('Reminders before the deadline and emails when a new round opens.'),{go:tgTab('settings'),when:()=>man}),
     S('#savePreset',t('Save as preset'),t('Start your next poll from this one’s settings and questions.'),{go:tgTab('settings'),when:()=>man}),
-    S('#chatdock',t('Chat'),guest?t('People who are signed in chat here. You see what happens in the poll: answers, meetings and rounds.'):t('Chat with everyone in the poll. Tag people with @ and reply to a day or a meeting.'),{go:tgView(editable()?'mine':'group'),when:()=>chatOn}),
+    S('#chatdock',t('Chat'),guest?t('People who are signed in chat here. You see what happens in the poll: answers, meetings and rounds.'):t('Chat with everyone in the poll. Tag people with @ and reply to a day or a meeting.'),{go:guest?tgView(editable()?'mine':'group'):tgChatDemo,demo:guest?null:demoChat,when:()=>chatOn}),
     S('.su-btn',t('Create an account (optional)'),t('Your answers follow you to every device, and you can make polls of your own.'),{when:()=>guest}),
     help,end];
 }
@@ -2969,6 +2970,72 @@ async function demoCreate(alive){
   K.spot('#createBtn',true); await K.poke('#createBtn',2); tourPtr(null);
 }
 async function demoNewBtn(alive){ const K=demoKit(alive); await K.w(500); await K.poke('.hero-me .btn.primary',2); tourPtr(null); }
+// Busy times: example calendar events (signed in) and an example person sharing busy hours. BUSY.ok stays false, so
+// nothing is synced; CALS gets an example calendar, so no calendar is loaded. All put back afterwards.
+const lsKeep=k=>{ const v=localStorage.getItem(k); return ()=>{ try{ v===null?localStorage.removeItem(k):localStorage.setItem(k,v); }catch(e){} }; };
+const tgBusyDemo=()=>{ tgView('mine')(); tourDemoSnap();
+  tourKeep('busy',()=>{ const b={...BUSY}, c={...CALS}, u=ME.user, auto=u&&u.calendarsAuto, ob=P.data.busy, bo=P.bddOpen, sb=lsKeep('showBusy'), poll=P.data;
+    return ()=>{ Object.assign(BUSY,b); Object.assign(CALS,c); if(u) u.calendarsAuto=auto; if(P.data===poll) P.data.busy=ob; P.bddOpen=bo; sb(); }; });
+  const ds=P.data.dates||[], pick=i=>ds[Math.min(i,ds.length-1)], H=k=>hours(k);
+  if(ME.user){ const cal={id:'tourdemo',name:t('My calendar (example)'),auto:true};
+    const ev=(k,h1,h2,title)=>(isWeekly()?[0,1,2,3].map(w=>addDaysL(thisMonday(),wdOf(k)+7*w)):[k]).map(x=>{ const d=parseD(x), a=new Date(d), z=new Date(d); a.setHours(h1); z.setHours(h2); return [a.getTime(),z.getTime(),title,cal.name,cal.id]; });
+    const k1=pick(1), k2=pick(3), h1=H(k1), h2=H(k2), mid=h2[Math.floor(h2.length/2)]??12;
+    ME.user.calendarsAuto=true; CALS.list={calendars:[cal],accounts:[]}; CALS.tried=true;
+    Object.assign(BUSY,{key:busyKey(),list:[...ev(k1,h1[0]??9,(h1[h1.length-1]??17)+1,t('Trip')),...ev(k2,mid,mid+1,t('Dentist'))],ok:false,loading:false}); }
+  const k3=pick(2), k4=pick(4), lastH=k=>H(k).slice(-3);
+  P.data.busy=[...(P.data.busy||[]).filter(x=>x.pid!=='tourdemo'),{pid:'tourdemo',name:t('Alex (example)'),hours:{[k3]:lastH(k3),[k4]:lastH(k4)},updatedAt:new Date().toISOString()}];
+  try{ localStorage.setItem('showBusy','false'); }catch(e){} P.bddOpen=false; renderBody(); };
+async function demoBusy(alive){
+  const K=demoKit(alive), mk=()=>K.q('#dgrid .day.bzf')||K.q('#dgrid .day .bzm')||K.q('#grid .slot.busy'), om=()=>K.q('#dgrid .day .obm')||K.q('#grid .slot.obusy');
+  await K.w(400); const b=K.q('[data-busytoggle]'); if(!b) return;
+  await K.to(b); tourTap(); try{ localStorage.setItem('showBusy','true'); }catch(e){} renderBody(); await K.w(400); K.spot('#dgrid,#grid');
+  for(const f of [mk,om]){ const el=f(); if(el) await K.to(el,1100,false,'center'); }
+  if(ansMode()==='both'&&P.mode==='days'){ const hb=K.q('[data-mode="slots"]'); if(hb){ await K.to(hb); tourTap(); P.mode='slots'; renderBody(); await K.w(500); K.spot('#grid');
+    for(const f of [mk,om]){ const el=f(); if(el) await K.to(el,1100,false,'center'); } } }
+  const dd=K.q('#bdd summary'); if(!dd) { tourPtr(null); return; }
+  await K.to(dd); tourTap(); P.bddOpen=true; renderBody(); await K.w(500); K.spot('#bdd .ddp');
+  await K.poke('#bdd [data-bshare]'); await K.poke('#bdd .ddsec:last-child label,#bdd .ddsec:last-child .ddnone'); await K.w(600); tourPtr(null);
+}
+// See the others: the overlay (with two example answers when nobody else answered yet) and picking people.
+const tgOthersDemo=()=>{ tgView('mine')(); tourDemoSnap();
+  tourKeep('oth',()=>{ const h=P.hint, ho=P.hintOff, hd=P.hddOpen, rs=P.data.responses, poll=P.data; return ()=>{ Object.assign(P,{hint:h,hintOff:ho,hddOpen:hd}); if(P.data===poll) P.data.responses=rs; }; });
+  if(P.data.responses&&!others().length){ const ds=P.data.dates||[], ent=ix=>Object.fromEntries(ix.map(i=>ds[i]).filter(Boolean).map(k=>[k,'y']));
+    P.data.responses=[...P.data.responses,{id:'tourdemo1',name:t('Sam (example)'),entries:ent([1,2,4,5])},{id:'tourdemo2',name:t('Kim (example)'),entries:ent([2,4,6])}]; }
+  Object.assign(P,{hint:false,hintOff:new Set(),hddOpen:false}); renderBody(); };
+async function demoOthers(alive){
+  const K=demoKit(alive); await K.w(400); const b=K.q('[data-hint]'); if(!b) return;
+  await K.to(b); tourTap(); P.hint=true; renderBody(); await K.w(400); K.spot('#dgrid,#grid');
+  const cs=[...document.querySelectorAll('#dgrid .ocnt:not(.none)')].filter(tourVis), best=cs.sort((a,c)=>parseInt(c.textContent)-parseInt(a.textContent))[0];
+  if(best) await K.to(best.closest('.day')||best,1300,false,'center');
+  else { const s=K.q('#grid .slot.oy,#grid .slot[style*="--o"]'); if(s) await K.to(s,1300,false,'center'); }
+  const os=others(); if(os.length>1&&K.q('#hdd summary')){ await K.to(K.q('#hdd summary')); tourTap(); P.hddOpen=true; renderBody(); await K.w(500); K.spot('#hdd .ddp');
+    const id=os[0].id; await K.poke('#hdd label'); P.hintOff=new Set([id]); renderBody(); await K.w(900); await K.poke('#hdd label'); P.hintOff=new Set(); renderBody(); await K.w(600); }
+  tourPtr(null);
+}
+// Results: tap the best day; its panel shows who can make it.
+const tgResultsDemo=()=>{ tourKeep('res',()=>{ const o=P.ovDay, m=P.month, r=P.range; return ()=>{ P.ovDay=o; P.month=m; P.range=r; }; }); P.ovDay=null; tgView('group')(); renderBody(); };
+async function demoResults(alive){
+  const K=demoKit(alive); await K.w(500); const cs=[...document.querySelectorAll('#body [data-ov]:not(.bc-w):not(.dp-nav)')].filter(tourVis); if(!cs.length) return;
+  const n=x=>{ try{ const s=stats(x.dataset.ov); return s.peak*10+s.peakMaybe; }catch(e){ return 0; } }, best=cs.reduce((a,x)=>n(x)>n(a)?x:a,cs[0]);
+  await K.to(best,450,false,'center'); tourTap(); const k=best.dataset.ov; P.ovDay=k; showMonth(k); renderBody(); await K.w(500);
+  K.spot('#body .dpanel'); const pn=K.q('#body .dpanel'); if(pn) await K.to(pn,1600,false,'center'); tourPtr(null);
+}
+// Add people: opens the popup and types a name and an address; Add is only shown, never pressed.
+const tgPeopleDemo=()=>{ tgTab('people')(); tourKeep('padd',()=>()=>{ const d=$('pdlg'); if(d){ ['pd_n','pd_e'].forEach(i=>{ const x=$(i); if(x) x.value=''; }); if(d.open) d.close(); d.classList.remove('tour-nm'); } }); };
+async function demoAddPeople(alive){
+  const K=demoKit(alive); await K.w(400); if(!await K.tap('[data-paddopen]',300)) return;
+  // Not modal, so the tour stays on top and its buttons keep working.
+  const d=$('pdlg'); if(!d) return; if(d.open) d.close(); d.classList.add('tour-nm'); d.show(); await K.w(300); K.spot('#pdlg .pd-add',true);
+  await K.type('#pd_n',t('Maria')); await K.type('#pd_e','maria@example.com'); await K.poke('#pdlg [data-padd]',2); await K.w(400); tourPtr(null);
+}
+// Chat: opens it and writes a message (not sent).
+const tgChatDemo=()=>{ tgView(editable()?'mine':'group')(); tourKeep('chat',()=>{ const was=!!(P.chat&&P.chat.open), keep=lsKeep('chatOpen:'+P.id), id=P.id;
+  return ()=>{ const ta=$('chatin'); if(ta&&ta.value){ ta.value=''; ta.dispatchEvent(new Event('input',{bubbles:true})); } if(P.id===id&&P.chat&&P.chat.open!==was) chatSetOpen(was); keep(); }; }); };
+async function demoChat(alive){
+  const K=demoKit(alive); await K.w(400); if(!(P.chat&&P.chat.open)&&!await K.tap('#chatdock',700)) return;
+  if(!K.q('#chatin')) return; K.spot('#chatdrawer .chat-form',true);
+  await K.type('#chatin',t('Who brings the cake?')); await K.poke('#chatdrawer .chat-form .btn.primary',2); await K.w(500); tourPtr(null);
+}
 function tourStart(key,auto){
   key=key||tourKey(); if(!key||TOUR.on) return;
   // Started by itself for someone answering: only the few steps needed to answer (the ? button shows the whole tour).
@@ -9812,6 +9879,15 @@ function germanText(){ return {
 "Dinner after the hike: where to eat, food preferences, plus-ones": "Essen nach der Wanderung: wo wir essen, Essenswünsche, Begleitung",
 "Monthly game night on weekday evenings. People vote on the game and say if they bring snacks.": "Monatlicher Spieleabend an Wochentagabenden. Alle stimmen über das Spiel ab und sagen, ob sie Snacks mitbringen.",
 "Team lunch": "Team-Mittagessen",
+"Hours you’re busy in your calendars are greyed out, and people can share theirs with this poll (when, not what). Connect a calendar on your Account page.": "Stunden, in denen du laut deinen Kalendern belegt bist, werden ausgegraut, und andere können ihre mit dieser Umfrage teilen (wann, nicht was). Verbinde einen Kalender auf deiner Konto-Seite.",
+"My calendar (example)": "Mein Kalender (Beispiel)",
+"Trip": "Reise",
+"Dentist": "Zahnarzt",
+"Alex (example)": "Alex (Beispiel)",
+"Sam (example)": "Sam (Beispiel)",
+"Kim (example)": "Kim (Beispiel)",
+"Maria": "Maria",
+"Who brings the cake?": "Wer bringt den Kuchen mit?",
 "Help": "Hilfe",
 "Ask for help": "Hilfe fragen",
 "Ask a question…": "Stell eine Frage …",
