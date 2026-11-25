@@ -158,8 +158,11 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   sends the text and the poll title to Workers AI and returns draft questions in the page's shape (`{ group: {label, icon} | null, questions }`,
   no ids, nothing stored). The page (`qAiPanel`) lists them to pick, optionally as a new questionnaire, and saves with `saveQuestions` (Undo).
   Shares the `AI_PER_DAY` cap.
-  **After-meeting questions**: `link = { to: 'after', ids?, last? }` (no ids = every confirmed meeting of the round) are asked once per
-  meeting that has ended (each date of a repeating one); answers `{ "<meeting id>:<YYYY-MM-DD>": value }`. `last` = only the newest one
+  **After-meeting questions**: `link = { to: 'after', ids?, last?, when?, days? }` (no ids = every confirmed meeting of the round) are asked once per
+  meeting (each date of a repeating one) in its window (`occWindow` / page `qOccWin`): after (default) = opens `days` (0–30) after it ends and stays
+  open; `when: 'before'` = opens `days` before it starts (0 = on the day) and closes when it starts (editor: Before / After each meeting + days);
+  answers `{ "<meeting id>:<YYYY-MM-DD>": value }`. The hourly cron's `notifyQuestionOpens` logs a `question_open` event (type `questions`)
+  when one opens, to the accounts that may answer (`tagged`; empty = everyone; deduped by `poll_events`, meeting times read as UTC). `last` = only the newest one
   can be answered (older ones close). The Worker doesn't know the time zone, so `afterOccs` allows 14 h either way (`TZ_SLACK`) and the page
   shows the exact ones (`qOccs`); `GET .../form` sends `occ` (the dates I may answer, checked per meeting by `canAnswerAt`). They stay
   answerable in a closed round (`saveForm` `onlyAfter`); series copies keep them as after-questions. On open, `qAfterPrompt` asks the newest

@@ -344,6 +344,7 @@
   .btn.danger:hover{background:var(--no-bg);border-color:color-mix(in srgb,var(--no) 45%,var(--line))}
   .btn.sm{min-height:30px;padding:4px 10px;font-size:12.5px}
   .btn:disabled{opacity:.45;cursor:default;transform:none}
+  .btn.gtool{background:var(--empty);border-color:var(--line);color:var(--muted)} .btn.gtool:hover,.btn.gtool.on,.btn.gtool[aria-expanded="true"]{background:var(--sunken);color:var(--ink)}
   .btn.onbrand{background:transparent;border-color:rgba(255,255,255,.3);color:#fff}
   .btn.onbrand:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5)}
   /* compact buttons (ib()): full label on wide screens, icon (+ optional short label .bs) on phones */
@@ -808,7 +809,7 @@
   .qdd-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .qdd .ddp{max-height:min(380px,60vh)} .qdd .pickm button svg{width:16px;height:16px;color:var(--accent)}
   .qdd .ddp label svg{width:15px;height:15px;flex:none;color:var(--muted)} .qdd .ddp label .tag{font-size:10.5px;margin-left:4px}
-  .qdd-s{width:100%;margin:4px 0 6px;height:34px} .qdd-e{padding:8px} .qdd .qetog{padding:4px 8px}
+  .qdd-s{width:100%;margin:4px 0 6px;height:34px} .qdd-e{padding:8px} .qdd .qetog{padding:4px 8px} .qe-days .mrow-n{margin-left:auto}
   .qe-sub{font-size:12.5px;font-weight:600;color:var(--muted)}
   /* the question as it will look on the card, while typing */
   .qedit #qe_label{font-weight:700;font-size:15.5px;color:var(--ink)}
@@ -1581,8 +1582,8 @@
   .prs-s{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .prs-go{flex:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:550;color:var(--accent-ink)} .prs-go svg{width:14px;height:14px}
   .prs-row{display:flex;align-items:center} .prs-fw{min-width:0}
-  .prs-ai{flex:none;display:inline-flex;align-items:center;gap:5px;margin-right:14px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:none;color:var(--accent-ink);font:inherit;font-size:13px;font-weight:550;cursor:pointer}
-  .prs-ai:hover,.prs-ai[aria-expanded="true"]{background:var(--sunken)} .prs-ai svg{width:15px;height:15px}
+  .prs-ai{flex:none;display:inline-flex;align-items:center;gap:5px;margin-right:14px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:var(--empty);color:var(--muted);font:inherit;font-size:13px;font-weight:550;cursor:pointer}
+  .prs-ai:hover,.prs-ai[aria-expanded="true"]{background:var(--sunken);color:var(--ink)} .prs-ai svg{width:15px;height:15px}
   .npai{margin:0;padding:0 14px 14px} .npai .boxh .ml-auto{margin-left:auto}
   @media (max-width:560px){ .prs-ai span{display:none} .prs-ai{padding:7px} }
   .prs-ic{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--sunken);font-size:20px;line-height:1} .prs-ic svg{width:17px;height:17px;color:var(--muted)}
@@ -5668,8 +5669,8 @@ async function loadForm(){
 // Skipped ones are remembered per poll (localStorage qskip:<poll>). A meeting of the round before opens that round.
 const qSkips=()=>new Set(store.get('qskip:'+P.id,[]));
 function qPromptPick(all){ const a=myExtra().a, skip=all?new Set():qSkips(), since=Date.now()-14*86400e3, out=[];
-  for(const q of qList()) if(qAfter(q)&&!q.closed&&qMayFill(q)) for(const o of qOccs(q)) if(o.end>=since&&qOccOpen(q,o.key)&&qEmpty((a[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key)) out.push({q,o});
-  if(!out.length) return null; out.sort((x,y)=>y.o.end-x.o.end);
+  for(const q of qList()) if(qAfter(q)&&!q.closed&&qMayFill(q)) for(const o of qOccs(q)) if(o.open>=since&&qOccOpen(q,o.key)&&qEmpty((a[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key)) out.push({q,o});
+  if(!out.length) return null; out.sort((x,y)=>y.o.open-x.o.open);
   const top=out[0].o; return {o:top,qs:out.filter(x=>x.o.key===top.key).map(x=>x.q)}; }
 async function qAfterPrompt(force){
   const d=P.data; if(!d||P.qedit||(!force&&P.qprompted&&P.qprompted.has(inst().id))) return;
@@ -5680,7 +5681,7 @@ async function qAfterPrompt(force){
   try{ const r=await api('GET',`/polls/${P.id}/instances/${pv.iid}/form`,null,headers()), skip=qSkips(), since=Date.now()-14*86400e3, ex=(r.extra||{}).a||{};
     for(const q of pv.questions){ if(q.closed||!(r.occ||{})[q.id]) continue;
       const cur=qList().find(x=>x.id===q.id); if(q.link.last&&cur&&qOccs(cur).length) continue; // a newer one in this round closed it
-      const all=qOccs(q,pv.meetings), os=all.filter((o,i)=>o.end>=since&&r.occ[q.id].includes(o.key)&&(!q.link.last||i===0)&&qEmpty((ex[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key));
+      const all=qOccs(q,pv.meetings), os=all.filter((o,i)=>o.open>=since&&r.occ[q.id].includes(o.key)&&(!q.link.last||i===0)&&qEmpty((ex[q.id]||{})[o.key])&&!skip.has(q.id+'|'+o.key));
       if(os.length) return qPromptOpen({o:os[0],qs:[q],prev:pv.iid}); } }
   catch(e){}
 }
@@ -5692,7 +5693,7 @@ function qPromptRender(){ const d=$('qpdlg'), pk=P.qpk; if(!d||!pk) return;
   const g=pk.qs[0].grp&&qGroups().find(x=>x.id===pk.qs[0].grp), ic=(g&&g.icon)||pk.qs[0].icon||'';
   const body=pk.prev?`<p class="m0">${esc(pk.qs[0].label)}</p>`:pk.qs.map(q=>`<div class="qp-q"><div class="qp-l">${q.icon?`<span class="qemo-s">${esc(q.icon)}</span>`:''}<b>${esc(q.label)}</b>${q.req?'':''}</div>${q.help?`<div class="qhelp">${linkText(q.help)}</div>`:''}${qBody(q,true)}</div>`).join('');
   const ready=!pk.prev&&pk.qs.some(q=>!qEmpty(qGet(q,myExtra().a)));
-  d.innerHTML=`<div class="dlg-h">${ic?`<span class="qp-ic">${esc(ic)}</span>`:`<span class="qp-ic">${ICON.star}</span>`}<h2 id="qp_h">${g?esc(g.label):t('How was it?')}<span class="qp-sub">${esc(qOccLabel(pk.o))}</span></h2>${pqb('x',t('Close'),'data-qpclose=""')}</div>
+  d.innerHTML=`<div class="dlg-h">${ic?`<span class="qp-ic">${esc(ic)}</span>`:`<span class="qp-ic">${ICON.star}</span>`}<h2 id="qp_h">${g?esc(g.label):qBefore(pk.qs[0])?t('Coming up'):t('How was it?')}<span class="qp-sub">${esc(qOccLabel(pk.o))}</span></h2>${pqb('x',t('Close'),'data-qpclose=""')}</div>
     <div class="dlg-b qp-b">${body}</div>
     <div class="dlg-f"><button type="button" class="btn ghost" data-qpskip>${t('Skip')}</button><span class="grow"></span>${pk.prev?`<button type="button" class="btn primary withic" data-qpgo>${ICON.ask}<span>${t('Answer')}</span></button>`
       :`<button type="button" class="btn primary withic" data-qpsend${ready&&!(P.form&&P.form.saving)?'':' disabled'}>${ICON.send}<span>${t('Send')}</span></button>`}</div>`; }
@@ -5708,20 +5709,25 @@ function qSaved(){ P.qAddWas=new Set(Object.values(myExtra().add).flat().map(o=>
 const qMayFill=q=>(editable()||(qAfter(q)&&P.data&&!inviteLock()))&&(!q.closed||canManage())&&(canManage()||(P.form&&P.form.can?P.form.can.has(q.id):q.who.mode==='all'));
 // After-meeting questions (link.to 'after'): one answer per meeting that has ended (each date of a repeating one), key "<meeting id>:<date>".
 // No linked meetings = all confirmed meetings of the round. last = only the latest one can be answered.
+// Timing: link.when 'before' = opens link.days days before the meeting starts, closes when it starts; else opens days after it ends.
 const qAfter=q=>!!(q&&q.link&&q.link.to==='after');
+const qBefore=q=>qAfter(q)&&q.link.when==='before';
 const qPer=q=>!!(q.link.each||qAfter(q));
 function meetEndAt(m,d){ if(m.allDay) return new Date(addDaysL(m.endDate&&!m.repeat?m.endDate:d,1)+'T00:00').getTime(); return new Date(d+'T00:00').getTime()+(m.end||24)*3600e3; }
-// Ended occurrences, newest first (ms = the round's meetings); next = the first one still to come.
+const meetStartAt=(m,d)=>new Date(d+'T00:00').getTime()+(m.allDay?0:(m.start||0)*3600e3);
+function qOccWin(q,m,d){ const days=(q.link.days||0)*86400e3; if(qBefore(q)){ const s=meetStartAt(m,d); const d0=new Date(d+'T00:00').getTime(); return {open:days?s-days:d0<s?d0:s-86400e3,close:s}; } return {open:meetEndAt(m,d)+days,close:Infinity}; }
+// Open occurrences, newest opened first (ms = the round's meetings); next = the next one to open (with .open).
 function qOccs(q,ms=inst().meetings){ const ids=q.link.ids&&q.link.ids.length?new Set(q.link.ids):null, now=Date.now(), out=[]; let next=null;
   for(const m of ms){ if(m.proposed||(ids&&!ids.has(m.id))) continue;
     const ds=m.repeat?[]:[m.date];
-    if(m.repeat) for(let d=firstOn(m.repeat.from,wdOf(m.date)),i=0;i<520&&(!m.repeat.until||d<=m.repeat.until);i++,d=addDaysL(d,7*m.repeat.every)){ ds.push(d); if(meetEndAt(m,d)>now) break; }
-    for(const d of ds){ const end=meetEndAt(m,d); if(end<=now) out.push({key:m.id+':'+d,m,d,end}); else if(!next||end<next.end) next={m,d,end}; } }
-  out.sort((a,b)=>b.end-a.end); out.next=next; return out; }
+    if(m.repeat) for(let d=firstOn(m.repeat.from,wdOf(m.date)),i=0;i<520&&(!m.repeat.until||d<=m.repeat.until);i++,d=addDaysL(d,7*m.repeat.every)){ ds.push(d); if(qOccWin(q,m,d).open>now) break; }
+    for(const d of ds){ const w=qOccWin(q,m,d), end=meetEndAt(m,d); if(w.open<=now&&w.close>now) out.push({key:m.id+':'+d,m,d,end,...w}); else if(w.open>now&&(!next||w.open<next.open)) next={m,d,end,...w}; } }
+  out.sort((a,b)=>b.open-a.open); out.next=next; return out; }
 // May I (still) answer q for this meeting date? last: only the newest; the server says which ones are mine (form.occ).
 function qOccOpen(q,key){ const os=qOccs(q); if(!os.some(o=>o.key===key)) return false; if(q.link.last&&os[0].key!==key) return false;
   if(canManage()) return true; const oc=P.form&&P.form.occ; return !oc||!oc[q.id]||oc[q.id].includes(key); }
 const qOccLabel=o=>`${meetTitle(o.m)} · ${dayLabel(o.d)}`;
+const qOpensWhen=ms=>{ const d=new Date(ms); return d.toLocaleDateString(LOC,{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString(LOC,{hour:'numeric',minute:'2-digit'}); };
 function qDateLabel(q,k){ if(!qAfter(q)) return dayLabel(k); const o=qOccs(q).find(x=>x.key===k); return o?qOccLabel(o)+(qOccOpen(q,k)?'':` · ${t('closed')}`):k; }
 // Dates of the repeating meetings a per-date question is linked to: the next 8 from today.
 function qDates(q){ if(qAfter(q)) return qOccs(q).slice(0,24).map(o=>o.key); if(!q.link.each) return []; const today=isoL(new Date()), out=new Set();
@@ -5755,7 +5761,7 @@ function todoList(){
   const nv=open&&P.myResp?vg.filter(g=>!g.opts.some(m=>myVotes().has(m.id))):[];
   if(nv.length) out.push({key:'vote',tab:'meetings',icon:'check',text:nv.length===1?t('Vote on the proposed times'):t('Vote in {n} polls for meeting times',{n:nv.length}),g:nv[0]});
   const ap=qList().length&&P.form&&P.form.can?qPromptPick(true):null;
-  if(ap) out.push({key:'after',tab:'questions',icon:'star',text:t('Rate {title}',{title:meetTitle(ap.o.m)}),pick:ap});
+  if(ap) out.push({key:'after',tab:'questions',icon:'star',text:qBefore(ap.qs[0])?t('Answer for {title}',{title:meetTitle(ap.o.m)}):t('Rate {title}',{title:meetTitle(ap.o.m)}),pick:ap});
   return out;
 }
 // Deadline today or tomorrow while something's still open: the strip turns amber.
@@ -5801,7 +5807,8 @@ function qTile(q){ const grp=q.type==='group', ic=grp?'note':q.place?'pin':(Q_KI
 // Short summary of who may answer / what it's about (chips under the title).
 function qWhoText(q){ const w=q.who||{mode:'all'}; return w.mode==='people'?t('{n} people',{n:(w.pids||[]).length}):w.mode==='meeting'?t('People in the meeting'):w.mode==='free'?t('People free then'):t('Everyone'); }
 function qLinkText(q){ const ms=qMeets(q);
-  if(qAfter(q)){ const b=q.link.last?t('After the latest meeting'):t('After each meeting'); return !ms.length?b:ms.length===1?`${b} · ${meetTitle(ms[0])}`:`${b} · ${t('{n} meetings',{n:ms.length})}`; }
+  if(qAfter(q)){ const n=q.link.days||0, bf=qBefore(q), b=n?(bf?(q.link.last?t('{n} days before the next meeting',{n}):t('{n} days before each meeting',{n})):(q.link.last?t('{n} days after the latest meeting',{n}):t('{n} days after each meeting',{n})))
+      :bf?(q.link.last?t('Before the next meeting'):t('Before each meeting')):q.link.last?t('After the latest meeting'):t('After each meeting'); return !ms.length?b:ms.length===1?`${b} · ${meetTitle(ms[0])}`:`${b} · ${t('{n} meetings',{n:ms.length})}`; }
   return !ms.length?t('Whole poll'):ms.length===1?`${meetTitle(ms[0])} · ${meetWhen(ms[0])}`:t('{n} meetings',{n:ms.length}); }
 const qLinkChip=q=>qAfter(q)?`<span>${ICON.clock}<span>${esc(qLinkText(q))}</span></span>`:qMeets(q).length?`<a href="#" data-qmeet="${qMeets(q)[0].id}">${ICON[qMeets(q)[0].proposed?'check':'star']}<span>${esc(qLinkText(q))}</span></a>`:`<span>${ICON.cal}<span>${t('Whole poll')}</span></span>`;
 function qSummary(q){
@@ -5879,7 +5886,7 @@ function qCard(q,fill){
   if(fold) return `<div class="meet qcard fold" id="q_${q.id}" data-qcard="${q.id}">${qTile(q)}<div class="mbody"><div class="mhead"><button type="button" class="qfoldb" data-qopen="${q.id}" aria-expanded="false">${title}<span class="qsum">${qSummary(q)}</span></button>${acts}</div></div></div>`;
   const ds=qDates(q), dsel=ds.length?`<select class="qdsel" data-qdate="${q.id}" aria-label="${qAfter(q)?t('Meeting'):t('Date')}">${ds.map(x=>`<option value="${x}"${x===qDate(q)?' selected':''}>${esc(qDateLabel(q,x))}</option>`).join('')}</select>`:'';
   const nx=qAfter(q)&&!ds.length?qOccs(q).next:null; // nothing has happened yet
-  const wait=qAfter(q)&&!ds.length?`<div class="qro">${ICON.clock}<span>${nx?t('Opens after {m}',{m:esc(qOccLabel(nx))}):t('Opens after the meeting.')}</span></div>`:'';
+  const wait=qAfter(q)&&!ds.length?`<div class="qro">${ICON.clock}<span>${nx?(qBefore(q)||q.link.days?t('Opens {when} · {m}',{when:esc(qOpensWhen(nx.open)),m:esc(qOccLabel(nx))}):t('Opens after {m}',{m:esc(qOccLabel(nx))})):qBefore(q)?t('Opens before the meeting.'):t('Opens after the meeting.')}</span></div>`:'';
   const inh=q.grp&&!q.own&&qGroups().some(g=>g.id===q.grp); // Applies to / Who come from the questionnaire (shown on it)
   const chips=[inh?'':qLinkChip(q),
     q.link.each?`<span>${ICON.repeat}<span>${t('Each date')}</span></span>`:'',
@@ -5910,7 +5917,7 @@ function renderQuestionsTab(){
   const view=d.draft?'results':mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
   const fold=!fill&&qs.length?`<button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${P.qfold?t('Show details'):t('Compact view')}" aria-label="${P.qfold?t('Show details'):t('Compact view')}">${ICON[P.qfold?'grow':'shrink']}</button>`:'';
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qAiOk()?`<button type="button" class="btn sm withic qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qAiOk()?`<button type="button" class="btn sm withic gtool qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
   const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
@@ -6171,9 +6178,10 @@ function qEditor(){
   const search=(k,n)=>n>6?`<input type="search" class="qdd-s" data-qsearch="${k}" placeholder="${t('Search')}" aria-label="${t('Search')}">`:'';
   const reps=ms.filter(m=>linked.has(m.id)&&m.repeat).length;
   const af=qAfter(e), lms=af?ms.filter(m=>!m.proposed):ms;
-  const linkDd=qDd('link',af?'clock':linked.size?'star':'cal',esc(af||linked.size?qLinkText({link:e.link}):t('Whole poll')),`${pickItem('data-qelink','poll',t('Whole poll'),!af&&!linked.size,ICON.cal)}${pickItem('data-qelink','after',t('After each meeting'),af,ICON.clock)}<div class="menu-sep"></div>${af?`<div class="muted small qdd-e">${t('Pick meetings, or none for all of them.')}</div>`:''}${search('link',lms.length)}
+  const linkDd=qDd('link',af?'clock':linked.size?'star':'cal',esc(af||linked.size?qLinkText({link:e.link}):t('Whole poll')),`${pickItem('data-qelink','poll',t('Whole poll'),!af&&!linked.size,ICON.cal)}${pickItem('data-qelink','before',t('Before each meeting'),af&&qBefore(e),ICON.clock)}${pickItem('data-qelink','after',t('After each meeting'),af&&!qBefore(e),ICON.clock)}<div class="menu-sep"></div>${af?`<div class="muted small qdd-e">${t('Pick meetings, or none for all of them.')}</div>`:''}${search('link',lms.length)}
     ${lms.length?lms.map(m=>`<label data-qsi="${esc((meetTitle(m)+' '+meetWhen(m)).toLowerCase())}"><input type="checkbox" data-qelm="${m.id}"${linked.has(m.id)?' checked':''}>${ICON[m.proposed?'check':'star']}<span class="minw">${esc(meetTitle(m))} · ${esc(meetWhen(m))}${m.proposed?` <span class="tag">${t('Option')}</span>`:''}${m.repeat?` <span class="tag">${t('Repeats')}</span>`:''}</span></label>`).join(''):`<div class="muted small qdd-e">${t('No meetings yet')}</div>`}
-    ${af?`<div class="menu-sep"></div><div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
+    ${af?`<div class="menu-sep"></div><div class="qetog qe-days">${ICON.clock}<label for="qe_days">${t('Opens')}</label><span class="mrow-n"><input type="number" id="qe_days" min="0" max="30" value="${esc(e.link.days||0)}" inputmode="numeric" aria-label="${t('Days')}"><span>${qBefore(e)?t('days before'):t('days after')}</span></span>${tip(qBefore(e)?t('Opens this many days before each meeting starts and closes when it starts. 0 = on the day of the meeting.'):t('Opens this many days after each meeting ends and stays open. 0 = right when it ends.'))}</div>
+    <div class="qetog">${ICON.clock}<label for="qe_last">${t('Only the latest meeting')}</label>${swc('qe_last',!!e.link.last,t('Only the latest meeting'))}</div>`
       :reps?`<div class="menu-sep"></div><div class="qetog">${ICON.repeat}<label for="qe_each">${t('Answer for each date')}</label>${swc('qe_each',!!e.link.each,t('Answer for each date'))}</div>`:''}`);
   const w=e.who.mode, parts=P.qparts||[], pk=new Set(e.who.pids||[]);
   const whoDd=qDd('who',w==='people'?'user':'users',esc(qWhoText({who:e.who})),`${pickItem('data-qewho','all',t('Everyone'),w==='all',ICON.users)}${pickItem('data-qewho','meeting',t('People in the linked meetings'),w==='meeting',ICON.star)}${pickItem('data-qewho','free',t('People free at the linked meetings'),w==='free',ICON.check)}${P.data.draft?'':pickItem('data-qewho','people',t('Pick people…'),w==='people',ICON.user)}
@@ -6220,6 +6228,7 @@ function qeRead(){ const e=P.qedit, v=id=>$(id)?$(id).value:undefined, c=id=>$(i
   if($('qe_cnt')) e.count=c('qe_cnt')?{label:(v('qe_cntl')??(e.count&&e.count.label)??'').trim(),max:20}:null;
   if($('qe_each')) e.link.each=c('qe_each');
   if($('qe_last')) e.link.last=c('qe_last');
+  if($('qe_days')){ const n=Math.max(0,Math.min(30,parseInt(v('qe_days'),10)||0)); if(n) e.link.days=n; else delete e.link.days; }
   if($('qe_rep')) e.repeat=c('qe_rep');
   if($('qe_own')) e.own=c('qe_own');
   e.req=c('qe_req'); e.vis=c('qe_priv')?'owner':'all';
@@ -6348,7 +6357,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.qmv&&q){ const i=qs.indexOf(q); qMove(i,i+(+ds.d)); return; }
   if(ds.qdup&&q){ const i=qs.indexOf(q), r=qRawOf(q), c={...JSON.parse(JSON.stringify(r)),id:undefined,at:undefined,tpl:undefined,label:r.label+' '+t('(copy)'),options:(q.options||[]).map(o=>({label:o.label}))}; const l=[...qs]; l.splice(i+1,0,c); saveQuestions(l); return; }
   if(ds.qetype){ qeRead(); P.qedit.type=ds.qetype; if(ds.qetype==='rating'&&!P.qedit.rating) P.qedit.rating={max:5}; P.qdd=null; qeRerender(); return; }
-  if(ds.qelink==='after'){ qeRead(); const l=P.qedit.link; P.qedit.link={to:'after',...(l.ids&&l.ids.length?{ids:l.ids}:{}),...(l.last?{last:true}:{})}; if(P.qedit.who.mode==='all') P.qedit.who={mode:'meeting'}; qeRerender(); return; }
+  if(ds.qelink==='after'||ds.qelink==='before'){ qeRead(); const l=P.qedit.link, was=l.to==='after'; P.qedit.link={to:'after',...(l.ids&&l.ids.length?{ids:l.ids}:{}),...(l.last?{last:true}:{}),...(ds.qelink==='before'?{when:'before'}:{}),...(was&&l.days?{days:l.days}:{})}; if(P.qedit.who.mode==='all') P.qedit.who={mode:'meeting'}; qeRerender(); return; }
   if(ds.qelink){ qeRead(); P.qedit.link={to:'poll'}; if(P.qedit.who.mode==='meeting'||P.qedit.who.mode==='free') P.qedit.who={mode:'all'}; P.qdd=null; qeRerender(); return; }
   if(ds.qewho){ qeRead(); P.qedit.who={mode:ds.qewho,...(ds.qewho==='people'?{pids:P.qedit.who.pids||[]}:{})}; if(ds.qewho!=='people') P.qdd=null; else qLoadParts(); qeRerender(); return; }
   if(ds.qepall){ qeRead(); P.qedit.who.pids=ds.qepall==='1'?(P.qparts||[]).map(p=>p.id):[]; qeRerender(); return; }
@@ -6369,11 +6378,11 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
 // Checkboxes inside the popups and editor switches.
 document.addEventListener('change',e=>{ const x=e.target; if(!P.data) return;
   if(x.dataset.qelm){ qeRead(); const s=new Set(P.qedit.link.ids||[]); x.checked?s.add(x.dataset.qelm):s.delete(x.dataset.qelm);
-    if(qAfter(P.qedit)){ P.qedit.link={to:'after',...(s.size?{ids:[...s]}:{}),...(P.qedit.link.last?{last:true}:{})}; qeRerender(); return; }
+    if(qAfter(P.qedit)){ const {ids,...l}=P.qedit.link; P.qedit.link={...l,...(s.size?{ids:[...s]}:{})}; qeRerender(); return; }
     P.qedit.link=s.size?{to:'meetings',ids:[...s],each:P.qedit.link.each}:{to:'poll'}; if(!s.size&&(P.qedit.who.mode==='meeting'||P.qedit.who.mode==='free')) P.qedit.who={mode:'all'}; qeRerender(); return; }
   if(x.dataset.qep){ const s=new Set(P.qedit.who.pids||[]); x.checked?s.add(x.dataset.qep):s.delete(x.dataset.qep); qeRead(); P.qedit.who.pids=[...s];
     const sm=document.querySelector('[data-qdd="who"] .qdd-l'); if(sm) sm.textContent=qWhoText({who:P.qedit.who}); return; }
-  if(['qe_place','qe_cnt','qe_priv','qe_each','qe_own','qe_last'].includes(x.id)){ qeRead(); qeRerender(); return; }
+  if(['qe_place','qe_cnt','qe_priv','qe_each','qe_own','qe_last','qe_days'].includes(x.id)){ qeRead(); qeRerender(); return; }
   if(x.dataset.qsel){ const q=qList().find(z=>z.id===x.dataset.qsel); qChange(y=>qPut(y,q,x.value?[x.value]:undefined)); return; }
   if(x.dataset.qdate){ P.qdate[x.dataset.qdate]=x.value; renderQuestions(); return; }
 });
@@ -6671,7 +6680,7 @@ function renderMine(el){
   else { wks=weeks(d.dates); P.week=Math.min(Math.max(0,P.week),wks.length-1); real=wks[P.week].filter(Boolean);
     if(!isWeekly()) pager=`<div class="wknav pill"><button class="btn" data-wk="-1" ${P.week===0?'disabled':''} aria-label="${t('Previous week')}">‹</button>${lblLS(`${dayLabel(real[0])} – ${dayLabel(real[real.length-1])}`,shortRange(real[0],real[real.length-1]))}
       <button class="btn" data-wk="1" ${P.week===wks.length-1?'disabled':''} aria-label="${t('Next week')}">›</button></div>`; }
-  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span><div class="seg iseg hseg tseg" role="group" aria-label="${t('Fill tools')}">${aiIc}${qfIc}</div>${editable()?histSeg('ans',clrIc):''}`,'tbar')}${aiFill()}${quickFill()}`;
+  let h=`<div class="asec">${tools(`${brushSeg}<span class="ml-auto"></span>${aiIc?`<div class="seg iseg hseg tseg">${aiIc}</div>`:''}<div class="seg iseg hseg tseg">${qfIc}</div>${editable()?histSeg('ans',clrIc):''}`,'tbar')}${aiFill()}${quickFill()}`;
   h+=`<div class="calsec">${secH('cal',t('Your days'),{tip:helpTxt})}`;
   // Until the first answer is sent, the first how-to sentence is shown (the ⓘ has the rest).
   if(editable()&&!P.myResp) h+=`<p class="help small ahint">${ICON.brush}<span>${P.mode==='days'?(TOUCH?t('Pick a colour, then tap days, or press and hold and drag to paint several.'):t('Pick a colour, then click (or drag across) the days you can make.'))
@@ -7846,7 +7855,7 @@ function sugPanel(){
 function sugRedraw(){ const el=$('sugp'); if(el) el.outerHTML=sugPanel(); const b=document.querySelector('[data-sugopen]'); if(b){ const n=sugCustom(); b.querySelector('.badge')?.remove(); b.classList.toggle('badgeb',!!n); if(n) b.insertAdjacentHTML('beforeend',`<span class="badge">${n}</span>`); } }
 function sugButton(){
   const n=sugCustom(), tot=sel().length;
-  return `<button type="button" class="btn sm withic ib${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Quick Suggest: best times…'))}" aria-label="${esc(t('Quick Suggest: best times…'))}">${ICON.zap}<span class="bl">${t('Quick Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
+  return `<button type="button" class="btn sm withic ib gtool${n?' badgeb':''} ${P.sugOpen?'on':''}" data-sugopen aria-expanded="${!!P.sugOpen}" ${tot?'':'disabled'} title="${esc(t('Quick Suggest: best times…'))}" aria-label="${esc(t('Quick Suggest: best times…'))}">${ICON.zap}<span class="bl">${t('Quick Suggest')}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
 }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-sugopen]')){ P.sugOpen=!P.sugOpen; renderBody(); return; }
@@ -7959,7 +7968,7 @@ function suggestSlots(rs,o,pat,hs,he,need,only,per,bucket){
 const sugAiOk=()=>!!CONFIG.aiFill;
 function sugAiBtn(){
   if(!sugAiOk()) return '';
-  return `<button type="button" class="btn sm withic ib ${P.sugAiOpen?'on':''}" data-sugai aria-expanded="${!!P.sugAiOpen}" title="${esc(t('Suggest with AI'))}" aria-label="${esc(t('Suggest with AI'))}">${ICON.spark}</button>`;
+  return `<button type="button" class="btn sm withic ib gtool ${P.sugAiOpen?'on':''}" data-sugai aria-expanded="${!!P.sugAiOpen}" title="${esc(t('Suggest with AI'))}" aria-label="${esc(t('Suggest with AI'))}">${ICON.spark}</button>`;
 }
 function sugAi(){
   if(!P.sugAiOpen||!sugAiOk()) return '';
@@ -10258,6 +10267,19 @@ function germanText(){ return {
 "Only the latest meeting": "Nur der letzte Termin",
 "Opens after the meeting.": "Öffnet nach dem Termin.",
 "Opens after {m}": "Öffnet nach {m}",
+"Opens {when} · {m}": "Öffnet {when} · {m}",
+"Opens before the meeting.": "Öffnet vor dem Termin.",
+"Coming up": "Demnächst",
+"Answer for {title}": "Antworten für {title}",
+"Before each meeting": "Vor jedem Termin",
+"Before the next meeting": "Vor dem nächsten Termin",
+"{n} days before each meeting": "{n} Tage vor jedem Termin",
+"{n} days before the next meeting": "{n} Tage vor dem nächsten Termin",
+"{n} days after each meeting": "{n} Tage nach jedem Termin",
+"{n} days after the latest meeting": "{n} Tage nach dem letzten Termin",
+"days after": "Tage danach",
+"Opens this many days before each meeting starts and closes when it starts. 0 = on the day of the meeting.": "Öffnet so viele Tage vor jedem Termin und schließt, wenn er beginnt. 0 = am Tag des Termins.",
+"Opens this many days after each meeting ends and stays open. 0 = right when it ends.": "Öffnet so viele Tage nach dem Ende jedes Termins und bleibt offen. 0 = direkt zum Ende.",
 "Pick meetings, or none for all of them.": "Termine wählen, oder keinen für alle.",
 "Preset": "Vorlage",
 "Preset deleted": "Vorlage gelöscht",

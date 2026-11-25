@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-X+dB27lMmJO8gCE7RUJwcOwyWtuBhsCEIJ5JYMCylg4=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-WTWfLnZhB7NgFPM8pJLwjPZc6q+KQdPNm377NJ9TwBA=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -457,7 +457,7 @@ async function insertInstance(env, poll, seq, fields, notified) {
     // Questions marked repeat (the default) come along with their questionnaires, without links to the old round's meetings.
     // After-meeting questions stay after-meeting questions (for all meetings of the new round) and keep who.
     const keepWho = (w) => (w && w.mode === 'people' ? w : { mode: !w || w.mode === 'free' || w.mode === 'meeting' ? 'all' : w.mode });
-    const copyLink = (x) => (isAfter(x) ? { link: { to: 'after', ...(x.link.last ? { last: true } : {}) }, who: x.who || { mode: 'meeting' } } : { link: { to: 'poll' }, who: keepWho(x.who) });
+    const copyLink = (x) => (isAfter(x) ? { link: afterLink(x.link), who: x.who || { mode: 'meeting' } } : { link: { to: 'poll' }, who: keepWho(x.who) });
     // Copies of every-round questions (tpl) don't come along: the poll's list adds them fresh below.
     const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false && !q.tpl);
     const used = new Set(qs.map((q) => q.grp).filter(Boolean));
@@ -1317,7 +1317,7 @@ function presetQuestions(list) {
   const reset = list.map((x) => {
     if (!x || typeof x !== 'object') return x;
     const after = isAfter(x);
-    return { ...x, link: after ? { to: 'after', ...(x.link.last ? { last: true } : {}) } : { to: 'poll' },
+    return { ...x, link: after ? afterLink(x.link) : { to: 'poll' },
       who: { mode: after && x.who && (x.who.mode === 'meeting' || x.who.mode === 'free') ? x.who.mode : 'all' } };
   });
   return validateQuestions(reset, [], [], new Set()).map(({ at, tpl, ...q }) => q);
@@ -2475,7 +2475,7 @@ async function getPoll(request, env, ctx, url, id) {
   const prev = all.filter((i) => i.seq < sel.seq).pop();
   if (prev) {
     const pq = questionsOf(prev).filter(isAfter), pm = JSON.parse(prev.meetings || '[]'), since = Date.now() - 14 * 86400e3;
-    const recent = pq.filter((q) => afterOccs(q, pm).some((o) => o.end >= since));
+    const recent = pq.filter((q) => afterOccs(q, pm).some((o) => o.open >= since));
     if (recent.length) {
       const used = new Set(recent.flatMap((q) => afterOccs(q, pm).map((o) => o.m.id)));
       out.prevAfter = { iid: prev.id, seq: prev.seq, questions: recent, groups: groupsOf(prev).filter((g) => recent.some((q) => q.grp === g.id)),
@@ -3367,7 +3367,7 @@ const NT_TYPES = ['chat', 'answers', 'votes', 'qanswers', 'meetings', 'questions
 const NT_SEE = new Set(['answers', 'votes', 'qanswers']); // need to see everyone's answers
 const EV_TYPE = { chat: 'chat', answer: 'answers', answer_changed: 'answers', vote: 'votes', qanswer: 'qanswers',
   meeting_set: 'meetings', meeting_proposed: 'meetings', meeting_changed: 'meetings', meeting_cancelled: 'meetings',
-  question_added: 'questions', round_open: 'rounds', poll_closed: 'rounds', poll_reopened: 'rounds' };
+  question_added: 'questions', question_open: 'questions', round_open: 'rounds', poll_closed: 'rounds', poll_reopened: 'rounds' };
 const EV_QUIET = new Set(['answer_changed', 'vote', 'qanswer']); // same person again within EV_GAP: logged, not pushed again
 const EV_GAP = 10 * 60000;
 const EV_KEEP_DAYS = 3;
@@ -3438,6 +3438,7 @@ async function ntFor(env, poll, uid) {
 const ntOut = (r) => ({ prefs: r.prefs, own: r.own, types: r.types });
 const wants = (a, type, ch, ev) => {
   if (!a.types.includes(type)) return false;
+  if (ev.kind === 'question_open' && (ev.tagged || []).length && !ev.tagged.includes(a.uid)) return false; // only people who may answer
   const v = a.prefs[type][ch];
   return type === 'chat' ? v === 'all' || (v === 'mentions' && (ev.tagged || []).includes(a.uid)) : !!v;
 };
@@ -3456,6 +3457,10 @@ function evText(ev, poll, lang) {
     case 'meeting_changed': return (de ? 'Termin geändert: ' : 'Meeting changed: ') + when;
     case 'meeting_cancelled': return (de ? 'Termin abgesagt: ' : 'Meeting cancelled: ') + when;
     case 'question_added': return (de ? 'Neue Fragen: ' : 'New questions: ') + n;
+    case 'question_open': {
+      const r = parseJ(ev.ref) || {}, at = r.t ? `${r.t}, ${fmtDay(r.d, lang)}` : fmtDay(r.d, lang);
+      return (r.b ? (de ? `Fragen vor ${at}: ` : `Questions before ${at}: `) : (de ? `Fragen zu ${at}: ` : `Questions about ${at}: `)) + n;
+    }
     case 'round_open': { const r = parseJ(ev.ref) || {}; return (de ? 'Neue Runde offen: ' : 'A new round is open: ') + periodText({ ...poll, lang }, { start_date: r.s, end_date: r.e }); }
     case 'poll_closed': return de ? 'Die Umfrage ist geschlossen' : 'The poll is closed';
     case 'poll_reopened': return de ? 'Die Umfrage ist wieder offen' : 'The poll is open again';
@@ -3487,6 +3492,55 @@ async function notifyEvent(env, poll, ev) {
     url: `/?p=${poll.id}${EV_TAB[type] ? '&tab=' + EV_TAB[type] : ''}`, body: evText(ev, poll, s.lang).slice(0, 200), ...(ev.push ? ev.push(s.lang) : {}) }), tag);
 }
 const fireEvent = (ctx, env, poll, ev) => ctx.waitUntil(notifyEvent(env, poll, ev).catch((e) => console.error('event', ev.kind, e)));
+// Per-meeting questions that opened on their own in the last 3 hours (before / after a meeting, link.when / days):
+// one question_open event per meeting date, to the accounts that may answer (in tagged; empty = everyone).
+// Meeting times are read as UTC wall clock (no poll time zone is stored). poll_events (kept 3 days) is the dedupe.
+const QOPEN_WINDOW = 3 * 3600e3;
+async function notifyQuestionOpens(env) {
+  const at = Date.now(), from = at - QOPEN_WINDOW;
+  const { results: insts } = await env.DB.prepare(`SELECT i.id, i.poll_id, i.seq, i.start_date, i.end_date, i.questions, i.meetings FROM instances i
+    WHERE i.questions LIKE '%"to":"after"%' AND (i.end_date >= ? OR i.meetings LIKE '%"repeat"%') LIMIT 200`)
+    .bind(new Date(at - (MAX_Q_DAYS + 10) * 86400e3).toISOString().slice(0, 10)).all();
+  let sent = 0;
+  for (const inst of insts) {
+    if (sent >= 30) break;
+    const meetings = JSON.parse(inst.meetings || '[]'), byKey = new Map();
+    for (const q of questionsOf(inst)) {
+      if (!isAfter(q) || q.closed) continue;
+      for (const o of afterOccs(q, meetings, at, true)) {
+        if (o.open > at || o.open <= from || o.close <= at) continue;
+        if (!byKey.has(o.key)) byKey.set(o.key, { o, qs: [] });
+        byKey.get(o.key).qs.push(q);
+      }
+    }
+    if (!byKey.size) continue;
+    const poll = await env.DB.prepare('SELECT * FROM polls WHERE id = ?').bind(inst.poll_id).first();
+    if (!poll) continue;
+    const { results: old } = await env.DB.prepare("SELECT ref FROM poll_events WHERE poll_id = ? AND kind = 'question_open'").bind(poll.id).all();
+    const done = new Set(old.flatMap((e) => { const r = parseJ(e.ref) || {}; return (r.q || []).map((id) => r.k + '|' + id); }));
+    let parts = null, responses = null;
+    for (const { o, qs: all } of byKey.values()) {
+      const qs = all.filter((q) => !done.has(o.key + '|' + q.id));
+      if (!qs.length || sent >= 30) continue;
+      let tagged = [];
+      if (qs.some((q) => (q.who || {}).mode !== 'all')) { // limited: the accounts that may answer at least one of them
+        if (!parts) {
+          parts = (await env.DB.prepare('SELECT id, user_id FROM participants WHERE poll_id = ? AND user_id IS NOT NULL').bind(poll.id).all()).results;
+          responses = (await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(inst.id).all()).results;
+        }
+        if (qs.some((q) => (q.who || {}).mode === 'all')) tagged = [];
+        else {
+          tagged = [...new Set(parts.filter((p) => qs.some((q) => canAnswerAt(q, p, o.m, o.date, responses))).map((p) => p.user_id))];
+          if (!tagged.length) continue;
+        }
+      }
+      const name = qs.map((q) => roundText(q.label, poll, inst)).slice(0, 3).join(' · ') + (qs.length > 3 ? ' …' : '');
+      await notifyEvent(env, poll, { kind: 'question_open', iid: inst.id, name, tagged: tagged.slice(0, 300),
+        ref: JSON.stringify({ k: o.key, q: qs.map((q) => q.id), d: o.date, t: String(o.m.title || '').slice(0, 80), b: isBefore(qs[0]) ? 1 : 0 }) });
+      sent++;
+    }
+  }
+}
 // Meetings saved: what's new, proposed, moved or gone (confirmed ones), at most 5 events per save.
 function meetingEvents(oldList, newList) {
   const old = new Map(oldList.map((m) => [m.id, m])), evs = [];
@@ -3662,6 +3716,7 @@ async function runScheduled(env) {
   } catch (e) { console.error('cleanup', e); }
   if (new Date().getUTCHours() === 3) { try { await deleteStalePolls(env); } catch (e) { console.error('retention', e); } }
   if (new Date().getUTCHours() === 4) { try { await mergeEmailDupesAll(env); } catch (e) { console.error('dupes', e); } }
+  try { await notifyQuestionOpens(env); } catch (e) { console.error('qopen', e); }
   try { await notifyDigests(env); } catch (e) { console.error('digest', e); }
   const { results: polls } = await env.DB.prepare("SELECT * FROM polls WHERE kind = 'series' OR remind_days IS NOT NULL").all();
   const t = today();
@@ -4168,7 +4223,7 @@ Calendars (Account page): connect Google or Outlook, or paste an iCal link; your
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone.
 
-QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked after a meeting has happened (e.g. "Rate the evening"). Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
+QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
 
 PEOPLE tab. Add people (by email, from your contacts, groups or favourites), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
 
@@ -4447,31 +4502,51 @@ function onRepeat(m, d) {
   return days >= 0 && days % (7 * m.repeat.every) === 0;
 }
 const MAX_QGROUPS = 15;
-// After-meeting questions (link.to 'after'): asked once per meeting that has ended (each date of a repeating one),
+// Per-meeting questions (link.to 'after'): asked once per meeting date (each date of a repeating one) in its window (occWindow),
 // answers { "<meeting id>:<YYYY-MM-DD>": value }. No ids = every confirmed meeting of the round.
 // The Worker doesn't know the poll's time zone, so it allows 14 h either way; the page shows the exact ones.
+// Timing (link.when / link.days): 'before' = opens `days` days before the meeting starts and closes when it starts;
+// otherwise (after) opens `days` days after it ends and stays open.
 const isAfter = (q) => !!(q && q.link && q.link.to === 'after');
+const isBefore = (q) => isAfter(q) && q.link.when === 'before';
+const MAX_Q_DAYS = 30;
+// A per-meeting link as stored: ids / last / when / days kept.
+const afterLink = (l, ids) => ({ to: 'after', ...((ids || l.ids || []).length ? { ids: ids || l.ids } : {}), ...(l.last ? { last: true } : {}),
+  ...(l.when === 'before' ? { when: 'before' } : {}), ...(Number.isInteger(l.days) && l.days > 0 ? { days: Math.min(l.days, MAX_Q_DAYS) } : {}) });
 const TZ_SLACK = 14 * 3600e3;
 function meetEndMs(m, d) {
   const base = Date.parse(d + 'T00:00:00Z');
   if (m.allDay) return Date.parse((m.endDate && !m.repeat ? m.endDate : d) + 'T00:00:00Z') + 86400e3;
   return base + (m.end || 24) * 3600e3;
 }
-// Occurrences that may have ended by now (newest first): [{ key, m, date, sure }] (sure = ended in every time zone).
-function afterOccs(q, meetings, at = Date.now()) {
+const meetStartMs = (m, d) => Date.parse(d + 'T00:00:00Z') + (m.allDay ? 0 : (m.start || 0) * 3600e3);
+// When q opens / closes for meeting m on date d (meeting times read as UTC wall clock; close = Infinity for after-questions).
+function occWindow(q, m, d) {
+  const days = (q.link.days || 0) * 86400e3;
+  if (isBefore(q)) { const s = meetStartMs(m, d); const d0 = Date.parse(d + 'T00:00:00Z'); return { open: days ? s - days : d0 < s ? d0 : s - 86400e3, close: s }; } // 0 days = on the day (all-day: the day before)
+  return { open: meetEndMs(m, d) + days, close: Infinity };
+}
+// Occurrences that may be open now (newest opened first): [{ key, m, date, open, close, sure }] (sure = opened in every time zone).
+// all: every occurrence, open or not (for the cron's opening notices).
+function afterOccs(q, meetings, at = Date.now(), all = false) {
   const ids = q.link.ids && q.link.ids.length ? new Set(q.link.ids) : null, out = [];
   for (const m of meetings) {
     if (m.proposed || (ids && !ids.has(m.id))) continue;
     const dates = [];
     if (m.repeat) {
       for (let d = firstOnWeekday(m.repeat.from, wdOf(m.date)), i = 0; i < 520 && (!m.repeat.until || d <= m.repeat.until); i++, d = addDays(d, 7 * m.repeat.every)) {
-        if (meetEndMs(m, d) - TZ_SLACK > at) break;
+        if (occWindow(q, m, d).open - TZ_SLACK > at) break;
         dates.push(d);
       }
-    } else if (meetEndMs(m, m.date) - TZ_SLACK <= at) dates.push(m.date);
-    for (const d of dates) out.push({ key: m.id + ':' + d, m, date: d, end: meetEndMs(m, d), sure: meetEndMs(m, d) + TZ_SLACK <= at });
+    } else dates.push(m.date);
+    for (const d of dates) {
+      const w = occWindow(q, m, d);
+      if (!all && (w.open - TZ_SLACK > at || w.close + TZ_SLACK <= at)) continue;
+      out.push({ key: m.id + ':' + d, m, date: d, ...w, end: meetEndMs(m, d), sure: w.open + TZ_SLACK <= at });
+    }
   }
-  out.sort((a, b) => b.end - a.end);
+  out.sort((a, b) => b.open - a.open);
+  if (all) return out;
   if (!q.link.last) return out;
   const i = out.findIndex((o) => o.sure); // only the latest: nothing older than the newest one that has surely ended
   return i < 0 ? out : out.slice(0, i + 1);
@@ -4501,7 +4576,7 @@ const afterOpen = (q, part, meetings, responses, admin) => afterOccs(q, meetings
 function linkWho(q, out, meetings, mids, pids) {
   const to = q.link && q.link.to;
   const ids = (to === 'meetings' || to === 'after') && Array.isArray(q.link.ids) ? [...new Set(q.link.ids.filter((x) => typeof x === 'string' && mids.has(x)))] : [];
-  if (to === 'after') out.link = { to: 'after', ...(ids.length ? { ids } : {}), ...(q.link.last ? { last: true } : {}) };
+  if (to === 'after') out.link = afterLink({ ...q.link, ids: [], days: q.link.days == null || q.link.days === '' ? 0 : int(q.link.days, 0, MAX_Q_DAYS, 'Days') }, ids);
   else out.link = ids.length ? { to: 'meetings', ids } : { to: 'poll' };
   if (to === 'meetings' && ids.length && q.link.each && repeatsOf(out, meetings).length) out.link.each = true;
   const mode = Q_WHO.includes(q.who && q.who.mode) ? q.who.mode : 'all';
