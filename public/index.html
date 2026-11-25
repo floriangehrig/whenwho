@@ -1318,7 +1318,7 @@
   .ntl>.ell{min-width:0} .ntwrap{container-type:inline-size} .ntg select.ntsel{width:auto;min-height:0;height:30px;margin:0;display:none;font:inherit;font-size:13px;padding:0 22px 0 8px;border-radius:8px;border:1px solid var(--line);background-color:var(--card);background-position:right 6px center;color:var(--ink)}
   @media (pointer:coarse){ .ntg select.ntsel{font-size:16px;height:32px} }
   @container (max-width:460px){ .ntg{grid-template-columns:minmax(0,1fr) auto auto;gap:2px 12px} .ntg.one{grid-template-columns:minmax(0,1fr) auto}
-    .ntch{flex-direction:column;gap:1px;font-size:11px;line-height:1.1} .ntg .seg.ntseg{display:none} .ntg select.ntsel{display:inline-block}
+    .ntch>span{display:none} .ntch svg{width:16px;height:16px} .ntg .seg.ntseg{display:none} .ntg select.ntsel{display:inline-block}
     .ntl{font-size:13.5px;gap:6px;min-height:40px} .ntl>.ell{white-space:normal;overflow:hidden;line-height:1.25;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} }
   .dmenu{position:fixed;z-index:60;min-width:200px;max-width:min(320px,calc(100vw - 16px));padding:6px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
   .dmenu .dm-h{padding:4px 8px 6px;font-size:12.5px;font-weight:600;color:var(--muted)}
@@ -4711,10 +4711,10 @@ function renderAccount(){
           <div class="stat"><b>${answers}</b><span>${t('answers in current rounds')}</span></div>
           <a class="stat" href="${esc(origin)}"><b>${(ME.answered||[]).length}</b><span>${t('polls answered')}</span></a>
         </div>
-        <div class="section" id="pushsec" hidden></div>
         <div class="section"><h3>${t('Sessions')}</h3><p class="help">${t('Signed in on a shared computer? End every session, on all devices.')}</p>
           <div class="row mt-3"><a href="#" class="btn sm" data-logout>${t('Sign out')}</a><a href="#" class="btn sm danger" data-logout="all">${t('Sign out everywhere')}</a></div></div>
       </div>
+      <div class="card span" id="pushsec" hidden></div>
       <div class="card span" id="ctcard"><div class="card-h"><h2 class="grow">${t('Contacts')}<span class="count" id="ct_count" hidden></span></h2>${tip(t('Favourites (★) come first when you add people to a poll. <b>From your polls</b> lists the people you added to your polls by email. Star anyone to make them a favourite.'),'right')}${pqb('plus',t('Add contacts'),'data-ctopen=""',' add')}</div>
         <div id="ctbox"></div></div>
       <div class="card span" id="calcard"><div class="card-h"><h2 class="grow">${t('Calendars')}<span class="count" id="cal_count" hidden></span></h2>${tip(t('Add the calendars from your phone, computer or mail app. With <b>grey out</b> on, the hours you’re busy in that calendar show hatched on every poll you answer, so you see clashes at a glance. Your answers don’t change by themselves. Only you see your calendars and their events.'),'right')}${pqb('plus',t('Add calendar'),'data-calopen=""',' add')}</div>
@@ -5250,7 +5250,7 @@ function ntGrid(prefs,types,{push,mail}){
     const v=!!prefs[k][c], lb=R[k][1]+' · '+(c==='p'?t('Notification'):t('Email'));
     return `<label class="sw" title="${esc(lb)}"><input type="checkbox" data-ntk="${k}" data-ntc="${c}"${v?' checked':''} aria-label="${esc(lb)}"><span></span></label>`;
   };
-  return `<div class="ntwrap"><div class="ntg${push&&mail?'':' one'}"><span></span>${push?`<span class="ntch" title="${esc(t('Right away on your devices'))}">${ICON.bell}<span>${t('Notification')}</span></span>`:''}${mail?`<span class="ntch" title="${esc(t('At most one email an hour'))}">${ICON.mail}<span>${t('Email')}</span></span>`:''}
+  return `<div class="ntwrap"><div class="ntg${push&&mail?'':' one'}"><span></span>${push?`<span class="ntch" title="${esc(t('Notification')+' · '+t('Right away on your devices'))}">${ICON.bell}<span>${t('Notification')}</span></span>`:''}${mail?`<span class="ntch" title="${esc(t('Email')+' · '+t('At most one email an hour'))}">${ICON.mail}<span>${t('Email')}</span></span>`:''}
     ${types.map(k=>`<span class="ntl">${R[k][0]}<span class="ell">${R[k][1]}</span>${tip(R[k][2],'right')}</span>${push?`<span class="ntc">${cell(k,'p')}</span>`:''}${mail?`<span class="ntc">${cell(k,'e')}</span>`:''}`).join('')}</div></div>`;
 }
 // Reads a click / change in a grid into a new prefs object (null if it wasn't a grid control).
@@ -5309,9 +5309,9 @@ async function ntAcctLoad(){ try{ const r=await api('GET','/me/notify'); NTA.pre
 function ntAcctHtml(){
   if(!NTA.prefs) return '';
   const push=pushAvail()!=='off', mail=!!CONFIG.emailEnabled; if(!push&&!mail) return '';
-  return `<div class="row mt-3"><span class="grow"><b>${t('Default for your polls')}</b></span>${tip(t('Used in every poll where you haven’t changed the settings with its bell. Answers, votes and answers to questions apply in polls you organise.'),'left')}</div>
-    <div id="nt_acct">${ntGrid(NTA.prefs,['chat','answers','votes','qanswers','meetings','questions','rounds'],{push,mail})}</div>
-    ${NTA.own?`<div class="row mt-2"><button type="button" class="btn sm" data-ntareset>${t('Reset to the standard settings')}</button></div>`:''}`;
+  return `<div class="${push?'section':''}"><div class="row"><h3 class="grow m0">${t('Default for your polls')}</h3>${tip(t('Used in every poll where you haven’t changed the settings with its bell. Answers, votes and answers to questions apply in polls you organise.'),'left')}</div>
+    <div id="nt_acct" class="mt-2">${ntGrid(NTA.prefs,['chat','answers','votes','qanswers','meetings','questions','rounds'],{push,mail})}</div>
+    ${NTA.own?`<div class="row mt-2"><button type="button" class="btn sm" data-ntareset>${t('Reset to the standard settings')}</button></div>`:''}</div>`;
 }
 async function ntAcctSave(prefs){
   try{ const r=await api('PUT','/me/notify',{prefs}); NTA.prefs=r.prefs; NTA.own=r.own; toast(t('Saved')); }catch(x){ toast(x.message); }
@@ -8860,8 +8860,8 @@ function pushSecDraw(){
   const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
     :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
   el.hidden=false;
-  el.innerHTML=`<h3 id="notifications">${t('Notifications')}</h3>
-    ${a==='off'?'':`<div class="row mt-3"><span class="grow">${t('Notifications on this device')}</span>${tip(t('Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.'),'left')}
+  el.innerHTML=`<div class="card-h"><h2 class="grow" id="notifications">${t('Notifications')}</h2>${a==='off'?'':tip(t('Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.'),'left')}</div>
+    ${a==='off'?'':`<div class="row"><span class="grow">${t('Notifications on this device')}</span>
       ${note?'':`<label class="sw" title="${esc(t('Notifications on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Notifications on this device'))}"><span></span></label>`}</div>
     ${note?`<p class="help m0">${note}</p>${a==='homescreen'?`<div class="row mt-3"><button type="button" class="btn sm withic" data-hsopen>${ICON.tap}<span>${t('Show me how')}</span></button></div>`:''}`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
     ${ntAcctHtml()}`;
