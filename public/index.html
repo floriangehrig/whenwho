@@ -3931,6 +3931,7 @@ const qPresetData=(list,icon)=>({scope:'questions',...(icon?{icon}:{}),questions
 // A poll's settings and the shown round's questions as preset data (Settings → Save as preset).
 function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon','meetLocation','meetNote']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
+  if(p.autoMeetings) out.autoMeetings=true;
   if((p.meetQuestions||[]).length) out.meetQuestions=mqtClone(p.meetQuestions);
   if((p.roundQuestions||[]).length) out.roundQuestions=mqtClone(p.roundQuestions,false,10);
   if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(365,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
@@ -3979,7 +3980,7 @@ function renderNew({edit=null}={}){
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'days',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true,hours:false})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
-    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[]),'',NOPEN)}
+    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[],false),'',NOPEN)}
     ${sset('questions','ask',t('Questions'),`<div id="nrBox" class="hide">${roundQsRows('nr',[])}</div><div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
@@ -4043,7 +4044,7 @@ function renderNew({edit=null}={}){
   // Presets: the rail above the form fills it in (title, settings) and carries the questions along (NP.qs).
   const NP={pick:'blank',qs:null};
   const formData=()=>{ const kind=getR('kind'), pv=patValue('np'), pk=pickerValue('new'), d={title:v0('title').trim(),description:v0('desc'),kind,answerMode:getR('ans'),hourStart:pv.hs,hourEnd:pv.he,dayPattern:pv.pat,
-      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()}; const mq=mqtClean(MQT.n); if(mq.length) d.meetQuestions=mq;
+      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()}; if($('n_mauto')&&$('n_mauto').checked) d.autoMeetings=true; const mq=mqtClean(MQT.n); if(mq.length) d.meetQuestions=mq;
     if(kind==='series'){ const rq=mqtClean(MQT.nr).map(({id,...x})=>x); if(rq.length) d.roundQuestions=rq; }
     if(kind==='series') Object.assign(d,{unit:v0('unit'),every:Math.max(1,+v0('every')||1),openDays:+v0('openDays')||0,deadlineDays:v0('dlDays')===''?null:+v0('dlDays')});
     if(kind==='single'&&v0('start')&&v0('end')) d.days=Math.max(1,Math.round((new Date(v0('end'))-new Date(v0('start')))/86400e3)+1);
@@ -4060,7 +4061,7 @@ function renderNew({edit=null}={}){
     const ab=f.querySelector(`[data-for="ans"] [data-sans="${d.answerMode||'days'}"]`); if(ab) ab.click();
     const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'days')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
-    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||''; MQT.n=mqtClone(d.meetQuestions); mqtDraw('n'); MQT.nr=mqtClone(d.roundQuestions,false,10); mqtDraw('nr');
+    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||''; $('n_mauto').checked=!!d.autoMeetings; MQT.n=mqtClone(d.meetQuestions); mqtDraw('n'); MQT.nr=mqtClone(d.roundQuestions,false,10); mqtDraw('nr');
     if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
     if(!keepQs){ NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; NP.qsEdited=false; qDraftSet(NP.qs||[]); NP.qs=NP.qs&&qDraftItems(); }
     sum(); };
@@ -4149,7 +4150,7 @@ function renderNew({edit=null}={}){
       try{ await api('DELETE','/polls/'+encodeURIComponent(edit.id)); }catch(e){ if(e.status!==404) throw e; } return null; }
     const s={title:body.title, description:body.description, answerMode:body.answerMode, hourStart:body.hourStart, hourEnd:body.hourEnd, dayPattern:body.dayPattern,
       hideResults:body.hideResults, allowComments:body.allowComments, requireEmail:body.requireEmail, invitedOnly:!!body.invitedOnly, password:body.password||null,
-      meetLocation:body.meetLocation, meetNote:body.meetNote, meetQuestions:body.meetQuestions||[], icon:body.icon||'', image:body.image||null};
+      meetLocation:body.meetLocation, meetNote:body.meetNote, meetQuestions:body.meetQuestions||[], autoMeetings:!!body.autoMeetings, icon:body.icon||'', image:body.image||null};
     if(kind==='series') Object.assign(s,{openDays:body.openDays, deadlineDays:body.deadlineDays});
     if(kind==='series'&&JSON.stringify(body.roundQuestions||[])!==JSON.stringify(o.roundQuestions||[])) s.roundQuestions=body.roundQuestions||[];
     if(mail) Object.assign(s,{notifyOpen:body.notifyOpen, remindDays:body.remindDays});
@@ -4178,6 +4179,7 @@ function renderNew({edit=null}={}){
     if(!check()) return;
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
       hideResults:$('hide').checked, allowComments:$('n_com').checked, requireEmail:$('n_reqmail').checked, password:v('pw')||undefined, meetLocation:v('n_mloc'), meetNote:v('n_mnote') };
+    if($('n_mauto').checked) body.autoMeetings=true;
     if($('n_invonly').checked) body.invitedOnly=true;
     { const er=mqtErr(MQT.n); if(er) return fail(er); const mq=mqtClean(MQT.n); if(mq.length) body.meetQuestions=mq; }
     if(kind==='series'){ const er=mqtErr(MQT.nr); if(er) return fail(er); const rq=mqtClean(MQT.nr); if(rq.length) body.roundQuestions=rq; }
@@ -6619,6 +6621,9 @@ function descEditor(id,val,help,extra,inc,loc){
     <div class="row"><button class="btn sm primary" data-mdescsave="${id}">${t('Save')}</button><button class="btn sm" data-mdesccancel>${t('Cancel')}</button></div></div>`;
 }
 async function saveMeetings(list){
+  // A meeting made from the poll's times (auto) whose time is changed by hand becomes a normal one, so Settings changes leave it alone.
+  const old=new Map((inst().meetings||[]).map(m=>[m.id,m])), when=m=>JSON.stringify([m.date,!!m.allDay,m.start,m.end,m.endDate||null]);
+  list=list.map(m=>{ const o=m.auto&&old.get(m.id); if(o&&when(o)!==when(m)){ const {auto,...x}=m; return x; } return m; });
   try{ const r=await api('PATCH',`/polls/${P.id}/instances/${inst().id}`,{meetings:list},headers()); P.data.instance=r.instance;
     const x=P.data.instances.find(y=>y.id===r.instance.id); if(x) x.meetings=r.instance.meetings;
     renderHeader(); renderSeries(); renderBody(); return true; }
@@ -9018,7 +9023,7 @@ function adminPanes(){
       <div class="field"><label class="row tight">${t('Which days and times')}</label><p class="help small mt-0">${t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.')}</p>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`):''}
-    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions)),`${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
+    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions),p.autoMeetings),`${p.autoMeetings?ICON.cal:''}${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
     ${man&&series?sset('questions','ask',t('Questions'),roundQsRows('r',mqtClone(p.roundQuestions,true,10)),(p.roundQuestions||[]).length?ICON.repeat:''):''}
     ${man?sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
@@ -9106,8 +9111,9 @@ const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',
 function roundQsRows(pre,qs){
   return `<div class="mdef-q rqs"><div class="srow-l mdef-h">${ICON.repeat}<span>${t('Questions for every round')}</span>${tip(t('Each new round gets these questions, fresh, even when a round’s copy was changed or deleted. ＋ Month / ＋ Dates fill in the round, e.g. “What songs should we practice in {month}?”. New ones are added to the current round too; changes count from the next round.'))}</div>${mqtBox(pre,qs)}</div>`;
 }
-function meetDefRows(pre,loc,note,qs){
-  return `<div class="mdef"><div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are.'))}</div>
+function meetDefRows(pre,loc,note,qs,auto){
+  return `<div class="mdef"><div class="qetog mdef-auto">${ICON.cal}<label for="${pre}_mauto">${t('Create the meetings from these times')}</label>${tip(t('For meetings that already exist: every offered day gets its meetings right away, one for each run of hours without a break (e.g. 9–12 and 14–18 make two). New rounds get theirs too, and they follow when you change the days or hours. Up to 100 per round. A meeting whose time you change by hand stays as it is.'))}${swc(pre+'_mauto',!!auto,t('Create the meetings from these times'))}</div>
+    <div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are.'))}</div>
     <div class="ifld locbox">${ICON.pin}<input type="text" id="${pre}_mloc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Default location')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${pre}_mloc_sug" value="${esc(loc||'')}"><div class="locsug" id="${pre}_mloc_sug" role="listbox" hidden></div></div>
     <label class="ifld">${ICON.note}<textarea id="${pre}_mnote" maxlength="1000" rows="3" aria-label="${t('Default description')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(note||'')}</textarea></label>
     <div class="mdef-q"><div class="srow-l mdef-h">${ICON.ask}<span>${t('Questions in every new meeting')}</span>${tip(t('Asked in each meeting you create in the planner, e.g. a vote on the place. People answer them right in the meeting.'))}</div>${mqtBox(pre,qs)}</div></div>`;
@@ -9518,7 +9524,7 @@ function wireAdmin(){
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const man=canManage();
-    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; }
+    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&$('s_mauto')&&$('s_mauto').checked!==!!P.data.poll.autoMeetings) b.autoMeetings=$('s_mauto').checked; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; }
       if(man&&MQT.r&&$('r_mqt')){ const er=mqtErr(MQT.r); if(er){ toast(er); return; } const rq=mqtClean(MQT.r); if(JSON.stringify(rq)!==JSON.stringify(mqtClone(P.data.poll.roundQuestions,true,10))) b.roundQuestions=rq; } if(man){ const pv=patValue('sp'); if(pv.empty){ toast(patEmptyMsg('sp')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     if(man){ const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image; }
     if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
@@ -9921,6 +9927,8 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+  'Create the meetings from these times':'Termine aus diesen Zeiten anlegen',
+  'For meetings that already exist: every offered day gets its meetings right away, one for each run of hours without a break (e.g. 9–12 and 14–18 make two). New rounds get theirs too, and they follow when you change the days or hours. Up to 100 per round. A meeting whose time you change by hand stays as it is.':'Für Termine, die schon feststehen: Jeder angebotene Tag bekommt sofort seine Termine, einen für jeden Zeitraum ohne Pause (z. B. 9–12 und 14–18 ergeben zwei). Neue Runden bekommen ihre auch, und sie passen sich an, wenn du Tage oder Uhrzeiten änderst. Bis zu 100 pro Runde. Ein Termin, dessen Zeit du von Hand änderst, bleibt, wie er ist.',
 "Just an example: nothing is sent or saved.": "Nur ein Beispiel: Nichts wird gesendet oder gespeichert.",
 "Weekends, not before 10": "Am Wochenende, nicht vor 10",
 "Every day from 6 pm": "Jeden Tag ab 18 Uhr",

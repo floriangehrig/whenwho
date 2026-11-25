@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-2u3rqTEh2pZEKrtTTUV0fA5vVJ274Ob6A3C0W9gepLM=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-SdLlR61qfGqKgVXKcqFZ0TupCjjlLY1E58CTfP7e9zA=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -419,6 +419,39 @@ function datesOf(inst, poll) {
   }
   return out;
 }
+// The hours offered on date d (whole hours, sorted; gaps where periods don't touch).
+function hoursOn(poll, pat, d) {
+  const ps = periodsOn(pat, d), out = [];
+  for (let h = 0; h < 24; h++) if (ps ? ps.some((p) => h >= p.hs && h < p.he) : h >= poll.hour_start && h < poll.hour_end) out.push(h);
+  return out;
+}
+// polls.auto_meetings: every offered date's runs of hours without a gap, one meeting each (whole days when the poll takes days only).
+function autoWindows(poll, inst) {
+  const pat = patternOf(poll), out = [];
+  for (const d of datesOf(inst, poll)) {
+    if (poll.answer_mode === 'days') { out.push({ date: d, allDay: true }); continue; }
+    let s = null, prev = null;
+    for (const h of [...hoursOn(poll, pat, d), 99]) {
+      if (s !== null && h !== prev + 1) { out.push({ date: d, allDay: false, start: s, end: prev + 1 }); s = null; }
+      if (s === null) s = h;
+      prev = h;
+    }
+  }
+  return out;
+}
+const autoKey = (m) => m.date + (m.allDay ? '' : ':' + m.start + '-' + m.end);
+// Keep hand-made meetings and auto ones that still fit, drop auto ones that don't, add the missing ones (up to MAX_MEETINGS).
+function syncAutoMeetings(poll, inst) {
+  const old = jsonList(inst.meetings), wins = autoWindows(poll, inst), want = new Set(wins.map(autoKey));
+  const list = old.filter((m) => !m.auto || want.has(autoKey(m))), have = new Set(list.filter((m) => m.auto).map(autoKey));
+  for (const w of wins) {
+    if (list.length >= MAX_MEETINGS) break;
+    if (have.has(autoKey(w))) continue;
+    list.push({ ...w, auto: true, title: '', location: poll.meet_location || '', note: poll.meet_note || '', participants: 'all',
+      ...(poll.kind === 'weekly' ? { repeat: { from: firstOnWeekday(today(), wdOf(w.date)), every: 1, until: null } } : {}) });
+  }
+  return validateMeetings(list, poll, old);
+}
 // Weekly schedule polls ask about a typical week. Their one round covers this fixed Monday-Sunday,
 // so answers reuse the date-keyed format; the page only shows weekday names. It never closes by date.
 const WEEK0 = '2001-01-01';
@@ -470,6 +503,7 @@ async function insertInstance(env, poll, seq, fields, notified) {
     const items = itemsOf({ questions: fields.questions }), add = roundQuestionCopies(jsonList(poll.round_questions), items);
     if (add.length) fields = { ...fields, questions: JSON.stringify([...items, ...add]) };
   }
+  if (poll.auto_meetings) fields = { ...fields, meetings: JSON.stringify(syncAutoMeetings(poll, { ...fields, meetings: '[]' })) };
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
   const cols = Object.keys(inst);
   const r = await env.DB.prepare(`INSERT OR IGNORE INTO instances (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => inst[c])).run();
@@ -566,7 +600,7 @@ function publicPoll(poll, admin, edit = admin) {
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
   if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
-  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions), ...(poll.kind === 'series' ? { roundQuestions: jsonList(poll.round_questions) } : {}) }); // planner defaults for new meetings; series: questions for every round
+  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions), autoMeetings: !!poll.auto_meetings, ...(poll.kind === 'series' ? { roundQuestions: jsonList(poll.round_questions) } : {}) }); // planner defaults for new meetings; series: questions for every round
   return p;
 }
 function publicInstance(inst, extra = {}) {
@@ -581,8 +615,7 @@ function validateEntries(entries, poll, dates) {
   const pat = patternOf(poll);
   for (const [k, v] of Object.entries(entries)) {
     if (!allowed.has(k)) continue;
-    const ps = periodsOn(pat, k);
-    const hourOk = (h) => Number.isInteger(h) && (ps ? ps.some((p) => h >= p.hs && h < p.he) : h >= poll.hour_start && h < poll.hour_end);
+    const ok = new Set(hoursOn(poll, pat, k)), hourOk = (h) => Number.isInteger(h) && ok.has(h);
     if (v === 'y' || v === 'i' || v === 'm' || v === 'n') { out[k] = v; continue; }
     if (poll.answer_mode === 'days') throw new HttpError(400, 'This poll only takes whole days');
     if (v && typeof v === 'object' && !Array.isArray(v)) {
@@ -650,6 +683,7 @@ function validateMeetings(list, poll, old = []) {
       one: mt.proposed && mt.one ? true : undefined,
       ...(repeat ? { repeat } : {}),
       inc: validateInc(mt.inc),
+      auto: mt.auto ? true : undefined, // made from the poll's times (polls.auto_meetings); kept in sync until its time is changed by hand
     };
     // endDate: last day of a multi-day all-day meeting (trip, offsite, holiday); one-off meetings only.
     if (mt.endDate != null && mt.endDate !== '' && mt.endDate !== mt.date) {
@@ -961,7 +995,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0035';
+const USER_DATA_REVIEWED = '0036';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1310,7 +1344,7 @@ function groupInput(b, partial, user) {
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
 const MAX_PRESETS = 50, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
-  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions', 'roundQuestions'];
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions', 'roundQuestions', 'autoMeetings'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
   if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
@@ -2394,6 +2428,7 @@ function readPollSettings(b, existing) {
   if (!existing || has('meetNote')) p.meet_note = str(b.meetNote, 1000, 'Description');
   if (has('meetQuestions')) { const l = meetQuestionTpls(b.meetQuestions); p.meet_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0033
   if (has('roundQuestions') && kind === 'series') { const l = roundQuestionTpls(b.roundQuestions); p.round_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0035
+  if (has('autoMeetings')) p.auto_meetings = b.autoMeetings ? 1 : 0; // only when sent: needs migration 0036
   if (!existing || has('image')) { p.image = imageData(b.image, 'Picture'); p.image_at = p.image ? now() : null; }
   return p;
 }
@@ -2558,7 +2593,18 @@ async function updatePoll(request, env, id) {
   const cols = Object.keys(p);
   await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
   if (p.round_questions !== undefined) await addNewRoundQuestions(env, poll, p.round_questions);
+  const np = { ...poll, ...p };
+  if (np.auto_meetings && ['auto_meetings', 'hour_start', 'hour_end', 'day_pattern', 'answer_mode'].some((c) => p[c] !== undefined && p[c] !== poll[c])) await resyncAutoMeetings(env, np);
   return json({ ok: true });
+}
+// Auto meetings follow the poll's times in its open rounds (closed ones keep theirs).
+async function resyncAutoMeetings(env, poll) {
+  const { results } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 3').bind(poll.id).all();
+  for (const inst of results || []) {
+    if (effStatus(inst) !== 'open') continue;
+    const m = JSON.stringify(syncAutoMeetings(poll, inst));
+    if (m !== inst.meetings) await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ? AND meetings = ?').bind(m, inst.id, inst.meetings).run();
+  }
 }
 // Every-round questions that were just added to the list are asked in the current round too, if it's open (edits count from the next round).
 async function addNewRoundQuestions(env, poll, list) {
@@ -4221,7 +4267,7 @@ SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes).
 ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
 Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles.
 
-MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone.
+MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
 
 QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
 
