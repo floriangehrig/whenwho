@@ -48,9 +48,21 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (same rule and repeat expansion as `pollBusy`, shared `myMeetingOccs`), proposals in open rounds (`voted` from `responses.votes`) and reply-by dates of open
   rounds (owner: Replies close; others only while unanswered), polls hidden from the overview left out. 14-day strip (tap a day = only that day) + agenda by day.
   Wide screens get a List / Calendar toggle (`upViewSeg`, localStorage `upv`): Calendar = the 14 days as a 7-column grid (`upGridHtml`); a day's header or +N more opens List on that day. Phones always get the list.
+  **Calendar** (button in the Upcoming header, `calvOpen`, dialog `#calvdlg`, classes `cv-*`, state `CALV`): Month · Week · List of everything with a date
+  (`cvLoad`, per visible range, cached 5 min): `/api/me/upcoming` (≤ 600 items), `/api/me/todo` (on the meeting day / reply-by date), `/api/me/poll-busy`
+  (my free hours, kind `answer`) and every linked calendar (`calendarEvents`, read in the browser, never stored). Colour = source (`cvColor`: poll =
+  palette by id or picked per device in localStorage `calpc`; calendar = `user_calendars.color_pick` (0041) ?? provider `color`), icon = kind
+  (`CV_KICON`) or the calendar's `icon` (0041). Filter panel (`cvSideHtml`, localStorage `calvf` `{ off, kinds }`) and the Account → Calendars rows
+  share `cvStyleDd` (palette + emoji → `PATCH /api/me/calendars/:id { color, icon }`). Phones: full screen, month cells show dots, tap = that day's list.
   WhatsApp-style chat line on each card (`pcChat`, `.pc-chat`): `GET /api/me/polls` sends `last = { name, avatar, avatarImg, body (plain, `chatPlain`), at, mine }`
   (newest message per poll, one window query in `myPolls`) next to `unread`; bold + green count while unread, tap = `?p=<id>&chat=1`, time via `chatWhen`.
-  Sort **Latest message** (`chat`, default; unread first). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.
+  Sort **Latest message** (`chat`, default; unread first).
+  **To do** card above Upcoming (`todoCard` / `tdLoad` / `tdBody`, state `TD`, `ME.todo`): `GET /api/me/todo` (`myTodo`, read only) = per poll I'm in
+  (not my own, no role, not hidden) what's open for me: `avail` (no answer this round), `questions` (`n`, `req`), `vote` (vote groups without my vote),
+  `after` (newest open after-meeting date, also from the round before). Questions use `pendingQuestions` (Worker: may answer, open, empty), the
+  same rule as the page's `todoList` (whose `req` item now counts every unanswered question, required ones named). One row per poll with a chip
+  per item → `?p=<id>&todo=<kind>`, which runs that To do item once the poll is drawn (`TODO_GO`, `todoGoCheck` → `todoDo`). Poll cards
+  in Polls you answered get a To do chip (`pcTodo`). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
 - `friends` (0010): friend requests between accounts. A request goes to an email (`to_email`; `to_id` once that address has an account),
@@ -191,6 +203,12 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   sends the text and the poll title to Workers AI and returns draft questions in the page's shape (`{ group: {label, icon} | null, questions }`,
   no ids, nothing stored). The page (`qAiPanel`) lists them to pick, optionally as a new questionnaire, and saves with `saveQuestions` (Undo).
   Shares the `AI_PER_DAY` cap.
+  **Remind** (🔔 in the organiser bar, ⋯ Remind who hasn't answered on a question, `qRemindOpen`, manage only, open rounds):
+  `POST /api/polls/:id/instances/:iid/questions/remind { qid?, message? }` (`remindQuestions` → `sendQuestionReminders`; one per poll per 10 min,
+  `login_attempts` kind `qremind`): people (no admin / editor role) with `pendingQuestions`; accounts (also guest rows whose address has one) get a
+  `question_remind` event (type `questions`, `tagged` = them, `TAGGED_KINDS`), guests with an address `questionsMail` with their personal link
+  (`&tab=questions`, mail quota). 0040: `polls.remind_questions` (Settings → Email → Questions too, needs Reminder) sends the same on the
+  reminder day from the cron (`remindQuestionsDue`, once per round via `instances.q_reminded`, reset with the reply-by date).
   **After-meeting questions**: `link = { to: 'after', ids?, last?, when?, days? }` (no ids = every confirmed meeting of the round) are asked once per
   meeting (each date of a repeating one) in its window (`occWindow` / page `qOccWin`): after (default) = opens `days` (0–30) after it ends and stays
   open; `when: 'before'` = opens `days` before it starts (0 = on the day) and closes when it starts (editor: Before / After each meeting + days);
@@ -203,16 +221,23 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   before) so a meeting there opens that round. Ended meetings get a Rate chip; rating results show the average per meeting.
   Questions and questionnaires have an optional `icon` (one emoji, `emojiIcon`; picker `qIconDd` with defaults `Q_ICONS`). The Answers tab is called **Availability** (key `answers`).
   **Questions in meetings**: questions linked to a meeting are embedded in its card and in vote option rows (`qMeetBlock`, wrapper
-  `[data-mqx]`, one line per question there until tapped, `P.mqopen`): people answer there with the counts showing (`qBody(q, true, px, live)`,
+  `[data-mqx]`): each question folds to one line by tapping its head (`data-mqopen`, choice kept in `P.mqfold` for the page's life); untouched
+  ones start folded, except in the card of the focus meeting (`mFocusId`: next one that hasn't ended, else the last one). People answer there with the counts showing (`qBody(q, true, px, live)`,
   `px` = id prefix so the tab and the card don't share ids) and Send (`qSend`); guests with no name yet get Answer → Questions tab.
   The organiser's **Ask ▾** on a card (`qMeetAsk`: place vote, choice, yes/no, text, rating, from a preset linked to it via `qPresetAdd(pr, mid)`)
   and ✎ open the editor inside the card (`qOpenEditor(q, mid)` → `P.qedit.inMeet`). `renderQuestions` draws the tab (`renderQuestionsTab`,
   without the editor when it's in a card) and then `qMeetRefresh` (only the `[data-mqx]` blocks, focus kept by `keepFocus`).
   **Questions for new meetings** (0033 `polls.meet_questions`, like `meet_location` / `meet_note`): up to 5 templates (questions without
-  id / link / who, `meetQuestionTpls` in the Worker, sent as `meetQuestions`, editors only; also in presets). Edited with one small engine
+  link / who, with a stable id, `meetQuestionTpls` in the Worker, sent as `meetQuestions`, editors only; also in presets). Edited with one small engine
   (`mqtBox` / `mqtDraw`, live list `MQT[pre]`, `data-mqt*`) in Settings / New poll → Meetings (`meetDefRows`) and Plan new → Details
   (`#dm_qs`, `P.dmeta.qs`, pre-filled from the poll). `saveDrafts` checks the 30-per-round limit first, then adds one question per template
   for each new meeting, or one linked to all of them with **One question for all** (`dm.qOne`) (`mqtQuestions`).
+  **Apply to all meetings** (0039 `polls.meet_apply`, `meetApply`, switch in `meetDefRows`): the Worker (`applyMeetDefaults`, stored by
+  `storeMeetDefaults` / `syncMeetDefaults` for open rounds) gives every meeting the defaults: empty location / description or the old default →
+  the new one; one copy per meeting per template (`mtpl` = template id, `mh` = `mqSig` of the template copied; within 30 per round).
+  Unedited copies (signature = `mh`) follow template changes (option ids kept by label); copies of removed templates / deleted meetings go unless
+  edited or answered. Runs on settings changes (`updatePoll`), `resyncAutoMeetings`, `insertInstance` and `updateInstance` meeting saves.
+  Then the planner starts without the templates (`dmQs`) so they aren't added twice.
   **Questions in every round** (series): a question with `repeat !== false` is copied into the next round (`insertInstance`; editor switch
   `qe_rep` at the top, ⋯ Ask in every round / Only this round, 🔁 Every round tag `qEvery`). 0035 `polls.round_questions` = up to 10 templates
   with stable ids (`roundQuestionTpls`, sent as `roundQuestions`, editors of a series; presets too), edited in Settings → Questions and New poll → Questions
@@ -302,6 +327,8 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   (availability not sent, required questions empty `qReqOpen`, vote groups without my vote, after-meeting questions via `qPromptPick(true)`).
   `todoSync()` draws the `#todo` strip under the header chips (amber when the deadline is today / tomorrow) and the `.tdot` dots on the tabs;
   it runs from `renderBody`, `renderMeetings`, `renderQuestions` and `renderHeader`. Tapping a chip (`data-todo`) opens the tab and flashes the spot.
+- **Swipe to close** (page only, phones): bottom sheets with a grab bar (`dialog.dlg`, the day panel `.dpanel`, the chat drawer) close with a downward
+  swipe (`SHEETS` / `SW`, touch listeners; from the header always, from the body only when scrolled to the top; short drags snap back, `.sheet-drag`).
 - **Undo / redo** (page only): two histories in `HIST`, `ans` (My answer: marks + Quick fill layers) and `plan` (planner drafts + Suggest dates).
   `histTick()` runs at the start of every `renderBody()` and pushes the last snapshot when the state changed, so any edit path is covered
   without hooks (one drag = one step; name/comment typing isn't tracked). ↶ / ↷ in one small grey box (`histSeg`, `.hseg`; My answer adds its ✕ Clear there) and ⌘Z / ⌘⇧Z / Ctrl+Y

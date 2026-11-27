@@ -295,6 +295,24 @@
       ],
       "port": 8781,
       "autoPort": false
+    },
+    {
+      "name": "whenwho-todo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8780",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8780",
+        "--persist-to",
+        ".wrangler/todo-state"
+      ],
+      "port": 8780,
+      "autoPort": false
     }
   ]
 }

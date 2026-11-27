@@ -548,6 +548,126 @@
   .acct-list .help{margin:6px 0}
   .cmark{flex:none;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 16%,transparent)}
   .cmark svg{width:16px;height:16px}
+  .cmark.em{font-size:17px;line-height:1}
+  /* Calendar dialog (home → Upcoming → Calendar): Month / Week / List, filter panel on the left (a toggled panel on narrow screens) */
+  .up-hr{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+  .up-cal{min-height:32px}
+  .cvdlg{width:min(1180px,calc(100vw - 32px));height:min(860px,calc(100dvh - 32px));max-height:none}
+  .cvdlg .dlg-h h2{display:flex;align-items:center;gap:8px} .cvdlg .dlg-h h2 svg{width:18px;height:18px;color:var(--accent)}
+  .cvdlg .dlg-h .tip{margin-right:auto}
+  .cv-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .cv-nav{display:flex;align-items:center;gap:4px} .cv-nav .qb{border-color:var(--line)}
+  .cv-lab{margin:0;flex:1 1 auto;font-size:17px;font-weight:700;text-transform:capitalize}
+  .cv-seg button{padding:5px 12px}
+  .cv-fbtn.on{border-color:var(--accent);color:var(--accent)} .cv-fbtn .pill{margin-left:2px}
+  .cv-main{flex:1 1 auto;min-height:0;display:flex}
+  .cv-side{flex:none;width:260px;overflow:auto;border-right:1px solid var(--line);padding:12px 12px 16px;overscroll-behavior:contain}
+  .cv-view{flex:1 1 auto;min-width:0;overflow:auto;padding:12px 16px 16px;overscroll-behavior:contain;display:flex;flex-direction:column}
+  .cv-side[hidden],.cv-view[hidden]{display:none}
+  .cv-sec+.cv-sec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+  .cv-sec .ddh{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 2px 6px}
+  .cv-an{text-transform:none;letter-spacing:0;font-weight:500} .cv-an .ddb{border:0;background:none;padding:0;font:inherit;color:var(--accent);cursor:pointer}
+  .cv-f{display:flex;align-items:center;gap:6px;min-height:34px;padding:2px 4px;border-radius:8px;font-size:14px}
+  .cv-f:hover{background:var(--sunken)}
+  .cv-f label,label.cv-f{display:flex;align-items:center;gap:8px;min-width:0;margin:0;cursor:pointer;font-weight:500}
+  .cv-f input[type=checkbox]{flex:none;margin:0;width:16px;height:16px;accent-color:var(--accent)}
+  .cv-f .tile.sm{width:22px;height:22px;border-radius:6px;flex:none} .cv-f .tile.sm .tile-e{font-size:13px} .cv-f .tile.sm .tile-i{font-size:10px}
+  .cv-ki{display:inline-flex;flex:none;line-height:0} .cv-ki svg{width:14px;height:14px}
+  .cv-f .cv-ki{color:var(--muted)}
+  .cv-addcal{margin-top:8px}
+  .dd.cv-sty{margin:0;flex:none}
+  .dd.cv-sty>summary{padding:0;min-height:0;width:24px;height:24px;border:0;border-radius:7px;background:var(--c);display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+  .dd.cv-sty>summary::after{display:none}
+  .cv-styp{width:232px;min-width:0!important}
+  .cv-styp .ddh{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:2px 2px 6px}
+  .cv-pal{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+  .cv-pal button{height:26px;border:0;border-radius:7px;background:var(--c);cursor:pointer;padding:0}
+  .cv-pal button.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--c)}
+  .cv-pal .cv-def{grid-column:1/-1;height:28px;background:var(--sunken);color:var(--ink);font:inherit;font-size:13px;border:1px solid var(--line)}
+  .cv-pal .cv-def.on{border-color:var(--accent);box-shadow:none}
+  .acct-list .acts .dd.cv-sty{align-self:center;margin:0 4px}
+  /* entries: tinted by the source colour, icon = kind */
+  .cv-ev{display:flex;align-items:center;gap:4px;min-width:0;width:100%;padding:2px 6px;border:0;border-left:3px solid var(--c);border-radius:6px;
+    background:color-mix(in srgb,var(--c) 15%,var(--card));color:var(--ink);font:inherit;font-size:12px;line-height:1.35;text-align:left;cursor:pointer;text-decoration:none}
+  .cv-ev:hover{text-decoration:none;background:color-mix(in srgb,var(--c) 24%,var(--card))}
+  .cv-ev .cv-ki{color:var(--c)} .cv-ev .cv-ki svg{width:12px;height:12px} .cv-ee{flex:none;font-size:12px;line-height:1}
+  .cv-ev .cv-tm{flex:none;font-variant-numeric:tabular-nums;color:var(--muted);font-size:11.5px}
+  .cv-ev .cv-et{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}
+  .cv-ev.k-proposed{background:var(--card);border:1px dashed var(--c);border-left:3px solid var(--c)}
+  .cv-ev.k-proposed.voted .cv-et::after{content:" ✓";color:var(--yes-dark)}
+  .cv-ev.k-answer{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 14%,var(--card)) 0 6px,var(--card) 6px 10px);color:var(--ink-2)}
+  .cv-ev.k-deadline,.cv-ev.k-todo{background:var(--card);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent)}
+  .cv-ev.k-deadline .cv-ki{color:var(--maybe)}
+  /* month */
+  .cv-month{flex:1 1 auto;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(88px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .cv-wd{background:var(--sunken);padding:6px 8px;font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .cv-mc{background:var(--card);padding:4px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0}
+  .cv-mc.we{background:color-mix(in srgb,var(--sunken) 55%,var(--card))} .cv-mc.out{background:var(--sunken)} .cv-mc.out .cv-dn{color:var(--muted);opacity:.7}
+  .cv-dn{align-self:flex-start;min-width:26px;height:24px;padding:0 6px;border:0;border-radius:999px;background:none;font:inherit;font-size:13px;font-weight:650;color:var(--ink);cursor:pointer}
+  .cv-dn:hover{background:var(--sunken)}
+  .cv-mc.today .cv-dn{background:var(--accent);color:var(--on-brand)}
+  .cv-more{align-self:flex-start;border:0;background:none;padding:0 4px;font:inherit;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer}
+  .cv-dots{display:none}
+  /* week */
+  .cv-week{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .cv-wkh,.cv-wka,.cv-wkg{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr))}
+  .cv-wkh{background:var(--sunken);border-bottom:1px solid var(--line)}
+  .cv-wkd{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 0;border:0;background:none;font:inherit;cursor:pointer;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:650}
+  .cv-wkd b{font-size:18px;color:var(--ink);letter-spacing:0} .cv-wkd.today b{color:var(--accent)}
+  .cv-wka{border-bottom:1px solid var(--line);min-height:34px}
+  .cv-wkl{font-size:10.5px;color:var(--muted);padding:6px 4px;text-align:right}
+  .cv-wac{display:flex;flex-direction:column;gap:2px;padding:3px;border-left:1px solid var(--line);min-width:0}
+  .cv-wkb{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+  .cv-wkg{position:relative}
+  .cv-hl{position:absolute;left:0;right:0;height:var(--wh);border-top:1px solid var(--line);pointer-events:none}
+  .cv-hl span{position:absolute;left:4px;top:-1px;width:44px;text-align:right;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;transform:translateY(-50%);background:var(--card);padding:0 2px}
+  .cv-hl:first-child span{transform:none}
+  .cv-wc{position:relative;border-left:1px solid var(--line);min-width:0}
+  .cv-wc.today{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+  .cv-wp{position:absolute;padding:1px 2px;box-sizing:border-box}
+  .cv-wp .cv-ev{height:100%;flex-direction:column;align-items:flex-start;gap:0;padding:3px 5px;overflow:hidden}
+  .cv-wp .cv-ev .cv-ki{position:absolute;right:6px;top:5px}
+  .cv-wp .cv-ev .cv-ee{position:absolute;right:6px;top:4px}
+  .cv-wp .cv-et{white-space:normal;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;width:calc(100% - 14px)}
+  .cv-now{position:absolute;left:0;right:0;height:2px;background:var(--no);z-index:2;pointer-events:none}
+  .cv-now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--no)}
+  /* list */
+  .cv-list{margin-top:0}
+  .cv-lr{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 10px;border-left:3px solid var(--c);border-radius:6px;margin:4px 0;background:color-mix(in srgb,var(--c) 6%,transparent)}
+  .cv-lr .up-time{width:92px;flex:none;font-size:13px;font-variant-numeric:tabular-nums}
+  .cv-lt{flex:none;width:32px;display:grid;place-items:center} .cv-lt .cv-ev{width:28px;height:28px;padding:0;justify-content:center;border-left:0;border-radius:8px}
+  .cv-lt .cv-ev .cv-ki svg{width:15px;height:15px} .cv-lt .cv-ee{font-size:16px}
+  .cv-lb{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--ink);text-align:left;cursor:pointer}
+  .cv-lk{display:inline-flex;align-items:center;gap:4px;color:var(--c);flex:none;white-space:nowrap} .cv-lk svg{width:12px;height:12px}
+  .cv-all{align-self:flex-start;margin-bottom:8px} .cv-none{margin:16px 0}
+  .cv-pop{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;display:flex;align-items:flex-start;gap:10px;width:min(380px,calc(100% - 32px));
+    padding:12px 12px 12px 14px;border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;background:var(--card);box-shadow:var(--shadow-pop)}
+  .cv-pop[hidden]{display:none}
+  .cv-pb{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;font-size:13.5px} .cv-pb b{font-size:15px;overflow-wrap:anywhere} .cv-pb svg{width:13px;height:13px;vertical-align:-2px}
+  .cvdlg[open]{position:fixed}
+  @media (max-width:900px){
+    .cv-side{width:auto;flex:1 1 auto;border-right:0}
+    .cv-seg{margin-left:auto} .cv-lab{order:5;flex:1 1 60%;font-size:16px} .cv-fbtn{order:6}
+  }
+  @media (max-width:560px){
+    .cvdlg{width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;border:0}
+    .cvdlg .dlg-h::before{display:none}
+    .cvdlg .dlg-h{padding-top:calc(10px + env(safe-area-inset-top))}
+    .up-cal span{display:none}
+    .cv-bar{padding:8px 12px} .cv-view{padding:8px}
+    .cv-bar{gap:6px} .cv-nav .btn{padding-left:9px;padding-right:9px} .cv-nav .qb{width:30px} .cv-seg button{padding:5px 7px;font-size:12.5px} .cv-fbtn{padding-left:7px;padding-right:7px} .cv-fbtn>span:not(.pill){display:none}
+    .cv-month{grid-template-rows:auto repeat(6,minmax(64px,1fr))}
+    .cv-mc{padding:3px 2px;cursor:pointer;align-items:center}
+    .cv-mc .cv-ev,.cv-mc .cv-more{display:none}
+    .cv-dots{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;max-width:100%}
+    .cv-dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+    .cv-wd{padding:4px 2px;text-align:center;font-size:10.5px}
+    .cv-wkh,.cv-wka,.cv-wkg{grid-template-columns:38px repeat(7,minmax(0,1fr))}
+    .cv-hl span{width:32px;font-size:10px}
+    .cv-wp .cv-ev{padding:2px 3px;font-size:10.5px} .cv-wp .cv-ev .cv-ki,.cv-wp .cv-ev .cv-ee,.cv-wp .cv-ev .cv-tm{display:none} .cv-wp .cv-et{width:100%}
+    .cv-wac .cv-ev .cv-tm,.cv-wac .cv-ev .cv-ki{display:none} .cv-wac .cv-ev{padding:1px 3px;font-size:10.5px}
+    .cv-lr .up-time{width:74px;font-size:12px}
+  }
   .acct-list li.off .cname{color:var(--muted)} .acct-list li.off .cmark{filter:grayscale(1);opacity:.6}
   .acct-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:22px 12px;margin-top:6px;border:1px dashed var(--line-strong);border-radius:var(--r-lg);color:var(--muted);font-size:14px}
   .acct-empty>svg{width:26px;height:26px;color:var(--accent)}
@@ -850,7 +970,10 @@
   .mqx{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)} .mqx.v{margin-top:2px;padding-top:6px;gap:6px}
   .mqx-q{display:flex;flex-direction:column;gap:6px;min-width:0} .mqx-r{display:flex;align-items:center;gap:6px;min-width:0}
   .mqx-h{flex:1 1 auto;display:flex;align-items:center;gap:8px;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left}
-  .mqx-tog{cursor:pointer} .mqx-q.fold{flex-direction:row;align-items:center}
+  .mqx-tog{cursor:pointer;margin:-4px -6px;padding:4px 6px;border-radius:8px} .mqx-tog:hover{background:var(--sunken)} .mqx-q.fold{flex-direction:row;align-items:center}
+  .mqx-cv{display:inline-flex;flex:none;margin-left:6px;color:var(--muted)} .mqx-cv svg{width:15px;height:15px;transition:transform .15s} .mqx-tog[aria-expanded=true] .mqx-cv svg{transform:rotate(180deg)} .mqx-tog .mqx-t+.mqx-cv{margin-left:auto}
+  @media (prefers-reduced-motion:reduce){.mqx-cv svg{transition:none}}
+  @media (max-width:560px){.mqx .mqx-t b{white-space:normal;overflow-wrap:anywhere;line-height:1.3}}
   .mqx-t{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:13.5px} .mqx-t b{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .mqx-t>svg{width:15px;height:15px;flex:none;color:var(--accent)}
   .mqx-s{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap} .mqx-s svg{width:13px;height:13px;color:var(--accent)}
   .mqx .macts{margin-left:auto} .mqx-h+.macts{margin-left:0} .mqx .qopt{min-height:38px} .mqx .qedit{margin:0}
@@ -1329,6 +1452,22 @@
   .up-gt{color:var(--ink);font-weight:500;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} .up-ge{margin-right:4px}
   .up-gmore{align-self:flex-start;border:0;background:none;padding:2px 6px;font:inherit;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;border-radius:6px}
   .up-gmore:hover{background:var(--accent-weak)}
+  /* To do card (home): one row per poll, a chip per thing to do, reply-by date on the right (amber when today / tomorrow). */
+  .td-list{display:flex;flex-direction:column;margin-top:var(--s3)}
+  .td-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px;border-radius:var(--r)}
+  .td-row+.td-row{border-top:1px solid var(--line);border-radius:0}
+  .td-row .tile{margin-top:2px}
+  .td-b{min-width:0;display:flex;flex-direction:column;gap:6px}
+  .td-t{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} a.td-t:hover{text-decoration:none;color:var(--accent)}
+  .td-cs{display:flex;flex-wrap:wrap;gap:6px}
+  .td-c{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:4px 11px;border-radius:999px;background:var(--accent-weak);color:var(--accent-ink);max-width:100%}
+  .td-c span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .td-c svg{width:14px;height:14px;flex:none}
+  .td-c:hover{text-decoration:none;filter:brightness(.96)}
+  .td-dl{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;margin-top:3px} .td-dl svg{width:14px;height:14px}
+  .td-row.soon .td-dl{padding:2px 8px;border-radius:999px;background:var(--maybe-bg);color:var(--maybe-ink);margin-top:0}
+  .mrow-q.off{opacity:.45}
+  .pc-td{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--maybe-bg);color:var(--maybe-ink)} .pc-td svg{width:13px;height:13px}
+  @media (max-width:560px){ .td-row{grid-template-columns:36px minmax(0,1fr);padding:10px 2px} .td-row .tile.sm{width:36px;height:36px;border-radius:10px} .td-dl{grid-column:2;margin-top:0} .td-row.soon .td-dl{justify-self:start} }
   /* Phones: a week of day chips fills the width (swipe for the next), rows drop the time column and show it in the second line. */
   @media (max-width:560px){
     .up-strip{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:calc((100% - 6 * 5px) / 7);gap:5px;scroll-snap-type:x mandatory;margin-inline:-2px;padding-inline:2px}
@@ -1479,6 +1618,7 @@
   @keyframes cdPing{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(1.55);opacity:0}}
   .chatdock.peek.ping::before{animation-name:cdPingW} @keyframes cdPingW{0%{transform:scale(1);opacity:.7}70%,100%{transform:scale(1.15,1.5);opacity:0}}
   @media (prefers-reduced-motion:reduce){ .chatdock,.chatdock .cd-peek,.chatdock.ping::before{animation:none!important;transition:none} }
+  .sheet-drag{transition:none!important;will-change:transform}
   .chatback{display:none}
   .chatdrawer{position:fixed;top:0;right:0;bottom:0;z-index:70;width:min(400px,100vw);display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);
     box-shadow:var(--shadow-pop);transform:translateX(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
@@ -1785,10 +1925,10 @@
     .pcard{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:12px;row-gap:1px;align-items:center;min-height:0;padding:12px 52px 12px 14px}
     .pcard>.tile{grid-row:1/4;margin:0;align-self:center}
     .pcard>:not(.tile):not(.pc-copy){grid-column:2}
+    .pcard>.pc-chat.pc-chat{grid-column:1/-1;margin:10px -52px -12px -14px;padding:8px 12px 10px} .pcc-h{display:none} .pcc-wt{display:inline} .pcc-n.sm{display:inline-flex} .pcc-b{flex:1} .pc-chat.mine .pcc-w{display:block}
     .pc-foot{margin-top:4px;padding-top:0}
     .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px} .pc-more>summary.qb{width:40px;height:40px}
     .pcard.new{display:grid;grid-template-columns:44px minmax(0,1fr);text-align:left;justify-items:start}
-    .pcard>.pc-chat.pc-chat{grid-column:1/-1;margin:10px -52px -12px -14px;padding:8px 12px 10px} .pcc-h{display:none} .pcc-wt{display:inline} .pcc-n.sm{display:inline-flex} .pcc-b{flex:1} .pc-chat.mine .pcc-w{display:block}
     .pcard.new>.tile{grid-row:1/3}
     .drafts .dft{gap:4px 9px;padding:8px} .dacts .qb{width:30px;height:30px} .dfoot .btn{flex:1 1 100%;justify-content:center;min-height:44px} .dvote{flex-basis:100%}
     .drep-d{flex-basis:100%;order:3}
@@ -2729,6 +2869,45 @@ document.addEventListener('click',e=>{
   if(v==='allday'){ st.hs=st.hmin; st.he=st.hmax; } if(v==='eve'){ st.hs=18; st.he=22; } if(v==='from17'){ st.hs=17; st.he=st.hmax; }
   patRefresh(id,true);
 });
+// Phones: bottom sheets (dialogs, the day panel, the chat) close with a downward swipe, like their grey grab bar suggests.
+// From the header always; from the body only when what's under the finger is scrolled to the top. A short drag snaps back.
+const SHEETS=[
+  {sel:'dialog.dlg[open]', head:'.dlg-h', on:el=>matchMedia('(max-width:560px)').matches&&!el.classList.contains('tour-nm'),
+    close:el=>{ const ev=new Event('cancel',{cancelable:true}); if(el.dispatchEvent(ev)&&el.open) el.close(); }},
+  {sel:'.dpanel', head:'.dp-h', on:el=>getComputedStyle(el).position==='fixed',
+    close:el=>{ const b=el.querySelector('.dp-h [data-ov]:not(.dp-nav)'); if(b) b.click(); }},
+  {sel:'.chatdrawer.open', head:'.cd-h', on:()=>isPhone()&&!document.body.classList.contains('kbopen'), close:()=>chatSetOpen(false), own:true}];
+let SW=null;
+const swReduce=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
+document.addEventListener('touchstart',e=>{
+  SW=null; if(e.touches.length!==1) return;
+  const tg=e.target; if(!tg||!tg.closest||tg.closest('input,textarea,select,[contenteditable],[data-qgrip],.qfl-g,.bars.pick')) return;
+  for(const k of SHEETS){ const el=tg.closest(k.sel); if(!el||!k.on(el)) continue;
+    const sc=[]; for(let n=tg;n&&n!==el.parentNode;n=n.parentNode){ if(n.nodeType===1&&n.scrollHeight>n.clientHeight+1&&/auto|scroll/.test(getComputedStyle(n).overflowY)) sc.push(n); }
+    const t=e.touches[0]; SW={k,el,sc,head:!!tg.closest(k.head)||t.clientY-el.getBoundingClientRect().top<56,x0:t.clientX,y0:t.clientY,dy:0,ly:0,lt:e.timeStamp,v:0,go:false}; return; }
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  const s=SW; if(!s) return; const t=e.touches[0], dx=t.clientX-s.x0, dy=t.clientY-s.y0;
+  if(!s.go){
+    if(Math.abs(dx)<8&&Math.abs(dy)<8) return;
+    if(dy<=0||Math.abs(dx)>Math.abs(dy)||(!s.head&&s.sc.some(n=>n.scrollTop>0))){ SW=null; return; }
+    s.go=true; s.y0=t.clientY; s.el.classList.add('sheet-drag'); }
+  e.preventDefault();
+  const y=t.clientY-s.y0, d=y<0?-Math.sqrt(-y)*2:y, dt=e.timeStamp-s.lt;
+  if(dt>0){ s.v=(d-s.ly)/dt; s.ly=d; s.lt=e.timeStamp; }
+  s.dy=d; s.el.style.transform=`translateY(${d}px)`;
+},{passive:false});
+const swEnd=()=>{
+  const s=SW; SW=null; if(!s||!s.go) return;
+  const el=s.el, h=el.getBoundingClientRect().height||1, shut=s.dy>h*.25||(s.dy>20&&s.v>.5), anim=!swReduce();
+  el.classList.remove('sheet-drag');
+  const clear=()=>{ el.style.transition=''; el.style.transform=''; };
+  if(shut&&s.k.own){ el.style.transform=''; s.k.close(el); return; } // the chat slides away with its own transition
+  if(!anim){ clear(); if(shut) s.k.close(el); return; }
+  el.style.transition='transform .16s ease-out'; el.style.transform=shut?'translateY(100%)':'';
+  setTimeout(()=>{ clear(); if(shut) s.k.close(el); },shut?160:180);
+};
+document.addEventListener('touchend',swEnd); document.addEventListener('touchcancel',swEnd);
 document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('[data-pati]')){ e.preventDefault(); e.target.click(); } });
 document.addEventListener('input',e=>{
   const t=e.target; if(!t.dataset) return;
@@ -2978,10 +3157,21 @@ function tourKey(){
 // ? in the app bar: a menu with Ask for help (the AI help assistant) and Take the tour; just one of them when only one applies.
 function tourButton(){
   const tour=!!tourKey(), help=!!CONFIG.help;
-  if(tour&&help) return `<details class="dd helpdd"><summary class="tourb" title="${t('Help')}" aria-label="${t('Help')}">${ICON.ask}</summary>
-    <div class="ddp right menu"><a href="#" data-helpopen>${ICON.spark}${t('Ask for help')}</a><a href="#" data-tour>${ICON.tap}${t('Take the tour')}</a></div></details>`;
-  if(help) return `<button type="button" class="tourb" data-helpopen title="${t('Ask for help')}" aria-label="${t('Ask for help')}">${ICON.ask}</button>`;
-  return tour?`<button type="button" class="tourb" data-tour title="${t('Guided tour')}" aria-label="${t('Guided tour')}">${ICON.ask}</button>`:''; }
+  return `<details class="dd helpdd"><summary class="tourb" title="${t('Help')}" aria-label="${t('Help')}">${ICON.ask}</summary>
+    <div class="ddp right menu">${help?`<a href="#" data-helpopen>${ICON.spark}${t('Ask for help')}</a>`:''}${tour?`<a href="#" data-tour>${ICON.tap}${t('Take the tour')}</a>`:''}<a href="#" data-tipreset title="${t('Show the tour, tips and hints you closed or skipped again')}">${ICON.undo}${t('Reset info popups')}</a></div></details>`; }
+// ? menu → Reset info popups: forget which tours, nudges, hint bars and prompts were seen / dismissed on this device.
+function tipReset(){
+  store.del('tour'); store.del('pushAsk');
+  const n=store.get('nudge',null); if(n&&typeof n==='object'){ delete n.home; delete n.push; delete n.onb; delete n.at; store.set('nudge',n); }
+  try{ Object.keys(localStorage).filter(k=>/^(subbar|qskip|pmergeNo):/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ Object.keys(sessionStorage).filter(k=>k.startsWith('peek:')).forEach(k=>sessionStorage.removeItem(k)); }catch(e){}
+  toast(t('Info popups will show again'));
+  if(P.data&&!P.data.draft&&$('subbar')) $('subbar').outerHTML=subBar();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-tipreset]'); if(!b) return;
+  e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; tipReset();
+});
 const tourVis=el=>!!el&&el.getClientRects().length>0&&!el.closest('.hide,[hidden]');
 // Poll page helpers for go(): open a tab, a view of the Availability tab, a Meetings sub-view.
 const tgTab=k=>()=>{ if(P.atab!==k) setPollTab(k); };
@@ -2994,7 +3184,9 @@ function tourSteps(key){
   if(key==='home') return [
     S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.'),{demo:demoNewBtn}),
+    S('#hp_todo',t('To do'),t('What’s still open for you in your polls. Tap one to go there.'),{when:()=>!$('hp_todo')?.hidden}),
     S('#hp_upc',t('Upcoming'),t('What’s coming up in the next two weeks across all your polls: meetings you’re in, meetings to vote on and reply-by dates. Tap a day to see only that day.'),{when:()=>!$('hp_upc')?.hidden}),
+    S('[data-calvopen]',t('Calendar'),t('See everything in a calendar: meetings, votes, reply-by dates, To do items, the hours you marked free and your linked calendars, each poll and calendar in its own colour. Filter what shows and pick colours and icons.'),{when:()=>!$('hp_upc')?.hidden}),
     S('#hp_own_tools',t('Find your polls'),t('Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('.pc-chat',t('Chats'),t('Each poll has a group chat. The newest message shows on its card, in bold with a green count while unread. Tap it to open the chat.')),
@@ -3699,7 +3891,7 @@ function pollCard(p,answered){
     <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${p.last?'':unreadBadge(p)}${p.role?roleTag(p.role):''}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
-      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>${pcChat(p)}
+      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}${answered?pcTodo(p):''}</span>${pcChat(p)}
     <details class="dd qmore pc-copy pc-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-copy="${esc(shareLink(p.id))}">${ICON.link}<span class="grow">${t('Copy share link')}</span></button>
       <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button>${answered?'':`
@@ -3870,10 +4062,298 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-upday],[d
   else if(ds.upgday){ UP.view='rows'; store.set('upv','rows'); UP.day=ds.upgday; document.querySelectorAll('#hp_upc [data-upview]').forEach(x=>{ const on=x.dataset.upview==='rows'; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); }
   else if(ds.upday) UP.day=UP.day===ds.upday?'':ds.upday; else UP.all=!UP.all;
   upDraw(); });
-const upViewSeg=()=>`<div class="seg up-view" role="group" aria-label="${t('View')}">${[['rows',t('List'),'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'],['grid',t('Calendar'),'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>']].map(([k,l,ic])=>
+const upViewSeg=()=>`<div class="seg up-view" role="group" aria-label="${t('View')}">${[['rows',t('List'),'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'],['grid',t('Grid'),'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>']].map(([k,l,ic])=>
   `<button type="button" data-upview="${k}" class="${UP.view===k?'on':''}" aria-pressed="${UP.view===k}" title="${esc(l)}" aria-label="${esc(l)}">${svgI(ic)}</button>`).join('')}</div>`;
-const upcomingCard=()=>`<div class="card span" id="hp_upc"><div class="card-h"><h2>${t('Upcoming')}</h2>${tip(t('Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.'),'right')}<span class="pill"${upCount()?'':' hidden'}>${upCount()}</span>${upViewSeg()}</div>
+const upcomingCard=()=>`<div class="card span" id="hp_upc"><div class="card-h"><h2>${t('Upcoming')}</h2>${tip(t('Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.'),'right')}<span class="pill"${upCount()?'':' hidden'}>${upCount()}</span><span class="up-hr">${upViewSeg()}<button type="button" class="btn sm withic up-cal" data-calvopen title="${t('Open the calendar')}">${ICON.cal}<span>${t('Calendar')}</span></button></span></div>
   <div id="hp_up">${upBody()}</div></div>`;
+
+// ---------- Calendar (home, the 📅 in the Upcoming card's header): everything with a date in one Month / Week / List view ----------
+// Sources, all read only (nothing stored): GET /api/me/upcoming (meetings I'm in, proposals, reply-by dates), /api/me/todo
+// (To do items on their date: after-meeting ones on the meeting's day, the rest on the reply-by date), /api/me/poll-busy
+// (hours I marked free in other polls' open rounds) and every calendar linked on the account (calendarEvents, read in the
+// browser). Colour = source: a poll gets a palette colour by id (or one picked on this device, localStorage `calpc`), a linked
+// calendar its own colour (picked one saved on the account, PATCH /api/me/calendars/:id { color, icon }). Icon = kind.
+// Filters in localStorage `calvf` { off: [src], kinds: [kind] }; the view in `calv`. Loaded per visible range, cached 5 minutes.
+const CV_PAL=['#2563eb','#16a34a','#dc2626','#9333ea','#ea580c','#0891b2','#db2777','#65a30d','#7c3aed','#ca8a04','#0d9488','#64748b'];
+const CV_KINDS=['meeting','proposed','deadline','todo','answer','cal'];
+const CV_KICON={meeting:'users',proposed:'check',deadline:'deadline',todo:'star',answer:'brush',cal:'cal'};
+const CV_ICONS=['📅','🗓️','💼','🏠','👨‍👩‍👧','❤️','🎓','🏃','⚽','🎵','✈️','🎂','🍽️','☕','🏥','💻','📚','🛒','🐶','⭐','🔔','🌙','🎉','🙏'];
+const CV_WK_H=40;
+const CALV={view:['month','week','list'].includes(store.get('calv','month'))?store.get('calv','month'):'month',anchor:'',day:'',side:false,
+  cache:{},busy:'',key:'',items:[],polls:new Map(),cals:[],errs:[],pop:null};
+const CV_NARROW=matchMedia('(max-width:900px)');
+CV_NARROW.addEventListener('change',()=>{ if($('calvdlg')?.open) cvDraw(); });
+const cvKind=k=>({meeting:t('Meetings'),proposed:t('To vote on'),deadline:t('Reply-by dates'),todo:t('To do'),answer:t('My free hours'),cal:t('Linked calendars')})[k];
+const cvHash=s=>{ let h=0; for(const c of String(s)) h=(h*31+c.codePointAt(0))|0; return Math.abs(h); };
+const cvFilt=()=>{ const f=store.get('calvf',{})||{}; return {off:new Set(Array.isArray(f.off)?f.off:[]),kinds:new Set(Array.isArray(f.kinds)?f.kinds:[])}; };
+const cvFiltSave=f=>store.set('calvf',{off:[...f.off],kinds:[...f.kinds]});
+function cvColor(src){
+  const id=src.slice(2);
+  if(src[0]==='p'){ const pc=store.get('calpc',{})||{}; return /^#[0-9a-f]{6}$/i.test(pc[id]||'')?pc[id]:CV_PAL[cvHash(id)%CV_PAL.length]; }
+  const c=CALV.cals.find(x=>x.id===id); return c&&/^#[0-9a-f]{6}$/i.test(c.color||'')?c.color:CV_PAL[cvHash(id)%CV_PAL.length];
+}
+const cvToday=()=>isoL(new Date());
+const cvMonthEnd=k=>{ const d=parseD(k.slice(0,8)+'01'); d.setMonth(d.getMonth()+1); d.setDate(0); return isoL(d); };
+// The days drawn: week = Monday to Sunday; month = the 6 weeks around the month (list shows the month's own days of it).
+function cvRange(){ const a=CALV.anchor||cvToday();
+  if(CALV.view==='week'){ const s=addDaysL(a,-wdOf(a)); return [s,addDaysL(s,6)]; }
+  const f=a.slice(0,8)+'01', s=addDaysL(f,-wdOf(f)); return [s,addDaysL(s,41)]; }
+function cvLabel(){ const a=CALV.anchor||cvToday();
+  if(CALV.view!=='week') return parseD(a).toLocaleDateString(LOC,{month:'long',year:'numeric'});
+  const [s,e]=cvRange(); return rangeLabel('week',s,e); }
+// "9:30", "24:00" for an hour number with fractions.
+const cvHm=h=>{ const m=Math.round(h*60); return m>=1440?'24:00':`${pad(Math.floor(m/60))}:${pad(m%60)}`; };
+const cvTm=e=>e.allDay?(e.k==='deadline'||e.k==='todo'?'':t('All day')):cvHm(e.hs)+(e.he!=null?'–'+cvHm(e.he):'');
+
+async function cvLoad(force){
+  const [from,to]=cvRange(), key=from+'|'+to, c=CALV.cache[key];
+  if(!force&&c&&Date.now()-c.at<300000){ CALV.key=key; Object.assign(CALV,{items:c.items,errs:c.errs}); c.polls.forEach((p,id)=>CALV.polls.set(id,p)); cvDraw(); return; }
+  if(CALV.busy===key) return; CALV.busy=key; CALV.key=key; CALV.items=[]; cvDraw(true);
+  if(force){ CALS.list=null; }
+  const r=await loadCals(); CALV.cals=r?r.calendars:[];
+  const fromMs=parseD(from).getTime(), toMs=parseD(addDaysL(to,1)).getTime();
+  const res=await Promise.allSettled([api('GET',`/me/upcoming?from=${from}&to=${to}`),api('GET','/me/todo'),api('GET',`/me/poll-busy?from=${from}&to=${to}`),
+    ...CALV.cals.map(c=>calendarEvents(c,fromMs,toMs,true))]);
+  if(CALV.busy!==key) return;
+  const items=[], polls=new Map(), errs=[], [up,td,pb,...ev]=res;
+  const pol=r=>{ (r.polls||[]).forEach(p=>polls.set(p.id,p)); };
+  const P_=id=>polls.get(id)||{id,title:''}, inR=d=>d>=from&&d<=to;
+  if(up.status==='fulfilled'){ pol(up.value);
+    up.value.items.forEach(it=>{ const p=P_(it.poll), meet=it.kind!=='deadline';
+      items.push({d:it.date,k:it.kind,src:'p:'+it.poll,poll:it.poll,allDay:!meet||it.allDay||it.hs==null,hs:it.hs,he:it.he,voted:it.voted,
+        t:meet?(it.mtitle||p.title):p.title,sub:meet?[it.mtitle&&it.mtitle!==p.title?p.title:'',it.location||'',it.kind==='proposed'?(it.voted?t('Voted'):t('Vote')):''].filter(Boolean).join(' · ')
+          :(it.own?t('Replies close'):t('Reply by')),
+        href:`?p=${encodeURIComponent(it.poll)}${meet?'&tab=meetings':''}`}); }); }
+  else errs.push(t('Upcoming'));
+  if(td.status==='fulfilled'){ pol(td.value);
+    td.value.items.forEach(it=>{ const d=it.kind==='after'?it.date:it.deadline; if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')||!inR(d)) return;
+      if(it.kind==='avail'&&items.some(x=>x.k==='deadline'&&x.poll===it.poll&&x.d===d)) return;
+      items.push({d,k:'todo',src:'p:'+it.poll,poll:it.poll,allDay:true,t:P_(it.poll).title,sub:tdText(it),href:`?p=${encodeURIComponent(it.poll)}&todo=${it.kind}`,tk:it.kind}); }); }
+  else errs.push(t('To do'));
+  if(pb.status==='fulfilled'){ pol(pb.value);
+    (pb.value.items||[]).forEach(it=>{ if(it.kind==='meeting'||!Array.isArray(it.hours)||!inR(it.date)) return;
+      let s=null, prev=null;
+      [...it.hours,99].forEach(h=>{ if(s!==null&&h!==prev+1){ items.push({d:it.date,k:'answer',src:'p:'+it.poll,poll:it.poll,allDay:false,hs:s,he:prev+1,
+        t:it.title||P_(it.poll).title,sub:t('You said you’re free'),href:`?p=${encodeURIComponent(it.poll)}`}); s=null; } if(s===null) s=h; prev=h; }); }); }
+  else errs.push(t('My free hours'));
+  ev.forEach((x,i)=>{ const c=CALV.cals[i];
+    if(x.status!=='fulfilled'){ errs.push(c.name); return; }
+    x.value.forEach(([s,e,title])=>{ if(!(e>s)) return;
+      for(let d=isoL(new Date(Math.max(s,fromMs))), n=0; n<62&&d<=to; d=addDaysL(d,1), n++){
+        const a=parseD(d).getTime(), b=parseD(addDaysL(d,1)).getTime(); if(s>=b) continue; if(e<=a) break;
+        const all=s<=a&&e>=b, hs=Math.max(0,(s-a)/3600000), he=Math.min(24,(Math.min(e,b)-a)/3600000);
+        items.push({d,k:'cal',src:'c:'+c.id,allDay:all,hs:all?null:hs,he:all?null:he,t:title||t('Busy'),sub:c.name,ev:{s,e,title,name:c.name}}); } }); });
+  const rank={deadline:0,todo:1,cal:2,meeting:3,proposed:4,answer:5};
+  items.sort((a,b)=>a.d.localeCompare(b.d)||(a.allDay?0:1)-(b.allDay?0:1)||(a.hs??-1)-(b.hs??-1)||rank[a.k]-rank[b.k]);
+  CALV.cache[key]={at:Date.now(),items,polls,errs}; polls.forEach((p,id)=>CALV.polls.set(id,p));
+  Object.assign(CALV,{items,errs,busy:''}); cvDraw();
+  if(errs.length) toast(t('Couldn’t load {what}',{what:errs.join(' · ')}));
+}
+const cvShown=()=>{ const f=cvFilt(); return CALV.items.filter(e=>!f.off.has(e.src)&&!f.kinds.has(e.k)); };
+// One entry: a link for poll items, a button (details in the pop-up) for calendar events. i = index into CALV.vis.
+function cvChip(e,i,cls=''){
+  const c=cvColor(e.src), p=e.poll?CALV.polls.get(e.poll):null, cal=e.k==='cal'?CALV.cals.find(x=>'c:'+x.id===e.src):null;
+  const ic=cal&&cal.icon?`<span class="cv-ee">${esc(cal.icon)}</span>`:`<span class="cv-ki">${ICON[e.k==='todo'?(TD_ICON[e.tk]||'star'):CV_KICON[e.k]]}</span>`;
+  const tm=cvTm(e), tip_=[e.t,tm||'',e.sub||''].filter(Boolean).join(' · ');
+  // Month chips show only the start time, so the title keeps room; the full range is in the tooltip.
+  const inner=`${ic}${tm&&!e.allDay&&!cls.includes('wk')?`<span class="cv-tm">${esc(cvHm(e.hs))}</span>`:''}<span class="cv-et">${p&&p.icon&&e.k!=='cal'?esc(p.icon)+' ':''}${esc(e.t)}</span>${cls.includes('wk')&&tm?`<span class="cv-tm">${esc(tm)}</span>`:''}`;
+  const k=`cv-ev k-${e.k}${e.voted?' voted':''} ${cls}`, body=cls.includes('ic')?ic:inner;
+  return e.href?`<a class="${k}" href="${esc(e.href)}" style="--c:${c}" title="${esc(tip_)}">${body}</a>`
+    :`<button type="button" class="${k}" data-cvev="${i}" style="--c:${c}" title="${esc(tip_)}">${body}</button>`;
+}
+const CV_MAXD=3;
+function cvMonthHtml(vis){
+  const [s]=cvRange(), a=CALV.anchor||cvToday(), m=a.slice(0,7), today=cvToday(), by=new Map();
+  vis.forEach((e,i)=>{ if(!by.has(e.d)) by.set(e.d,[]); by.get(e.d).push(i); });
+  const head=[...Array(7)].map((_,i)=>`<div class="cv-wd">${esc(parseD(addDaysL(s,i)).toLocaleDateString(LOC,{weekday:'short'}))}</div>`).join('');
+  const cells=[...Array(42)].map((_,i)=>{ const d=addDaysL(s,i), l=by.get(d)||[], dt=parseD(d), more=l.length-CV_MAXD;
+    return `<div class="cv-mc${d.slice(0,7)!==m?' out':''}${d===today?' today':''}${wdOf(d)>4?' we':''}" data-cvcell="${d}">
+      <button type="button" class="cv-dn" data-cvday="${d}" title="${esc(dayLabel(d))}${l.length?` · ${l.length}`:''}">${dt.getDate()}</button>
+      ${l.slice(0,more>0?CV_MAXD-1:CV_MAXD).map(i=>cvChip(vis[i],i)).join('')}
+      ${more>0?`<button type="button" class="cv-more" data-cvday="${d}">${t('+{n} more',{n:more+1})}</button>`:''}
+      <span class="cv-dots">${l.slice(0,6).map(i=>`<i style="--c:${cvColor(vis[i].src)}"></i>`).join('')}</span></div>`; }).join('');
+  return `<div class="cv-month">${head}${cells}</div>`;
+}
+// Week: an all-day row, then the hours (7:00–22:00 or wider when something is earlier / later); overlapping entries share the column.
+function cvWeekHtml(vis){
+  const [s]=cvRange(), days=[...Array(7)].map((_,i)=>addDaysL(s,i)), today=cvToday();
+  const timed=vis.map((e,i)=>[e,i]).filter(([e])=>!e.allDay&&e.hs!=null);
+  const H0=Math.min(7,...timed.map(([e])=>Math.floor(e.hs))), H1=Math.max(22,...timed.map(([e])=>Math.ceil(e.he??e.hs+1)));
+  const col=d=>{ const l=timed.filter(([e])=>e.d===d).sort((a,b)=>a[0].hs-b[0].hs), out=[];
+    // Clusters of overlapping entries, each one in the first free lane.
+    let cl=[], end=-1; const flush=()=>{ const lanes=[]; cl.forEach(x=>{ let j=lanes.findIndex(v=>v<=x[0].hs); if(j<0){ j=lanes.length; lanes.push(0); } lanes[j]=x[0].he??x[0].hs+1; x.lane=j; });
+      cl.forEach(x=>out.push({x,n:lanes.length})); cl=[]; end=-1; };
+    l.forEach(x=>{ if(cl.length&&x[0].hs>=end) flush(); cl.push(x); end=Math.max(end,x[0].he??x[0].hs+1); }); flush();
+    return out.map(({x,n})=>{ const [e,i]=x, he=Math.min(H1,e.he??e.hs+1);
+      return `<div class="cv-wp" style="top:${(Math.max(e.hs,H0)-H0)*CV_WK_H}px;height:${Math.max(20,(he-Math.max(e.hs,H0))*CV_WK_H-2)}px;left:calc(${x.lane}*100%/${n});width:calc(100%/${n})">${cvChip(e,i,'wk')}</div>`; }).join(''); };
+  const now=new Date(), nowH=now.getHours()+now.getMinutes()/60;
+  const hrs=[...Array(H1-H0)].map((_,i)=>`<div class="cv-hl" style="top:${i*CV_WK_H}px"><span>${hh(H0+i)}</span></div>`).join('');
+  return `<div class="cv-week" style="--wh:${CV_WK_H}px">
+    <div class="cv-wkh"><div></div>${days.map(d=>{ const dt=parseD(d); return `<button type="button" class="cv-wkd${d===today?' today':''}" data-cvday="${d}"><span>${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span><b>${dt.getDate()}</b></button>`; }).join('')}</div>
+    <div class="cv-wka"><div class="cv-wkl">${t('All day')}</div>${days.map(d=>`<div class="cv-wac">${vis.map((e,i)=>e.d===d&&(e.allDay||e.hs==null)?cvChip(e,i):'').join('')}</div>`).join('')}</div>
+    <div class="cv-wkb" id="cv_wkb"><div class="cv-wkg" style="height:${(H1-H0)*CV_WK_H}px">${hrs}<div></div>
+      ${days.map(d=>`<div class="cv-wc${d===today?' today':''}">${col(d)}${d===today&&nowH>=H0&&nowH<=H1?`<i class="cv-now" style="top:${(nowH-H0)*CV_WK_H}px"></i>`:''}</div>`).join('')}</div></div></div>`;
+}
+function cvListHtml(vis){
+  const a=CALV.anchor||cvToday(), f=a.slice(0,8)+'01', l=cvMonthEnd(a), today=cvToday(), tom=addDaysL(today,1);
+  const rows=vis.map((e,i)=>[e,i]).filter(([e])=>CALV.day?e.d===CALV.day:e.d>=f&&e.d<=l);
+  const back=CALV.day?`<button type="button" class="btn sm ghost cv-all" data-cvallm>${ICON.cal}<span>${t('Whole month')}</span></button>`:'';
+  if(!rows.length) return back+`<p class="help cv-none">${CALV.day?t('Nothing on this day.'):t('Nothing this month.')}</p>`;
+  let html='', last='';
+  for(const [e,i] of rows){ if(e.d!==last){ last=e.d; const rel=e.d===today?t('Today'):e.d===tom?t('Tomorrow'):'';
+    html+=`<div class="up-dh${e.d===today?' today':''}">${rel?`<b>${rel}</b><span>${esc(dayLabel(e.d))}</span>`:`<b>${esc(dayLabel(e.d))}</b>`}</div>`; }
+    const p=e.poll?CALV.polls.get(e.poll):null;
+    html+=`<div class="cv-lr" style="--c:${cvColor(e.src)}"><span class="up-time${e.allDay?' muted':''}">${esc(cvTm(e))}</span>${p?pollTile(p,'sm'):`<span class="cv-lt">${cvChip(e,i,'ic')}</span>`}
+      <div class="up-b">${e.href?`<a class="up-t" href="${esc(e.href)}">${esc(e.t)}</a>`:`<button type="button" class="up-t cv-lb" data-cvev="${i}">${esc(e.t)}</button>`}<div class="up-s"><span class="cv-lk">${ICON[e.k==='todo'?(TD_ICON[e.tk]||'star'):CV_KICON[e.k]]}${esc(cvKind(e.k))}</span>${e.sub?`<span>${esc(e.sub)}</span>`:''}</div></div></div>`; }
+  return back+`<div class="up-list cv-list">${html}</div>`;
+}
+// Colour (and for calendars, icon) menu next to each source in the filter panel and the Account page's calendar rows.
+function cvStyleDd(src,cal){
+  const cur=cvColor(src), own=src[0]==='p'?!!(store.get('calpc',{})||{})[src.slice(2)]:!!(cal&&cal.colorOwn);
+  return `<details class="dd cv-sty"><summary class="cv-sw" style="--c:${cur}" title="${t('Colour and icon')}" aria-label="${t('Colour and icon')}">${cal&&cal.icon?esc(cal.icon):''}</summary>
+    <div class="ddp right cv-styp"><div class="ddh">${t('Colour')}</div><div class="cv-pal">${CV_PAL.map(x=>`<button type="button" class="${x===cur&&own?'on':''}" style="--c:${x}" data-cvcol="${x}" data-cvsrc="${esc(src)}" aria-label="${x}"></button>`).join('')}
+      <button type="button" class="cv-def${own?'':' on'}" data-cvcol="" data-cvsrc="${esc(src)}">${t('Default')}</button></div>
+    ${cal?`<div class="ddh">${t('Icon')}</div><div class="qic-grid">${CV_ICONS.map(x=>`<button type="button" class="${cal.icon===x?'on':''}" data-cvicon="${x}" data-cvsrc="${esc(src)}" aria-label="${x}">${x}</button>`).join('')}</div>
+      <div class="qic-any"><input type="text" maxlength="16" placeholder="${t('Any emoji')}" aria-label="${t('Any emoji')}" value="${esc(cal.icon&&!CV_ICONS.includes(cal.icon)?cal.icon:'')}" data-cvany="${esc(src)}">
+        <button type="button" class="btn sm" data-cviconany="${esc(src)}">${t('Use')}</button>${cal.icon?`<button type="button" class="btn sm ghost" data-cvicon="" data-cvsrc="${esc(src)}">${t('None')}</button>`:''}</div>`:''}</div></details>`;
+}
+function cvSideHtml(){
+  const f=cvFilt(), inItems=new Set(CALV.items.map(e=>e.src));
+  const kinds=CV_KINDS.map(k=>`<label class="cv-f"><input type="checkbox" data-cvkind="${k}" ${f.kinds.has(k)?'':'checked'}><span class="cv-ki">${ICON[CV_KICON[k]]}</span><span class="grow">${esc(cvKind(k))}</span></label>`).join('');
+  const pollIds=[...new Set([...inItems].filter(s=>s[0]==='p').map(s=>s.slice(2)))].sort((a,b)=>(CALV.polls.get(a)?.title||'').localeCompare(CALV.polls.get(b)?.title||''));
+  const prow=id=>{ const p=CALV.polls.get(id)||{id,title:''}, src='p:'+id;
+    return `<div class="cv-f"><label class="grow"><input type="checkbox" data-cvsrcon="${esc(src)}" ${f.off.has(src)?'':'checked'}>${pollTile(p,'sm')}<span class="grow ell">${esc(p.title)}</span></label>${cvStyleDd(src,null)}</div>`; };
+  const crow=c=>{ const src='c:'+c.id;
+    return `<div class="cv-f"><label class="grow"><input type="checkbox" data-cvsrcon="${esc(src)}" ${f.off.has(src)?'':'checked'}><span class="grow ell">${esc(c.name)}</span></label>${cvStyleDd(src,c)}</div>`; };
+  const allNone=g=>`<span class="cv-an"><button type="button" class="ddb" data-cvall="${g}" data-on="1">${t('All')}</button> · <button type="button" class="ddb" data-cvall="${g}" data-on="0">${t('None')}</button></span>`;
+  return `<div class="cv-sec"><div class="ddh">${t('Show')}</div>${kinds}</div>
+    <div class="cv-sec"><div class="ddh">${t('Polls')}${pollIds.length>1?allNone('p'):''}</div>${pollIds.length?pollIds.map(prow).join(''):`<p class="help">${t('No poll items in this range.')}</p>`}</div>
+    <div class="cv-sec"><div class="ddh">${t('Linked calendars')}${CALV.cals.length>1?allNone('c'):''}</div>${CALV.cals.length?CALV.cals.map(crow).join(''):`<p class="help">${t('No calendars yet.')}</p>`}
+      <a class="btn sm ghost withic cv-addcal" href="?account">${ICON.plus}<span>${t('Add calendar')}</span></a></div>`;
+}
+function cvDraw(loading){
+  const d=$('calvdlg'); if(!d||!d.open) return;
+  const vis=cvShown(); CALV.vis=vis;
+  const segs=[['month',t('Month')],['week',t('Week')],['list',t('List')]].map(([k,l])=>`<button type="button" data-cvview="${k}" class="${CALV.view===k?'on':''}" aria-pressed="${CALV.view===k}">${esc(l)}</button>`).join('');
+  const narrow=CV_NARROW.matches, side=!narrow||CALV.side, f=cvFilt(), nf=f.off.size+f.kinds.size;
+  $('cv_bar').innerHTML=`<div class="cv-nav"><button type="button" class="qb" data-cvgo="-1" title="${t('Previous')}" aria-label="${t('Previous')}">${svgI('<path d="m15 18-6-6 6-6"/>')}</button><button type="button" class="btn sm" data-cvgo="0">${t('Today')}</button><button type="button" class="qb" data-cvgo="1" title="${t('Next')}" aria-label="${t('Next')}">${svgI('<path d="m9 18 6-6-6-6"/>')}</button></div>
+    <h3 class="cv-lab">${esc(cvLabel())}${loading||CALV.busy?` <span class="muted small">${t('Loading…')}</span>`:''}</h3>
+    <div class="seg cv-seg" role="group" aria-label="${t('View')}">${segs}</div>
+    ${narrow?`<button type="button" class="btn sm withic cv-fbtn${CALV.side?' on':''}" data-cvside aria-pressed="${CALV.side}">${ICON.filter}<span>${t('Filter')}</span>${nf?`<span class="pill">${nf}</span>`:''}</button>`:''}`;
+  const sd=$('cv_side'); sd.hidden=!side; if(side) sd.innerHTML=cvSideHtml();
+  const v=$('cv_view'); v.hidden=narrow&&CALV.side;
+  const keep=$('cv_wkb')?.scrollTop;
+  v.innerHTML=CALV.view==='week'?cvWeekHtml(vis):CALV.view==='list'?cvListHtml(vis):cvMonthHtml(vis);
+  const wb=$('cv_wkb'); if(wb){ if(keep!=null&&CALV.keepScroll) wb.scrollTop=keep; else { const first=vis.filter(e=>!e.allDay&&e.hs!=null).map(e=>e.hs); const H0=parseFloat(wb.querySelector('.cv-hl span')?.textContent)||7; wb.scrollTop=Math.max(0,(Math.min(8,...first)-H0-.5)*CV_WK_H); } }
+  CALV.keepScroll=false; cvPopDraw();
+}
+function cvPopDraw(){ const el=$('cv_pop'); if(!el) return; const e=CALV.pop; el.hidden=!e; if(!e) return;
+  const ev=e.ev, same=isoL(new Date(ev.s))===isoL(new Date(ev.e-1));
+  const when=e.allDay&&!(ev.s%1)?(same?dayLabel(e.d):`${dayLabel(isoL(new Date(ev.s)))} – ${dayLabel(isoL(new Date(ev.e-1)))}`)
+    :`${dayLabel(isoL(new Date(ev.s)))} ${cvHm(new Date(ev.s).getHours()+new Date(ev.s).getMinutes()/60)} – ${same?'':dayLabel(isoL(new Date(ev.e)))+' '}${cvHm(new Date(ev.e).getHours()+new Date(ev.e).getMinutes()/60)}`;
+  el.style.setProperty('--c',cvColor(e.src));
+  el.innerHTML=`<div class="cv-pb"><b>${esc(ev.title||t('Busy'))}</b><span>${esc(when)}</span><span class="muted">${ICON.cal} ${esc(ev.name)}</span></div>${pqb('x',t('Close'),'data-cvpopx=""')}`; }
+function calvOpen(day){
+  let d=$('calvdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='calvdlg'; d.className='dlg cvdlg'; d.setAttribute('aria-labelledby','cv_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  d.innerHTML=`<div class="dlg-h"><h2 id="cv_h">${ICON.cal}<span>${t('Calendar')}</span></h2>${tip(t('Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour; the icon shows the kind. Tap a poll item to open it.'),'right')}${pqb('x',t('Close'),'data-cvclose=""')}</div>
+    <div class="cv-bar" id="cv_bar"></div><div class="cv-main"><aside class="cv-side" id="cv_side"></aside><div class="cv-view" id="cv_view"></div></div><div class="cv-pop" id="cv_pop" hidden></div>`;
+  CALV.anchor=day||cvToday(); CALV.day=''; CALV.side=false; CALV.pop=null;
+  d.setAttribute('tabindex','-1'); d.showModal(); d.focus(); cvDraw(true); cvLoad();
+}
+function cvGo(n){ const a=CALV.anchor||cvToday(); CALV.day=''; CALV.pop=null;
+  if(!n) CALV.anchor=cvToday();
+  else if(CALV.view==='week') CALV.anchor=addDaysL(a,7*n);
+  else { const x=parseD(a.slice(0,8)+'01'); x.setMonth(x.getMonth()+n); CALV.anchor=isoL(x); }
+  cvLoad(); }
+async function cvCalPatch(id,body){
+  try{ await api('PATCH',`/me/calendars/${encodeURIComponent(id)}`,body); }catch(e){ toast(e.message); return; }
+  CALS.list=null; const r=await loadCals(); if(r) CALV.cals=r.calendars;
+  BUSY.key=''; if($('calbox')) renderCalCard(); if($('calvdlg')?.open) cvDraw();
+}
+document.addEventListener('click',e=>{
+  const op=e.target.closest('[data-calvopen]'); if(op){ calvOpen(); return; }
+  if(!e.target.closest('#calvdlg,#calbox')) return;
+  const b=e.target.closest('[data-cvclose],[data-cvgo],[data-cvview],[data-cvday],[data-cvallm],[data-cvside],[data-cvev],[data-cvpopx],[data-cvall],[data-cvcol],[data-cvicon],[data-cviconany]');
+  if(!b){ if(CV_NARROW.matches&&CALV.view==='month'){ const c=e.target.closest('[data-cvcell]'); if(c&&!e.target.closest('.cv-ev')){ CALV.view='list'; CALV.day=c.dataset.cvcell; cvDraw(); } } return; }
+  const ds=b.dataset;
+  if(ds.cvclose!==undefined) $('calvdlg').close();
+  else if(ds.cvgo!==undefined) cvGo(+ds.cvgo);
+  else if(ds.cvview){ const was=CALV.view; CALV.view=ds.cvview; CALV.day=''; store.set('calv',CALV.view); if((was==='week')!==(CALV.view==='week')) cvLoad(); else cvDraw(); }
+  else if(ds.cvday){ CALV.view='list'; CALV.day=ds.cvday; if(ds.cvday.slice(0,7)!==(CALV.anchor||'').slice(0,7)||CALV.key!==cvRange().join('|')){ CALV.anchor=ds.cvday; cvLoad(); } else cvDraw(); }
+  else if(ds.cvallm!==undefined){ CALV.day=''; cvDraw(); }
+  else if(ds.cvside!==undefined){ CALV.side=!CALV.side; cvDraw(); }
+  else if(ds.cvev!==undefined){ const ev=CALV.vis&&CALV.vis[+ds.cvev]; CALV.pop=ev&&ev.ev?ev:null; cvPopDraw(); }
+  else if(ds.cvpopx!==undefined){ CALV.pop=null; cvPopDraw(); }
+  else if(ds.cvall){ const f=cvFilt(), on=ds.on==='1', srcs=ds.cvall==='p'?[...new Set(CALV.items.filter(x=>x.src[0]==='p').map(x=>x.src))]:CALV.cals.map(c=>'c:'+c.id);
+    srcs.forEach(s=>on?f.off.delete(s):f.off.add(s)); cvFiltSave(f); cvDraw(); }
+  else if(ds.cvcol!==undefined){ const src=ds.cvsrc; b.closest('details')?.removeAttribute('open');
+    if(src[0]==='p'){ const pc=store.get('calpc',{})||{}; if(ds.cvcol) pc[src.slice(2)]=ds.cvcol; else delete pc[src.slice(2)]; store.set('calpc',pc); cvDraw(); }
+    else cvCalPatch(src.slice(2),{color:ds.cvcol}); }
+  else if(ds.cvicon!==undefined){ b.closest('details')?.removeAttribute('open'); cvCalPatch(ds.cvsrc.slice(2),{icon:ds.cvicon}); }
+  else if(ds.cviconany){ const inp=b.parentElement.querySelector('[data-cvany]'), v=(inp?.value||'').trim(); if(!v) return; b.closest('details')?.removeAttribute('open'); cvCalPatch(ds.cviconany.slice(2),{icon:v}); }
+});
+document.addEventListener('change',e=>{ const x=e.target; if(!x.closest||!x.closest('#calvdlg')) return;
+  if(x.dataset.cvkind){ const f=cvFilt(); x.checked?f.kinds.delete(x.dataset.cvkind):f.kinds.add(x.dataset.cvkind); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); }
+  else if(x.dataset.cvsrcon){ const f=cvFilt(); x.checked?f.off.delete(x.dataset.cvsrcon):f.off.add(x.dataset.cvsrcon); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); } });
+// ← / → move by a month or week while the calendar is open (not while typing).
+document.addEventListener('keydown',e=>{ if(!$('calvdlg')?.open||e.target.closest('input,textarea')||e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); cvGo(e.key==='ArrowLeft'?-1:1); }
+  else if(e.key==='t'){ cvGo(0); } });
+
+// To do card (home, signed in, above Upcoming): GET /api/me/todo = what's still open for me in polls I'm in (not my own, no role):
+// availability, questions left empty, votes, after-meeting questions. One row per poll with a chip per item; a chip opens the poll
+// with &todo=<kind>, which runs that item of the poll's own To do strip (TODO_GO). Loaded with Upcoming (ME.todo, a minute).
+const TD_SHOW=6, TD={at:0,busy:null,fail:false,all:false};
+const TD_TAB={avail:'',questions:'questions',vote:'meetings',after:'questions'};
+function tdLoad(){
+  if(ME.todo&&Date.now()-TD.at<60000){ tdDraw(); return; }
+  if(TD.busy) return;
+  TD.busy=api('GET','/me/todo').then(r=>{ ME.todo=r; TD.at=Date.now(); TD.fail=false; },()=>{ ME.todo=null; TD.at=0; TD.fail=true; })
+    .finally(()=>{ TD.busy=null; tdDraw(); if($('hp_ans')) homeDraw('ans'); });
+}
+const tdOf=id=>ME.todo?ME.todo.items.filter(it=>it.poll===id):[];
+function tdText(it){
+  if(it.kind==='avail') return t('Add your availability');
+  if(it.kind==='vote') return it.n===1?t('Vote on the proposed times'):t('Vote in {n} polls for meeting times',{n:it.n});
+  if(it.kind==='after'){ const title=it.mtitle||dayLabel(it.date); return it.before?t('Answer for {title}',{title}):t('Rate {title}',{title}); }
+  const q=it.n===1?t('Answer 1 question'):t('Answer {n} questions',{n:it.n});
+  return it.req?(it.req===it.n?(it.n===1?t('1 required question'):t('{n} required questions',{n:it.n})):q+' · '+t('{n} required',{n:it.req})):q;
+}
+const TD_ICON={avail:'cal',questions:'ask',vote:'check',after:'star'};
+function tdSoon(dl){ if(!dl) return false; const n=new Date(); n.setDate(n.getDate()+1); return dl<=isoL(n); }
+function tdBody(){
+  const u=ME.todo; if(!u) return `<p class="help up-none">${t('Loading…')}</p>`;
+  const polls=new Map(u.polls.map(p=>[p.id,p])), order=[...new Set(u.items.map(it=>it.poll))];
+  const rows=order.map(id=>{ const p=polls.get(id)||{id,title:''}, l=tdOf(id), dl=l.map(x=>x.deadline).find(Boolean), soon=tdSoon(dl);
+    return `<div class="td-row${soon?' soon':''}">${pollTile(p,'sm')}<div class="td-b"><a class="td-t" href="?p=${esc(encodeURIComponent(id))}">${esc(p.title)}</a>
+      <div class="td-cs">${l.map(it=>`<a class="td-c" href="?p=${esc(encodeURIComponent(id))}&amp;todo=${it.kind}">${ICON[TD_ICON[it.kind]]}<span>${esc(tdText(it))}</span></a>`).join('')}</div></div>
+      ${dl?`<span class="td-dl" title="${esc(t('Reply by'))}">${ICON.deadline}${esc(dayLabel(dl))}</span>`:'<span></span>'}</div>`; });
+  const more=rows.length>TD_SHOW?`<button type="button" class="btn sm ghost up-more" data-tdmore>${TD.all?t('Show less'):t('Show all {n}',{n:rows.length})}</button>`:'';
+  return `<div class="td-list">${(TD.all?rows:rows.slice(0,TD_SHOW)).join('')}</div>${more}`;
+}
+function tdDraw(){
+  const c=$('hp_todo'); if(!c) return;
+  const n=ME.todo?new Set(ME.todo.items.map(it=>it.poll)).size:0;
+  c.hidden=!ME.todo||!n; if(c.hidden) return;
+  $('hp_td').innerHTML=tdBody();
+  const pl=c.querySelector('.card-h .pill'); if(pl) pl.textContent=n;
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('[data-tdmore]')) return; TD.all=!TD.all; tdDraw(); });
+const todoCard=()=>`<div class="card span" id="hp_todo" hidden><div class="card-h"><h2>${t('To do')}</h2>${tip(t('What’s still open for you in polls you were invited to or answered: your availability, questions, votes and meetings to rate. Tap one to go there.'),'right')}<span class="pill"></span></div>
+  <div id="hp_td"></div></div>`;
+// Poll card chip: how many things are open for me there.
+function pcTodo(p){ const n=tdOf(p.id).length; return n?`<span class="pc-td" title="${esc(tdOf(p.id).map(tdText).join(' · '))}">${ICON.bell}${t('To do')}${n>1?` ${n}`:''}</span>`:''; }
+// Opened from a To do chip (?p=…&todo=kind): run that item of the poll's To do strip once it shows up (after-meeting ones wait for the form).
+let TODO_GO=null;
+function todoGoCheck(){
+  if(!TODO_GO||!P.todo) return;
+  if(Date.now()-TODO_GO.at>8000){ TODO_GO=null; return; }
+  const key=TODO_GO.kind==='questions'?'req':TODO_GO.kind, x=P.todo.find(y=>y.key===key);
+  if(!x) return;
+  TODO_GO=null; setTimeout(()=>todoDo(x),50);
+}
 
 function renderHome(){
   document.title='when-who';
@@ -3894,7 +4374,7 @@ function renderHome(){
       ${newBtn(t('Create a poll'))}`}
     </div></section>
     <main class="wrap"><div class="home-grid">
-    ${ME.user?`${upcomingCard()}<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
+    ${ME.user?`${todoCard()}${upcomingCard()}<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
       ${homeTools('own')}<div id="hp_own">${homePage('own')}</div></div>
       <div class="card span"><div class="card-h"><h2>${t('Polls you answered')}</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
       ${answered.length?`${homeTools('ans')}<div id="hp_ans">${homePage('ans')}</div>`
@@ -3907,7 +4387,7 @@ function renderHome(){
       :`<div class="empty"><p class="help mt-0">${t('Sign in with your email to create polls and see the ones you created and answered, on every device. No password needed, just a code we email you.')}</p>
       <button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div>`}</div>`}
     </div></main>${siteFoot()}`;
-  upLoad();
+  tdLoad(); upLoad();
 }
 
 const PRIVACY_UPDATED='2026-11-27';
@@ -3962,7 +4442,7 @@ function renderPrivacy(){
   const op=esc(CONFIG.operator||''), mail=legalMail(), addr=legalAddr();
   const dpa=CONFIG.dpa?esc(CONFIG.dpa):'';
   legalPage(t('Privacy policy'),PRIVACY_UPDATED,`
-      ${legalSec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.')} ${t('If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.')}</p>`)}
+      ${legalSec(t('Short version'),`<p>${t('when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and to show them to you in your calendar view, and are never stored.')} ${t('If you share your busy times with a poll, only the hours you’re busy (no titles) are stored for that poll, until you switch sharing off.')}</p>`)}
       ${legalSec(t('Who is responsible'),`<p>${op?t('when-who is run by {name}.',{name:op}):''}${addr?'<br>'+addr:''}</p>
         <p>${mail?t('For questions about your data or to have it deleted, write to {email}.',{email:mail}):t('For questions about your data or to have it deleted, reply to any email from when-who.')} ${t('See also the <a href="?imprint">legal notice</a>.')}</p>`)}
       ${legalSec(t('What we store'),legalUl([
@@ -3974,7 +4454,7 @@ function renderPrivacy(){
         t('<b>Chat:</b> messages, reactions and replies in a poll’s chat, and when you last read it (for unread counts). Messages, with the writer’s name, are visible to everyone who can open the poll (on invite-only polls: the organiser and the invited people); only signed-in people can write.'),
         t('<b>Contacts:</b> the contacts you save (name, email address and an optional private note that only you see), which name to use for them in your polls, the groups you make, and which of your groups are linked to your polls (their people then follow changes to the group). In polls you manage, a saved contact can be shown to you under your name for them. Contacts you import from your phone, a .vcf file or a Google or Microsoft account are kept only in your browser and are not stored by when-who unless you save them or add them to a poll or group; their email addresses are checked once against when-who accounts to show those people’s avatars.'),
         t('<b>Presets (only if you save one):</b> the name, icon, settings and questions of a poll, or a set of questions, you save as a starting point. They contain no dates, people, answers or passwords, and you can delete them in the preset picker.'),
-        t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.'),
+        t('<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll and to show your events to you in the calendar on your home page. Events are read at that moment and are not saved: no titles, places or other details.'),
         t('<b>Shared busy hours (only if you switch it on for a poll):</b> the hours you’re busy on that round’s dates, no event details, visible to the people who can see that poll’s answers.'),
         t('<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.'),
         t('<b>Notification settings:</b> which events you want as a notification or in an hourly email (chat, answers, votes, meetings, questions, rounds), as your defaults and per poll. To send them, when-who keeps a short log of what happened in a poll (for example “Ana answered” or “Meeting set”, with the person’s name, no chat text) for 3 days. The email lists these events for the polls you chose.'),
@@ -3984,7 +4464,7 @@ function renderPrivacy(){
         t('<b>Security:</b> your IP address, to limit failed sign-in attempts and AI fills (deleted after 24 hours), and a log of who sent invitation emails, to enforce a daily limit (deleted after 2 days).'),
         t('<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.'),
       ]))}
-      ${legalSec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
+      ${legalSec(t('Google and Outlook calendars'),`<p>${t('If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, to show your events to you in the calendar on your home page, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.')}</p>
         <p>${t('when-who’s use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.')}</p>
         <p>${t('You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.')}</p>`)}
       ${legalSec(t('AI assistants'),`<p>${t('You can connect an AI assistant (for example Claude or ChatGPT) to your account with MCP. It then acts for you: it can read what you can see in your polls (titles, dates, people’s names and answers, meetings) and answer polls, create polls, invite people and write chat messages in your name. That data goes to the assistant’s provider, who processes it under their own privacy policy; you choose the provider, and when-who sends nothing there unless you connect it. Disconnect it any time on your Account page.')}</p>`)}
@@ -4289,6 +4769,7 @@ const qPresetData=(list,icon)=>({scope:'questions',...(icon?{icon}:{}),questions
 function presetFromPoll(){ const p=P.data.poll, i=inst(), out={};
   for(const k of ['title','description','kind','unit','every','openDays','deadlineDays','answerMode','hourStart','hourEnd','dayPattern','hideResults','allowComments','requireEmail','invitedOnly','notifyOpen','remindDays','icon','meetLocation','meetNote']) if(p[k]!=null&&p[k]!=='') out[k]=p[k];
   if(p.autoMeetings) out.autoMeetings=true;
+  if(p.meetApply) out.meetApply=true;
   if((p.meetQuestions||[]).length) out.meetQuestions=mqtClone(p.meetQuestions);
   if((p.roundQuestions||[]).length) out.roundQuestions=mqtClone(p.roundQuestions,false,10);
   if(p.kind==='single'&&i.startDate&&i.endDate) out.days=Math.min(365,Math.round((new Date(i.endDate)-new Date(i.startDate))/86400e3)+1);
@@ -4337,7 +4818,7 @@ function renderNew({edit=null}={}){
       <div class="srow"><span class="srow-l">${t('Answer with')}</span>${segRadio('ans',ansOpts(),'days',t('People answer with'),'np')}</div>
       <div class="field"><label class="row tight">${t('Which days and times')}${tip(t('Only these days (and hours) are offered, for example Fridays from 17:00, or the 1st to 20th of each month 18–22. Click a rule to change it, <b>Add</b> makes another; rules add up (weekdays 17–22 and weekends 10–22). A day or hour is offered if any rule covers it.'))}</label>${patternPicker('np',{hs:8,he:24,multi:true,hours:false})}</div>
       ${answerChips(['n_com','n_reqmail','n_invonly'],{com:true,req:false,inv:false})}`,'',NOPEN)}
-    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[],false),'',NOPEN)}
+    ${sset('meetdef','pin',t('Meetings'),meetDefRows('n','','',[],false,false),'',NOPEN)}
     ${sset('questions','ask',t('Questions'),`<div id="nrBox" class="hide">${roundQsRows('nr',[])}</div><div class="card ws qws nq"><div id="questions"></div></div>`,'<span id="nqn"></span>',NOPEN)}
     ${sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'hide',pw:'pw',hideOn:false})}`,'',NOPEN)}
@@ -4401,7 +4882,7 @@ function renderNew({edit=null}={}){
   // Presets: the rail above the form fills it in (title, settings) and carries the questions along (NP.qs).
   const NP={pick:'blank',qs:null};
   const formData=()=>{ const kind=getR('kind'), pv=patValue('np'), pk=pickerValue('new'), d={title:v0('title').trim(),description:v0('desc'),kind,answerMode:getR('ans'),hourStart:pv.hs,hourEnd:pv.he,dayPattern:pv.pat,
-      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()}; if($('n_mauto')&&$('n_mauto').checked) d.autoMeetings=true; const mq=mqtClean(MQT.n); if(mq.length) d.meetQuestions=mq;
+      hideResults:$('hide').checked,allowComments:$('n_com').checked,requireEmail:$('n_reqmail').checked,invitedOnly:$('n_invonly').checked,icon:pk.emoji||'',meetLocation:v0('n_mloc').trim(),meetNote:v0('n_mnote').trim()}; if($('n_mauto')&&$('n_mauto').checked) d.autoMeetings=true; if($('n_mapply')&&$('n_mapply').checked) d.meetApply=true; const mq=mqtClean(MQT.n); if(mq.length) d.meetQuestions=mq;
     if(kind==='series'){ const rq=mqtClean(MQT.nr).map(({id,...x})=>x); if(rq.length) d.roundQuestions=rq; }
     if(kind==='series') Object.assign(d,{unit:v0('unit'),every:Math.max(1,+v0('every')||1),openDays:+v0('openDays')||0,deadlineDays:v0('dlDays')===''?null:+v0('dlDays')});
     if(kind==='single'&&v0('start')&&v0('end')) d.days=Math.max(1,Math.round((new Date(v0('end'))-new Date(v0('start')))/86400e3)+1);
@@ -4418,7 +4899,7 @@ function renderNew({edit=null}={}){
     const ab=f.querySelector(`[data-for="ans"] [data-sans="${d.answerMode||'days'}"]`); if(ab) ab.click();
     const cnt=PAT.np.count; delete PAT.np; patternPicker('np',{pat:d.dayPattern||null,hs:d.hourStart??8,he:d.hourEnd??24,hours:(d.answerMode||'days')!=='days',noDom:kind==='weekly',multi:true}); PAT.np.count=cnt; patRefresh('np',true);
     $('hide').checked=!!d.hideResults; $('n_com').checked=d.allowComments!==false; $('n_reqmail').checked=!!d.requireEmail; $('n_invonly').checked=!!d.invitedOnly; $('pw').value='';
-    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||''; $('n_mauto').checked=!!d.autoMeetings; MQT.n=mqtClone(d.meetQuestions); mqtDraw('n'); MQT.nr=mqtClone(d.roundQuestions,false,10); mqtDraw('nr');
+    $('n_mloc').value=d.meetLocation||''; $('n_mnote').value=d.meetNote||''; $('n_mauto').checked=!!d.autoMeetings; $('n_mapply').checked=!!d.meetApply; MQT.n=mqtClone(d.meetQuestions); mqtDraw('n'); MQT.nr=mqtClone(d.roundQuestions,false,10); mqtDraw('nr');
     if(mail){ if($('notify')) $('notify').checked=pr?!!d.notifyOpen:true; const rm=$('remind'); rm.checked=pr?d.remindDays!=null:true; $('remindDays').value=d.remindDays??2; rm.dispatchEvent(new Event('change',{bubbles:true})); }
     if(!keepQs){ NP.qs=d.questions&&d.questions.length?JSON.parse(JSON.stringify(d.questions)):null; NP.qsEdited=false; qDraftSet(NP.qs||[]); NP.qs=NP.qs&&qDraftItems(); }
     sum(); };
@@ -4507,7 +4988,7 @@ function renderNew({edit=null}={}){
       try{ await api('DELETE','/polls/'+encodeURIComponent(edit.id)); }catch(e){ if(e.status!==404) throw e; } return null; }
     const s={title:body.title, description:body.description, answerMode:body.answerMode, hourStart:body.hourStart, hourEnd:body.hourEnd, dayPattern:body.dayPattern,
       hideResults:body.hideResults, allowComments:body.allowComments, requireEmail:body.requireEmail, invitedOnly:!!body.invitedOnly, password:body.password||null,
-      meetLocation:body.meetLocation, meetNote:body.meetNote, meetQuestions:body.meetQuestions||[], autoMeetings:!!body.autoMeetings, icon:body.icon||'', image:body.image||null};
+      meetLocation:body.meetLocation, meetNote:body.meetNote, meetQuestions:body.meetQuestions||[], autoMeetings:!!body.autoMeetings, meetApply:!!body.meetApply, icon:body.icon||'', image:body.image||null};
     if(kind==='series') Object.assign(s,{openDays:body.openDays, deadlineDays:body.deadlineDays});
     if(kind==='series'&&JSON.stringify(body.roundQuestions||[])!==JSON.stringify(o.roundQuestions||[])) s.roundQuestions=body.roundQuestions||[];
     if(mail) Object.assign(s,{notifyOpen:body.notifyOpen, remindDays:body.remindDays});
@@ -4537,6 +5018,7 @@ function renderNew({edit=null}={}){
     const body={ title:v('title').trim(), description:v('desc'), kind, answerMode:ans, hourStart:patValue('np').hs, hourEnd:patValue('np').he, dayPattern:patValue('np').pat,
       hideResults:$('hide').checked, allowComments:$('n_com').checked, requireEmail:$('n_reqmail').checked, password:v('pw')||undefined, meetLocation:v('n_mloc'), meetNote:v('n_mnote') };
     if($('n_mauto').checked) body.autoMeetings=true;
+    if($('n_mapply').checked) body.meetApply=true;
     if($('n_invonly').checked) body.invitedOnly=true;
     { const er=mqtErr(MQT.n); if(er) return fail(er); const mq=mqtClean(MQT.n); if(mq.length) body.meetQuestions=mq; }
     if(kind==='series'){ const er=mqtErr(MQT.nr); if(er) return fail(er); const rq=mqtClean(MQT.nr); if(rq.length) body.roundQuestions=rq; }
@@ -5011,14 +5493,15 @@ function contactsImportResume(res){
 async function renderCalCard(){
   const box=$('calbox'); if(!box) return;
   const r=await loadCals(); if(!r||!$('calbox')) return;
-  const mark=c=>`<span class="cmark" style="--c:${esc(c.color||'var(--accent)')}">${ICON.cal}</span>`;
+  CALV.cals=r.calendars;
+  const mark=c=>c.icon?`<span class="cmark em" style="--c:${esc(cvColor('c:'+c.id))}">${esc(c.icon)}</span>`:`<span class="cmark" style="--c:${esc(cvColor('c:'+c.id))}">${ICON.cal}</span>`;
   const row=c=>CALUI.edit===c.id
     ?`<li>${mark(c)}<span class="grow"><input type="text" id="cal_ren" maxlength="60" value="${esc(c.name)}" aria-label="${t('Name')}" data-calrenkey="${esc(c.id)}" autocomplete="off"></span>
         <span class="acts">${pqb('check',t('Save'),`data-calrensave="${esc(c.id)}"`,' ok')}${pqb('x',t('Cancel'),'data-calrencancel=""')}</span></li>`
     :`<li class="${c.auto?'':'off'}">${mark(c)}
         <span class="grow pmain"><b class="cname ell">${esc(c.name)}</b>${c.host&&c.host!==c.name?`<span class="muted small ell">${esc(c.host)}</span>`:''}</span>
         <span class="acts"><button type="button" class="qb tog" data-calauto="${esc(c.id)}" aria-pressed="${c.auto}" title="${c.auto?t('Greying out busy times: on'):t('Greying out busy times: off')}" aria-label="${t('Grey out busy times')}">${ICON.eye}</button>
-          ${pqb('edit',t('Rename'),`data-calren="${esc(c.id)}"`)}${c.accountId?'':pqb('trash',t('Remove'),`data-caldel="${esc(c.id)}"`,' danger')}</span></li>`;
+          ${cvStyleDd('c:'+c.id,c)}${pqb('edit',t('Rename'),`data-calren="${esc(c.id)}"`)}${c.accountId?'':pqb('trash',t('Remove'),`data-caldel="${esc(c.id)}"`,' danger')}</span></li>`;
   const groups=r.accounts.map(a=>{ const cs=r.calendars.filter(c=>c.accountId===a.id), pn=a.provider==='google'?'Google':'Outlook';
     return `<div class="cgrp">${ICON.cal}<span class="grow ell">${esc(pn)}${a.email?` · <span class="cem">${esc(a.email)}</span>`:''}</span>
       ${a.status==='expired'?`<a class="btn sm primary" href="/api/oauth/${esc(a.provider)}/start?hint=${encodeURIComponent(a.email||'')}">${t('Reconnect')}</a>`:pqb('repeat',t('Reload the calendar list'),`data-calrefresh="${esc(a.id)}"`)}
@@ -5043,7 +5526,7 @@ function calOpen(url){
   const howto=tip(t('<b>iPhone / iCloud:</b> Calendar app › Calendars › ⓘ next to a calendar › Public Calendar › Share link. <b>Google:</b> calendar.google.com › Settings › your calendar › <i>Secret address in iCal format</i>. <b>Outlook:</b> Settings › Calendar › Shared calendars › Publish, then copy the ICS link. <b>Thunderbird and other mail apps:</b> the calendar’s properties show its iCal / CalDAV subscription link. webcal:// links work too.'),'right');
   d.innerHTML=`<div class="dlg-h"><h2 id="cal_h">${t('Add calendar')}</h2>${pqb('x',t('Close'),'data-calclose=""')}</div>
     <div class="dlg-b" style="border-bottom:0">
-      ${oauth?`<div class="dlg-s">${ICON.user}${t('Sign in to your calendar')}${tip(t('when-who only reads when you’re busy and never stores your events. <a href="?privacy">Privacy policy</a>'),'right')}</div>
+      ${oauth?`<div class="dlg-s">${ICON.user}${t('Sign in to your calendar')}${tip(t('when-who reads your events only to show them to you and grey out busy hours, and never stores them. <a href="?privacy">Privacy policy</a>'),'right')}</div>
         <div class="dlg-conn">${prov.google?`<a class="btn withic" href="/api/oauth/google/start">${ICON.cal}<span>${t('Connect Google')}</span></a>`:''}
           ${prov.microsoft?`<a class="btn withic" href="/api/oauth/microsoft/start">${ICON.cal}<span>${t('Connect Outlook')}</span></a>`:''}</div>`:''}
       <div class="dlg-s">${ICON.link}${oauth?t('Or paste a calendar link'):t('Paste a calendar link')}${howto}</div>
@@ -5694,7 +6177,7 @@ const NT_ROWS=()=>({
   votes:[ICON.check,t('Votes on proposed times'),t('Someone votes on the meeting times proposed for a vote.')],
   qanswers:[ICON.ask,t('Answers to questions'),t('Someone fills in the questions.')],
   meetings:[ICON.star,t('Meetings'),t('A meeting is set, proposed for a vote, changed or cancelled.')],
-  questions:[ICON.ask,t('New questions'),t('The organiser adds questions.')],
+  questions:[ICON.ask,t('Questions'),t('The organiser adds questions, or reminds you to answer them.')],
   rounds:[ICON.repeat,t('Rounds'),t('A new round opens, or the poll is closed or reopened.')],
 });
 const ntAny=(p,types)=>types.some(k=>k==='chat'?(p.chat.p!=='off'||p.chat.e!=='off'):(p[k].p||p[k].e));
@@ -6315,7 +6798,10 @@ function todoList(){
   const d=P.data, i=d&&inst(); if(!i||d.isAdmin||d.draft||inviteLock()) return [];
   const out=[], open=editable(), vg=voteGroups();
   if(open&&!P.myResp) out.push({key:'avail',tab:'answers',icon:'cal',text:vg.length?t('Add your availability to vote'):t('Add your availability')});
-  const rq=open?qReqOpen():[]; if(rq.length) out.push({key:'req',tab:'questions',icon:'ask',text:rq.length===1?t('1 required question'):t('{n} required questions',{n:rq.length}),q:rq[0]});
+  // Questions left empty (required ones first and named); after-meeting ones are the 'after' item.
+  const oq=open&&!canManage()?qList().filter(q=>!qAfter(q)&&qMayFill(q)&&!qAnswered(q,myExtra().a)):[], nr=oq.filter(q=>q.req).length;
+  if(oq.length){ const n=oq.length, qn=n===1?t('Answer 1 question'):t('Answer {n} questions',{n});
+    out.push({key:'req',tab:'questions',icon:'ask',text:nr===n?(n===1?t('1 required question'):t('{n} required questions',{n})):nr?qn+' · '+t('{n} required',{n:nr}):qn,q:oq.find(q=>q.req)||oq[0]}); }
   const nv=open&&P.myResp?vg.filter(g=>!g.opts.some(m=>myVotes().has(m.id))):[];
   if(nv.length) out.push({key:'vote',tab:'meetings',icon:'check',text:nv.length===1?t('Vote on the proposed times'):t('Vote in {n} polls for meeting times',{n:nv.length}),g:nv[0]});
   const ap=qList().length&&P.form&&P.form.can?qPromptPick(true):null;
@@ -6327,25 +6813,27 @@ function todoSoon(){ const dl=inst().deadline; if(!dl||inst().status!=='open') r
 function todoSync(){
   const el=$('todo'); if(!el||!P.data) return; const L=todoList(), tabs=new Set(L.map(x=>x.tab)); P.todo=L;
   document.querySelectorAll('[data-tdot]').forEach(x=>{ x.hidden=!tabs.has(x.dataset.tdot); });
-  if(!L.length){ el.innerHTML=''; el.hidden=true; return; }
+  if(!L.length){ el.innerHTML=''; el.hidden=true; if(TODO_GO&&Date.now()-TODO_GO.at>8000) TODO_GO=null; return; }
   const dl=inst().deadline, soon=todoSoon();
   el.hidden=false; el.className='todo'+(soon?' soon':'');
+  todoGoCheck();
   el.innerHTML=`<span class="todo-h">${ICON[soon?'deadline':'bell']}<b>${t('To do')}</b></span>${L.map(x=>`<button type="button" class="todo-c" data-todo="${x.key}">${ICON[x.icon]}<span>${esc(x.text)}</span></button>`).join('')}${dl&&inst().status==='open'?`<span class="todo-dl">${t('by {date}',{date:esc(dayLabel(dl))})}</span>`:''}${tip(t('What’s still open for you in this round. Tap one to go there.'))}`;
 }
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-todo]'); if(!b||!P.data) return; e.preventDefault();
-  const x=(P.todo||[]).find(y=>y.key===b.dataset.todo); if(!x) return;
+  const x=(P.todo||[]).find(y=>y.key===b.dataset.todo); if(x) todoDo(x); });
+function todoDo(x){
   const flash=el=>{ if(!el) return; el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); };
   if(x.key==='after'){ qPromptOpen(x.pick); return; }
   if(x.key==='vote') setMsub('list',false);
   // A required question about a meeting: answer it on the meeting's card.
   const qm=x.key==='req'&&!qAfter(x.q)&&qMeets(x.q)[0];
   if(qm){ setMsub('list',false); setPollTab('meetings'); if(P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); } renderBody();
-    const o=P.mqopen||(P.mqopen=new Set()); o.add(qm.id+':'+x.q.id); qMeetRefresh(); flash($(`mq${qm.id}_q_${x.q.id}`)); return; }
+    mqSet(qm.id+':'+x.q.id,true); qMeetRefresh(); flash($(`mq${qm.id}_q_${x.q.id}`)); return; }
   setPollTab(x.tab);
   if(x.key==='avail'){ if(P.tab!=='mine'){ P.tab='mine'; store.set('view:'+P.id,'mine'); } renderBody(); flash($('wsme')||$('pane-answers')); return; }
   if(x.key==='req'){ P.qview='fill'; store.set('qview:'+P.id,'fill'); renderQuestions(); flash($('q_'+x.q.id)); return; }
   if(x.key==='vote'){ renderBody(); flash(document.querySelector(`.vpanel[data-vg="${CSS.escape(vgKey(x.g))}"]`)); }
-});
+}
 // Everyone's answers to q (for its picked date) — null when this person can't see them.
 function qAnswers(q){ const rows=(P.data.form||{}).rows; if(!rows||(q.vis==='owner'&&!canSee())) return null;
   return rows.map(r=>({name:r.name||t('Someone'),v:qPer(q)?((r.extra||{})[q.id]||{})[qDate(q)]:(r.extra||{})[q.id],me:!!(P.form&&r.pid===P.form.pid)})).filter(x=>!qEmpty(x.v)); }
@@ -6436,7 +6924,7 @@ function qCard(q,fill){
     <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" class="qm-mob" data-qedit="${q.id}">${ICON.edit}<span class="grow">${t('Edit question')}</span></button>
       <button type="button" data-qmv="${q.id}" data-d="-1">${ICON.up}<span class="grow">${t('Move up')}</span></button><button type="button" data-qmv="${q.id}" data-d="1">${ICON.down}<span class="grow">${t('Move down')}</span></button>
-      <button type="button" data-qdup="${q.id}">${ICON.copy}<span class="grow">${t('Duplicate')}</span></button><button type="button" data-qprsq="${q.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button>${P.data.draft?'':`<button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>`}
+      <button type="button" data-qdup="${q.id}">${ICON.copy}<span class="grow">${t('Duplicate')}</span></button><button type="button" data-qprsq="${q.id}">${ICON.copy}<span class="grow">${t('Save as preset')}</span></button>${P.data.draft?'':`<button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>`}${qRemindOk()&&!q.closed?`<button type="button" data-qremind="${q.id}">${ICON.bell}<span class="grow">${t('Remind who hasn’t answered')}</span></button>`:''}
       ${qRepMenu(q)}
       ${qGroups().length?`<div class="menu-sep"></div><div class="qm-h">${t('Move to')}</div>${q.grp?`<button type="button" data-qmvto="${q.id}" data-g="">${ICON.x}<span class="grow">${t('No questionnaire')}</span></button>`:''}${qGroups().filter(g=>g.id!==q.grp).map(g=>`<button type="button" data-qmvto="${q.id}" data-g="${g.id}">${g.icon?`<span class="qemo-s">${esc(g.icon)}</span>`:ICON.note}<span class="grow">${esc(g.label)}</span></button>`).join('')}`:''}
       <div class="menu-sep"></div><button type="button" class="danger" data-qrm="${q.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details></span>`:'';
@@ -6475,7 +6963,7 @@ function renderQuestionsTab(){
   const view=d.draft?'results':mayFill||adm?P.qview:'results', fill=view==='fill';
   const seg=`<div class="seg ws-views" role="tablist" aria-label="${t('Questions')}"><button type="button" role="tab" data-qview="fill" class="${fill?'on':''}" aria-selected="${fill}"><span class="segic">${ICON.edit}</span>${t('Fill in')}${!adm&&qOpenN()?`<span class="count">${qOpenN()}</span>`:''}</button><button type="button" role="tab" data-qview="results" class="${fill?'':'on'}" aria-selected="${!fill}"><span class="segic">${ICON.users}</span>${t('Results')}</button></div>`;
   const fold=!fill&&qs.length?`<button type="button" class="qb" data-qfold aria-pressed="${!!P.qfold}" title="${P.qfold?t('Show details'):t('Compact view')}" aria-label="${P.qfold?t('Show details'):t('Compact view')}">${ICON[P.qfold?'grow':'shrink']}</button>`:'';
-  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qAiOk()?`<button type="button" class="btn sm withic gtool xai qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
+  const head=`<div class="ws-h"><h2>${t('Questions')}</h2>${qs.length&&(mayFill||adm)&&!d.draft?seg:''}</div>${adm?`<div class="qws-bar">${fold?`<span class="qws-l">${fold}</span>`:''}${qs.length&&qRemindOk()?`<button type="button" class="btn sm withic" data-qremind="" title="${t('Remind people who haven’t answered')}" aria-label="${t('Remind people who haven’t answered')}">${ICON.bell}<span class="bl">${t('Remind')}</span></button>`:''}${qAiOk()?`<button type="button" class="btn sm withic gtool xai qws-ai" data-qai title="${t('Generate with AI')}" aria-label="${t('Generate with AI')}">${ICON.spark}<span class="bl">${t('Generate with AI')}</span></button>`:''}<details class="dd qmore qaskdd qws-add"><summary class="btn sm primary withic">${ICON.plus}<span class="bl">${t('Ask')}</span></summary><div class="ddp right menu pickm"><button type="button" data-qnew>${ICON.ask}<span class="grow">${t('Question')}</span></button><button type="button" data-qgnew>${ICON.note}<span class="grow">${t('Questionnaire')}</span></button><div class="menu-sep"></div><button type="button" data-qprsadd>${ICON.copy}<span class="grow">${t('From a preset…')}</span></button>${qs.length?`<button type="button" data-qprsall>${ICON.copy}<span class="grow">${t('Save all as preset')}</span></button>`:''}</div></details></div>`:''}`;
   const aiP=qAiPanel();
   if(!qs.length&&!qGroups().length&&!P.qedit){
     const tpl=(k,ic,l)=>`<button type="button" class="btn sm withic" data-qtpl="${k}">${ICON[ic]}<span>${l}</span></button>`;
@@ -6496,6 +6984,27 @@ function renderQuestionsTab(){
   qWire(el); back();
 }
 const qCardOrEd=(q,fill)=>P.qedit&&!P.qedit.isNew&&P.qedit.id===q.id?qEditor():qCard(q,fill);
+// Remind people who haven't answered (q = only that question): POST .../questions/remind { qid?, message? }. Accounts get it by their
+// notification settings (push / email digest), guests with an address by email with their own link. The Worker allows one per 10 minutes.
+function qRemindOpen(q){
+  let d=$('qrdlg'); if(!d){ d=document.createElement('dialog'); d.id='qrdlg'; d.className='dlg prdlg'; d.setAttribute('aria-labelledby','qr_h'); document.body.appendChild(d); d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
+  d.innerHTML=`<form method="dialog" id="qr_f"><div class="dlg-h"><span class="qp-ic">${ICON.bell}</span><h2 id="qr_h">${q?t('Remind about this question'):t('Remind about the questions')}</h2>${pqb('x',t('Close'),'data-qrclose=""')}</div>
+    <div class="dlg-b"><p class="mt-0">${q?t('Everyone who may answer “{q}” and hasn’t yet gets a reminder.',{q:esc(q.label)}):t('Everyone with questions they may answer and haven’t yet gets a reminder.')}
+      ${tip(t('People with an account get it by their notification settings (push or email). Guests get an email with their own link.'))}</p>
+      <textarea id="qr_msg" rows="3" maxlength="1000" placeholder="${t('Message (optional)')}" aria-label="${t('Message (optional)')}"></textarea><div class="err" id="qr_err"></div></div>
+    <div class="dlg-f"><span class="grow"></span><button type="button" class="btn ghost" data-qrclose>${t('Cancel')}</button><button class="btn primary withic" id="qr_ok">${ICON.send}<span>${t('Send reminder')}</span></button></div></form>`;
+  d.querySelectorAll('[data-qrclose]').forEach(b=>b.addEventListener('click',()=>d.close()));
+  $('qr_f').addEventListener('submit',async e=>{ e.preventDefault(); $('qr_ok').disabled=true; $('qr_err').textContent='';
+    try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/questions/remind`,{qid:q?q.id:undefined,message:$('qr_msg').value.trim()},pollHeaders(P.id));
+      const n=(r.notified||0)+(r.emailed||0);
+      toast((n?t('Reminder sent to {people}',{people:plural(n,t('person'),t('people'))}):t('Nobody could be reached'))+(r.missing&&r.missing.length?' · '+t('no email: {names}',{names:r.missing.join(', ')}):''));
+      d.close(); }
+    catch(ex){ $('qr_err').textContent=ex.message; $('qr_ok').disabled=false; } });
+  if(!d.open) d.showModal(); }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-qremind]'); if(!b||!P.data) return; e.preventDefault();
+  const dd=b.closest('details[open]'); if(dd) dd.open=false;
+  qRemindOpen(b.dataset.qremind?qList().find(q=>q.id===b.dataset.qremind):null); });
+const qRemindOk=()=>canManage()&&!P.data.draft&&inst().status==='open';
 // Applies to / Who chips (questions with their own settings, questionnaires).
 function qLwChips(x){ const ms=qMeets(x);
   return [qLinkChip(x),
@@ -6526,11 +7035,27 @@ function qAfterChips(m){
 // Questions linked to a meeting, embedded in its card (and in a vote option's row, vote = true): answer right there with the
 // counts showing, Send below; or the results when I can't answer. The organiser adds / edits them here too (inline editor,
 // P.qedit.inMeet). Always a wrapper (data-mqx) so qMeetRefresh can redraw just these blocks.
+// Embedded questions fold by tapping them. P.mqfold: key "<meeting id>:<question id>" → open (what the person chose, while the page is open).
+// Untouched ones: vote rows folded; meeting cards open only on the focus meeting (the next one that hasn't ended, else the last one).
+function mFocusId(){ const now=Date.now(); let next=null, last=null;
+  for(const m of inst().meetings||[]){ if(m.proposed) continue; let d=m.date;
+    if(m.repeat) for(let x=firstOn(m.repeat.from,wdOf(m.date)),i=0;i<520&&(!m.repeat.until||x<=m.repeat.until);i++,x=addDaysL(x,7*m.repeat.every)){ d=x; if(meetEndAt(m,x)>now) break; }
+    const end=meetEndAt(m,d);
+    if(end>now){ if(!next||end<next.end) next={id:m.id,end}; } else if(!last||end>last.end) last={id:m.id,end}; }
+  return (next||last||{}).id||''; }
+// Kept per poll in localStorage mqf:<poll> (newest 200), so a reload keeps them.
+const mqMap=()=>{ if(!P.mqfold||P.mqfoldOf!==P.id){ P.mqfoldOf=P.id; const s=store.get('mqf:'+P.id,null); P.mqfold=new Map(s&&typeof s==='object'?Object.entries(s).filter(([,v])=>typeof v==='boolean'):[]); } return P.mqfold; };
+const mqSet=(key,open)=>{ const M=mqMap(); M.delete(key); M.set(key,open); store.set('mqf:'+P.id,Object.fromEntries([...M].slice(-200))); };
+const mqIsOpen=(key,m,vote,focus)=>{ const f=mqMap().get(key); return f!==undefined?f:!vote&&m.id===focus; };
+// After sending, fold the open meeting questions I've now answered (the line keeps the ✓ and the summary).
+function mqFoldAnswered(){ const a=myExtra().a;
+  document.querySelectorAll('[data-mqx] .mqx-tog[aria-expanded="true"]').forEach(b=>{ const key=b.dataset.mqopen, q=qList().find(x=>x.id===key.split(':')[1]);
+    if(q&&qMayFill(q)&&!qEmpty(qGet(q,a))) mqSet(key,false); }); }
 function qMeetBlock(m,vote){
   const d=P.data, adm=d.isAdmin, E=P.qedit&&P.qedit.inMeet===m.id?P.qedit:null, px='mq'+m.id+'_';
   const wrap=h=>`<div class="mqx${vote?' v':''}" data-mqx="${m.id}"${vote?' data-v="1"':''}>${h}</div>`;
   if(!d||!P.form) return wrap(qAfterChips(m));
-  const noId=!ME.user&&!P.form.pid&&!P.myResp, open=P.mqopen||(P.mqopen=new Set());
+  const noId=!ME.user&&!P.form.pid&&!P.myResp, focus=vote?'':mFocusId();
   const qs=qLinked(m.id).filter(q=>qMayFill(q)||canSee()||q.vis!=='owner');
   const rows=qs.map(q=>{
     if(E&&!E.isNew&&E.id===q.id) return qEditor();
@@ -6541,10 +7066,10 @@ function qMeetBlock(m,vote){
       <button type="button" data-qgo="${q.id}">${ICON.ask}<span class="grow">${t('Open in Questions')}</span></button>${d.draft?'':`<button type="button" data-qclose="${q.id}">${ICON[q.closed?'unlock':'lock']}<span class="grow">${q.closed?t('Reopen answers'):t('Close answers')}</span></button>`}
       <div class="menu-sep"></div><button type="button" class="danger" data-qrm="${q.id}">${ICON.trash}<span class="grow">${t('Delete')}</span></button></div></details></span>`:'';
     const label=`<span class="mqx-t">${ic}<b>${esc(q.label)}</b>${q.req?`<span class="qreq" title="${t('Required')}">*</span>`:''}${q.closed?` <span class="tag x">${t('closed')}</span>`:''}</span>`;
-    // Vote rows stay short: one line per question until tapped.
-    if(vote&&!open.has(key)) return `<div class="mqx-q fold"><button type="button" class="mqx-h mqx-tog" data-mqopen="${key}" aria-expanded="false">${label}${sum}</button>${menu}</div>`;
+    // One line per question until tapped (vote rows always start so; cards except the focus meeting's).
+    if(!mqIsOpen(key,m,vote,focus)) return `<div class="mqx-q fold"><button type="button" class="mqx-h mqx-tog" data-mqopen="${key}" aria-expanded="false" title="${t('Show question')}">${label}${sum}<span class="mqx-cv" aria-hidden="true">${ICON.chevd}</span></button>${menu}</div>`;
     const ds=qDates(q), dsel=ds.length?`<select class="qdsel" data-qdate="${q.id}" aria-label="${t('Date')}">${ds.map(x=>`<option value="${x}"${x===qDate(q)?' selected':''}>${esc(qDateLabel(q,x))}</option>`).join('')}</select>`:'';
-    const head=vote?`<button type="button" class="mqx-h mqx-tog" data-mqopen="${key}" aria-expanded="true">${label}</button>`:`<div class="mqx-h">${label}${Q_CHOICE.has(q.type)?'':`<span class="mqx-s">${qSummary(q)}</span>`}</div>`;
+    const head=`<button type="button" class="mqx-h mqx-tog" data-mqopen="${key}" aria-expanded="true" title="${t('Hide question')}">${label}${vote||Q_CHOICE.has(q.type)?'':`<span class="mqx-s">${qSummary(q)}</span>`}<span class="mqx-cv" aria-hidden="true">${ICON.chevd}</span></button>`;
     let body;
     if(can&&noId) body=`${qBody(q,false,px)}<button type="button" class="btn sm withic mqx-go" data-qgo="${q.id}">${ICON.edit}<span>${t('Answer')}</span></button>`;
     else if(can) body=qBody(q,true,px,true);
@@ -6584,7 +7109,7 @@ async function qSend(){
     const had=!!P.form.id; Object.assign(P.form,{id:r.id,pid:r.pid,name:r.name,extra:r.extra||{},dirty:false});
     if(r.editKey){ P.form.key=r.editKey; store.set(formKey(),{id:r.id,key:r.editKey}); }
     if(guest&&name&&!ME.user) store.set('myName',name);
-    qSaved(); toast(had?t('Answers updated'):t('Answers sent')); refreshResults(); if(!P.form.can) loadForm(); }
+    mqFoldAnswered(); qSaved(); toast(had?t('Answers updated'):t('Answers sent')); refreshResults(); if(!P.form.can) loadForm(); }
   catch(e){ toast(e.message); }
   P.form.saving=false; renderQuestions();
 }
@@ -6723,7 +7248,7 @@ document.addEventListener('keydown',e=>{ if(e.target.id==='qAiText'&&e.key==='En
 function qOpenEditor(q,inMeet){ P.qai=null; P.qedit=JSON.parse(JSON.stringify({type:'radio',vis:'all',options:[],link:{to:'poll'},who:{mode:'all'},...(qRawOf(q)||{}),...(q&&q.id?{}:{id:qNewId(),isNew:true})})); P.qdd=null;
   if(P.qedit.grp&&qgcSet().has(P.qedit.grp)){ const c=qgcSet(); c.delete(P.qedit.grp); store.set('qgc:'+P.id,[...c]); }
   if(!P.qedit.link) P.qedit.link={to:'poll'}; if(!P.qedit.who) P.qedit.who={mode:'all'};
-  if(inMeet){ P.qedit.inMeet=inMeet; if(P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); renderMeetings(); } const o=P.mqopen||(P.mqopen=new Set()); if(P.qedit.id) o.add(inMeet+':'+P.qedit.id); }
+  if(inMeet){ P.qedit.inMeet=inMeet; if(P.mfold){ P.mfold=false; store.set('mfold:'+P.id,false); renderMeetings(); } if(P.qedit.id) mqSet(inMeet+':'+P.qedit.id,true); }
   else if(P.atab!=='questions') setPollTab('questions');
   renderQuestions(true);
   requestAnimationFrame(()=>{ const f=$('qeForm'); if(f){ f.scrollIntoView({block:'center',behavior:'smooth'}); const l=$('qe_label'); if(l&&!l.value) l.focus({preventScroll:true}); } }); }
@@ -6762,7 +7287,7 @@ function qEditor(){
   return `<${FT} class="meet qcard qedit" id="qeForm" data-qtokscope novalidate>${iconDd}<div class="mbody">
     <div class="qe-top">${typeDd}<input type="text" id="qe_label" class="qe-label" data-qtokmain maxlength="200" required value="${esc(e.label||'')}" placeholder="${t('Question')}" aria-label="${t('Question')}"></div>
     <input type="text" id="qe_help" maxlength="500" value="${esc(e.help||'')}" placeholder="${t('Note (optional)')}" aria-label="${t('Note (optional)')}">
-    ${rep}
+    ${rep}${e.mtpl&&e.mh&&P.data.poll.meetApply?`<div class="muted small qe-mtpl">${ICON.repeat}<span>${t('From Settings → Meetings. Changing it here stops it following those.')}</span></div>`:''}
     ${choice?`<div class="qeopts">${opts.map((o,i)=>`<div class="qeopt${e.place?' locbox':''}"><span class="qmark ${ty==='check'?'box':'dot'}"></span><input type="text" data-qeo="${o.id}" id="qeo_${o.id}" maxlength="120" value="${esc(o.label)}" autocomplete="off" placeholder="${e.place?t('Place {n}',{n:i+1}):t('Option {n}',{n:i+1})}" aria-label="${t('Option {n}',{n:i+1})}">${e.place?`<div class="locsug" id="qeo_${o.id}_sug" role="listbox" hidden></div>`:''}<button type="button" class="qb" data-qeorm="${o.id}" title="${t('Remove option')}" aria-label="${t('Remove option')}">${ICON.x}</button></div>`).join('')}
       <button type="button" class="btn sm ghost withic qeadd" data-qeoadd>${ICON.plus}<span>${t('Option')}</span></button></div>`:''}
     ${ty==='rating'?`<div class="qe-rate"><label>${ICON.star}<select id="qe_rmax" aria-label="${t('Highest rating')}">${[3,4,5,6,7,8,9,10].map(n=>`<option${(e.rating&&e.rating.max||5)===n?' selected':''}>${n}</option>`).join('')}</select></label><input type="text" id="qe_rlo" maxlength="40" value="${esc(e.rating&&e.rating.lo||'')}" placeholder="${t('Low label, e.g. Poor')}" aria-label="${t('Low label')}"><input type="text" id="qe_rhi" maxlength="40" value="${esc(e.rating&&e.rating.hi||'')}" placeholder="${t('High label, e.g. Great')}" aria-label="${t('High label')}"></div>`:''}
@@ -6926,7 +7451,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-qview],[d
   if(ds.mqnew){ const m=inst().meetings.find(x=>x.id===ds.m); if(!m) return; const base=Q_TPL[ds.mqnew](), place=ds.mqnew==='place';
     qOpenEditor({...base,...(ds.mqnew==='rating'?{label:''}:{}),link:{to:'meetings',ids:[m.id]},who:{mode:place||m.proposed?'all':'meeting'}},m.id); return; }
   if(ds.mqedit){ const q2=qs.find(x=>x.id===ds.mqedit); if(q2) qOpenEditor(q2,ds.m); return; }
-  if(ds.mqopen){ const o=P.mqopen||(P.mqopen=new Set()); o.has(ds.mqopen)?o.delete(ds.mqopen):o.add(ds.mqopen); qMeetRefresh(); return; }
+  if(ds.mqopen){ mqSet(ds.mqopen,b.getAttribute('aria-expanded')!=='true'); qMeetRefresh(); return; }
   if(ds.qgo){ e.preventDefault(); if(ds.k){ P.qdate=P.qdate||{}; P.qdate[ds.qgo]=ds.k; } setPollTab('questions'); if(P.qfold) P.qopen=ds.qgo; renderQuestions();
     const el=$('q_'+ds.qgo); if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1200); } return; }
   if(ds.qmeet){ e.preventDefault(); setPollTab('meetings'); const m=document.querySelector(`#meetings [data-mtg="${ds.qmeet}"]`); if(m) m.scrollIntoView({block:'center',behavior:'smooth'}); return; }
@@ -7606,7 +8131,7 @@ function expandRule(rule,st,toW,fromW){
   return out;
 }
 // Busy intervals [startMs, endMs, title] between fromMs and toMs.
-function parseIcs(text,fromMs,toMsX){
+function parseIcs(text,fromMs,toMsX,free){
   const lines=String(text).replace(/\r?\n[ \t]/g,'').split(/\r?\n/), evs=[]; let ev=null, depth=0;
   for(const line of lines){
     if(/^BEGIN:VEVENT$/i.test(line)){ ev={exdates:[]}; depth=0; continue; }
@@ -7631,7 +8156,7 @@ function parseIcs(text,fromMs,toMsX){
   evs.forEach(e=>{ if(e.rid&&e.uid&&e.start) (moved[e.uid]||(moved[e.uid]=new Set())).add(toMs(e.rid.w,e.rid.tz||e.start.tz)); });
   const busy=[], margin=2*DAY;
   for(const e of evs){
-    if(!e.start||e.status==='CANCELLED'||e.transp==='TRANSPARENT') continue;
+    if(!e.start||e.status==='CANCELLED'||(e.transp==='TRANSPARENT'&&!free)) continue;
     const st=e.start, tz=st.tz;
     // Length: all-day events end on a (wall-clock) day, timed ones after a fixed number of ms.
     let days=0, ms=0;
@@ -7710,11 +8235,12 @@ function loadCals(){
 }
 const calAccount=(r,c)=>c.accountId?r.accounts.find(a=>a.id===c.accountId):null;
 const calSource=(r,c)=>{ const a=calAccount(r,c); return a?` · ${a.provider==='google'?'Google':'Outlook'}`:(c.host?` · ${c.host}`:''); };
-// Events of one calendar between from and to (ms): [startMs, endMs, title, calendar name].
-async function calendarEvents(c,from,to){
-  const res=await fetch(`/api/me/calendars/${encodeURIComponent(c.id)}/busy?from=${from}&to=${to}`,{headers:{'x-lang':LANG}});
+// Events of one calendar between from and to (ms): [startMs, endMs, title, calendar name, id]. free = also events marked
+// free / transparent (holidays, birthdays), for the home calendar; busy times leave them out.
+async function calendarEvents(c,from,to,free){
+  const res=await fetch(`/api/me/calendars/${encodeURIComponent(c.id)}/busy?from=${from}&to=${to}${free?'&all=1':''}`,{headers:{'x-lang':LANG}});
   if(!res.ok){ let d={}; try{ d=await res.json(); }catch(e){} const err=new Error(tErr(d.error||t('Couldn’t load the calendar ({status})',{status:res.status}))); err.data=d; throw err; }
-  if((res.headers.get('content-type')||'').includes('text/calendar')) return parseIcs(await res.text(),from,to).map(x=>[x[0],x[1],x[2]||'',c.name,c.id]);
+  if((res.headers.get('content-type')||'').includes('text/calendar')) return parseIcs(await res.text(),from,to,free).map(x=>[x[0],x[1],x[2]||'',c.name,c.id]);
   const d=await res.json();
   return (d.events||[]).map(e=>e.allDay?[parseD(e.s).getTime(),parseD(e.e).getTime(),e.title||'',c.name,c.id]:[+e.s,+e.e,e.title||'',c.name,c.id]).filter(x=>x[0]<to&&x[1]>from);
 }
@@ -8330,7 +8856,7 @@ function renderPlan(el){
   el.innerHTML=h; wireWho(); wirePlanner();
 }
 function draftTray(){
-  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:mqtClone(P.data.poll.meetQuestions)}), n=P.drafts.length;
+  const pt=P.data.poll.title, dm=P.dmeta||(P.dmeta={title:pt,location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:dmQs()}), n=P.drafts.length;
   if(!dm.qs) dm.qs=[];
   if(!n) return `<div id="drafts"></div>`;
   // One compact row per draft: date tile | time (or All day) over availability + who | icon toggles.
@@ -8355,10 +8881,12 @@ function draftTray(){
       <label class="ifld">${ICON.note}<textarea id="dm_note" maxlength="1000" rows="2" aria-label="${n>1?t('Description (optional, for all)'):t('Description (optional)')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(dm.note)}</textarea></label>
       <details class="dinc" id="dm_inc"${dm.inc||P.dincOpen?' open':''}><summary>${ICON.users}<span>${t('From the answers')}</span>${tip(t('Adds what people answered to these meetings’ description, invite email and calendar file. It stays up to date as answers come in.'))}${dm.inc?`<span class="count">${(dm.inc.who?1:0)+(dm.inc.comments?1:0)+(dm.inc.qs||[]).length}</span>`:''}</summary>${incPicker(dm.inc)}</details>
       <details class="dinc dqs" id="dm_qs"${dm.qs.length||P.dqsOpen?' open':''}><summary>${ICON.ask}<span>${t('Questions')}</span>${tip(t('Asked in the new meetings, e.g. a vote on the place. People answer them right in the meeting. Set the ones every new meeting gets in Settings → Meetings.'))}<span class="count" id="dm_mqt_n"${dm.qs.length?'':' hidden'}>${dm.qs.length}</span></summary>
-        ${mqtBox('dm',dm.qs)}${n>1?`<div class="qetog dqs-one">${ICON.users}<label for="dm_qone">${t('One question for all {n}',{n})}</label>${tip(t('Off: each meeting gets its own questions and its own results. On: one question covers all the new meetings, e.g. one place vote for all the options.'))}${swc('dm_qone',!!dm.qOne,t('One question for all {n}',{n}))}</div>`:''}</details>
+        ${P.data.poll.meetApply&&(P.data.poll.meetQuestions||[]).length?`<div class="muted small dqs-auto">${ICON.repeat}<span>${t('The questions from Settings → Meetings are added to every meeting by themselves. Add more here.')}</span></div>`:''}${mqtBox('dm',dm.qs)}${n>1?`<div class="qetog dqs-one">${ICON.users}<label for="dm_qone">${t('One question for all {n}',{n})}</label>${tip(t('Off: each meeting gets its own questions and its own results. On: one question covers all the new meetings, e.g. one place vote for all the options.'))}${swc('dm_qone',!!dm.qOne,t('One question for all {n}',{n}))}</div>`:''}</details>
       <div class="err" id="dm_err"></div>
       <div class="dfoot">${dvoteBox(n)}<button class="btn primary withic" data-savedrafts>${ICON.check}${dvoteOn(n)?(n===1?t('Propose 1 option'):t('Propose {n} options',{n})):n===1?t('Schedule {n} meeting',{n:1}):t('Schedule {n} meetings',{n})}</button></div></div></div>`;
 }
+// The planner's starting questions: the poll's templates, unless Apply to all meetings is on (then the Worker adds those itself).
+const dmQs=()=>P.data.poll.meetApply?[]:mqtClone(P.data.poll.meetQuestions);
 // "Let people vote": a new vote (pick one or several) or more options for an open one (P.dvoteTo = vote key, '' = new).
 const dvoteTo=n=>{ const gs=voteGroups(); if(P.dvoteTo&&gs.some(g=>vgKey(g)===P.dvoteTo)) return P.dvoteTo; return n>1||!gs.length?'':vgKey(gs[0]); };
 const dvoteOn=n=>!!P.dvote&&(n>1||!!voteGroups().length);
@@ -8648,7 +9176,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{ if(e.target.id==='sugAiText') P.sugAiText=e.target.value; });
 document.addEventListener('keydown',e=>{ if(e.target.id==='sugAiText'&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); sugAiGo(); } });
 async function saveDrafts(btn){
-  const dm=P.dmeta||{title:'',location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:mqtClone(P.data.poll.meetQuestions)}, ms=inst().meetings, err=$('dm_err');
+  const dm=P.dmeta||{title:'',location:P.data.poll.meetLocation||'',note:P.data.poll.meetNote||'',qs:dmQs()}, ms=inst().meetings, err=$('dm_err');
   if(!P.drafts.length) return;
   // Questions for the new meetings (Details → Questions): checked before anything is saved.
   const tq=mqtClean(dm.qs), one=!!dm.qOne&&P.drafts.length>1, terr=mqtErr(dm.qs); if(terr){ err.textContent=terr; return; }
@@ -9813,12 +10341,12 @@ function adminPanes(){
       <div class="field"><label class="row tight">${t('Which days and times')}</label><p class="help small mt-0">${t('Only these days (and hours) are offered. Answers on days or hours you remove are dropped the next time that person saves.')}</p>${patternPicker('sp',{pat:p.dayPattern,hs:p.hourStart,he:p.hourEnd,hours:p.answerMode!=='days',noDom:p.kind==='weekly',multi:true})}</div>
       ${answerChips(['s_com','s_reqmail','s_invonly'],{com:p.allowComments,req:p.requireEmail,inv:p.invitedOnly})}`,
       `${p.allowComments?ICON.chat:''}${p.requireEmail?ICON.mail:''}${p.invitedOnly?ICON.users:''}`):''}
-    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions),p.autoMeetings),`${p.autoMeetings?ICON.cal:''}${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
+    ${man?sset('meetdef','pin',t('Meetings'),meetDefRows('s',p.meetLocation,p.meetNote,mqtClone(p.meetQuestions,true),p.autoMeetings,p.meetApply),`${p.autoMeetings?ICON.cal:''}${p.meetApply?ICON.repeat:''}${p.meetLocation?ICON.pin:''}${p.meetNote?ICON.note:''}${(p.meetQuestions||[]).length?ICON.ask:''}`):''}
     ${man&&series?sset('questions','ask',t('Questions'),roundQsRows('r',mqtClone(p.roundQuestions,true,10)),(p.roundQuestions||[]).length?ICON.repeat:''):''}
     ${man?sset('privacy','lock',t('Privacy'),`
       ${privacyRows({hide:'s_hide',pw:'s_pw',clear:'s_pwclear',hideOn:p.hideResults,has:p.hasPassword})}`,
       p.hideResults||p.hasPassword?`${p.hideResults?ICON.eyeoff:''}${p.hasPassword?ICON.lock:''}`:''):''}
-    ${man?sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2})
+    ${man?sset('email','mail',t('Email'),d.emailEnabled?mailRows({notify:series?'s_notify':'',remind:'s_remind',days:'s_rdays',notifyOn:p.notifyOpen,remindOn:p.remindDays!=null,n:p.remindDays??2,qr:'s_qremind',qrOn:!!p.remindQuestions})
       :`<div class="row tight muted small">${t('Not set up: invites open in your email app.')}${tip(t('Email sending from the site isn’t set up. Invites open in your own email app. See the README to turn it on.'),'right')}</div>`,
       d.emailEnabled?`${series&&p.notifyOpen?ICON.repeat:''}${p.remindDays!=null?ICON.bell:''}`:''):''}
     <div class="err" id="serr"></div>
@@ -9853,7 +10381,8 @@ function srow(icon,title,hint,ctl,o={}){
 function mailRows(o){
   return `<div class="mrows">
     ${o.notify?srow('repeat',t('New round'),t('Email everyone when a round opens'),swc(o.notify,o.notifyOn,t('Email everyone in the poll when a new round opens')),{hid:!!o.notifyHidden,id:'notifyRow'}):''}
-    ${srow('bell',t('Reminder'),t("To people who haven't answered"),`<label class="mrow-n${o.remindOn?'':' off'}"><input type="number" id="${o.days}" min="0" max="30" value="${esc(o.n)}" aria-label="${t('Days before the reply-by date')}"${o.remindOn?'':' disabled'}><span>${t('days before')}</span></label>${swc(o.remind,o.remindOn,t('Email a reminder before the reply-by date'))}`)}</div>`;
+    ${srow('bell',t('Reminder'),t("To people who haven't answered"),`<label class="mrow-n${o.remindOn?'':' off'}"><input type="number" id="${o.days}" min="0" max="30" value="${esc(o.n)}" aria-label="${t('Days before the reply-by date')}"${o.remindOn?'':' disabled'}><span>${t('days before')}</span></label>${swc(o.remind,o.remindOn,t('Email a reminder before the reply-by date'))}`)}
+    ${o.qr?srow('ask',t('Questions too'),t('Same day: remind people who haven’t answered the questions'),`<span class="mrow-q${o.remindOn?'':' off'}">${swc(o.qr,o.qrOn,t('Also remind about unanswered questions')).replace('<input',o.remindOn?'<input':'<input disabled')}</span>`,{tip:t('People with an account get it by their notification settings, guests by email. Needs the reminder above.')}):''}</div>`;
 }
 // A series' timing rows (New poll's Recurring box, Settings): when a round opens and its reply-by, in days before it starts.
 function dayRows(open,dl,openN,dlN,tp=''){
@@ -9870,7 +10399,8 @@ function privacyRows(o){
       `<label class="mrow-in pwf${o.has?' set':''}">${ICON.lock}<input type="password" id="${o.pw}" maxlength="100" placeholder="${o.has?t('New password'):t('Password')}" aria-label="${t('Password')}" autocomplete="new-password"></label>${o.has?`<label class="mrow-x" title="${t('Remove password')}"><input type="checkbox" id="${o.clear}"><span>${t('Remove')}</span></label>`:''}`)}</div>`;
 }
 document.addEventListener('change',e=>{ const c=e.target; if(c.id!=='remind'&&c.id!=='s_remind') return;
-  const n=c.closest('.mrow').querySelector('.mrow-n'); n.classList.toggle('off',!c.checked); n.querySelector('input').disabled=!c.checked; });
+  const n=c.closest('.mrow').querySelector('.mrow-n'); n.classList.toggle('off',!c.checked); n.querySelector('input').disabled=!c.checked;
+  const q=c.closest('.mrows')?.querySelector('.mrow-q'); if(q){ q.classList.toggle('off',!c.checked); q.querySelector('input').disabled=!c.checked; } });
 // Segmented radio (Settings and New poll): writes the value to the hidden input #id and fires change. pat = pattern picker whose hours follow it ('' = none).
 // opts = [[value, icons ('day+clock'), label, full label], …]
 function segRadio(id,opts,cur,label,pat=''){
@@ -9901,9 +10431,10 @@ const SSET_C={details:'#4f7cff',dates:'#8b5cf6',rounds:'#8b5cf6',when:'#8b5cf6',
 function roundQsRows(pre,qs){
   return `<div class="mdef-q rqs"><div class="srow-l mdef-h">${ICON.repeat}<span>${t('Questions for every round')}</span>${tip(t('Each new round gets these questions, fresh, even when a round’s copy was changed or deleted. ＋ Month / ＋ Dates fill in the round, e.g. “What songs should we practice in {month}?”. New ones are added to the current round too; changes count from the next round.'))}</div>${mqtBox(pre,qs)}</div>`;
 }
-function meetDefRows(pre,loc,note,qs,auto){
+function meetDefRows(pre,loc,note,qs,auto,apply){
   return `<div class="mdef"><div class="qetog mdef-auto">${ICON.cal}<label for="${pre}_mauto">${t('Create the meetings from these times')}</label>${tip(t('For meetings that already exist: every offered day gets its meetings right away, one for each run of hours without a break (e.g. 9–12 and 14–18 make two). New rounds get theirs too, and they follow when you change the days or hours. Up to 100 per round. A meeting whose time you change by hand stays as it is.'))}${swc(pre+'_mauto',!!auto,t('Create the meetings from these times'))}</div>
-    <div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are.'))}</div>
+    <div class="qetog mdef-auto">${ICON.repeat}<label for="${pre}_mapply">${t('Apply to all meetings, also existing ones')}</label>${tip(t('Off: only meetings you create in the planner start with these. On: every meeting gets them, also the ones made from these times and the ones that already exist, and they follow when you change them here. A location or description you set by hand on a meeting stays; a question you edit in a meeting stops following. Up to 30 questions per round.'))}${swc(pre+'_mapply',!!apply,t('Apply to all meetings, also existing ones'))}</div>
+    <div class="srow-l mdef-h">${t('Filled in for every new meeting.')}${tip(t('The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are, unless Apply to all meetings is on.'))}</div>
     <div class="ifld locbox">${ICON.pin}<input type="text" id="${pre}_mloc" maxlength="200" autocomplete="off" placeholder="${t('Location (optional)')}" aria-label="${t('Default location')}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${pre}_mloc_sug" value="${esc(loc||'')}"><div class="locsug" id="${pre}_mloc_sug" role="listbox" hidden></div></div>
     <label class="ifld">${ICON.note}<textarea id="${pre}_mnote" maxlength="1000" rows="3" aria-label="${t('Default description')}" placeholder="${t('Agenda, what to bring, a call link …')}">${esc(note||'')}</textarea></label>
     <div class="mdef-q"><div class="srow-l mdef-h">${ICON.ask}<span>${t('Questions in every new meeting')}</span>${tip(t('Asked in each meeting you create in the planner, e.g. a vote on the place. People answer them right in the meeting.'))}</div>${mqtBox(pre,qs)}</div></div>`;
@@ -10314,11 +10845,11 @@ function wireAdmin(){
   const p=P.data.poll, v=id=>{ const el=$(id); return el?el.value:undefined; };
   f.onsubmit=async e=>{ e.preventDefault(); const err=$('serr'); err.textContent='';
     const man=canManage();
-    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&$('s_mauto')&&$('s_mauto').checked!==!!P.data.poll.autoMeetings) b.autoMeetings=$('s_mauto').checked; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions))) b.meetQuestions=mq; }
+    const b=!man?{}:{ title:v('s_title'), description:v('s_desc'), hideResults:$('s_hide').checked, allowComments:$('s_com').checked, requireEmail:$('s_reqmail').checked, invitedOnly:$('s_invonly').checked, answerMode:v('s_ans'), meetLocation:v('s_mloc'), meetNote:v('s_mnote') }; if(man&&$('s_mauto')&&$('s_mauto').checked!==!!P.data.poll.autoMeetings) b.autoMeetings=$('s_mauto').checked; if(man&&$('s_mapply')&&$('s_mapply').checked!==!!P.data.poll.meetApply) b.meetApply=$('s_mapply').checked; if(man&&MQT.s){ const er=mqtErr(MQT.s); if(er){ toast(er); return; } const mq=mqtClean(MQT.s); if(JSON.stringify(mq)!==JSON.stringify(mqtClone(P.data.poll.meetQuestions,true))) b.meetQuestions=mq; }
       if(man&&MQT.r&&$('r_mqt')){ const er=mqtErr(MQT.r); if(er){ toast(er); return; } const rq=mqtClean(MQT.r); if(JSON.stringify(rq)!==JSON.stringify(mqtClone(P.data.poll.roundQuestions,true,10))) b.roundQuestions=rq; } if(man){ const pv=patValue('sp'); if(pv.empty){ toast(patEmptyMsg('sp')); return; } Object.assign(b,{hourStart:pv.hs, hourEnd:pv.he, dayPattern:pv.pat}); }
     if(man){ const pk=pickerValue('poll'); b.icon=pk.emoji; if(pk.image!==undefined) b.image=pk.image; }
     if($('s_open')) Object.assign(b,{openDays:+v('s_open'), deadlineDays:v('s_dld')===''?null:+v('s_dld')});
-    if(man&&P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; }
+    if(man&&P.data.emailEnabled){ if($('s_notify')) b.notifyOpen=$('s_notify').checked; b.remindDays=$('s_remind').checked&&v('s_rdays')!==''?+v('s_rdays'):null; if($('s_qremind')) b.remindQuestions=$('s_qremind').checked; }
     const clr=$('s_pwclear'); if(clr&&clr.checked) b.password=''; else if(v('s_pw')) b.password=v('s_pw');
     // Settings → Dates edits the poll's single round; only sent when something there changed.
     const i=inst(), ib={};
@@ -10696,6 +11227,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
     const pk=/^#k=([\w-]{1,40}\.[\w-]{22})$/.exec(location.hash);
     if(pk){ store.set('plink:'+pid,pk[1]); history.replaceState(null,'',location.pathname+location.search); }
     if(['meetings','questions'].includes(qs.get('tab'))){ store.set('atab:'+pid,qs.get('tab')); qs.delete('tab'); history.replaceState(null,'','?'+qs.toString()+location.hash); }
+    if(TD_TAB[qs.get('todo')]!==undefined){ const k=qs.get('todo'); TODO_GO={kind:k,at:Date.now()+4000}; if(TD_TAB[k]) store.set('atab:'+pid,TD_TAB[k]); qs.delete('todo'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from the overview's To do card
     if(qs.has('chat')){ store.set('chatOpen:'+pid,true); qs.delete('chat'); history.replaceState(null,'','?'+qs.toString()+location.hash); } // from a notification
     await openPoll(pid); await contactsReturn(qs);
     if(P.data&&!ME.user){ const list=store.get('myPolls',[]); list.forEach(x=>{ if(x.id===pid) x.title=P.data.poll.title; }); store.set('myPolls',list); }
@@ -10720,7 +11252,57 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+  'Colour: use #rrggbb':'Farbe: im Format #rrggbb',
+  'To vote on':'Zur Abstimmung',
+  'Reply-by dates':'Antwortfristen',
+  'My free hours':'Meine freien Stunden',
+  'Linked calendars':'Verknüpfte Kalender',
+  'You said you’re free':'Du hast gesagt, du hast Zeit',
+  'Whole month':'Ganzer Monat',
+  'Nothing on this day.':'An diesem Tag ist nichts.',
+  'Nothing this month.':'Diesen Monat ist nichts.',
+  'Colour and icon':'Farbe und Symbol',
+  'Polls':'Umfragen',
+  'No poll items in this range.':'Keine Umfrage-Einträge in diesem Zeitraum.',
+  'No calendars yet.':'Noch keine Kalender.',
+  'Week':'Woche',
+  'Filter':'Filter',
+  'Open the calendar':'Kalender öffnen',
+  'Grid':'Raster',
+  'Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour; the icon shows the kind. Tap a poll item to open it.':'Alles mit Datum aus deinen Umfragen, dazu die Kalender, die du auf deiner Kontoseite verknüpft hast (im Browser gelesen, nie gespeichert). Jede Umfrage und jeder Kalender hat eine eigene Farbe; das Symbol zeigt die Art. Tippe auf einen Umfrage-Eintrag, um ihn zu öffnen.',
+  'See everything in a calendar: meetings, votes, reply-by dates, To do items, the hours you marked free and your linked calendars, each poll and calendar in its own colour. Filter what shows and pick colours and icons.':'Alles in einem Kalender: Termine, Abstimmungen, Antwortfristen, To-dos, die Stunden, in denen du Zeit hast, und deine verknüpften Kalender, jede Umfrage und jeder Kalender in eigener Farbe. Filtere, was angezeigt wird, und wähle Farben und Symbole.',
+  'Reset info popups':'Infofenster zurücksetzen',
+  'Show the tour, tips and hints you closed or skipped again':'Tour, Tipps und Hinweise, die du geschlossen oder übersprungen hast, wieder zeigen',
+  'Info popups will show again':'Infofenster werden wieder angezeigt',
+  'What’s still open for you in polls you were invited to or answered: your availability, questions, votes and meetings to rate. Tap one to go there.':'Was in Umfragen, zu denen du eingeladen bist oder in denen du geantwortet hast, noch offen ist: deine Zeiten, Fragen, Abstimmungen und Termine zum Bewerten. Tippe darauf, um hinzugehen.',
+  'Answer 1 question':'1 Frage beantworten',
+  'Answer {n} questions':'{n} Fragen beantworten',
+  '{n} required':'{n} Pflicht',
+  'Remind about this question':'An diese Frage erinnern',
+  'Remind about the questions':'An die Fragen erinnern',
+  'Everyone who may answer “{q}” and hasn’t yet gets a reminder.':'Alle, die „{q}“ beantworten dürfen und es noch nicht getan haben, bekommen eine Erinnerung.',
+  'Everyone with questions they may answer and haven’t yet gets a reminder.':'Alle, die noch unbeantwortete Fragen haben, bekommen eine Erinnerung.',
+  'People with an account get it by their notification settings (push or email). Guests get an email with their own link.':'Wer ein Konto hat, bekommt sie nach den eigenen Benachrichtigungs-Einstellungen (Push oder E-Mail). Gäste bekommen eine E-Mail mit ihrem eigenen Link.',
+  'Message (optional)':'Nachricht (optional)',
+  'Send reminder':'Erinnerung senden',
+  'Reminder sent to {people}':'Erinnerung an {people} gesendet',
+  'Nobody could be reached':'Niemand konnte erreicht werden',
+  'Remind who hasn’t answered':'Wer nicht geantwortet hat: erinnern',
+  'Remind people who haven’t answered':'Alle erinnern, die noch nicht geantwortet haben',
+  'Remind':'Erinnern',
+  'Questions too':'Auch an Fragen',
+  'Same day: remind people who haven’t answered the questions':'Am selben Tag an unbeantwortete Fragen erinnern',
+  'Also remind about unanswered questions':'Auch an unbeantwortete Fragen erinnern',
+  'People with an account get it by their notification settings, guests by email. Needs the reminder above.':'Wer ein Konto hat, bekommt sie nach den eigenen Benachrichtigungs-Einstellungen, Gäste per E-Mail. Braucht die Erinnerung darüber.',
+  'The organiser adds questions, or reminds you to answer them.':'Die Organisation fügt Fragen hinzu oder erinnert dich daran, sie zu beantworten.',
+  'What’s still open for you in your polls. Tap one to go there.':'Was in deinen Umfragen noch offen ist. Tippe darauf, um hinzugehen.',
+  'A reminder was just sent. Try again in a few minutes.':'Gerade wurde schon erinnert. Versuch es in ein paar Minuten wieder.',
+  'Everyone has answered the questions':'Alle haben die Fragen beantwortet',
+  'This round has no questions':'Diese Runde hat keine Fragen',
+  'Question not found':'Frage nicht gefunden',
   'Upcoming':'Demnächst',
+  '{n} new':'{n} neu',
+  '+{n} more':'+{n} weitere',
   'Today':'Heute',
   'Tomorrow':'Morgen',
   'Voted':'Abgestimmt',
@@ -10736,7 +11318,6 @@ function germanText(){ return {
   'iPhone, iPad and Mac: opens the Calendar app':'iPhone, iPad und Mac: öffnet die Kalender-App',
   'Opens Google Calendar to add it':'Öffnet Google Kalender zum Hinzufügen',
   'Opens Outlook on the web to add it':'Öffnet Outlook im Web zum Hinzufügen',
-  '+{n} more':'+{n} weitere',
   'Copy the link for other calendar apps':'Link für andere Kalender-Apps kopieren',
   'At the top of <b>Meetings</b>, tap <b>Google</b>. Google Calendar opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Google</b>. Google Kalender öffnet sich (melde dich an, falls gefragt).',
   'Tap <b>Add</b>. On a phone, if the Google Calendar app opens instead, do this once on a computer.':'Tippe auf <b>Hinzufügen</b>. Öffnet sich auf dem Handy stattdessen die Google-Kalender-App, mach das einmal am Computer.',
@@ -10745,7 +11326,6 @@ function germanText(){ return {
   'At the top of <b>Meetings</b>, tap <b>Outlook</b>. Outlook on the web opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Outlook</b>. Outlook im Web öffnet sich (melde dich an, falls gefragt).',
   'The link is already filled in. Tap <b>Import</b>.':'Der Link ist schon eingetragen. Tippe auf <b>Importieren</b>.',
   'Done. The meetings are in Outlook, on all your devices.':'Fertig. Die Termine sind in Outlook, auf all deinen Geräten.',
-  '{n} new':'{n} neu',
   'New and changed meetings show up on their own. Outlook checks every few hours.':'Neue und geänderte Termine kommen von selbst. Outlook schaut alle paar Stunden nach.',
   'At the top of <b>Meetings</b>, tap <b>Apple</b> (iPhone, iPad or Mac).':'Tippe oben unter <b>Termine</b> auf <b>Apple</b> (iPhone, iPad oder Mac).',
   'Tap <b>Subscribe</b>.':'Tippe auf <b>Abonnieren</b>.',
@@ -11678,7 +12258,7 @@ function germanText(){ return {
 "Privacy policy": "Datenschutzerklärung",
 "Last updated {date}": "Zuletzt aktualisiert am {date}",
 "Short version": "Kurzfassung",
-"when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and are never stored.": "when-who speichert nur, was für deine Umfragen nötig ist. Keine Werbung, kein Tracking, keine Analyse. Deine Daten werden nie verkauft. Kalendertermine werden nur gelesen, um belegte Zeiten auszugrauen, und nie gespeichert.",
+"when-who stores only what it needs to run your polls. There are no ads, no tracking and no analytics. Your data is never sold. Calendar events are read only to grey out busy hours and to show them to you in your calendar view, and are never stored.": "when-who speichert nur, was für deine Umfragen nötig ist. Keine Werbung, kein Tracking, keine Analyse. Deine Daten werden nie verkauft. Kalendertermine werden nur gelesen, um belegte Zeiten auszugrauen und sie dir in deiner Kalenderansicht zu zeigen, und nie gespeichert.",
 "Who is responsible": "Verantwortlich",
 "when-who is run by {name}.": "when-who wird betrieben von {name}.",
 "For questions about your data or to have it deleted, write to {email}.": "Bei Fragen zu deinen Daten oder um sie löschen zu lassen, schreib an {email}.",
@@ -11686,10 +12266,10 @@ function germanText(){ return {
 "What we store": "Was wir speichern",
 "<b>Your account:</b> your email address, the name, avatar and description you choose, and a sign-in cookie (<code>ww_session</code>) that keeps you signed in. Your description is shown only to you. Your avatar is shown to signed-in people who have your email address in their contacts, and to signed-in people who can see the people or answers of a poll you are in. Sign-in codes are stored only as a hash and expire after 10 minutes.": "<b>Dein Konto:</b> deine E-Mail-Adresse, der Name, das Profilbild und die Beschreibung, die du wählst, und ein Anmelde-Cookie (<code>ww_session</code>), das dich angemeldet hält. Deine Beschreibung siehst nur du. Dein Profilbild sehen angemeldete Personen, die deine E-Mail-Adresse in ihren Kontakten haben, und angemeldete Personen, die die Teilnehmenden oder Antworten einer Umfrage sehen, in der du bist. Anmeldecodes werden nur als Hash gespeichert und verfallen nach 10 Minuten.",
 "<b>Polls and answers:</b> what you enter in a poll: title, dates, the names and email addresses of people you add, availability answers, comments and chat messages.": "<b>Umfragen und Antworten:</b> was du in einer Umfrage eingibst: Titel, Termine, Namen und E-Mail-Adressen der Personen, die du hinzufügst, Verfügbarkeiten, Kommentare und Chatnachrichten.",
-"<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
+"<b>Calendars (only if you add one):</b> calendar links you paste, and for Google or Outlook the access tokens, stored encrypted. They are used only to look up when you are busy while you answer a poll and to show your events to you in the calendar on your home page. Events are read at that moment and are not saved: no titles, places or other details.": "<b>Kalender (nur wenn du einen hinzufügst):</b> Kalenderlinks, die du einfügst, und bei Google oder Outlook die Zugriffstokens, verschlüsselt gespeichert. Sie dienen nur dazu, beim Beantworten einer Umfrage nachzusehen, wann du belegt bist, und dir deine Termine im Kalender auf deiner Startseite zu zeigen. Termine werden in diesem Moment gelesen und nicht gespeichert: keine Titel, Orte oder andere Details.",
 "<b>In your browser:</b> your language, your name for answering without an account, the keys of polls you answered and which guided tours you’ve seen. This stays on your device.": "<b>In deinem Browser:</b> deine Sprache, dein Name zum Antworten ohne Konto, die Schlüssel der Umfragen, die du beantwortet hast, und welche Rundgänge du schon gesehen hast. Das bleibt auf deinem Gerät.",
 "Google and Outlook calendars": "Google- und Outlook-Kalender",
-"If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen, und nur wenn du für eine Umfrage das Teilen einschaltest, um deren Leuten zu zeigen, in welchen Stunden du belegt bist (ohne Termindetails). Kalenderdaten werden nicht verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
+"If you connect a Google or Microsoft account, when-who asks only for read access to your calendars and your email address. It uses this only to show your busy hours to you while you answer a poll, to show your events to you in the calendar on your home page, and, only if you switch on sharing for a poll, to show that poll’s people which hours you’re busy (no event details). Calendar data is not sold, not used for ads and not used to train AI models.": "Wenn du ein Google- oder Microsoft-Konto verbindest, bittet when-who nur um Lesezugriff auf deine Kalender und deine E-Mail-Adresse. Das wird nur genutzt, um dir beim Beantworten einer Umfrage deine belegten Zeiten anzuzeigen, dir deine Termine im Kalender auf deiner Startseite zu zeigen, und nur wenn du für eine Umfrage das Teilen einschaltest, um deren Leuten zu zeigen, in welchen Stunden du belegt bist (ohne Termindetails). Kalenderdaten werden nicht verkauft, nicht für Werbung und nicht zum Trainieren von KI-Modellen verwendet.",
 "when-who’s use of information received from Google APIs adheres to the <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, including the Limited Use requirements.": "Die Nutzung von Informationen aus Google-APIs durch when-who entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy\" target=\"_blank\" rel=\"noopener\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung (Limited Use).",
 "You can disconnect at any time on your Account page. This deletes the stored tokens and asks Google to revoke the access. You can also remove access in your Google or Microsoft account settings.": "Du kannst die Verbindung jederzeit auf deiner Kontoseite trennen. Dabei werden die gespeicherten Tokens gelöscht und Google wird gebeten, den Zugriff zu widerrufen. Du kannst den Zugriff auch in deinen Google- oder Microsoft-Kontoeinstellungen entfernen.",
 "Services we use": "Dienste, die wir nutzen",
@@ -11697,7 +12277,7 @@ function germanText(){ return {
 "How long we keep it": "Wie lange wir Daten aufbewahren",
 "Polls and answers are kept until the poll’s owner deletes the poll, which also deletes all its answers and messages. A poll with no activity for 12 months (no answers, changes or chat messages, and its last day has passed) is deleted automatically with everything in it. Its owner gets an email 14 days before and can keep it by opening it. Calendars are kept until you remove or disconnect them. Your account is kept until you ask us to delete it.": "Umfragen und Antworten bleiben gespeichert, bis die Person, der die Umfrage gehört, sie löscht. Dabei werden auch alle Antworten und Nachrichten gelöscht. Eine Umfrage ohne Aktivität seit 12 Monaten (keine Antworten, Änderungen oder Chat-Nachrichten, und ihr letzter Tag ist vorbei) wird automatisch mit allem darin gelöscht. Die Person, der sie gehört, bekommt 14 Tage vorher eine E-Mail und kann sie behalten, indem sie sie öffnet. Kalender bleiben, bis du sie entfernst oder trennst. Dein Konto bleibt, bis du uns bittest, es zu löschen.",
 "Your rights": "Deine Rechte",
-"when-who only reads when you’re busy and never stores your events. <a href=\"?privacy\">Privacy policy</a>": "when-who liest nur, wann du belegt bist, und speichert deine Termine nie. <a href=\"?privacy\">Datenschutzerklärung</a>",
+"when-who reads your events only to show them to you and grey out busy hours, and never stores them. <a href=\"?privacy\">Privacy policy</a>": "when-who liest deine Termine nur, um sie dir zu zeigen und belegte Zeiten auszugrauen, und speichert sie nie. <a href=\"?privacy\">Datenschutzerklärung</a>",
 "Add people": "Personen hinzufügen",
 "Remove from contacts": "Aus Kontakten entfernen",
 "Save to contacts": "In Kontakten speichern",
@@ -11800,6 +12380,11 @@ function germanText(){ return {
 "Answered the current round": "Hat die aktuelle Runde beantwortet",
 "Answering": "Antworten",
 "Filled in for every new meeting.": "Wird bei jedem neuen Termin eingetragen.",
+"Apply to all meetings, also existing ones": "Für alle Termine übernehmen, auch bestehende",
+"Off: only meetings you create in the planner start with these. On: every meeting gets them, also the ones made from these times and the ones that already exist, and they follow when you change them here. A location or description you set by hand on a meeting stays; a question you edit in a meeting stops following. Up to 30 questions per round.": "Aus: Nur Termine, die du im Planer erstellst, starten damit. An: Jeder Termin bekommt sie, auch die aus diesen Zeiten erstellten und die schon bestehenden, und sie ändern sich mit, wenn du sie hier änderst. Ein Ort oder eine Beschreibung, die du bei einem Termin selbst eingetragen hast, bleibt; eine Frage, die du in einem Termin bearbeitest, ändert sich nicht mehr mit. Bis zu 30 Fragen pro Runde.",
+"The Meetings planner starts with this location, description and these questions. You can still change them before creating meetings. Meetings you already made stay as they are, unless Apply to all meetings is on.": "Der Termin-Planer startet mit diesem Ort, dieser Beschreibung und diesen Fragen. Du kannst sie vor dem Erstellen noch ändern. Schon erstellte Termine bleiben, wie sie sind, außer „Für alle Termine übernehmen“ ist an.",
+"The questions from Settings → Meetings are added to every meeting by themselves. Add more here.": "Die Fragen aus Einstellungen → Termine kommen von selbst zu jedem Termin. Hier kannst du weitere hinzufügen.",
+"From Settings → Meetings. Changing it here stops it following those.": "Aus Einstellungen → Termine. Änderst du sie hier, ändert sie sich dort nicht mehr mit.",
 "The Meetings planner starts with this location and description. You can still change them before creating meetings. Meetings you already made stay as they are.": "Der Termin-Planer startet mit diesem Ort und dieser Beschreibung. Du kannst sie vor dem Erstellen noch ändern. Schon erstellte Termine bleiben, wie sie sind.",
 "Default location": "Standard-Ort",
 "Default description": "Standard-Beschreibung",
@@ -12526,6 +13111,8 @@ function germanText(){ return {
 "Toggle sound": "Ton an/aus",
 "Too many people": "Zu viele Personen",
 "Email all": "Alle mailen",
+"Show question": "Frage zeigen",
+"Hide question": "Frage ausblenden",
 "Email this invite again to the people invited": "Einladung erneut an die Eingeladenen mailen",
 "Email this invite to the people invited, with the calendar file": "Einladung mit Kalenderdatei an die Eingeladenen mailen",
 "Emailed {when}": "Gemailt am {when}",

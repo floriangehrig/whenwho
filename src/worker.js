@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-/6OWvZNIK5sLlXEovZIgeB4dpbcw/hytOzDlFgF7jjc=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-yDGzI2FFZe3k2mSmVK8AN3UQu2Ppw1+PVryLtC/qJLg=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -160,6 +160,7 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'polls' && parts[3] && parts[4] === 'hidden' && !parts[5] && m === 'PUT') return setPollHidden(request, env, parts[3]);
     if (parts[2] === 'poll-busy' && !parts[3] && m === 'GET') return pollBusy(request, env, url);
     if (parts[2] === 'upcoming' && !parts[3] && m === 'GET') return upcoming(request, env, url);
+    if (parts[2] === 'todo' && !parts[3] && m === 'GET') return myTodo(request, env);
     if (parts[2] === 'export' && !parts[3] && m === 'GET') return exportMe(request, env);
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
@@ -261,6 +262,7 @@ async function route(request, env, ctx, url) {
     if (b && c === 'fill-text' && !d && m === 'POST') return fillFromText(request, env, id, b);
     if (b && c === 'suggest-text' && !d && m === 'POST') return suggestFromText(request, env, id, b);
     if (b && c === 'questions-text' && !d && m === 'POST') return questionsFromText(request, env, id, b);
+    if (b && c === 'questions' && d === 'remind' && m === 'POST') return remindQuestions(request, env, url, id, b);
     if (b && c === 'recall' && !d && m === 'POST') return recall(request, env, id, b);
     if (b && c === 'busy' && !d && m === 'PUT') return shareBusy(request, env, id, b);
     if (b && c === 'form' && !d && m === 'GET') return getForm(request, env, url, id, b);
@@ -495,7 +497,7 @@ async function insertInstance(env, poll, seq, fields, notified) {
     const keepWho = (w) => (w && w.mode === 'people' ? w : { mode: !w || w.mode === 'free' || w.mode === 'meeting' ? 'all' : w.mode });
     const copyLink = (x) => (isAfter(x) ? { link: afterLink(x.link), who: x.who || { mode: 'meeting' } } : { link: { to: 'poll' }, who: keepWho(x.who) });
     // Copies of every-round questions (tpl) don't come along: the poll's list adds them fresh below.
-    const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false && !q.tpl);
+    const items = itemsOf({ questions: prev }), qs = items.filter((x) => x.type !== 'group').map(normQ).filter((q) => q && q.repeat !== false && !q.tpl && !q.mtpl);
     const used = new Set(qs.map((q) => q.grp).filter(Boolean));
     const out = items.filter((x) => (x.type === 'group' ? used.has(x.id) : qs.some((q) => q.id === x.id)))
       .map((x) => (x.type === 'group' ? x : normQ(x)))
@@ -507,6 +509,7 @@ async function insertInstance(env, poll, seq, fields, notified) {
     if (add.length) fields = { ...fields, questions: JSON.stringify([...items, ...add]) };
   }
   if (poll.auto_meetings) fields = { ...fields, meetings: JSON.stringify(syncAutoMeetings(poll, { ...fields, meetings: '[]' })) };
+  if (poll.meet_apply) { const r = applyMeetDefaults(poll, null, { meetings: fields.meetings || '[]', questions: fields.questions || null }); if (r.meetings) fields = { ...fields, meetings: r.meetings }; if (r.questions) fields = { ...fields, questions: r.questions }; }
   const inst = { id: randomId(10), poll_id: poll.id, seq, status: 'open', note: '', meetings: '[]', opened_notified: notified ? 1 : 0, reminded: 0, created_at: now(), ...fields };
   const cols = Object.keys(inst);
   const r = await env.DB.prepare(`INSERT OR IGNORE INTO instances (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map((c) => inst[c])).run();
@@ -602,8 +605,8 @@ function publicPoll(poll, admin, edit = admin) {
     hideResults: !!poll.hide_results, allowComments: !!poll.allow_comments, requireEmail: !!poll.require_email, invitedOnly: !!poll.invited_only, hasPassword: !!poll.password_hash,
     icon: poll.icon || '', image: poll.image ? poll.image_at || '1' : '', // image: version for /image?v=
   };
-  if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days });
-  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions), autoMeetings: !!poll.auto_meetings, ...(poll.kind === 'series' ? { roundQuestions: jsonList(poll.round_questions) } : {}) }); // planner defaults for new meetings; series: questions for every round
+  if (admin) Object.assign(p, { notifyOpen: !!poll.notify_open, remindDays: poll.remind_days, remindQuestions: !!poll.remind_questions });
+  if (edit) Object.assign(p, { meetLocation: poll.meet_location || '', meetNote: poll.meet_note || '', meetQuestions: jsonList(poll.meet_questions), autoMeetings: !!poll.auto_meetings, meetApply: !!poll.meet_apply, ...(poll.kind === 'series' ? { roundQuestions: jsonList(poll.round_questions) } : {}) }); // planner defaults for new meetings; series: questions for every round
   return p;
 }
 function publicInstance(inst, extra = {}) {
@@ -999,7 +1002,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0038';
+const USER_DATA_REVIEWED = '0041';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1413,7 +1416,7 @@ function groupInput(b, partial, user) {
 }
 // ---------- poll presets (an account's saved starting points for new polls) ----------
 const MAX_PRESETS = 50, PRESET_KEYS = ['title', 'description', 'kind', 'unit', 'every', 'openDays', 'deadlineDays', 'answerMode', 'hourStart', 'hourEnd',
-  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions', 'roundQuestions', 'autoMeetings'];
+  'dayPattern', 'hideResults', 'allowComments', 'requireEmail', 'invitedOnly', 'notifyOpen', 'remindDays', 'remindQuestions', 'icon', 'days', 'questions', 'folder', 'meetLocation', 'meetNote', 'meetQuestions', 'roundQuestions', 'autoMeetings', 'meetApply'];
 // Questions without this round's meetings or people: links go to the whole poll (after-meeting ones to all meetings), "people" becomes everyone.
 function presetQuestions(list) {
   if (!Array.isArray(list)) throw new HttpError(400, 'Invalid questions');
@@ -1451,7 +1454,7 @@ function roundQuestionCopies(tpls, items) {
   }
   return out;
 }
-// Questions for every new meeting (poll setting meet_questions, planner Details): templates without ids, links or who.
+// Questions for every new meeting (poll setting meet_questions, planner Details): templates with an id (for meet_apply copies), without links or who.
 // The page links them to the meetings it creates. Same checks as a round's questions.
 const MAX_MEET_QS = 5;
 function meetQuestionTpls(list) {
@@ -1460,8 +1463,83 @@ function meetQuestionTpls(list) {
   if (list.length > MAX_MEET_QS) throw new HttpError(400, `Up to ${MAX_MEET_QS} questions for new meetings`);
   const qs = list.filter((x) => x && typeof x === 'object' && x.type !== 'group')
     .map(({ grp, own, ...x }) => ({ ...x, link: { to: 'poll' }, who: { mode: 'all' } }));
-  return validateQuestions(qs, [], [], new Set()).map(({ id, at, link, who, closed, repeat, ...q }) =>
+  return validateQuestions(qs, [], [], new Set()).map(({ at, link, who, closed, repeat, mtpl, mh, ...q }) =>
     q.options ? { ...q, options: q.options.map((o) => ({ label: o.label })) } : q);
+}
+// polls.meet_apply: the meeting defaults go to every meeting of the open rounds (auto-made and existing ones too) and follow changes.
+// Location / description: meetings still showing the old default (or nothing) get the new one; hand-set ones stay.
+// Questions: each meeting gets a copy of each template (mtpl = template id, mh = signature of the template it was copied from),
+// while the round has room. A copy nobody edited (its signature still matches mh) follows the template; option ids are kept by label
+// so answers survive. An edited copy keeps mtpl (so its meeting gets no second one) but loses mh: it stops following.
+// Copies of removed templates go unless edited or answered.
+const mqSig = (q) => { const s = JSON.stringify([q.type, q.label || '', q.help || '', q.icon || '', !!q.req, q.vis || 'all', !!q.place, !!q.add,
+  (q.options || []).map((o) => o.label), q.rating || null, q.count || null]); let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+function applyMeetDefaults(poll, old, inst, answered = new Set()) {
+  const meetings = jsonList(inst.meetings), items = itemsOf(inst), tpls = jsonList(poll.meet_questions).filter((x) => x && x.id);
+  const oLoc = (old || poll).meet_location || '', oNote = (old || poll).meet_note || '', loc = poll.meet_location || '', note = poll.meet_note || '';
+  let mChanged = false;
+  const ms = meetings.map((m) => {
+    if (m.cancelled) return m;
+    const u = { ...m };
+    if (!m.location || m.location === oLoc) u.location = loc;
+    if (!m.note || m.note === oNote) u.note = note;
+    if (u.location !== m.location || u.note !== m.note) mChanged = true;
+    return u;
+  });
+  const byTpl = new Map(tpls.map((x) => [x.id, x])), live = new Set(ms.filter((m) => !m.cancelled).map((m) => m.id)), t = now(), out = [];
+  let qChanged = false;
+  for (const q of items) {
+    if (q.type === 'group' || !q.mtpl) { out.push(q); continue; }
+    const tp = byTpl.get(q.mtpl), clean = q.mh && mqSig(q) === q.mh;
+    const gone = !(q.link && q.link.to === 'meetings' && (q.link.ids || []).some((id) => live.has(id))); // its meeting was deleted
+    if (gone) { qChanged = true; if (answered.has(q.id) || !clean) { const { mtpl, mh, ...r } = q; out.push(r); } continue; }
+    if (!clean) { if (q.mh) { qChanged = true; const { mh, ...r } = q; out.push(r); } else out.push(q); continue; } // edited by hand: stays (no mh = stopped following)
+    if (!tp) { qChanged = true; if (answered.has(q.id)) { const { mh, ...r } = q; out.push(r); } continue; } // template removed: unanswered copies go
+    const sig = mqSig(tp);
+    if (sig === q.mh) { out.push(q); continue; }
+    const byLabel = new Map((q.options || []).map((o) => [o.label, o.id]));
+    const { id: _i, ...tb } = tp;
+    out.push({ id: q.id, ...tb, mtpl: tp.id, mh: sig, link: q.link, who: q.who, at: q.at, ...(q.grp ? { grp: q.grp } : {}), ...(q.closed ? { closed: true } : {}),
+      ...(tp.options ? { options: tp.options.map((o) => ({ id: byLabel.get(o.label) || randomId(8), label: o.label })) } : {}) });
+    qChanged = true;
+  }
+  let room = MAX_QUESTIONS - out.filter((x) => x.type !== 'group').length;
+  const have = new Set(out.filter((q) => q.mtpl && q.link && q.link.to === 'meetings').flatMap((q) => (q.link.ids || []).map((id) => id + ':' + q.mtpl)));
+  const order = ms.filter((m) => !m.cancelled).sort((a, b) => (a.date + (a.start ?? 0)).localeCompare(b.date + (b.start ?? 0)));
+  for (const m of order) for (const tp of tpls) {
+    if (room <= 0 || have.has(m.id + ':' + tp.id)) continue;
+    room--; qChanged = true; have.add(m.id + ':' + tp.id);
+    const { id: _i, ...tb } = tp;
+    out.push({ ...tb, id: randomId(8), mtpl: tp.id, mh: mqSig(tp), link: { to: 'meetings', ids: [m.id] }, who: { mode: tp.place || m.proposed ? 'all' : 'meeting' }, at: t,
+      ...(tp.options ? { options: tp.options.map((o) => ({ id: randomId(8), label: o.label })) } : {}) });
+  }
+  return { meetings: mChanged ? JSON.stringify(ms) : null, questions: qChanged ? JSON.stringify(out) : null };
+}
+// Question ids someone answered in round iid (form answers).
+async function answeredQids(env, iid) {
+  const { results } = await env.DB.prepare('SELECT extra FROM form_answers WHERE instance_id = ? AND extra IS NOT NULL').bind(iid).all();
+  const out = new Set();
+  for (const r of results || []) for (const k of Object.keys(parseExtra(r.extra).a || {})) out.add(k);
+  return out;
+}
+// Apply the meeting defaults to round inst (loaded row) and store what changed. Returns true when it wrote.
+async function storeMeetDefaults(env, poll, old, inst) {
+  if (!poll.meet_apply) return false;
+  const r = applyMeetDefaults(poll, old, inst, await answeredQids(env, inst.id));
+  if (!r.meetings && !r.questions) return false;
+  const u = {};
+  if (r.meetings) u.meetings = r.meetings;
+  if (r.questions) u.questions = r.questions;
+  const cols = Object.keys(u);
+  await env.DB.prepare(`UPDATE instances SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ? AND meetings IS ? AND questions IS ?`)
+    .bind(...cols.map((c) => u[c]), inst.id, inst.meetings, inst.questions).run();
+  return true;
+}
+// The poll's open rounds (the last 3, like resyncAutoMeetings) get the meeting defaults.
+async function syncMeetDefaults(env, poll, old) {
+  if (!poll.meet_apply) return;
+  const { results } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 3').bind(poll.id).all();
+  for (const inst of results || []) if (effStatus(inst) === 'open') await storeMeetDefaults(env, poll, old, inst);
 }
 function presetData(d) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) throw new HttpError(400, 'Invalid preset');
@@ -2100,13 +2178,13 @@ async function listCalendars(request, env) {
   const user = requireUser(request);
   const [a, c] = await env.DB.batch([
     env.DB.prepare('SELECT id, provider, email, status, scope FROM calendar_accounts WHERE user_id = ? ORDER BY created_at').bind(user.id),
-    env.DB.prepare('SELECT id, account_id, url, name, color, auto FROM user_calendars WHERE user_id = ? ORDER BY position, created_at').bind(user.id),
+    env.DB.prepare('SELECT id, account_id, url, name, color, color_pick, icon, auto FROM user_calendars WHERE user_id = ? ORDER BY position, created_at').bind(user.id),
   ]);
   // iCal links are secrets: the page only learns which host they point at.
   return json({
     providers: calProviders(env),
     accounts: a.results.map((x) => ({ id: x.id, provider: x.provider, email: x.email, status: x.status, contacts: hasContacts(x) })),
-    calendars: c.results.map((x) => ({ id: x.id, accountId: x.account_id || null, name: x.name, color: x.color || '', auto: !!x.auto, host: x.url ? icalHost(x.url) : '' })),
+    calendars: c.results.map((x) => ({ id: x.id, accountId: x.account_id || null, name: x.name, color: x.color_pick || x.color || '', colorOwn: !!x.color_pick, icon: x.icon || '', auto: !!x.auto, host: x.url ? icalHost(x.url) : '' })),
   });
 }
 async function ownCalendar(env, user, cid) {
@@ -2142,14 +2220,17 @@ async function addCalendar(request, env) {
   if (r.existed) throw new HttpError(409, 'That calendar is already on your account');
   return json({ id: r.id });
 }
-// Body: { name?, auto? }
+// Body: { name?, auto?, color? ('#rrggbb' picked by the person, '' = the provider's colour again), icon? (one emoji or '') }
 async function updateCalendar(request, env, cid) {
   const user = requireUser(request);
   const c = await ownCalendar(env, user, cid);
   const b = await body(request);
   const name = b.name !== undefined ? str(b.name, 60, 'Name', true) : c.name;
   const auto = b.auto !== undefined ? (b.auto ? 1 : 0) : c.auto;
-  await env.DB.prepare('UPDATE user_calendars SET name = ?, auto = ? WHERE id = ?').bind(name, auto, c.id).run();
+  let pick = c.color_pick || '';
+  if (b.color !== undefined) { pick = b.color ? calColor(b.color) : ''; if (b.color && !pick) throw new HttpError(400, 'Colour: use #rrggbb'); }
+  const icon = b.icon !== undefined ? emojiIcon(b.icon, 'Icon') : c.icon || '';
+  await env.DB.prepare('UPDATE user_calendars SET name = ?, auto = ?, color_pick = ?, icon = ? WHERE id = ?').bind(name, auto, pick, icon, c.id).run();
   return json({ ok: true });
 }
 async function deleteCalendar(request, env, cid) {
@@ -2353,14 +2434,15 @@ async function accountContacts(request, env, aid) {
   }
   return json({ contacts: [...out.values()].sort((a, b) => a.name.localeCompare(b.name)) });
 }
-// GET ?from=<ms>&to=<ms>. iCal: the raw feed. Google / Outlook: { events: [{ s, e, allDay, title }] },
-// with s / e in ms (timed) or 'YYYY-MM-DD' (all-day, end exclusive). Free and cancelled events are left out.
+// GET ?from=<ms>&to=<ms>[&all=1]. iCal: the raw feed. Google / Outlook: { events: [{ s, e, allDay, title }] },
+// with s / e in ms (timed) or 'YYYY-MM-DD' (all-day, end exclusive). Cancelled events are left out, free ones too unless
+// all=1 (the home calendar shows holidays and other free events; busy times don't).
 async function calendarBusy(request, env, url, cid) {
   const user = requireUser(request);
   const c = await ownCalendar(env, user, cid);
   await calThrottle(env, request, user);
   if (c.url) return icsResponse(await fetchIcalText(c.url));
-  const from = +url.searchParams.get('from'), to = +url.searchParams.get('to');
+  const from = +url.searchParams.get('from'), to = +url.searchParams.get('to'), all = url.searchParams.get('all') === '1';
   if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from || to - from > BUSY_MAX_DAYS * 86400000) throw new HttpError(400, 'Invalid time range');
   const acct = await env.DB.prepare('SELECT * FROM calendar_accounts WHERE id = ?').bind(c.account_id).first();
   if (!acct) throw new HttpError(404, 'Calendar not found');
@@ -2373,7 +2455,7 @@ async function calendarBusy(request, env, url, cid) {
       if (page) q.set('pageToken', page);
       const r = await providerGet(acct, token, `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.ext_id)}/events?${q}`);
       for (const x of r.items || []) {
-        if (x.status === 'cancelled' || x.transparency === 'transparent' || !x.start || !x.end) continue;
+        if (x.status === 'cancelled' || (x.transparency === 'transparent' && !all) || !x.start || !x.end) continue;
         if (x.start.date) events.push({ s: x.start.date, e: x.end.date || x.start.date, allDay: true, title: clip(x.summary, 200) });
         else { const s = Date.parse(x.start.dateTime), e = Date.parse(x.end.dateTime); if (s < e) events.push({ s, e, allDay: false, title: clip(x.summary, 200) }); }
       }
@@ -2386,7 +2468,7 @@ async function calendarBusy(request, env, url, cid) {
       if (!next.startsWith('https://graph.microsoft.com/')) break;
       const r = await providerGet(acct, token, next, { prefer: 'outlook.timezone="UTC"' });
       for (const x of r.value || []) {
-        if (x.isCancelled || x.showAs === 'free' || !x.start || !x.end) continue;
+        if (x.isCancelled || (x.showAs === 'free' && !all) || !x.start || !x.end) continue;
         if (x.isAllDay) events.push({ s: x.start.dateTime.slice(0, 10), e: x.end.dateTime.slice(0, 10), allDay: true, title: clip(x.subject, 200) });
         else { const s = Date.parse(x.start.dateTime + 'Z'), e = Date.parse(x.end.dateTime + 'Z'); if (s < e) events.push({ s, e, allDay: false, title: clip(x.subject, 200) }); }
       }
@@ -2464,7 +2546,7 @@ function myMeetingOccs(row, mine, own, from, to, each, proposed = false) {
 }
 // GET /api/me/upcoming?from=&to= — the home page's Upcoming card: across my polls (not hidden from the overview), the meetings
 // I'm in, proposals still up for a vote in open rounds (voted = my answer has a vote on it) and reply-by dates of open rounds
-// (owners: replies close; others: only while they haven't answered). Read only, nothing stored. At most 60 days, 300 items.
+// (owners: replies close; others: only while they haven't answered). Read only, nothing stored. At most 60 days, 600 items.
 async function upcoming(request, env, url) {
   const user = requireUser(request);
   const from = url.searchParams.get('from'), to = url.searchParams.get('to');
@@ -2499,7 +2581,59 @@ async function upcoming(request, env, url) {
   const rank = { deadline: 0, meeting: 1, proposed: 2 };
   items.sort((a, b) => a.date.localeCompare(b.date) || (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1) || (a.hs ?? -1) - (b.hs ?? -1) || rank[a.kind] - rank[b.kind]);
   const pic = (p) => (p.has_image ? p.image_at || '1' : '');
-  return json({ polls: [...used.values()].map((r) => ({ id: r.pid, title: r.title, kind: r.kind, icon: r.icon || '', image: pic(r) })), items: items.slice(0, 300) });
+  return json({ polls: [...used.values()].map((r) => ({ id: r.pid, title: r.title, kind: r.kind, icon: r.icon || '', image: pic(r) })), items: items.slice(0, 600) });
+}
+// GET /api/me/todo — the home page's To do card: across polls I'm in (not my own, no role, not hidden from the overview), what's
+// still open for me in the current round: availability not sent (avail), questions left empty (questions: n, req = required),
+// vote groups without my vote (vote: n), and after-meeting questions open now (after: newest meeting, n), the last also from the
+// round before. Same rules as the poll's own To do strip (todoList on the page). Read only.
+async function myTodo(request, env) {
+  const user = requireUser(request);
+  const { results: rows } = await env.DB.prepare(
+    `SELECT p.id AS pid, p.title, p.icon, p.kind, p.image_at, p.image IS NOT NULL AS has_image, pa.id AS part_id,
+       i.id AS iid, i.seq, i.start_date, i.end_date, i.status, i.deadline, i.meetings, i.questions,
+       (SELECT MAX(seq) FROM instances WHERE poll_id = p.id) AS top
+     FROM participants pa JOIN polls p ON p.id = pa.poll_id JOIN instances i ON i.poll_id = p.id
+     WHERE pa.user_id = ?1 AND (p.owner_id IS NULL OR p.owner_id != ?1) AND COALESCE(pa.role, '') = ''
+       AND p.id NOT IN (SELECT poll_id FROM poll_hidden WHERE user_id = ?1)
+       AND i.seq >= (SELECT MAX(seq) FROM instances WHERE poll_id = p.id) - 1
+     ORDER BY p.id, i.seq DESC LIMIT 400`).bind(user.id).all();
+  if (!rows.length) return json({ polls: [], items: [] });
+  const iids = JSON.stringify([...new Set(rows.map((r) => r.iid))]), pids = JSON.stringify([...new Set(rows.map((r) => r.part_id))]);
+  const { results: rs } = await env.DB.prepare(
+    'SELECT instance_id, participant_id, votes FROM responses WHERE participant_id IN (SELECT value FROM json_each(?1)) AND instance_id IN (SELECT value FROM json_each(?2))').bind(pids, iids).all();
+  const { results: fs } = await env.DB.prepare(
+    'SELECT instance_id, extra FROM form_answers WHERE participant_id IN (SELECT value FROM json_each(?1)) AND instance_id IN (SELECT value FROM json_each(?2))').bind(pids, iids).all();
+  const resp = new Map(rs.map((r) => [r.instance_id, r])), form = new Map(fs.map((f) => [f.instance_id, parseExtra(f.extra).a || {}]));
+  const items = [], used = new Map(), at = Date.now();
+  for (const row of rows) {
+    const latest = row.seq === row.top, open = latest && effStatus(row) === 'open';
+    const qs = questionsOf(row), meetings = jsonList(row.meetings), mine = resp.get(row.iid);
+    if (!open && !qs.some(isAfter)) continue;
+    const responses = qs.some((q) => q.who.mode === 'free')
+      ? (await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(row.iid).all()).results : [];
+    const part = { id: row.part_id }, dl = open && isDate(row.deadline) ? row.deadline : null;
+    const add = (it) => { items.push({ poll: row.pid, iid: row.iid, ...(dl ? { deadline: dl } : {}), ...it }); used.set(row.pid, row); };
+    if (open && !mine) add({ kind: 'avail' });
+    const pq = qs.length ? pendingQuestions(qs, part, form.get(row.iid) || {}, meetings, responses, open, at) : { open: [], req: 0, after: [] };
+    if (pq.open.length) add({ kind: 'questions', n: pq.open.length, req: pq.req });
+    if (open && mine) {
+      let votes = []; try { votes = JSON.parse(mine.votes || '[]'); } catch {}
+      if (!Array.isArray(votes)) votes = [];
+      const groups = new Map();
+      for (const m of meetings) if (m.proposed) { const g = m.vote || ''; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(m.id); }
+      const n = [...groups.values()].filter((ids) => !ids.some((x) => votes.includes(x))).length;
+      if (n) add({ kind: 'vote', n });
+    }
+    if (pq.after.length && !items.some((x) => x.poll === row.pid && x.kind === 'after')) {
+      const o = pq.after[0];
+      add({ kind: 'after', n: pq.after.length, mid: o.m.id, date: o.date, mtitle: String(o.m.title || '').slice(0, 80), before: isBefore(o.q) ? 1 : 0 });
+    }
+  }
+  const rank = { avail: 0, questions: 1, vote: 2, after: 3 };
+  items.sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999') || a.poll.localeCompare(b.poll) || rank[a.kind] - rank[b.kind]);
+  const pic = (p) => (p.has_image ? p.image_at || '1' : '');
+  return json({ polls: [...used.values()].map((r) => ({ id: r.pid, title: r.title, kind: r.kind, icon: r.icon || '', image: pic(r) })), items: items.slice(0, 200) });
 }
 // GET /api/me/poll-busy?from=&to=&skip= — when I'm busy because of my other polls (Busy ▾ → Other polls on the answer page):
 // confirmed meetings I'm in (any round), and hours I marked available / if needed in rounds that are still open
@@ -2610,6 +2744,7 @@ function readPollSettings(b, existing) {
   if (has('invitedOnly')) p.invited_only = b.invitedOnly ? 1 : 0; // only when sent: the column needs migration 0014
   if (!existing || has('notifyOpen')) p.notify_open = b.notifyOpen ? 1 : 0;
   if (!existing || has('remindDays')) p.remind_days = optInt(b.remindDays, 0, 30, 'Reminder days');
+  if (has('remindQuestions')) p.remind_questions = b.remindQuestions ? 1 : 0; // only when sent: needs migration 0040
   if (!existing || has('icon')) p.icon = emojiIcon(b.icon, 'Icon');
   // Filled into the Meetings planner for every new meeting (same limits as a meeting's own fields).
   if (!existing || has('meetLocation')) p.meet_location = str(b.meetLocation, 200, 'Location');
@@ -2617,6 +2752,10 @@ function readPollSettings(b, existing) {
   if (has('meetQuestions')) { const l = meetQuestionTpls(b.meetQuestions); p.meet_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0033
   if (has('roundQuestions') && kind === 'series') { const l = roundQuestionTpls(b.roundQuestions); p.round_questions = l.length ? JSON.stringify(l) : null; } // only when sent: needs migration 0035
   if (has('autoMeetings')) p.auto_meetings = b.autoMeetings ? 1 : 0; // only when sent: needs migration 0036
+  if (has('meetApply')) p.meet_apply = b.meetApply ? 1 : 0; // only when sent: needs migration 0039
+  if (p.meet_apply && existing && p.meet_questions === undefined && jsonList(existing.meet_questions).some((x) => !x.id)) { // templates saved before they had ids
+    const l = meetQuestionTpls(jsonList(existing.meet_questions)); p.meet_questions = l.length ? JSON.stringify(l) : null;
+  }
   if (!existing || has('image')) { p.image = imageData(b.image, 'Picture'); p.image_at = p.image ? now() : null; }
   return p;
 }
@@ -2784,16 +2923,19 @@ async function updatePoll(request, env, id) {
   await env.DB.prepare(`UPDATE polls SET ${cols.map((c) => c + ' = ?').join(', ')} WHERE id = ?`).bind(...cols.map((c) => p[c]), id).run();
   if (p.round_questions !== undefined) await addNewRoundQuestions(env, poll, p.round_questions);
   const np = { ...poll, ...p };
-  if (np.auto_meetings && ['auto_meetings', 'hour_start', 'hour_end', 'day_pattern', 'answer_mode'].some((c) => p[c] !== undefined && p[c] !== poll[c])) await resyncAutoMeetings(env, np);
+  const mOld = poll.meet_apply ? poll : { meet_location: '', meet_note: '' }; // just switched on: fill only meetings without their own
+  if (np.auto_meetings && ['auto_meetings', 'hour_start', 'hour_end', 'day_pattern', 'answer_mode'].some((c) => p[c] !== undefined && p[c] !== poll[c])) await resyncAutoMeetings(env, np, mOld);
+  else if (np.meet_apply && ['meet_apply', 'meet_location', 'meet_note', 'meet_questions'].some((c) => p[c] !== undefined && p[c] !== poll[c])) await syncMeetDefaults(env, np, mOld);
   return json({ ok: true });
 }
 // Auto meetings follow the poll's times in its open rounds (closed ones keep theirs).
-async function resyncAutoMeetings(env, poll) {
+async function resyncAutoMeetings(env, poll, old = poll) {
   const { results } = await env.DB.prepare('SELECT * FROM instances WHERE poll_id = ? ORDER BY seq DESC LIMIT 3').bind(poll.id).all();
   for (const inst of results || []) {
     if (effStatus(inst) !== 'open') continue;
     const m = JSON.stringify(syncAutoMeetings(poll, inst));
     if (m !== inst.meetings) await env.DB.prepare('UPDATE instances SET meetings = ? WHERE id = ? AND meetings = ?').bind(m, inst.id, inst.meetings).run();
+    if (poll.meet_apply) await storeMeetDefaults(env, poll, old, { ...inst, meetings: m });
   }
 }
 // Every-round questions that were just added to the list are asked in the current round too, if it's open (edits count from the next round).
@@ -2915,7 +3057,7 @@ async function updateInstance(request, env, ctx, id, iid) {
   const b = await body(request), u = {}, has = (k) => b[k] !== undefined;
   if (has('status')) { if (!['open', 'closed'].includes(b.status)) throw new HttpError(400, 'Invalid status'); u.status = b.status; }
   if (has('note')) u.note = str(b.note, 1000, 'Note');
-  if (has('deadline')) { if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date'); u.deadline = b.deadline || null; u.reminded = 0; }
+  if (has('deadline')) { if (b.deadline && !isDate(b.deadline)) throw new HttpError(400, 'Invalid reply-by date'); u.deadline = b.deadline || null; u.reminded = 0; u.q_reminded = 0; }
   if ((has('startDate') || has('endDate')) && poll.kind !== 'weekly') {
     const s = b.startDate ?? inst.start_date, e = b.endDate ?? inst.end_date;
     checkRange(s, e); u.start_date = s; u.end_date = e;
@@ -2937,6 +3079,7 @@ async function updateInstance(request, env, ctx, id, iid) {
   }
   if (u.status && u.status !== effStatus(inst)) evs.push({ kind: u.status === 'closed' ? 'poll_closed' : 'poll_reopened' });
   for (const ev of evs) fireEvent(ctx, env, poll, { ...ev, iid, actor });
+  if (u.meetings && poll.meet_apply) await storeMeetDefaults(env, poll, poll, await loadInstance(env, id, iid)); // new meetings get the default questions
   const fresh = await loadInstance(env, id, iid);
   return json({ ok: true, instance: await withAnswerTexts(env, poll, fresh, publicInstance(fresh)) });
 }
@@ -3588,6 +3731,93 @@ async function sendPollInvite(env, url, poll, user, emails, pids, { again, messa
   }
   return sent;
 }
+// ---- reminders to answer the questions (Questions tab → Remind, and Settings → Email → Reminder with remindQuestions)
+// Who: people in the poll (no admin / editor role, not the owner) with questions they may answer still empty (pendingQuestions;
+// qid = only that question). Accounts (also guest rows whose address has an account) get a question_remind event, delivered by
+// their notification settings (type questions: push now, email in the hourly digest). Guests with an address get an email
+// with their personal link (Questions tab). Returns { pending, notified, emailed, missing: [names] }.
+const QREMIND_GAP = 10 * 60000;
+async function sendQuestionReminders(env, base, poll, inst, { qid = null, message = '', actor = null, name = '', quota = false }) {
+  const all = questionsOf(inst), qs = qid ? all.filter((q) => q.id === qid) : all;
+  if (!qs.length) throw new HttpError(400, qid ? 'Question not found' : 'This round has no questions');
+  const meetings = jsonList(inst.meetings), roundOpen = effStatus(inst) === 'open';
+  const rows = (await participantRows(env, poll.id, inst.id)).filter((p) => !['admin', 'editor'].includes(p.role) && !(p.user_id && p.user_id === poll.owner_id));
+  const { results: fa } = await env.DB.prepare('SELECT participant_id, extra FROM form_answers WHERE instance_id = ?').bind(inst.id).all();
+  const answers = new Map(fa.map((r) => [r.participant_id, parseExtra(r.extra).a || {}]));
+  const responses = qs.some((q) => q.who.mode === 'free') ? (await env.DB.prepare('SELECT participant_id, entries FROM responses WHERE instance_id = ?').bind(inst.id).all()).results : [];
+  const pending = rows.filter((p) => { const r = pendingQuestions(qs, p, answers.get(p.id) || {}, meetings, responses, roundOpen); return r.open.length + r.after.length > 0; });
+  const out = { pending: pending.length, notified: 0, emailed: 0, missing: [] };
+  if (!pending.length) return out;
+  // Guest rows whose address belongs to an account: that account is the person.
+  const guestMails = [...new Set(pending.filter((p) => !p.user_id && EMAIL_RE.test(p.mail_to)).map((p) => p.mail_to.toLowerCase()))];
+  const acct = new Map();
+  if (guestMails.length) {
+    const { results } = await env.DB.prepare('SELECT id, email FROM users WHERE email IN (SELECT value FROM json_each(?))').bind(JSON.stringify(guestMails)).all();
+    for (const u of results) acct.set(u.email.toLowerCase(), u.id);
+  }
+  const uids = new Set(), guests = [];
+  for (const p of pending) {
+    const uid = p.user_id || acct.get((p.mail_to || '').toLowerCase());
+    if (uid) uids.add(uid);
+    else if (EMAIL_RE.test(p.mail_to)) guests.push(p);
+    else out.missing.push(p.name);
+  }
+  uids.delete(actor);
+  if (uids.size) {
+    const label = qid ? roundText(qs[0].label, poll, inst).slice(0, 120) : '';
+    await notifyEvent(env, poll, { kind: 'question_remind', iid: inst.id, actor, name, tagged: [...uids].slice(0, 300), ref: JSON.stringify({ q: label, t: now() }) });
+    out.notified = uids.size;
+  }
+  if (guests.length && emailEnabled(env) && base) {
+    const link = `${base}/?p=${poll.id}`, tab = '&tab=questions';
+    const { subject, text, html } = questionsMail(poll, inst, name, { message, q: qid ? roundText(qs[0].label, poll, inst) : '', link });
+    const personal = await personalLinks(env, poll, guests), links = new Map();
+    for (const p of guests) { const e = p.mail_to.toLowerCase(), pl = personal.get(e); links.set(e, pl ? pl.replace('#', tab + '#') : link + tab); }
+    out.emailed = await sendMail(env, poll, { to: guests.map((p) => p.mail_to), subject, text, html, quota, links });
+  } else out.missing.push(...guests.map((p) => p.name));
+  return out;
+}
+// POST /api/polls/:id/instances/:iid/questions/remind { qid?, message? } — the organiser's Remind button (at most once per 10 minutes per poll).
+async function remindQuestions(request, env, url, id, iid) {
+  const poll = await loadPoll(env, id);
+  await requireAdmin(request, env, poll, 'manage');
+  await adoptLang(request, env, poll);
+  const b = await body(request);
+  const message = str(b.message, 1000, 'Message');
+  const qid = typeof b.qid === 'string' && QID_RE.test(b.qid) ? b.qid : null;
+  const inst = await loadInstance(env, id, iid);
+  const key = 'q:' + id;
+  if (await env.DB.prepare("SELECT 1 FROM login_attempts WHERE ip = ? AND kind = 'qremind' AND at > ? LIMIT 1").bind(key, new Date(Date.now() - QREMIND_GAP).toISOString()).first())
+    throw new HttpError(429, 'A reminder was just sent. Try again in a few minutes.');
+  const user = userOf(request) || {};
+  const r = await sendQuestionReminders(env, siteUrl(env, url.origin), poll, inst, { qid, message, actor: user.id || null, name: user.name || '', quota: true });
+  if (!r.pending) throw new HttpError(400, 'Everyone has answered the questions');
+  if (r.notified || r.emailed) await recordFail(env, request, 'qremind', key);
+  return json({ ok: true, ...r });
+}
+// The question reminder email for guests: who asks, which poll, the question (one) or "the questions", by when, the message.
+function questionsMail(poll, inst, name, { message = '', q = '', link }) {
+  const de = poll.lang === 'de', title = poll.title;
+  const who = name || (de ? 'Die Organisation' : 'The organiser');
+  const deadline = inst && effStatus(inst) === 'open' && inst.deadline ? fmtDay(inst.deadline.slice(0, 10), poll.lang) : '';
+  const L = de ? {
+    subject: `Erinnerung: Bitte beantworte die Fragen zu „${title}“`,
+    intro: `${who} bittet dich, ${q ? 'eine Frage' : 'die Fragen'} zu „${title}“ zu beantworten. Du hast noch nicht geantwortet.`,
+    q: 'Frage', by: 'Bitte antworte bis', msg: `Nachricht von ${who}`, button: 'Fragen beantworten', orLink: 'Oder öffne diesen Link:',
+    foot: `Du bekommst diese E-Mail, weil du bei dieser when-who-Umfrage dabei bist. Antworte auf diese E-Mail, um ${name || 'die Organisation'} zu erreichen.`,
+  } : {
+    subject: `Reminder: please answer the questions for “${title}”`,
+    intro: `${who} asks you to answer ${q ? 'a question' : 'the questions'} for “${title}”. You haven't answered yet.`,
+    q: 'Question', by: 'Please answer by', msg: `Message from ${who}`, button: 'Answer the questions', orLink: 'Or open this link:',
+    foot: `You're getting this because you're in this when-who poll. Reply to this email to reach ${name || 'the organiser'}.`,
+  };
+  const facts = [q && [L.q, q], deadline && [L.by, deadline]].filter(Boolean);
+  const text = [L.intro, '', ...facts.map(([k, v]) => `${k}: ${v}`), facts.length ? '' : null, message ? `${L.msg}:\n${message}\n` : null, link]
+    .filter((x) => x !== null).join('\n') + `\n\n—\n${L.foot}`;
+  const html = mailBlocks({ title, icon: poll.icon, intro: L.intro, facts, boxes: [message && { label: L.msg, body: message, tone: 'note' }],
+    button: { href: link, label: L.button }, orLink: L.orLink, foot: L.foot });
+  return { subject: L.subject, text, html };
+}
 
 
 // Who gets series emails: everyone in the poll's participant list who has an email address, not only last round's answers.
@@ -3603,7 +3833,7 @@ const NT_TYPES = ['chat', 'answers', 'votes', 'qanswers', 'meetings', 'questions
 const NT_SEE = new Set(['answers', 'votes', 'qanswers']); // need to see everyone's answers
 const EV_TYPE = { chat: 'chat', answer: 'answers', answer_changed: 'answers', vote: 'votes', qanswer: 'qanswers',
   meeting_set: 'meetings', meeting_proposed: 'meetings', meeting_changed: 'meetings', meeting_cancelled: 'meetings',
-  question_added: 'questions', question_open: 'questions', round_open: 'rounds', poll_closed: 'rounds', poll_reopened: 'rounds' };
+  question_added: 'questions', question_open: 'questions', question_remind: 'questions', round_open: 'rounds', poll_closed: 'rounds', poll_reopened: 'rounds' };
 const EV_QUIET = new Set(['answer_changed', 'vote', 'qanswer']); // same person again within EV_GAP: logged, not pushed again
 const EV_GAP = 10 * 60000;
 const EV_KEEP_DAYS = 3;
@@ -3672,9 +3902,10 @@ async function ntFor(env, poll, uid) {
   return x ? ntRow(poll, x) : null;
 }
 const ntOut = (r) => ({ prefs: r.prefs, own: r.own, types: r.types });
+const TAGGED_KINDS = new Set(['question_open', 'question_remind']); // tagged = the only accounts it is for (empty = everyone)
 const wants = (a, type, ch, ev) => {
   if (!a.types.includes(type)) return false;
-  if (ev.kind === 'question_open' && (ev.tagged || []).length && !ev.tagged.includes(a.uid)) return false; // only people who may answer
+  if (TAGGED_KINDS.has(ev.kind) && (ev.tagged || []).length && !ev.tagged.includes(a.uid)) return false; // only people who may answer / were reminded
   const v = a.prefs[type][ch];
   return type === 'chat' ? v === 'all' || (v === 'mentions' && (ev.tagged || []).includes(a.uid)) : !!v;
 };
@@ -3696,6 +3927,11 @@ function evText(ev, poll, lang) {
     case 'question_open': {
       const r = parseJ(ev.ref) || {}, at = r.t ? `${r.t}, ${fmtDay(r.d, lang)}` : fmtDay(r.d, lang);
       return (r.b ? (de ? `Fragen vor ${at}: ` : `Questions before ${at}: `) : (de ? `Fragen zu ${at}: ` : `Questions about ${at}: `)) + n;
+    }
+    case 'question_remind': {
+      const r = parseJ(ev.ref) || {}, q = r.q ? `: ${r.q}` : '';
+      return ev.name ? (de ? `${n} erinnert dich daran, die Fragen zu beantworten${q}` : `${n} reminds you to answer the questions${q}`)
+        : (de ? `Erinnerung: Bitte beantworte die Fragen${q}` : `Reminder: please answer the questions${q}`);
     }
     case 'round_open': { const r = parseJ(ev.ref) || {}; return (de ? 'Neue Runde offen: ' : 'A new round is open: ') + periodText({ ...poll, lang }, { start_date: r.s, end_date: r.e }); }
     case 'poll_closed': return de ? 'Die Umfrage ist geschlossen' : 'The poll is closed';
@@ -3954,6 +4190,18 @@ async function remind(env, poll, inst) {
   const html = roundMail(poll, { intro, period, by: fmtDay(inst.deadline.slice(0, 10), poll.lang), link: `${base}/?p=${poll.id}` });
   await sendMail(env, poll, { to, subject: `${de ? 'Erinnerung' : 'Reminder'}: ${poll.title} (${period})`, text, html, links });
 }
+// Settings → Email → Reminder + "also the questions": on the reminder day, once per round (q_reminded), no mail quota (like remind).
+async function remindQuestionsDue(env, poll, t) {
+  const { results: due } = await env.DB.prepare(`SELECT * FROM instances WHERE poll_id = ? AND q_reminded = 0 AND deadline IS NOT NULL AND deadline >= ?
+    AND questions IS NOT NULL AND questions NOT IN ('', '[]')`).bind(poll.id, t).all();
+  for (const inst of due) {
+    if (effStatus(inst) !== 'open' || addDays(inst.deadline, -poll.remind_days) > t || !questionsOf(inst).length) continue;
+    const claim = await env.DB.prepare('UPDATE instances SET q_reminded = 1 WHERE id = ? AND q_reminded = 0').bind(inst.id).run();
+    if (!claim.meta || !claim.meta.changes) continue;
+    const owner = await ownerOf(env, poll);
+    await sendQuestionReminders(env, siteUrl(env), poll, inst, { name: (owner && owner.name) || '' });
+  }
+}
 async function runScheduled(env) {
   try {
     await env.DB.batch([
@@ -3981,6 +4229,7 @@ async function runScheduled(env) {
       if (poll.remind_days != null) {
         const { results: due } = await env.DB.prepare("SELECT * FROM instances WHERE poll_id = ? AND reminded = 0 AND deadline IS NOT NULL AND deadline >= ?").bind(poll.id, t).all();
         for (const inst of due) if (effStatus(inst) === 'open' && addDays(inst.deadline, -poll.remind_days) <= t) await remind(env, poll, inst);
+        if (poll.remind_questions) await remindQuestionsDue(env, poll, t).catch((e) => console.error('qremind', poll.id, e));
       }
     } catch (e) { console.error('scheduled', poll.id, e); }
   }
@@ -4476,7 +4725,7 @@ Calendars (Account page): connect Google or Outlook, or paste an iCal link; your
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. At the top of the Meetings tab, "Get these meetings in your calendar" has one-tap buttons to subscribe in Apple Calendar (iPhone, iPad, Mac), Google Calendar or Outlook, Copy link for other apps, and Show me how (a short animated guide per app). A subscribed calendar updates by itself when meetings are added, changed or cancelled (calendar apps check every few hours). When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
 
-QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
+QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?"). Remind (🔔 in the Questions tab, or ⋯ on a question): people who haven't answered get a reminder, accounts by their notification settings (push / email), guests by email with their own link; at most every 10 minutes. Settings → Email → Reminder can also remind about unanswered questions automatically on the same day.
 
 PEOPLE tab. Add people (by email, from your saved contacts or groups), send invites and reminders, copy each guest's personal link (⋯ menu). The owner can give accounts roles: Admin (manage settings, people, emails), Editor (meetings, questions, rounds), Viewer (see everything). Merge someone who answered under another name with "This is someone invited…". Save selected people as a group. Share: Copy link or Share invite in the header.
 
@@ -4484,7 +4733,7 @@ CHAT. The round button at the bottom right opens the poll's group chat (signed-i
 
 NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from the Home Screen app: Share → Add to Home Screen). "Show me how" buttons (Account → Notifications, the poll's 🔔, the chat) play a short animation of where to tap or click, for iPhone, Android, Chrome / Edge and Safari on a Mac; blocked notifications on a computer: it shows how to allow them again and optional email digests. Defaults in Account → Notifications; per poll with the 🔔 button in the poll header. After the first tour (and the first start of the Home Screen app) when-who offers to add it to the Home Screen and turn on notifications. Tapping a notification opens the poll's chat (or the tab it is about); the sender's name and picture show on Android and computers, and the installed app's icon shows the number of unread messages.
 
-SETTINGS (organiser only): title, dates, answer mode, deadline, password, invited only, hide answers, chat, rounds of a recurring poll, defaults for new meetings, delete the poll.
+SETTINGS (organiser only): title, dates, answer mode, deadline, password, invited only, hide answers, chat, rounds of a recurring poll, defaults for new meetings (location, description, questions; the switch "Apply to all meetings" puts them on every meeting, also existing ones, and keeps them updated), delete the poll.
 
 ACCOUNT page: name, avatar, email change, calendars, contacts (save people, ✎ edit name / email / a private note; when a contact goes by another name in your polls, pick Use theirs or Keep mine, which also shows your name for them in polls you manage) and groups, notifications, presets, Your data (download a copy, delete the account). Polls without activity for 12 months are deleted (the owner is emailed 14 days before).
 
@@ -4492,7 +4741,9 @@ OTHER: Guided tour = the ? button → Take the tour. Language and light/dark the
 
 OVERVIEW CHATS. On the home page every poll card shows its chat's newest message (who wrote it, the start of it and when), in bold with a green count while unread; tap it to open the chat. Sort → Latest message puts polls with new messages first (the default).
 
-UPCOMING. At the top of the home page (signed in), Upcoming shows the next two weeks across all your polls: a strip of days with dots, and below it a list by day of meetings you're in (time, place), meetings proposed for a vote (Vote / Voted) and reply-by dates (Reply by for polls you haven't answered yet, Replies close for your own polls). Tap a day to see only that day; tap a row to open the poll (meetings open its Meetings tab). Polls hidden from the overview are left out.`;
+UPCOMING. At the top of the home page (signed in), Upcoming shows the next two weeks across all your polls: a strip of days with dots, and below it a list by day of meetings you're in (time, place), meetings proposed for a vote (Vote / Voted) and reply-by dates (Reply by for polls you haven't answered yet, Replies close for your own polls). Tap a day to see only that day; tap a row to open the poll (meetings open its Meetings tab). Polls hidden from the overview are left out.
+CALENDAR. The calendar button in the Upcoming card's header opens a full calendar (Month, Week or List; arrows move by a month or week, Today jumps back). It shows meetings you're in, meetings to vote on, reply-by dates, To do items, the hours you marked free in other polls' open rounds and the events of the calendars linked on your Account page (Google, Outlook or iCal links; read in your browser, never stored). Each poll and each linked calendar has its own colour; the small icon says what kind of item it is. The Filter button turns kinds, polls and calendars on or off and lets you pick a colour per poll (kept on this device) and a colour and emoji per linked calendar (also in Account, Calendars). Tap a poll item to open the poll; tap a calendar event to see its details.
+TO DO. Above Upcoming (signed in), To do lists what's still open for you in polls you were invited to or answered: add your availability, questions left unanswered (how many are required), proposed times to vote on, and meetings to rate or answer questions about. The reply-by date shows on the right (amber when it's today or tomorrow). Tap a row to go straight there. Poll cards show a To do count too. Polls you organise aren't listed.`;
 function helpPrompt(page, lang) {
   return [
     'You are the friendly help assistant of when-who. Answer the user\'s question about using when-who, using only the guide below.',
@@ -4871,6 +5122,7 @@ function validateQuestions(list, meetings, old = [], pids = new Set()) {
       req: q.req ? true : undefined, vis: q.vis === 'owner' ? 'owner' : 'all', closed: q.closed ? true : undefined,
       repeat: q.repeat === false ? false : undefined, at: prev.get(id)?.at || now() }; // at = when it was added
     if (typeof q.tpl === 'string' && QID_RE.test(q.tpl)) out.tpl = q.tpl; // a copy of the poll's every-round question q.tpl (round_questions)
+    if (typeof q.mtpl === 'string' && QID_RE.test(q.mtpl)) { out.mtpl = q.mtpl; if (typeof q.mh === 'string' && q.mh.length <= 16) out.mh = q.mh; } // a copy of a meeting question template (meet_apply)
     if (typeof q.grp === 'string' && gset.has(q.grp)) { out.grp = q.grp; if (q.own) out.own = true; }
     linkWho(q, out, meetings, mids, pids);
     if (Q_CHOICE.has(q.type)) {
@@ -4905,6 +5157,29 @@ function canAnswer(q, part, meetings, responses) {
   if (!ms.length) return true; // nothing linked: everyone
   if (w.mode === 'meeting') return ms.some((m) => m.participants === 'all' || (Array.isArray(m.participants) && m.participants.some((p) => p.id === part.id)));
   return ms.some((m) => freeAt(responses, part, m, m.date)); // free: marked available (or if needed) at the meeting's time
+}
+// What participant part still has to answer (overview To do, question reminders): a = their answers (form_answers.extra.a).
+// open = questions of the round they may answer and left empty (only while the round is open; per-date ones while no date has
+// an answer); after = after-meeting (or before-meeting) dates open for them now in every time zone, opened in the last 14 days, unanswered.
+const qEmptyV = (v) => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+const AFTER_TODO_MS = 14 * 86400e3;
+function pendingQuestions(qs, part, a, meetings, responses, roundOpen, at = Date.now()) {
+  const open = [], after = [];
+  for (const q of qs) {
+    if (q.closed || !canAnswer(q, part, meetings, responses)) continue;
+    const v = a[q.id];
+    if (isAfter(q)) {
+      const got = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+      for (const o of afterOccs(q, meetings, at))
+        if (o.sure && o.open >= at - AFTER_TODO_MS && qEmptyV(got[o.key]) && canAnswerAt(q, part, o.m, o.date, responses))
+          after.push({ q, key: o.key, m: o.m, date: o.date, open: o.open });
+      continue;
+    }
+    if (!roundOpen) continue;
+    if (q.link.each ? !(v && typeof v === 'object' && Object.values(v).some((x) => !qEmptyV(x))) : qEmptyV(v)) open.push(q);
+  }
+  after.sort((x, y) => y.open - x.open);
+  return { open, req: open.filter((q) => q.req).length, after };
 }
 // Options people suggested in this round: Map question id → [{ id, label }] (from every form answer's `add`).
 async function addedOptions(env, iid, skipId) {
