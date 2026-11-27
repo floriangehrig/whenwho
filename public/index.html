@@ -1290,26 +1290,42 @@
   .up-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)} .up-dot.proposed{background:transparent;box-shadow:inset 0 0 0 1.5px var(--accent)} .up-dot.deadline{background:var(--maybe)}
   .up-day.on .up-dot{background:var(--on-brand)} .up-day.on .up-dot.proposed{background:transparent;box-shadow:inset 0 0 0 1.5px var(--on-brand)}
   .up-list{margin-top:var(--s3)}
-  .up-dh{font-size:12.5px;font-weight:650;color:var(--muted);margin:14px 0 6px} .up-dh:first-child{margin-top:0} .up-dh.today{color:var(--accent)}
-  .up-row{position:relative;display:grid;grid-template-columns:58px 32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r);color:inherit}
-  .up-row+.up-row{margin-top:2px}
+  .up-dh{display:flex;align-items:baseline;gap:8px;font-size:12.5px;color:var(--muted);margin:16px 0 4px;padding:0 10px}
+  .up-dh:first-child{margin-top:0} .up-dh b{font-weight:650;color:var(--ink-2)} .up-dh.today b{color:var(--accent)}
+  .up-row{position:relative;display:grid;grid-template-columns:96px 32px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border-radius:var(--r);color:inherit}
   @media (hover:hover){ .up-row:hover{background:var(--sunken)} }
   .up-row a.up-t::after{content:"";position:absolute;inset:0;border-radius:inherit}
   .up-row .tile{width:32px;height:32px;border-radius:9px;font-size:17px}
-  .up-time svg{width:15px;height:15px}
-  .up-time{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)} .up-time.muted{font-weight:500;color:var(--muted)}
+  .up-time{display:flex;align-items:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+  .up-time.muted{font-weight:500;color:var(--muted)} .up-time svg{width:15px;height:15px}
   .up-b{min-width:0;display:flex;flex-direction:column;gap:1px}
   .up-t{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} a.up-t:hover{text-decoration:none;color:var(--accent)}
-  .up-s{font-size:12.5px;color:var(--muted);display:flex;gap:4px 10px;min-width:0;overflow:hidden;white-space:nowrap}
-  .up-s>span:first-child{flex:none;max-width:60%}
-  .up-s>span{display:inline-flex;align-items:center;gap:3px;min-width:0;overflow:hidden;text-overflow:ellipsis} .up-s svg{width:13px;height:13px;flex:none}
+  .up-s{display:flex;align-items:center;min-width:0;overflow:hidden;white-space:nowrap;font-size:12.5px;color:var(--muted)}
+  .up-s>span{display:inline-flex;align-items:center;gap:3px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+  .up-s>span:not(:first-child)::before{content:"·";margin:0 6px;flex:none} .up-s>span:has(svg)::before{margin-right:4px}
+  .up-s svg{width:13px;height:13px;flex:none}
+  .up-s>span:not(.up-loc):not(.up-tmi){flex-shrink:4;min-width:3em} /* the poll name gives way before the place */
+  .up-s .up-tmi{display:none;flex:none;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .up-s>.up-tmi+span::before{content:none} /* the time is hidden on wide screens: no dot before the next part */
   .up-tag{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--accent-weak);color:var(--accent-ink)}
   .up-tag.vote{background:transparent;box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
   .up-tag.done{background:var(--yes-bg);color:var(--yes-dark)} .up-tag.deadline{background:var(--maybe-bg);color:var(--maybe-ink)}
   .up-more{margin-top:8px}
   .up-none{margin:12px 0 0}
-  @media (max-width:560px){ .up-strip{grid-template-columns:repeat(14,46px)} .up-row{grid-template-columns:52px 28px minmax(0,1fr) auto;gap:8px;padding:8px 2px} .up-time.muted{font-size:11.5px} .up-row .tile{width:28px;height:28px}
-    .up-tag{font-size:11px;padding:2px 7px} }
+  /* Phones: a week of day chips fills the width (swipe for the next), rows drop the time column and show it in the second line. */
+  @media (max-width:560px){
+    .up-strip{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:calc((100% - 6 * 5px) / 7);gap:5px;scroll-snap-type:x mandatory;margin-inline:-2px;padding-inline:2px}
+    .up-day{scroll-snap-align:start;padding:6px 0 5px;border-radius:12px}
+    .up-day .up-wd{font-size:10.5px;letter-spacing:0} .up-day .up-dn{font-size:16px}
+    .up-dh{padding:0 2px;margin-top:14px}
+    .up-row{grid-template-columns:36px minmax(0,1fr) auto;gap:10px;padding:9px 2px;border-radius:0}
+    .up-row+.up-row{border-top:1px solid var(--line)}
+    .up-row .up-time{display:none}
+    .up-row .tile{width:36px;height:36px;border-radius:10px;font-size:19px}
+    .up-t{font-size:15px}
+    .up-s .up-tmi{display:inline-flex} .up-s>.up-tmi+span::before{content:"·"}
+    .up-tag{font-size:11px;padding:2px 7px}
+  }
   .pc-copy{position:absolute;top:10px;right:10px;z-index:1;padding:0;width:32px;min-height:32px}
   .pc-copy svg{width:16px;height:16px}
   .pc-more{z-index:2;width:auto;min-height:0} .pc-more>summary.qb{width:32px;height:32px;color:var(--muted)} .pc-more .ddp{top:100%;margin-top:4px}
@@ -3758,15 +3774,17 @@ function upLoad(){
 function upWhen(it){
   if(it.kind==='deadline') return `<span class="up-time muted">${ICON.deadline}</span>`;
   if(it.allDay||it.hs==null) return `<span class="up-time muted">${t('All day')}</span>`;
-  return `<span class="up-time">${hh(it.hs)}${it.he!=null?`<br><span class="muted">${hh24(it.he)}</span>`:''}</span>`;
+  return `<span class="up-time">${upTm(it)}</span>`;
 }
+// One-line time for a row ("19:00–22:00", "All day"); phones show it in the row's second line instead of the time column.
+const upTm=it=>it.allDay||it.hs==null?t('All day'):hh(it.hs)+(it.he!=null?'–'+hh24(it.he):'');
 function upRow(it,polls){
   const p=polls.get(it.poll)||{id:it.poll,title:''}, meet=it.kind!=='deadline';
   const href=`?p=${encodeURIComponent(it.poll)}${meet?'&tab=meetings':''}`;
   const title=meet?(it.mtitle||p.title):p.title;
   const tag=it.kind==='proposed'?(it.voted?`<span class="up-tag done">${t('Voted')}</span>`:`<span class="up-tag vote">${t('Vote')}</span>`)
     :it.kind==='deadline'?`<span class="up-tag deadline">${it.own?t('Replies close'):t('Reply by')}</span>`:'';
-  const sub=[meet&&it.mtitle&&it.mtitle!==p.title?`<span>${esc(p.title)}</span>`:'', it.location?`<span>${ICON.pin}${esc(it.location)}</span>`:'',
+  const sub=[meet?`<span class="up-tmi">${esc(upTm(it))}</span>`:'', meet&&it.mtitle&&it.mtitle!==p.title?`<span>${esc(p.title)}</span>`:'', it.location?`<span class="up-loc">${ICON.pin}${esc(it.location)}</span>`:'',
     it.kind==='deadline'&&!it.own?`<span>${t('You haven’t answered yet')}</span>`:''].filter(Boolean).join('');
   return `<div class="up-row up-${it.kind}">${upWhen(it)}${pollTile(p)}<div class="up-b"><a class="up-t" href="${esc(href)}">${esc(title)}</a>${sub?`<div class="up-s">${sub}</div>`:''}</div>${tag}</div>`;
 }
@@ -3785,7 +3803,8 @@ function upBody(){
   const shown=UP.day||UP.all?list:list.slice(0,UP_SHOW), tom=addDaysL(today,1);
   let html='', last='';
   for(const it of shown){ if(it.date!==last){ last=it.date;
-    html+=`<div class="up-dh${it.date===today?' today':''}">${it.date===today?t('Today'):it.date===tom?t('Tomorrow'):esc(dayLabel(it.date))}</div>`; }
+    const rel=it.date===today?t('Today'):it.date===tom?t('Tomorrow'):'';
+    html+=`<div class="up-dh${it.date===today?' today':''}">${rel?`<b>${rel}</b><span>${esc(dayLabel(it.date))}</span>`:`<b>${esc(dayLabel(it.date))}</b>`}</div>`; }
     html+=upRow(it,polls); }
   const more=!UP.day&&list.length>UP_SHOW?`<button type="button" class="btn sm ghost up-more" data-upmore>${UP.all?t('Show less'):t('Show all {n}',{n:list.length})}</button>`:'';
   return strip+`<div class="up-list">${html}</div>${more}`;
