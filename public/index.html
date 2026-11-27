@@ -1311,6 +1311,24 @@
   .up-tag.done{background:var(--yes-bg);color:var(--yes-dark)} .up-tag.deadline{background:var(--maybe-bg);color:var(--maybe-ink)}
   .up-more{margin-top:8px}
   .up-none{margin:12px 0 0}
+  .up-view{flex-wrap:nowrap} .up-view button{padding:5px 8px} .up-view svg{width:16px;height:16px}
+  .up-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:14px}
+  .up-gc{display:flex;flex-direction:column;gap:4px;min-height:118px;min-width:0;padding:6px;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+  .up-gc.we{background:var(--sunken)} .up-gc.empty .up-gh{opacity:.55}
+  .up-gc.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .up-gh{display:flex;align-items:baseline;gap:5px;padding:2px 4px 4px;border:0;background:none;font:inherit;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;text-align:left;border-radius:6px}
+  .up-gh b{font-size:15px;color:var(--ink);letter-spacing:0} .up-gh .up-gm{text-transform:none;letter-spacing:0}
+  .up-gc.today .up-gh,.up-gc.today .up-gh b{color:var(--accent)}
+  .up-gh:disabled{cursor:default} @media (hover:hover){ .up-gh:not(:disabled):hover{background:var(--empty)} }
+  .up-gi{display:flex;flex-direction:column;gap:1px;min-width:0;padding:4px 6px 5px;border-radius:7px;background:var(--accent-weak);color:var(--accent-ink);border-left:3px solid var(--accent);font-size:12px;line-height:1.3}
+  .up-gi:hover{text-decoration:none;filter:brightness(.97)}
+  .up-gi.proposed{background:transparent;border:1px dashed var(--accent);border-left-width:3px;border-left-style:solid}
+  .up-gi.proposed.voted{border-color:var(--yes);border-left-color:var(--yes);color:var(--yes-dark)}
+  .up-gi.deadline{background:var(--maybe-bg);color:var(--maybe-ink);border-left-color:var(--maybe)}
+  .up-gw{display:flex;align-items:center;gap:3px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .up-gw svg{width:12px;height:12px;flex:none} .up-gw>span{overflow:hidden;text-overflow:ellipsis}
+  .up-gt{color:var(--ink);font-weight:500;overflow:hidden;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} .up-ge{margin-right:4px}
+  .up-gmore{align-self:flex-start;border:0;background:none;padding:2px 6px;font:inherit;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;border-radius:6px}
+  .up-gmore:hover{background:var(--accent-weak)}
   /* Phones: a week of day chips fills the width (swipe for the next), rows drop the time column and show it in the second line. */
   @media (max-width:560px){
     .up-strip{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:calc((100% - 6 * 5px) / 7);gap:5px;scroll-snap-type:x mandatory;margin-inline:-2px;padding-inline:2px}
@@ -1324,6 +1342,7 @@
     .up-t{font-size:15px}
     .up-s .up-tmi{display:inline-flex} .up-s>.up-tmi+span::before{content:"·"}
     .up-tag{font-size:11px;padding:2px 7px}
+    .up-view{display:none}
   }
   .pc-copy{position:absolute;top:10px;right:10px;z-index:1;padding:0;width:32px;min-height:32px}
   .pc-copy svg{width:16px;height:16px}
@@ -3762,7 +3781,11 @@ document.addEventListener('click',e=>{ const m=e.target.closest('.pc-more[open] 
 // Upcoming card (home, signed in): GET /api/me/upcoming for the next UP_DAYS days. A strip of day chips (dots per kind,
 // tap = only that day, again = all) above an agenda grouped by day: meetings I'm in, proposals to vote on, reply-by dates.
 // Loaded after the page is drawn (ME.upcoming, refreshed when older than a minute); the card hides when loading fails.
-const UP_DAYS=14, UP_SHOW=8, UP={day:'',all:false,at:0,busy:null};
+const UP_DAYS=14, UP_SHOW=8, UP={day:'',all:false,at:0,busy:null,view:store.get('upv','rows')==='grid'?'grid':'rows'};
+// View (wide screens only, localStorage `upv`): rows = strip + agenda, grid = the two weeks as a 7-column calendar. Phones always get rows.
+const UP_NARROW=matchMedia('(max-width:560px)'), upGrid=()=>UP.view==='grid'&&!UP_NARROW.matches;
+UP_NARROW.addEventListener('change',()=>upDraw());
+const UP_GRID_MAX=4;
 function upLoad(){
   if(ME.upcoming&&Date.now()-UP.at<60000){ upDraw(); return; }
   if(UP.busy) return;
@@ -3787,11 +3810,27 @@ function upRow(it,polls){
     it.kind==='deadline'&&!it.own?`<span>${t('You haven’t answered yet')}</span>`:''].filter(Boolean).join('');
   return `<div class="up-row up-${it.kind}">${upWhen(it)}${pollTile(p,'sm')}<div class="up-b"><a class="up-t" href="${esc(href)}">${esc(title)}</a>${sub?`<div class="up-s">${sub}</div>`:''}</div>${tag}</div>`;
 }
+// Grid view: 14 day cells (7 columns, today first). Up to UP_GRID_MAX entries per day, then "+N more"; the day's header and
+// "+N more" switch to the rows view filtered to that day.
+function upGridHtml(days,by,polls,today){
+  const cell=d=>{ const l=by.get(d), dt=parseD(d), wd=dt.getDay(), more=l.length-UP_GRID_MAX;
+    const items=l.slice(0,more>0?UP_GRID_MAX-1:UP_GRID_MAX).map(it=>{ const p=polls.get(it.poll)||{id:it.poll,title:''}, meet=it.kind!=='deadline';
+      const title=meet?(it.mtitle||p.title):p.title, href=`?p=${encodeURIComponent(it.poll)}${meet?'&tab=meetings':''}`;
+      const when=it.kind==='deadline'?(it.own?t('Replies close'):t('Reply by')):upTm(it);
+      const vt=it.kind==='proposed'?(it.voted?t('Voted'):t('Vote')):'';
+      return `<a class="up-gi ${it.kind}${it.voted?' voted':''}" href="${esc(href)}" title="${esc([title,p.title,it.location,vt].filter(Boolean).join(' · '))}">
+        <span class="up-gw">${it.kind==='deadline'?ICON.deadline:''}<span>${esc(when)}</span>${it.voted?ICON.check:''}</span><span class="up-gt">${p.icon?`<span class="up-ge">${esc(p.icon)}</span>`:''}${esc(title)}</span></a>`; }).join('');
+    return `<div class="up-gc${d===today?' today':''}${wd===0||wd===6?' we':''}${l.length?'':' empty'}">
+      <button type="button" class="up-gh" data-upgday="${d}"${l.length?'':' disabled'} title="${esc(dayLabel(d))}"><span>${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span><b>${dt.getDate()}</b>${dt.getDate()===1||d===today?`<span class="up-gm">${esc(dt.toLocaleDateString(LOC,{month:'short'}))}</span>`:''}</button>
+      ${items}${more>0?`<button type="button" class="up-gmore" data-upgday="${d}">${t('+{n} more',{n:more+1})}</button>`:''}</div>`; };
+  return `<div class="up-grid" role="list" aria-label="${t('Next two weeks')}">${days.map(cell).join('')}</div>`;
+}
 function upBody(){
   const u=ME.upcoming; if(!u) return `<p class="help up-none">${t('Loading…')}</p>`;
   const polls=new Map(u.polls.map(p=>[p.id,p])), today=isoL(new Date()), days=[...Array(UP_DAYS)].map((_,i)=>addDaysL(today,i));
   const by=new Map(days.map(d=>[d,[]])); u.items.forEach(it=>{ const l=by.get(it.date); if(l) l.push(it); });
   if(UP.day&&!by.get(UP.day)?.length) UP.day='';
+  if(upGrid()) return upGridHtml(days,by,polls,today);
   const strip=`<div class="up-strip" role="group" aria-label="${t('Next two weeks')}">${days.map(d=>{ const l=by.get(d), dt=parseD(d), wd=dt.getDay();
     const kinds=['meeting','proposed','deadline'].filter(k=>l.some(x=>x.kind===k));
     return `<button type="button" class="up-day${d===today?' today':''}${wd===0||wd===6?' we':''}${UP.day===d?' on':''}" data-upday="${d}" aria-pressed="${UP.day===d}"${l.length?'':' disabled'}
@@ -3815,10 +3854,15 @@ function upDraw(){
   c.hidden=false; $('hp_up').innerHTML=upBody();
   const n=upCount(), pl=c.querySelector('.card-h .pill'); if(pl){ pl.textContent=n; pl.hidden=!n; }
 }
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-upday],[data-upmore]'); if(!b) return;
-  if(b.dataset.upday) UP.day=UP.day===b.dataset.upday?'':b.dataset.upday; else UP.all=!UP.all;
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-upday],[data-upmore],[data-upview],[data-upgday]'); if(!b) return;
+  const ds=b.dataset;
+  if(ds.upview){ UP.view=ds.upview; store.set('upv',UP.view); UP.day=''; document.querySelectorAll('#hp_upc [data-upview]').forEach(x=>{ const on=x.dataset.upview===UP.view; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); }
+  else if(ds.upgday){ UP.view='rows'; store.set('upv','rows'); UP.day=ds.upgday; document.querySelectorAll('#hp_upc [data-upview]').forEach(x=>{ const on=x.dataset.upview==='rows'; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); }
+  else if(ds.upday) UP.day=UP.day===ds.upday?'':ds.upday; else UP.all=!UP.all;
   upDraw(); });
-const upcomingCard=()=>`<div class="card span" id="hp_upc"><div class="card-h"><h2>${t('Upcoming')}</h2>${tip(t('Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.'),'right')}<span class="pill"${upCount()?'':' hidden'}>${upCount()}</span></div>
+const upViewSeg=()=>`<div class="seg up-view" role="group" aria-label="${t('View')}">${[['rows',t('List'),'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'],['grid',t('Calendar'),'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>']].map(([k,l,ic])=>
+  `<button type="button" data-upview="${k}" class="${UP.view===k?'on':''}" aria-pressed="${UP.view===k}" title="${esc(l)}" aria-label="${esc(l)}">${svgI(ic)}</button>`).join('')}</div>`;
+const upcomingCard=()=>`<div class="card span" id="hp_upc"><div class="card-h"><h2>${t('Upcoming')}</h2>${tip(t('Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.'),'right')}<span class="pill"${upCount()?'':' hidden'}>${upCount()}</span>${upViewSeg()}</div>
   <div id="hp_up">${upBody()}</div></div>`;
 
 function renderHome(){
@@ -10682,6 +10726,7 @@ function germanText(){ return {
   'iPhone, iPad and Mac: opens the Calendar app':'iPhone, iPad und Mac: öffnet die Kalender-App',
   'Opens Google Calendar to add it':'Öffnet Google Kalender zum Hinzufügen',
   'Opens Outlook on the web to add it':'Öffnet Outlook im Web zum Hinzufügen',
+  '+{n} more':'+{n} weitere',
   'Copy the link for other calendar apps':'Link für andere Kalender-Apps kopieren',
   'At the top of <b>Meetings</b>, tap <b>Google</b>. Google Calendar opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Google</b>. Google Kalender öffnet sich (melde dich an, falls gefragt).',
   'Tap <b>Add</b>. On a phone, if the Google Calendar app opens instead, do this once on a computer.':'Tippe auf <b>Hinzufügen</b>. Öffnet sich auf dem Handy stattdessen die Google-Kalender-App, mach das einmal am Computer.',

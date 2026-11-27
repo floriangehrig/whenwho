@@ -47,6 +47,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **Upcoming** card on top (`upcomingCard` / `upLoad` / `upBody`, state `UP`): `GET /api/me/upcoming?from&to` (≤ 60 days, `upcoming`, read only) = meetings I'm in
   (same rule and repeat expansion as `pollBusy`, shared `myMeetingOccs`), proposals in open rounds (`voted` from `responses.votes`) and reply-by dates of open
   rounds (owner: Replies close; others only while unanswered), polls hidden from the overview left out. 14-day strip (tap a day = only that day) + agenda by day.
+  Wide screens get a List / Calendar toggle (`upViewSeg`, localStorage `upv`): Calendar = the 14 days as a 7-column grid (`upGridHtml`); a day's header or +N more opens List on that day. Phones always get the list.
   WhatsApp-style chat line on each card (`pcChat`, `.pc-chat`): `GET /api/me/polls` sends `last = { name, avatar, avatarImg, body (plain, `chatPlain`), at, mine }`
   (newest message per poll, one window query in `myPolls`) next to `unread`; bold + green count while unread, tap = `?p=<id>&chat=1`, time via `chatWhen`.
   Sort **Latest message** (`chat`, default; unread first). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.
