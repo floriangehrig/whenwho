@@ -1592,12 +1592,20 @@
   .chat-list mark{background:color-mix(in srgb,var(--maybe) 55%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
   .ubadge svg{width:12px;height:12px}
-  .pc-chat{position:relative;z-index:1;align-self:stretch;justify-self:stretch;display:flex;align-items:center;gap:8px;min-width:0;margin-top:4px;padding:6px 8px;border-radius:10px;background:var(--sunken);color:var(--muted);font-size:13px;text-decoration:none}
-  .pc-chat:hover{text-decoration:none;background:var(--empty)} .pc-chat .tile.avatar{width:22px;height:22px;flex:none;margin:0} .pc-chat .tile.avatar .tile-i{font-size:10px} .pc-chat .tile.avatar .tile-e{font-size:13px}
-  .pcc-ic{display:inline-flex;width:22px;justify-content:center;flex:none} .pcc-ic svg{width:15px;height:15px}
-  .pcc-t{flex:1;min-width:0} .pcc-t b{font-weight:600;color:var(--ink)} .pc-chat time{flex:none;font-size:11.5px}
-  .pc-chat.un{color:var(--ink);font-weight:600} .pc-chat.un time{color:var(--yes-dark)}
-  .pcc-n{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--yes);color:#fff;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+  /* Chat preview: a panel across the bottom of a poll card (header row + the newest message as a bubble; phones: one compact row) */
+  .pc-chat{position:relative;z-index:1;align-self:stretch;display:flex;flex-direction:column;gap:7px;min-width:0;margin:14px -16px -16px;padding:9px 12px 11px;
+    border-top:1px solid var(--line);border-radius:0 0 var(--r-lg) var(--r-lg);background:var(--sunken);color:var(--muted);text-decoration:none;transition:background .12s}
+  .pc-chat:hover{text-decoration:none;background:var(--empty)}
+  .pcc-h{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:1.2} .pcc-h svg{width:14px;height:14px;flex:none} .pcc-h b{font-weight:600;color:var(--ink)}
+  .pcc-h time{margin-left:auto;flex:none} .pc-chat.un .pcc-h time{color:var(--yes-dark);font-weight:600}
+  .pcc-n{flex:none;display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:999px;background:var(--yes);color:#fff;font-size:11px;font-weight:700} .pcc-n.sm{display:none;align-self:center}
+  .pcc-m{display:flex;align-items:flex-end;gap:7px;min-width:0}
+  .pcc-m .tile.avatar{width:24px;height:24px;flex:none;margin:0} .pcc-m .tile.avatar .tile-i{font-size:10.5px} .pcc-m .tile.avatar .tile-e{font-size:14px}
+  .pcc-b{display:flex;flex-direction:column;min-width:0;max-width:100%;padding:5px 10px 6px;border:1px solid var(--line);border-radius:13px 13px 13px 4px;background:var(--card);color:var(--ink-2);font-size:12.5px;line-height:1.35}
+  .pcc-w{font-size:11px;font-weight:600;color:var(--accent-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pcc-wt{display:none;font-weight:500;color:var(--muted)}
+  .pcc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pc-chat.un .pcc-t{font-weight:600;color:var(--ink)}
+  .pc-chat.mine .pcc-m{justify-content:flex-end} .pc-chat.mine .pcc-b{border-color:transparent;background:var(--accent-weak);color:var(--accent-ink);border-radius:13px 13px 4px 13px}
+  .pc-chat.mine .pcc-w{display:none}
 
   /* ---------- new poll page ---------- */
   .btn.withic svg{width:16px;height:16px;flex:none}
@@ -1780,6 +1788,7 @@
     .pc-foot{margin-top:4px;padding-top:0}
     .pc-copy{top:0;bottom:0;margin:auto 0;height:40px;right:8px} .pc-more>summary.qb{width:40px;height:40px}
     .pcard.new{display:grid;grid-template-columns:44px minmax(0,1fr);text-align:left;justify-items:start}
+    .pcard>.pc-chat.pc-chat{grid-column:1/-1;margin:10px -52px -12px -14px;padding:8px 12px 10px} .pcc-h{display:none} .pcc-wt{display:inline} .pcc-n.sm{display:inline-flex} .pcc-b{flex:1} .pc-chat.mine .pcc-w{display:block}
     .pcard.new>.tile{grid-row:1/3}
     .drafts .dft{gap:4px 9px;padding:8px} .dacts .qb{width:30px;height:30px} .dfoot .btn{flex:1 1 100%;justify-content:center;min-height:44px} .dvote{flex-basis:100%}
     .drep-d{flex-basis:100%;order:3}
@@ -3677,19 +3686,20 @@ const chatWhen=at=>{ const d=new Date(at), n=new Date(), days=Math.round((new Da
   return days<=0?d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}):days===1?t('Yesterday'):days<7?d.toLocaleDateString(LOC,{weekday:'long'}):d.toLocaleDateString(LOC,{day:'numeric',month:'numeric',year:'2-digit'}); };
 function pcChat(p){
   const l=p.last; if(!l) return '';
-  const n=p.unread||0, who=l.mine?t('You'):l.name;
-  return `<a class="pc-chat${n?' un':''}" href="?p=${esc(p.id)}&amp;chat=1" title="${esc(n?t('{n} unread messages',{n}):t('Open the chat'))}">${l.mine?`<span class="pcc-ic">${ICON.chat}</span>`:tile({img:l.avatarImg,emoji:l.avatar,text:l.name,seed:l.name},'avatar')}
-    <span class="pcc-t ell"><b>${esc(who)}:</b> ${esc(l.body||'')}</span><time datetime="${esc(l.at)}" title="${esc(new Date(l.at).toLocaleString(LOC))}">${esc(chatWhen(l.at))}</time>${n?`<span class="pcc-n">${n>99?'99+':n}</span>`:''}</a>`;
+  const n=p.unread||0, nn=n>99?'99+':n, when=`<time datetime="${esc(l.at)}" title="${esc(new Date(l.at).toLocaleString(LOC))}">${esc(chatWhen(l.at))}</time>`;
+  return `<a class="pc-chat${n?' un':''}${l.mine?' mine':''}" href="?p=${esc(p.id)}&amp;chat=1" title="${esc(n?t('{n} unread messages',{n}):t('Open the chat'))}">
+    <span class="pcc-h">${ICON.chat}<b>${t('Chat')}</b>${n?`<span class="pcc-n">${t('{n} new',{n:nn})}</span>`:''}${when}</span>
+    <span class="pcc-m">${l.mine?'':tile({img:l.avatarImg,emoji:l.avatar,text:l.name,seed:l.name},'avatar')}<span class="pcc-b"><span class="pcc-w">${l.mine?t('You'):esc(l.name)}<span class="pcc-wt"> · ${esc(chatWhen(l.at))}</span></span><span class="pcc-t">${esc(l.body||'')}</span></span>${n?`<span class="pcc-n sm">${nn}</span>`:''}</span></a>`;
 }
 const unreadBadge=p=>p.unread?` <span class="ubadge" title="${esc(t('{n} unread messages',{n:p.unread}))}">${ICON.chat}${p.unread}</span>`:'';
 function pollCard(p,answered){
   const c=p.current, open=c&&c.status==='open';
   const as=answered?`<span class="pc-n minw" title="${esc(t('as {name}',{name:p.name}))}">${ICON.check}<span class="ell">${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span>`:'';
   return `<div class="pcard${p.hidden?' hid':''}">${pollTile(p)}
-    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${p.last?'':unreadBadge(p)}${p.role?roleTag(p.role):''}${pcChat(p)}
+    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${p.last?'':unreadBadge(p)}${p.role?roleTag(p.role):''}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
-      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
+      ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>${pcChat(p)}
     <details class="dd qmore pc-copy pc-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-copy="${esc(shareLink(p.id))}">${ICON.link}<span class="grow">${t('Copy share link')}</span></button>
       <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button>${answered?'':`
@@ -10735,6 +10745,7 @@ function germanText(){ return {
   'At the top of <b>Meetings</b>, tap <b>Outlook</b>. Outlook on the web opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Outlook</b>. Outlook im Web öffnet sich (melde dich an, falls gefragt).',
   'The link is already filled in. Tap <b>Import</b>.':'Der Link ist schon eingetragen. Tippe auf <b>Importieren</b>.',
   'Done. The meetings are in Outlook, on all your devices.':'Fertig. Die Termine sind in Outlook, auf all deinen Geräten.',
+  '{n} new':'{n} neu',
   'New and changed meetings show up on their own. Outlook checks every few hours.':'Neue und geänderte Termine kommen von selbst. Outlook schaut alle paar Stunden nach.',
   'At the top of <b>Meetings</b>, tap <b>Apple</b> (iPhone, iPad or Mac).':'Tippe oben unter <b>Termine</b> auf <b>Apple</b> (iPhone, iPad oder Mac).',
   'Tap <b>Subscribe</b>.':'Tippe auf <b>Abonnieren</b>.',
