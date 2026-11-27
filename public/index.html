@@ -8755,6 +8755,8 @@ function pushAvail(){
 const pushIsOn=()=>pushAvail()==='granted'&&store.get('pushOn',false);
 const b64uBytes=s=>{ s=s.replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s+'==='.slice((s.length+3)%4)),c=>c.charCodeAt(0)); };
 const pushReg=()=>PUSH.ready||(PUSH.ready=navigator.serviceWorker.register('/sw.js').then(()=>navigator.serviceWorker.ready));
+// Was this subscription made with the site's current key? (A new key pair makes old ones fail at the push service.)
+const pushSameKey=(s,key)=>{ const k=s&&s.options&&s.options.applicationServerKey; return !!k&&new Uint8Array(k).join()===key.join(); };
 // Subscribes this browser (asks for permission first) and tells the server. Call from a click.
 async function pushEnable(){
   const perm=await Notification.requestPermission();
@@ -8762,8 +8764,7 @@ async function pushEnable(){
   try{
     const r=await pushReg(), key=b64uBytes(CONFIG.push);
     let sub=await r.pushManager.getSubscription();
-    const same=s=>{ const k=s&&s.options&&s.options.applicationServerKey; return !!k&&new Uint8Array(k).join()===key.join(); };
-    if(sub&&!same(sub)){ await sub.unsubscribe(); sub=null; } // the site's key changed
+    if(sub&&!pushSameKey(sub,key)){ await sub.unsubscribe(); sub=null; } // the site's key changed
     if(!sub) sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
     const j=sub.toJSON(); await api('POST','/me/push',{endpoint:j.endpoint,keys:j.keys});
     PUSH.sub=sub; PUSH.fail=null; store.set('pushOn',true); store.set('pushSync',isoL(new Date())); pushRedraw(); toast(t('Notifications are on'));
@@ -8790,8 +8791,18 @@ async function pushDisable(quiet){
 async function pushResync(){
   if(!pushIsOn()) return;
   try{
-    const r=await pushReg(), sub=await r.pushManager.getSubscription();
+    const r=await pushReg(), key=b64uBytes(CONFIG.push);
+    let sub=await r.pushManager.getSubscription();
     if(!sub){ store.set('pushOn',false); return; }
+    // The site's key changed: drop the old subscription and make a new one (permission is already granted).
+    // Some browsers (Safari) only subscribe from a tap: then notifications show as off and the ask bar offers Turn on again.
+    if(!pushSameKey(sub,key)){
+      try{ await api('DELETE','/me/push',{endpoint:sub.endpoint}); }catch(e){}
+      await sub.unsubscribe();
+      try{ sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}); }
+      catch(e){ PUSH.sub=null; store.set('pushOn',false); pushRedraw(); return; }
+      store.set('pushSync','');
+    }
     PUSH.sub=sub; if(store.get('pushSync','')===isoL(new Date())) return;
     const j=sub.toJSON(); await api('POST','/me/push',{endpoint:j.endpoint,keys:j.keys}); store.set('pushSync',isoL(new Date()));
   }catch(e){}

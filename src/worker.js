@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-lQgY5fRps8zh6fiuWSIZNR7mD6mW7YO7qTLcLCRsD9Q=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-lf0G6dW4jNDNk0qrYRDbFQ+L0z27emmjJQz8HuiUaSE=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1829,8 +1829,16 @@ let VAPID = null; // { pub, key } cached per isolate
 async function vapidKey(env) {
   if (VAPID && VAPID.pub === env.VAPID_PUBLIC_KEY) return VAPID.key;
   const raw = unb64u(env.VAPID_PUBLIC_KEY);
-  const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: b64url(raw.slice(1, 33)), y: b64url(raw.slice(33, 65)), d: env.VAPID_PRIVATE_KEY, ext: true },
-    { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  // Forgive the usual paste slips: the whole "VAPID_PRIVATE_KEY=…" line, quotes, spaces, base64 instead of base64url.
+  const d = String(env.VAPID_PRIVATE_KEY).trim().replace(/^VAPID_PRIVATE_KEY\s*=\s*/, '').replace(/^["']|["']$/g, '').trim()
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  let key;
+  try {
+    key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: b64url(raw.slice(1, 33)), y: b64url(raw.slice(33, 65)), d, ext: true },
+      { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  } catch (e) {
+    throw new Error(`VAPID_PRIVATE_KEY can't be read (${d.length} chars, expected the 43-char "d" from scripts/vapid-keys.mjs): ${e.message}`);
+  }
   VAPID = { pub: env.VAPID_PUBLIC_KEY, key };
   return key;
 }

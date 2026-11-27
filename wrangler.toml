@@ -58,5 +58,5 @@ MAIL_PER_DAY = "50"                         # invite/test-email recipients per a
 AI_PER_DAY = "20"                           # text fills per account (or IP) per day
 # Chat notifications (Web Push): run `node scripts/vapid-keys.mjs`, put the public key here and the private one in
 # `npx wrangler secret put VAPID_PRIVATE_KEY`. Without both, notifications are hidden.
-VAPID_PUBLIC_KEY = "BHhP2TRr7lBynm-Pzw9VvMHqTcoBr2AKEp6eGQXuotJ9UKcskh2WdwlTpaxwe-AXbwb0qOJxRNukUOmxZ5LTfBs"
+VAPID_PUBLIC_KEY = "BFd7oI4OZcBWdkM8q67hr9jIpSP2nOYBxnSdezp7pfs_DigMX_neO4_Wm87H5t-39ZNyUoqAedSRM_pApG_wDJI"
 # RETAIN_MONTHS = "12"                     # delete polls with no activity for this long (default 12, "0" = never)
