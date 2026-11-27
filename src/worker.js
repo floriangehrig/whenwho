@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-1QHEttDFZ+ECanNyK1clrxyHJHJzco/uL7zrp+DwqvQ=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-8m13HvRw5JfjpURwq0jwbzkbGKf5WnXaa+gHPw1Rtos=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -159,6 +159,7 @@ async function route(request, env, ctx, url) {
     if (parts[2] === 'polls' && !parts[3] && m === 'GET') return myPolls(request, env);
     if (parts[2] === 'polls' && parts[3] && parts[4] === 'hidden' && !parts[5] && m === 'PUT') return setPollHidden(request, env, parts[3]);
     if (parts[2] === 'poll-busy' && !parts[3] && m === 'GET') return pollBusy(request, env, url);
+    if (parts[2] === 'upcoming' && !parts[3] && m === 'GET') return upcoming(request, env, url);
     if (parts[2] === 'export' && !parts[3] && m === 'GET') return exportMe(request, env);
     if (parts[2] === 'delete' && !parts[3] && m === 'POST') return sendDeleteCode(request, env, url);
     if (parts[2] === 'delete' && parts[3] === 'verify' && !parts[4] && m === 'POST') return deleteAccount(request, env, url);
@@ -2444,6 +2445,62 @@ async function myPolls(request, env) {
       ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p), ...lastOf(p), ...hd(p) })),
   });
 }
+// The meetings of one round (row.meetings) I'm in, one call per date in from..to (repeats expanded, all-day ranges per day):
+// the owner is in all of them, others when the meeting is for everyone or lists their answer (mine = my response row).
+// Proposals are skipped unless `proposed` (Upcoming lists them for voting). each(mt, { kind, mtitle, allDay, hs?, he?, date }).
+function myMeetingOccs(row, mine, own, from, to, each, proposed = false) {
+  for (const mt of jsonList(row.meetings)) {
+    if (mt.proposed && !proposed) continue;
+    if (!own && mt.participants !== 'all' && !(mine && Array.isArray(mt.participants) && mt.participants.some((x) => x.id === mine.id))) continue;
+    const t = { kind: 'meeting', mtitle: mt.title || '', allDay: !!mt.allDay, ...(mt.allDay ? {} : { hs: mt.start, he: mt.end }) };
+    if (mt.repeat && isDate(mt.repeat.from)) {
+      for (let d = firstOnWeekday(mt.repeat.from, wdOf(mt.date)), i = 0; i < 520 && d <= to && (!mt.repeat.until || d <= mt.repeat.until); i++, d = addDays(d, 7 * (mt.repeat.every || 1)))
+        if (d >= from) each(mt, { ...t, date: d });
+    } else if (isDate(mt.date)) {
+      const last = mt.allDay && mt.endDate ? mt.endDate : mt.date;
+      for (let d = mt.date > from ? mt.date : from; d <= last && d <= to; d = addDays(d, 1)) each(mt, { ...t, date: d });
+    }
+  }
+}
+// GET /api/me/upcoming?from=&to= — the home page's Upcoming card: across my polls (not hidden from the overview), the meetings
+// I'm in, proposals still up for a vote in open rounds (voted = my answer has a vote on it) and reply-by dates of open rounds
+// (owners: replies close; others: only while they haven't answered). Read only, nothing stored. At most 60 days, 300 items.
+async function upcoming(request, env, url) {
+  const user = requireUser(request);
+  const from = url.searchParams.get('from'), to = url.searchParams.get('to');
+  if (!isDate(from) || !isDate(to) || to < from || daysBetween(from, to) > 60) throw new HttpError(400, 'Invalid dates');
+  const { results: rows } = await env.DB.prepare(
+    `SELECT p.id AS pid, p.title, p.icon, p.kind, p.owner_id, p.image_at, p.image IS NOT NULL AS has_image,
+       i.id AS iid, i.start_date, i.end_date, i.status, i.deadline, i.meetings
+     FROM polls p JOIN instances i ON i.poll_id = p.id
+     WHERE (p.owner_id = ?1 OR p.id IN (SELECT poll_id FROM participants WHERE user_id = ?1))
+       AND p.id NOT IN (SELECT poll_id FROM poll_hidden WHERE user_id = ?1)
+       AND ((i.start_date <= ?3 AND i.end_date >= ?2) OR i.start_date = '${WEEK0}' OR i.meetings LIKE '%"repeat"%'
+         OR (i.deadline >= ?2 AND i.deadline <= ?3))
+     LIMIT 500`).bind(user.id, from, to).all();
+  if (!rows.length) return json({ polls: [], items: [] });
+  const { results: rs } = await env.DB.prepare(
+    `SELECT r.id, r.instance_id, r.votes FROM responses r JOIN participants pa ON pa.id = r.participant_id WHERE pa.user_id = ?`).bind(user.id).all();
+  const resp = new Map(rs.map((r) => [r.instance_id, r]));
+  const items = [], used = new Map();
+  const add = (row, it) => { items.push({ poll: row.pid, ...it }); used.set(row.pid, row); };
+  for (const row of rows) {
+    const mine = resp.get(row.iid), own = row.owner_id === user.id, open = effStatus(row) === 'open';
+    let votes = []; try { votes = JSON.parse((mine && mine.votes) || '[]'); } catch {}
+    if (!Array.isArray(votes)) votes = [];
+    myMeetingOccs(row, mine, own, from, to, (mt, t) => {
+      if (mt.proposed && !open) return;
+      add(row, { ...t, kind: mt.proposed ? 'proposed' : 'meeting', mid: mt.id, ...(mt.location ? { location: mt.location } : {}),
+        ...(mt.proposed ? { voted: votes.includes(mt.id) } : {}) });
+    }, true);
+    const dl = isDate(row.deadline) ? row.deadline : '';
+    if (open && dl && dl >= from && dl <= to && (own || !mine)) add(row, { kind: 'deadline', date: dl, own });
+  }
+  const rank = { deadline: 0, meeting: 1, proposed: 2 };
+  items.sort((a, b) => a.date.localeCompare(b.date) || (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1) || (a.hs ?? -1) - (b.hs ?? -1) || rank[a.kind] - rank[b.kind]);
+  const pic = (p) => (p.has_image ? p.image_at || '1' : '');
+  return json({ polls: [...used.values()].map((r) => ({ id: r.pid, title: r.title, kind: r.kind, icon: r.icon || '', image: pic(r) })), items: items.slice(0, 300) });
+}
 // GET /api/me/poll-busy?from=&to=&skip= — when I'm busy because of my other polls (Busy ▾ → Other polls on the answer page):
 // confirmed meetings I'm in (any round), and hours I marked available / if needed in rounds that are still open
 // (weekly polls' answers have no real dates, so only their meetings count). Read only, nothing stored.
@@ -2467,18 +2524,7 @@ async function pollBusy(request, env, url) {
   const add = (row, it) => { if (items.length < 5000) { items.push({ poll: row.pid, title: row.title, ...it }); used.set(row.pid, row); } };
   for (const row of rows) {
     const mine = resp.get(row.iid), own = row.owner_id === user.id;
-    for (const mt of jsonList(row.meetings)) {
-      if (mt.proposed) continue;
-      if (!own && mt.participants !== 'all' && !(mine && Array.isArray(mt.participants) && mt.participants.some((x) => x.id === mine.id))) continue;
-      const t = { kind: 'meeting', mtitle: mt.title || '', allDay: !!mt.allDay, ...(mt.allDay ? {} : { hs: mt.start, he: mt.end }) };
-      if (mt.repeat && isDate(mt.repeat.from)) {
-        for (let d = firstOnWeekday(mt.repeat.from, wdOf(mt.date)), i = 0; i < 520 && d <= to && (!mt.repeat.until || d <= mt.repeat.until); i++, d = addDays(d, 7 * (mt.repeat.every || 1)))
-          if (d >= from) add(row, { ...t, date: d });
-      } else {
-        const last = mt.allDay && mt.endDate ? mt.endDate : mt.date;
-        for (let d = mt.date > from ? mt.date : from; d <= last && d <= to; d = addDays(d, 1)) add(row, { ...t, date: d });
-      }
-    }
+    myMeetingOccs(row, mine, own, from, to, (mt, t) => add(row, t));
     if (!mine || row.start_date === WEEK0 || effStatus(row) !== 'open') continue;
     let en = {}; try { en = JSON.parse(mine.entries || '{}') || {}; } catch (e) {}
     const pat = patternOf(row);
@@ -4444,7 +4490,9 @@ ACCOUNT page: name, avatar, email change, calendars, contacts (save people, ✎ 
 
 OTHER: Guided tour = the ? button → Take the tour. Language and light/dark theme are in the top bar. when-who is free; there is no store app, but you can add it to the Home Screen on a phone or install it from Chrome / Edge (install icon in the address bar) or Safari on a Mac (File → Add to Dock); the account menu's Add to Home Screen / Install app shows how. Signed-in people now and then get a small card suggesting this or turning on notifications.
 
-OVERVIEW CHATS. On the home page every poll card shows its chat's newest message (who wrote it, the start of it and when), in bold with a green count while unread; tap it to open the chat. Sort → Latest message puts polls with new messages first (the default).`;
+OVERVIEW CHATS. On the home page every poll card shows its chat's newest message (who wrote it, the start of it and when), in bold with a green count while unread; tap it to open the chat. Sort → Latest message puts polls with new messages first (the default).
+
+UPCOMING. At the top of the home page (signed in), Upcoming shows the next two weeks across all your polls: a strip of days with dots, and below it a list by day of meetings you're in (time, place), meetings proposed for a vote (Vote / Voted) and reply-by dates (Reply by for polls you haven't answered yet, Replies close for your own polls). Tap a day to see only that day; tap a row to open the poll (meetings open its Meetings tab). Polls hidden from the overview are left out.`;
 function helpPrompt(page, lang) {
   return [
     'You are the friendly help assistant of when-who. Answer the user\'s question about using when-who, using only the guide below.',

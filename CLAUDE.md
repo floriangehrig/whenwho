@@ -44,6 +44,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - **Overview** (home page, signed in): Your polls / Polls you answered each get a toolbar (`homeTools`: title search, All / Open / Closed / Hidden,
   kind, sort; `HOME_V`, kept in localStorage `hpv` without the search) and a ⋯ menu per card (Copy share link, Hide from overview; on your own polls Delete poll, in red).
   Hidden polls are per account in `poll_hidden` (0034), set by `PUT /api/me/polls/:id/hidden { hidden }`; `GET /api/me/polls` marks them `hidden: true`.
+  **Upcoming** card on top (`upcomingCard` / `upLoad` / `upBody`, state `UP`): `GET /api/me/upcoming?from&to` (≤ 60 days, `upcoming`, read only) = meetings I'm in
+  (same rule and repeat expansion as `pollBusy`, shared `myMeetingOccs`), proposals in open rounds (`voted` from `responses.votes`) and reply-by dates of open
+  rounds (owner: Replies close; others only while unanswered), polls hidden from the overview left out. 14-day strip (tap a day = only that day) + agenda by day.
   WhatsApp-style chat line on each card (`pcChat`, `.pc-chat`): `GET /api/me/polls` sends `last = { name, avatar, avatarImg, body (plain, `chatPlain`), at, mine }`
   (newest message per poll, one window query in `myPolls`) next to `unread`; bold + green count while unread, tap = `?p=<id>&chat=1`, time via `chatWhen`.
   Sort **Latest message** (`chat`, default; unread first). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.

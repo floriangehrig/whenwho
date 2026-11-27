@@ -1276,6 +1276,40 @@
   .st{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px;padding:2px 9px;border-radius:999px}
   .st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
   .st.open{background:var(--yes-bg);color:var(--yes-dark)} .st.closed{background:var(--empty);color:var(--muted)}
+  /* ---------- Upcoming (home): 14-day strip + agenda ---------- */
+  .up-strip{display:grid;grid-template-columns:repeat(14,minmax(44px,1fr));gap:6px;margin-top:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .up-strip::-webkit-scrollbar{display:none}
+  .up-day{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px 6px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);font:inherit;color:var(--ink);cursor:pointer;min-width:0}
+  .up-day .up-wd{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .up-day .up-dn{font-weight:650;font-size:15px;line-height:1.2}
+  .up-day.today{border-color:var(--accent)} .up-day.today .up-wd{color:var(--accent)}
+  .up-day.we{background:var(--sunken)}
+  .up-day.on{background:var(--accent);border-color:var(--accent);color:var(--on-brand)} .up-day.on .up-wd{color:var(--on-brand-muted)}
+  .up-day:disabled{cursor:default;opacity:.55}
+  .up-dots{display:flex;gap:3px;height:6px;align-items:center}
+  .up-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)} .up-dot.proposed{background:transparent;box-shadow:inset 0 0 0 1.5px var(--accent)} .up-dot.deadline{background:var(--maybe)}
+  .up-day.on .up-dot{background:var(--on-brand)} .up-day.on .up-dot.proposed{background:transparent;box-shadow:inset 0 0 0 1.5px var(--on-brand)}
+  .up-list{margin-top:var(--s3)}
+  .up-dh{font-size:12.5px;font-weight:650;color:var(--muted);margin:14px 0 6px} .up-dh:first-child{margin-top:0} .up-dh.today{color:var(--accent)}
+  .up-row{position:relative;display:grid;grid-template-columns:58px 32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r);color:inherit}
+  .up-row+.up-row{margin-top:2px}
+  @media (hover:hover){ .up-row:hover{background:var(--sunken)} }
+  .up-row a.up-t::after{content:"";position:absolute;inset:0;border-radius:inherit}
+  .up-row .tile{width:32px;height:32px;border-radius:9px;font-size:17px}
+  .up-time svg{width:15px;height:15px}
+  .up-time{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)} .up-time.muted{font-weight:500;color:var(--muted)}
+  .up-b{min-width:0;display:flex;flex-direction:column;gap:1px}
+  .up-t{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} a.up-t:hover{text-decoration:none;color:var(--accent)}
+  .up-s{font-size:12.5px;color:var(--muted);display:flex;gap:4px 10px;min-width:0;overflow:hidden;white-space:nowrap}
+  .up-s>span:first-child{flex:none;max-width:60%}
+  .up-s>span{display:inline-flex;align-items:center;gap:3px;min-width:0;overflow:hidden;text-overflow:ellipsis} .up-s svg{width:13px;height:13px;flex:none}
+  .up-tag{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--accent-weak);color:var(--accent-ink)}
+  .up-tag.vote{background:transparent;box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+  .up-tag.done{background:var(--yes-bg);color:var(--yes-dark)} .up-tag.deadline{background:var(--maybe-bg);color:var(--maybe-ink)}
+  .up-more{margin-top:8px}
+  .up-none{margin:12px 0 0}
+  @media (max-width:560px){ .up-strip{grid-template-columns:repeat(14,46px)} .up-row{grid-template-columns:52px 28px minmax(0,1fr) auto;gap:8px;padding:8px 2px} .up-time.muted{font-size:11.5px} .up-row .tile{width:28px;height:28px}
+    .up-tag{font-size:11px;padding:2px 7px} }
   .pc-copy{position:absolute;top:10px;right:10px;z-index:1;padding:0;width:32px;min-height:32px}
   .pc-copy svg{width:16px;height:16px}
   .pc-more{z-index:2;width:auto;min-height:0} .pc-more>summary.qb{width:32px;height:32px;color:var(--muted)} .pc-more .ddp{top:100%;margin-top:4px}
@@ -2917,6 +2951,7 @@ function tourSteps(key){
   if(key==='home') return [
     S(null,t('Welcome to when-who'),t('A one-minute look around. You can skip it any time.')),
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.'),{demo:demoNewBtn}),
+    S('#hp_upc',t('Upcoming'),t('What’s coming up in the next two weeks across all your polls: meetings you’re in, meetings to vote on and reply-by dates. Tap a day to see only that day.'),{when:()=>!$('hp_upc')?.hidden}),
     S('#hp_own_tools',t('Find your polls'),t('Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
     S('.pc-chat',t('Chats'),t('Each poll has a group chat. The newest message shows on its card, in bold with a green count while unread. Tap it to open the chat.')),
@@ -3709,6 +3744,65 @@ document.addEventListener('click',async e=>{
 // The ⋯ menu on a poll card closes after any item (Copy share link, Hide, Delete).
 document.addEventListener('click',e=>{ const m=e.target.closest('.pc-more[open] .ddp button'); if(m) m.closest('details').open=false; });
 
+// Upcoming card (home, signed in): GET /api/me/upcoming for the next UP_DAYS days. A strip of day chips (dots per kind,
+// tap = only that day, again = all) above an agenda grouped by day: meetings I'm in, proposals to vote on, reply-by dates.
+// Loaded after the page is drawn (ME.upcoming, refreshed when older than a minute); the card hides when loading fails.
+const UP_DAYS=14, UP_SHOW=8, UP={day:'',all:false,at:0,busy:null};
+function upLoad(){
+  if(ME.upcoming&&Date.now()-UP.at<60000){ upDraw(); return; }
+  if(UP.busy) return;
+  const from=isoL(new Date()), to=addDaysL(from,UP_DAYS-1);
+  UP.busy=api('GET',`/me/upcoming?from=${from}&to=${to}`).then(r=>{ ME.upcoming=r; UP.at=Date.now(); },()=>{ ME.upcoming=null; UP.at=0; UP.fail=true; })
+    .finally(()=>{ UP.busy=null; upDraw(); });
+}
+function upWhen(it){
+  if(it.kind==='deadline') return `<span class="up-time muted">${ICON.deadline}</span>`;
+  if(it.allDay||it.hs==null) return `<span class="up-time muted">${t('All day')}</span>`;
+  return `<span class="up-time">${hh(it.hs)}${it.he!=null?`<br><span class="muted">${hh24(it.he)}</span>`:''}</span>`;
+}
+function upRow(it,polls){
+  const p=polls.get(it.poll)||{id:it.poll,title:''}, meet=it.kind!=='deadline';
+  const href=`?p=${encodeURIComponent(it.poll)}${meet?'&tab=meetings':''}`;
+  const title=meet?(it.mtitle||p.title):p.title;
+  const tag=it.kind==='proposed'?(it.voted?`<span class="up-tag done">${t('Voted')}</span>`:`<span class="up-tag vote">${t('Vote')}</span>`)
+    :it.kind==='deadline'?`<span class="up-tag deadline">${it.own?t('Replies close'):t('Reply by')}</span>`:'';
+  const sub=[meet&&it.mtitle&&it.mtitle!==p.title?`<span>${esc(p.title)}</span>`:'', it.location?`<span>${ICON.pin}${esc(it.location)}</span>`:'',
+    it.kind==='deadline'&&!it.own?`<span>${t('You haven’t answered yet')}</span>`:''].filter(Boolean).join('');
+  return `<div class="up-row up-${it.kind}">${upWhen(it)}${pollTile(p)}<div class="up-b"><a class="up-t" href="${esc(href)}">${esc(title)}</a>${sub?`<div class="up-s">${sub}</div>`:''}</div>${tag}</div>`;
+}
+function upBody(){
+  const u=ME.upcoming; if(!u) return `<p class="help up-none">${t('Loading…')}</p>`;
+  const polls=new Map(u.polls.map(p=>[p.id,p])), today=isoL(new Date()), days=[...Array(UP_DAYS)].map((_,i)=>addDaysL(today,i));
+  const by=new Map(days.map(d=>[d,[]])); u.items.forEach(it=>{ const l=by.get(it.date); if(l) l.push(it); });
+  if(UP.day&&!by.get(UP.day)?.length) UP.day='';
+  const strip=`<div class="up-strip" role="group" aria-label="${t('Next two weeks')}">${days.map(d=>{ const l=by.get(d), dt=parseD(d), wd=dt.getDay();
+    const kinds=['meeting','proposed','deadline'].filter(k=>l.some(x=>x.kind===k));
+    return `<button type="button" class="up-day${d===today?' today':''}${wd===0||wd===6?' we':''}${UP.day===d?' on':''}" data-upday="${d}" aria-pressed="${UP.day===d}"${l.length?'':' disabled'}
+      title="${esc(dayLabel(d))}${l.length?` · ${l.length}`:''}"><span class="up-wd">${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span><span class="up-dn">${dt.getDate()}</span>
+      <span class="up-dots">${kinds.map(k=>`<i class="up-dot ${k}"></i>`).join('')}</span></button>`; }).join('')}</div>`;
+  const list=UP.day?by.get(UP.day):u.items.filter(it=>by.has(it.date));
+  if(!list.length) return strip+`<p class="help up-none">${t('Nothing in the next two weeks.')}</p>`;
+  const shown=UP.day||UP.all?list:list.slice(0,UP_SHOW), tom=addDaysL(today,1);
+  let html='', last='';
+  for(const it of shown){ if(it.date!==last){ last=it.date;
+    html+=`<div class="up-dh${it.date===today?' today':''}">${it.date===today?t('Today'):it.date===tom?t('Tomorrow'):esc(dayLabel(it.date))}</div>`; }
+    html+=upRow(it,polls); }
+  const more=!UP.day&&list.length>UP_SHOW?`<button type="button" class="btn sm ghost up-more" data-upmore>${UP.all?t('Show less'):t('Show all {n}',{n:list.length})}</button>`:'';
+  return strip+`<div class="up-list">${html}</div>${more}`;
+}
+function upCount(){ const u=ME.upcoming; return u?u.items.length:0; }
+function upDraw(){
+  const c=$('hp_upc'); if(!c) return;
+  if(!ME.upcoming&&UP.fail){ c.hidden=true; return; }
+  c.hidden=false; $('hp_up').innerHTML=upBody();
+  const n=upCount(), pl=c.querySelector('.card-h .pill'); if(pl){ pl.textContent=n; pl.hidden=!n; }
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-upday],[data-upmore]'); if(!b) return;
+  if(b.dataset.upday) UP.day=UP.day===b.dataset.upday?'':b.dataset.upday; else UP.all=!UP.all;
+  upDraw(); });
+const upcomingCard=()=>`<div class="card span" id="hp_upc"><div class="card-h"><h2>${t('Upcoming')}</h2>${tip(t('Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.'),'right')}<span class="pill"${upCount()?'':' hidden'}>${upCount()}</span></div>
+  <div id="hp_up">${upBody()}</div></div>`;
+
 function renderHome(){
   document.title='when-who';
   const server = ME.user ? ME.polls : [], answered = ME.user ? ME.answered : [];
@@ -3728,7 +3822,7 @@ function renderHome(){
       ${newBtn(t('Create a poll'))}`}
     </div></section>
     <main class="wrap"><div class="home-grid">
-    ${ME.user?`<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
+    ${ME.user?`${upcomingCard()}<div class="card span"><div class="card-h"><h2>${t('Your polls')}</h2>${server.length?`<span class="pill">${server.length}</span>`:''}</div>
       ${homeTools('own')}<div id="hp_own">${homePage('own')}</div></div>
       <div class="card span"><div class="card-h"><h2>${t('Polls you answered')}</h2>${answered.length?`<span class="pill">${answered.length}</span>`:''}</div>
       ${answered.length?`${homeTools('ans')}<div id="hp_ans">${homePage('ans')}</div>`
@@ -3741,6 +3835,7 @@ function renderHome(){
       :`<div class="empty"><p class="help mt-0">${t('Sign in with your email to create polls and see the ones you created and answered, on every device. No password needed, just a code we email you.')}</p>
       <button type="button" class="btn primary" data-opensignin>${t('Sign in')}</button></div>`}</div>`}
     </div></main>${siteFoot()}`;
+  upLoad();
 }
 
 const PRIVACY_UPDATED='2026-11-27';
@@ -10553,6 +10648,17 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+  'Upcoming':'Demnächst',
+  'Today':'Heute',
+  'Tomorrow':'Morgen',
+  'Voted':'Abgestimmt',
+  'Replies close':'Antworten bis',
+  'You haven’t answered yet':'Du hast noch nicht geantwortet',
+  'Next two weeks':'Nächste zwei Wochen',
+  'Nothing in the next two weeks.':'In den nächsten zwei Wochen steht nichts an.',
+  'Show all {n}':'Alle {n} zeigen',
+  'Meetings you’re in, meetings to vote on and reply-by dates from all your polls, for the next two weeks. Tap a day to see only that day.':'Termine, bei denen du dabei bist, Termine zum Abstimmen und Antwortfristen aus all deinen Umfragen, für die nächsten zwei Wochen. Tippe auf einen Tag, um nur diesen zu sehen.',
+  'What’s coming up in the next two weeks across all your polls: meetings you’re in, meetings to vote on and reply-by dates. Tap a day to see only that day.':'Was in den nächsten zwei Wochen in all deinen Umfragen ansteht: Termine, bei denen du dabei bist, Termine zum Abstimmen und Antwortfristen. Tippe auf einen Tag, um nur diesen zu sehen.',
   'Get these meetings in your calendar':'Diese Termine in deinen Kalender holen',
   'Subscribe once and your calendar app keeps it up to date: new, changed and cancelled meetings show up on their own. Calendar apps check every few hours.':'Einmal abonnieren, und deine Kalender-App hält alles aktuell: neue, geänderte und abgesagte Termine kommen von selbst. Kalender-Apps schauen alle paar Stunden nach.',
   'iPhone, iPad and Mac: opens the Calendar app':'iPhone, iPad und Mac: öffnet die Kalender-App',
