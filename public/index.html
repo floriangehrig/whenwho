@@ -1295,7 +1295,6 @@
   .up-row{position:relative;display:grid;grid-template-columns:96px 32px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border-radius:var(--r);color:inherit}
   @media (hover:hover){ .up-row:hover{background:var(--sunken)} }
   .up-row a.up-t::after{content:"";position:absolute;inset:0;border-radius:inherit}
-  .up-row .tile{width:32px;height:32px;border-radius:9px;font-size:17px}
   .up-time{display:flex;align-items:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
   .up-time.muted{font-weight:500;color:var(--muted)} .up-time svg{width:15px;height:15px}
   .up-b{min-width:0;display:flex;flex-direction:column;gap:1px}
@@ -1321,7 +1320,7 @@
     .up-row{grid-template-columns:36px minmax(0,1fr) auto;gap:10px;padding:9px 2px;border-radius:0}
     .up-row+.up-row{border-top:1px solid var(--line)}
     .up-row .up-time{display:none}
-    .up-row .tile{width:36px;height:36px;border-radius:10px;font-size:19px}
+    .up-row .tile.sm{width:36px;height:36px;border-radius:10px} .up-row .tile.sm .tile-e{font-size:20px} .up-row .tile.sm .tile-i{font-size:14px}
     .up-t{font-size:15px}
     .up-s .up-tmi{display:inline-flex} .up-s>.up-tmi+span::before{content:"·"}
     .up-tag{font-size:11px;padding:2px 7px}
@@ -3786,7 +3785,7 @@ function upRow(it,polls){
     :it.kind==='deadline'?`<span class="up-tag deadline">${it.own?t('Replies close'):t('Reply by')}</span>`:'';
   const sub=[meet?`<span class="up-tmi">${esc(upTm(it))}</span>`:'', meet&&it.mtitle&&it.mtitle!==p.title?`<span>${esc(p.title)}</span>`:'', it.location?`<span class="up-loc">${ICON.pin}${esc(it.location)}</span>`:'',
     it.kind==='deadline'&&!it.own?`<span>${t('You haven’t answered yet')}</span>`:''].filter(Boolean).join('');
-  return `<div class="up-row up-${it.kind}">${upWhen(it)}${pollTile(p)}<div class="up-b"><a class="up-t" href="${esc(href)}">${esc(title)}</a>${sub?`<div class="up-s">${sub}</div>`:''}</div>${tag}</div>`;
+  return `<div class="up-row up-${it.kind}">${upWhen(it)}${pollTile(p,'sm')}<div class="up-b"><a class="up-t" href="${esc(href)}">${esc(title)}</a>${sub?`<div class="up-s">${sub}</div>`:''}</div>${tag}</div>`;
 }
 function upBody(){
   const u=ME.upcoming; if(!u) return `<p class="help up-none">${t('Loading…')}</p>`;
