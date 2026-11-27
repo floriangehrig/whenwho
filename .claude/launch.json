@@ -230,6 +230,24 @@
       "autoPort": false
     },
     {
+      "name": "whenwho-cal",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8783",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "SITE_URL:http://localhost:8783",
+        "--persist-to",
+        ".wrangler/cal-state"
+      ],
+      "port": 8783,
+      "autoPort": false
+    },
+    {
       "name": "whenwho-busy",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
@@ -245,6 +263,37 @@
         ".wrangler/busy-state"
       ],
       "port": 8784,
+      "autoPort": false
+    },
+    {
+      "name": "whenwho-meetmock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-home-workspace-projects-whenwho/6016d05e-c2a4-47fa-ac38-b32d1c1ca016/scratchpad/mockresend.js"
+      ],
+      "port": 8782,
+      "autoPort": false
+    },
+    {
+      "name": "whenwho-meet",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--port",
+        "8781",
+        "--var",
+        "TURNSTILE_SECRET:",
+        "--var",
+        "RESEND_API_KEY:test",
+        "--var",
+        "RESEND_API_URL:http://localhost:8782",
+        "--var",
+        "SITE_URL:http://localhost:8781",
+        "--persist-to",
+        ".wrangler/meet-state"
+      ],
+      "port": 8781,
       "autoPort": false
     }
   ]

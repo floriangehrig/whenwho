@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-lf0G6dW4jNDNk0qrYRDbFQ+L0z27emmjJQz8HuiUaSE=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-1QHEttDFZ+ECanNyK1clrxyHJHJzco/uL7zrp+DwqvQ=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -1175,14 +1175,22 @@ const AV_COLS = 'u.id AS av_uid, u.avatar AS av, LENGTH(u.avatar_img) AS av_img'
 const avOut = (r, on) => (on && r.av_uid ? { avatar: r.av || '', avatarImg: r.av_img ? `/api/users/${r.av_uid}/avatar?v=${r.av_img}` : '' } : {});
 const withAccount = (accts, x) => { const a = x && x.email && accts.get(x.email.toLowerCase()); return a ? { ...x, ...a } : x; };
 async function userAvatar(request, env, uid) {
-  requireUser(request);
   if (!UID_RE.test(uid)) throw new HttpError(404, 'No picture');
+  const sig = new URL(request.url).searchParams.get('s');
+  if (!(sig && pushOn(env) && sig === await avatarSig(env, uid))) requireUser(request);
   const img = await env.DB.prepare('SELECT avatar_img FROM users WHERE id = ?').bind(uid).first('avatar_img');
   const m = (img || '').match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/);
   if (!m) throw new HttpError(404, 'No picture');
   const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
   return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=3600' } });
 }
+// Notification icons: the browser / OS loads them without the session cookie, so a push carries a signed link to the
+// sender's picture (only that picture; key derived from the VAPID secret, which every push already needs).
+async function avatarSig(env, uid) {
+  const k = await crypto.subtle.importKey('raw', enc.encode('avatar:' + env.VAPID_PRIVATE_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return b64url(new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(uid)))).slice(0, 22);
+}
+const avatarIcon = async (env, u) => (u && u.avatar_img ? `/api/users/${u.id}/avatar?v=${u.avatar_img.length}&s=${await avatarSig(env, u.id)}` : '');
 // Body: { emails: [...] } (contacts imported in the browser, which the server never stores). Returns { accounts: { email: { account, avatar, avatarImg } } }.
 async function lookupContacts(request, env) {
   requireUser(request);
@@ -1891,16 +1899,22 @@ async function pushSend(env, subs, payload, topic) {
   return sent;
 }
 // A new chat message → notifyEvent (kind chat): members who want chat pushes ('all', or 'mentions' when tagged).
-async function pushChat(env, poll, user, m) {
-  const tagged = [...new Set([...m.body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)].map((x) => x[1]))];
+async function chatPlain(env, bodies, max) {
+  const tagged = [...new Set(bodies.flatMap((b) => [...String(b).matchAll(/<@([A-Za-z0-9_]{4,40})>/g)].map((x) => x[1])))].slice(0, 90);
   const names = {};
   if (tagged.length) {
     const { results } = await env.DB.prepare(`SELECT id, email, name FROM users WHERE id IN (${tagged.map(() => '?').join(',')})`).bind(...tagged).all();
     for (const u of results) names[u.id] = personOut({ ...u, avatar: '', avatar_img: '' }).name;
   }
   // Tags as @name, attached meetings as ★.
-  let text = m.body.replace(/<@([A-Za-z0-9_]{4,40})>/g, (_, id) => '@' + (names[id] || '?')).replace(/<#m:[A-Za-z0-9_-]{1,24}>/g, '★').replace(/\s+/g, ' ').trim();
-  if (text.length > 200) text = text.slice(0, 199) + '…';
+  return bodies.map((b) => {
+    const text = String(b).replace(/<@([A-Za-z0-9_]{4,40})>/g, (_, id) => '@' + (names[id] || '?')).replace(/<#m:[A-Za-z0-9_-]{1,24}>/g, '★').replace(/\s+/g, ' ').trim();
+    return text.length > max ? text.slice(0, max - 1) + '…' : text;
+  });
+}
+async function pushChat(env, poll, user, m) {
+  const tagged = [...new Set([...m.body.matchAll(/<@([A-Za-z0-9_]{4,40})>/g)].map((x) => x[1]))];
+  const [text] = await chatPlain(env, [m.body], 200);
   const name = personOut({ ...user, avatar: '', avatar_img: '' }).name.slice(0, 60);
   await notifyEvent(env, poll, { kind: 'chat', actor: user.id, name, ref: m.id, tagged,
     push: () => ({ name, body: text, url: `/?p=${poll.id}&chat=1`, at: m.created_at }) });
@@ -2405,15 +2419,29 @@ async function myPolls(request, env) {
        AND m.poll_id IN (SELECT id FROM polls WHERE allow_comments = 1)
      GROUP BY m.poll_id`).bind(user.id).all();
   const unread = Object.fromEntries(ur.map((r) => [r.poll_id, r.n]));
+  // The newest message of every chat I'm in (Overview preview line).
+  const { results: lm } = await env.DB.prepare(
+    `SELECT poll_id, body, created_at, user_id, name, email, avatar, av_img, pname FROM (
+       SELECT m.poll_id, m.body, m.created_at, m.user_id, u.name, u.email, u.avatar, LENGTH(u.avatar_img) AS av_img,
+         (SELECT p.name FROM participants p WHERE p.poll_id = m.poll_id AND p.user_id = m.user_id LIMIT 1) AS pname,
+         ROW_NUMBER() OVER (PARTITION BY m.poll_id ORDER BY m.created_at DESC) AS rn
+       FROM messages m LEFT JOIN users u ON u.id = m.user_id
+       WHERE m.poll_id IN (SELECT id FROM polls WHERE owner_id = ?1 UNION SELECT poll_id FROM participants WHERE user_id = ?1)
+         AND m.poll_id IN (SELECT id FROM polls WHERE allow_comments = 1))
+     WHERE rn = 1`).bind(user.id).all();
+  const lmText = await chatPlain(env, lm.map((l) => l.body), 90);
+  const lastMsg = Object.fromEntries(lm.map((l, i) => [l.poll_id, { name: l.name || (l.email || '').split('@')[0] || l.pname || '?',
+    avatar: l.avatar || '', avatarImg: l.av_img ? `/api/users/${l.user_id}/avatar?v=${l.av_img}` : '', body: lmText[i], at: l.created_at, mine: l.user_id === user.id }]));
+  const lastOf = (p) => (lastMsg[p.id] ? { last: lastMsg[p.id] } : {});
   const { results: hid } = await env.DB.prepare('SELECT poll_id FROM poll_hidden WHERE user_id = ?').bind(user.id).all();
   const hidden = new Set(hid.map((r) => r.poll_id)), hd = (p) => (hidden.has(p.id) ? { hidden: true } : {});
   const current = (p) => (p.start_date ? { startDate: p.start_date, endDate: p.end_date, deadline: p.deadline, answers: p.answers,
     status: effStatus({ status: p.status, end_date: p.end_date }) } : null);
   return json({
     polls: owned.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), createdAt: p.created_at, unread: unread[p.id] || 0,
-      current: current(p), ...hd(p) })),
+      current: current(p), ...lastOf(p), ...hd(p) })),
     answered: answered.map((p) => ({ id: p.id, title: p.title, kind: p.kind, icon: p.icon, image: pic(p), name: p.name, lastAnswered: p.last,
-      ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p), ...hd(p) })),
+      ...(POLL_ROLES.includes(p.role) ? { role: p.role } : {}), unread: unread[p.id] || 0, current: current(p), ...lastOf(p), ...hd(p) })),
   });
 }
 // GET /api/me/poll-busy?from=&to=&skip= — when I'm busy because of my other polls (Busy ▾ → Other polls on the answer page):
@@ -3647,11 +3675,28 @@ async function notifyEvent(env, poll, ev) {
   if (quiet || !pushOn(env)) return;
   const to = (await ntAudience(env, poll)).filter((a) => a.uid !== ev.actor && wants(a, type, 'p', ev)).map((a) => a.uid);
   if (!to.length) return;
-  const { results: subs } = await env.DB.prepare(`SELECT id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id IN (${to.map(() => '?').join(',')})
+  const { results: subs } = await env.DB.prepare(`SELECT id, user_id, endpoint, p256dh, auth, lang FROM push_subs WHERE user_id IN (${to.map(() => '?').join(',')})
     ORDER BY created_at DESC LIMIT ?`).bind(...to, PUSH_MAX).all();
+  if (!subs.length) return;
   const tag = (type === 'chat' ? 'chat' : ev.kind.replace(/_.*/, '')) + '-' + poll.id;
+  const actor = ev.actor ? await env.DB.prepare('SELECT id, avatar, avatar_img FROM users WHERE id = ?').bind(ev.actor).first() : null;
+  const who = actor ? { av: actor.avatar || '', icon: await avatarIcon(env, actor) } : {};
+  const badge = type === 'chat' ? await unreadTotals(env, [...new Set(subs.map((x) => x.user_id))]) : null;
   await pushSend(env, subs, (s) => ({ kind: type === 'chat' ? 'chat' : ev.kind, title: String(poll.title || '').slice(0, 120), tag, poll: poll.id, at,
-    url: `/?p=${poll.id}${EV_TAB[type] ? '&tab=' + EV_TAB[type] : ''}`, body: evText(ev, poll, s.lang).slice(0, 200), ...(ev.push ? ev.push(s.lang) : {}) }), tag);
+    url: `/?p=${poll.id}${EV_TAB[type] ? '&tab=' + EV_TAB[type] : ''}`, body: evText(ev, poll, s.lang).slice(0, 200), ...who,
+    ...(badge ? { badge: badge[s.user_id] || 0 } : {}), ...(ev.push ? ev.push(s.lang) : {}) }), tag);
+}
+// Unread chat messages per account across its polls (same rule as myPolls), for the app icon badge.
+async function unreadTotals(env, uids) {
+  if (!uids.length) return {};
+  const { results } = await env.DB.prepare(`WITH up AS (
+      SELECT p.id AS poll_id, p.owner_id AS uid FROM polls p WHERE p.allow_comments = 1 AND p.owner_id IN (SELECT value FROM json_each(?1))
+      UNION SELECT pa.poll_id, pa.user_id FROM participants pa JOIN polls p ON p.id = pa.poll_id AND p.allow_comments = 1
+        WHERE pa.user_id IN (SELECT value FROM json_each(?1)))
+    SELECT up.uid, COUNT(*) AS n FROM up JOIN messages m ON m.poll_id = up.poll_id AND m.user_id != up.uid
+      LEFT JOIN chat_reads cr ON cr.poll_id = up.poll_id AND cr.user_id = up.uid
+    WHERE m.created_at > COALESCE(cr.read_at, '') GROUP BY up.uid`).bind(JSON.stringify(uids)).all();
+  return Object.fromEntries(results.map((r) => [r.uid, r.n]));
 }
 const fireEvent = (ctx, env, poll, ev) => ctx.waitUntil(notifyEvent(env, poll, ev).catch((e) => console.error('event', ev.kind, e)));
 // Per-meeting questions that opened on their own in the last 3 hours (before / after a meeting, link.when / days):
@@ -4383,7 +4428,7 @@ SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes).
 ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
 Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles. Busy ▾ → Other polls (signed in) also greys out meetings you're in and hours you marked available / if needed in your other open polls; only you see that. It is off at first: switch it on there or in Account → Calendars (Show my busy hours from other polls). The Busy ▾ menu can limit it to My answers or Meetings, and to certain polls.
 
-MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
+MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. At the top of the Meetings tab, "Get these meetings in your calendar" has one-tap buttons to subscribe in Apple Calendar (iPhone, iPad, Mac), Google Calendar or Outlook, Copy link for other apps, and Show me how (a short animated guide per app). A subscribed calendar updates by itself when meetings are added, changed or cancelled (calendar apps check every few hours). When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).
 
 QUESTIONS tab. A small form for each round: choice, checkboxes, dropdown, rating, short/long text, yes/no, place vote; group them into questionnaires; Generate with AI (✨). Questions can be linked to meetings (shown on the meeting card) or asked per meeting, before or after it: in the question editor's "Applies to", pick Before each meeting or After each meeting and how many days before / after it opens (e.g. "What will you bring?" 2 days before, closing when the meeting starts; "Rate the evening" 1 day after). People who may answer get a notification when it opens. Results show bars and averages. Recurring polls: questions come back in every new round ("Ask again in new rounds" in the question editor or its ⋯ menu; "Only this round" stops it). Settings → Questions → Questions for every round (New poll: Questions, when Recurring) is a list that each new round gets fresh. "+ Month" / "+ Dates" put {month} / {dates} into a question, filled in per round (e.g. "What songs should we practice in {month}?").
 
@@ -4391,13 +4436,15 @@ PEOPLE tab. Add people (by email, from your saved contacts or groups), send invi
 
 CHAT. The round button at the bottom right opens the poll's group chat (signed-in people write; guests can read along and see what happens in the poll). Tag people with @, reply, react, attach meetings, write in a day's or meeting's thread. 🔔 in the chat header mutes it.
 
-NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from the Home Screen app: Share → Add to Home Screen; "Show me how" explains it) and optional email digests. Defaults in Account → Notifications; per poll with the 🔔 button in the poll header.
+NOTIFICATIONS. Push notifications on phones and computers (on iPhone only from the Home Screen app: Share → Add to Home Screen). "Show me how" buttons (Account → Notifications, the poll's 🔔, the chat) play a short animation of where to tap or click, for iPhone, Android, Chrome / Edge and Safari on a Mac; blocked notifications on a computer: it shows how to allow them again and optional email digests. Defaults in Account → Notifications; per poll with the 🔔 button in the poll header. After the first tour (and the first start of the Home Screen app) when-who offers to add it to the Home Screen and turn on notifications. Tapping a notification opens the poll's chat (or the tab it is about); the sender's name and picture show on Android and computers, and the installed app's icon shows the number of unread messages.
 
 SETTINGS (organiser only): title, dates, answer mode, deadline, password, invited only, hide answers, chat, rounds of a recurring poll, defaults for new meetings, delete the poll.
 
 ACCOUNT page: name, avatar, email change, calendars, contacts (save people, ✎ edit name / email / a private note; when a contact goes by another name in your polls, pick Use theirs or Keep mine, which also shows your name for them in polls you manage) and groups, notifications, presets, Your data (download a copy, delete the account). Polls without activity for 12 months are deleted (the owner is emailed 14 days before).
 
-OTHER: Guided tour = the ? button → Take the tour. Language and light/dark theme are in the top bar. when-who is free; there is no app to install, but you can add it to the Home Screen.`;
+OTHER: Guided tour = the ? button → Take the tour. Language and light/dark theme are in the top bar. when-who is free; there is no store app, but you can add it to the Home Screen on a phone or install it from Chrome / Edge (install icon in the address bar) or Safari on a Mac (File → Add to Dock); the account menu's Add to Home Screen / Install app shows how. Signed-in people now and then get a small card suggesting this or turning on notifications.
+
+OVERVIEW CHATS. On the home page every poll card shows its chat's newest message (who wrote it, the start of it and when), in bold with a green count while unread; tap it to open the chat. Sort → Latest message puts polls with new messages first (the default).`;
 function helpPrompt(page, lang) {
   return [
     'You are the friendly help assistant of when-who. Answer the user\'s question about using when-who, using only the guide below.',

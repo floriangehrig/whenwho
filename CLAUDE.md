@@ -44,6 +44,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - **Overview** (home page, signed in): Your polls / Polls you answered each get a toolbar (`homeTools`: title search, All / Open / Closed / Hidden,
   kind, sort; `HOME_V`, kept in localStorage `hpv` without the search) and a ⋯ menu per card (Copy share link, Hide from overview; on your own polls Delete poll, in red).
   Hidden polls are per account in `poll_hidden` (0034), set by `PUT /api/me/polls/:id/hidden { hidden }`; `GET /api/me/polls` marks them `hidden: true`.
+  WhatsApp-style chat line on each card (`pcChat`, `.pc-chat`): `GET /api/me/polls` sends `last = { name, avatar, avatarImg, body (plain, `chatPlain`), at, mine }`
+  (newest message per poll, one window query in `myPolls`) next to `unread`; bold + green count while unread, tap = `?p=<id>&chat=1`, time via `chatWhen`.
+  Sort **Latest message** (`chat`, default; unread first). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
 - `friends` (0010): friend requests between accounts. A request goes to an email (`to_email`; `to_id` once that address has an account),
@@ -132,10 +135,21 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   notification unless a focused tab is on that poll, tap opens `?p=<id>&chat=1`) and `public/manifest.webmanifest` (iPhone: push only from the
   Home Screen app). `pushEnable` / `pushDisable` / `pushResync` (daily), ask bar at the top of the chat (`pushAskHtml`, ✕ = `pushAsk`, 30 days),
   🔔/🔕 mute in the chat header (`chatMuteBtn`), Account → Summary → Notifications (`pushSecDraw`, Send a test). Signing out unsubscribes.
-  **Add to Home Screen guide** (`hsOpen(os)`, dialog `#hsdlg`, classes `hs-*`): an animated drawn phone (iPhone Safari / Android Chrome, picked by UA, switchable)
-  where a fake finger taps each step; autoplays (not with reduced motion), tap the phone / ‹ › / dots to step. Opened by `data-hsopen` buttons: Show me how
-  next to the homescreen hints (chat ask bar, `ntDevice`, `pushSecDraw`), the account menu on phones not running it standalone (`hsCan`), and a `home` tour step.
-  Android also gets Install now when Chrome fired `beforeinstallprompt` (`HS.bip`).
+  **Device guides** (`hsOpen('<topic>:<os>')`, dialog `#hsdlg`, classes `hs-*`): topic `home` (Add to Home Screen / install as an app) or `push` (turn on
+  notifications); os `ios` / `android` = a drawn phone (`hsPhone`) where a fake finger taps, `chrome` (also Edge / Brave) / `safari` (Mac) = a drawn computer
+  (`hsDesk`: browser window, Mac menu bar + Dock or Windows taskbar) where a mouse cursor clicks. Missing parts = `home` and this device (`hsDevice`); the seg
+  switches device. Steps in `hsSteps()` (views via `data-v`, targets `data-hst`); `HS.fix` = notifications blocked on this computer → how to allow them again.
+  Autoplays (not with reduced motion), tap the drawing / ‹ › / dots to step. Opened by `data-hsopen` buttons: Show me how next to the notification hints
+  (chat ask bar, `ntDevice`, `pushSecDraw`), the account menu (Add to Home Screen on phones `hsCan`, Install app on computers `hsDeskInstall`), a `home` tour
+  step and the nudge. Install now when the browser fired `beforeinstallprompt` (`HS.bip`); Turn on now for push on this device.
+  **Onboarding** (`onboardNext`, localStorage `nudge.onb`): when an auto-started tour ends (`tourEnd`, `TOUR.auto`) and on the installed app's first start
+  (`pushStandalone()`, in `nudgeAuto`), the device guide opens once per topic: phones not running the app → `home`, else `push` (Turn on now = the tap the permission needs).
+  **Nudge** (`nudgeAuto` from `tourAuto`, `nudgePick` / `nudgeShow`, `#nudge`): signed-in people get a small card now and then suggesting install (first on
+  iPhone, push needs it) or turning on notifications, with Show me how. localStorage `nudge`: from the 2nd visit day, at most every 5 days (`NUDGE_GAP`),
+  a dismissed topic rests 21 days (`NUDGE_WAIT`), 3 dismissals or Don't show again end it; never while the tour, a dialog or the chat is open.
+  **Subscribe bar** (`subBar`, `#subbar`, top of the Meetings tab for everyone, ✕ folds it to one line in localStorage `subbar:<poll>`): one-tap
+  subscribe to the poll's `calendar.ics` feed (`subLinks`: Apple = webcal://, Google = `calendar.google.com/calendar/r?cid=`, Outlook = `outlook.live.com/…/addfromweb`),
+  Copy link, and Show me how = topic `cal` of the device guides (`hsOpen('cal[:ios|google|outlook]')`, own `hsCalSteps` / `hsCalPhone` / `hsCalDraw`, classes `hs-calph`).
 - **Notifications** (0029 `answer_watch`, 0032 prefs + `poll_events`): what people are told about, per type: `chat` (`'all'|'mentions'|'off'`),
   `answers`, `votes`, `qanswers` (these three only for people who can see the answers), `meetings`, `questions`, `rounds`, each `{ p: push, e: email }`.
   Effective prefs (`ntRow`): the poll's override (`answer_watch.prefs`, set with the 🔔 button in the poll header, dialog `ntOpen`, `PUT /api/polls/:id/notify
@@ -147,6 +161,9 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   and pushed right away (`kind` = event, `tag` per type; same person's changed answer / vote / form within 10 min is logged but not pushed).
   The hourly cron's `notifyDigests` emails each person once with the events they want by email, across polls, then marks them `digested`.
   `GET /api/polls/:id` sends `me.notify = { prefs, own, types }`. Push URLs may carry `&tab=meetings|questions`.
+  Payload extras: `av` (sender's emoji), `icon` (signed picture link `avatarIcon`: `GET /api/users/:uid/avatar?s=` = HMAC from the VAPID secret, `avatarSig`,
+  works without a session since notification icons load without cookies), `badge` on chat pushes (`unreadTotals`, the app icon count). `sw.js` tap:
+  window on that poll → `openchat` / `opentab`; another window → `client.navigate(url)` (iPhone app), else `go` message; none → `openWindow`.
 - `responses`: one row per person per instance. `entries` JSON: `{ "YYYY-MM-DD": "y"|"m"|"n"|{y:[h],m:[h],n:[h]} }`.
   `fill` (0015) = the Quick fill rules behind it plus the hand-made layer (`{ rules, base }`), so "Clear all" can keep the
   Quick fill marks; only returned by `GET .../responses/:rid` (the answer's owner or the organiser).

@@ -722,8 +722,7 @@
   .dvote>.tip{position:static} .dvote>.sw{margin-left:auto}
   .dvote2{gap:8px;padding:4px 8px} .dvote2 .dsel{flex:1 1 auto;min-width:0;max-width:100%}
   .dvone{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:13.5px;font-weight:600;white-space:nowrap;cursor:pointer} .dvone input{margin:0}
-  .mcal.seg{flex:none} .mcal+.btn{margin-left:6px}
-  .mm-list{gap:6px 14px;padding-top:6px}
+  .mcal.seg{flex:none}
   .mm-p{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
   .mm-p.off{opacity:.5;cursor:default}
   .mfold{flex:1 0 auto;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;background:none;border:0;padding:4px 0;margin:-4px 0;cursor:pointer;text-align:left;color:inherit}
@@ -911,7 +910,7 @@
   .mlist.compact .tm svg{width:14px;height:14px;color:var(--accent)}
   .mlist.compact .mmeta{flex:1;min-width:0;align-items:center;flex-direction:row;flex-wrap:nowrap;gap:4px 14px} .mlist.compact .mmeta>a,.mlist.compact .mmeta>span:not(.tm){min-width:0;overflow:hidden} .mlist.compact .mmeta>a>span,.mlist.compact .mmeta>span>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mlist.compact .mhead{flex-wrap:nowrap} .mlist.compact .mmeta{flex:1 1 0;overflow:hidden} .mlist.compact .mmeta>a,.mlist.compact .mmeta>span:not(.tm){flex:0 100 auto} .mlist.compact .mmeta svg{flex:none}
-  .macts{flex:none;display:inline-flex;align-items:center;gap:2px;margin-left:auto}
+  .macts{flex:none;display:inline-flex;align-items:center;gap:2px;margin-left:auto} .macts>details{display:flex;margin:0} .macts>details>summary.qb{display:inline-flex}
   .meet{display:flex;align-items:flex-start;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-sm)}
   .mtile{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;padding:7px 0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-ink);line-height:1.1;text-align:center;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
   .mtile .mo{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
@@ -927,7 +926,8 @@
   .mhead .btn{flex:none}
   /* title + icon buttons: one row when they fit, else the icons wrap to their own row above the title (top right) */
   .mlist:not(.compact) .mhead{flex-wrap:wrap-reverse;column-gap:10px;row-gap:2px} .mlist:not(.compact) .mhead>.mtitle{flex:1 1 9em}
-  .mlist:not(.compact) .mhead>.macts{align-self:flex-end;margin:-4px -4px 0 auto}
+  .mlist:not(.compact) .mhead{align-items:center} .mlist:not(.compact) .mhead>.mtitle{padding-top:0}
+  .mlist:not(.compact) .mhead>.macts{margin:-6px -4px -6px auto}
   .mfoot .vtally{margin-left:4px}
   .mmeta{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--muted)}
   .mmeta>span,.mmeta>a{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
@@ -1395,7 +1395,7 @@
   .chatdock{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:60;width:54px;height:54px;border-radius:50%;border:0;background:var(--accent);color:#fff;
     display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px -6px color-mix(in srgb,var(--accent) 60%,transparent),var(--shadow);transition:transform .15s,opacity .15s}
   .chatdock:hover{transform:translateY(-2px)} .chatdock svg{width:24px;height:24px}
-  .chatdock .count{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--no);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--bg);margin:0}
+  .chatdock .count{position:absolute;top:-4px;right:-4px;min-width:23px;height:23px;padding:0 6px;border-radius:999px;background:var(--yes);color:#fff;font-size:12.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--bg);margin:0}
   .chatdock.dim{background:var(--card);color:var(--muted);border:1px solid var(--line);box-shadow:var(--shadow)}
   .chatdock.isopen{opacity:0;pointer-events:none;transform:scale(.8)}
   body:has(.savebar) .chatdock{bottom:calc(96px + env(safe-area-inset-bottom))}
@@ -1524,6 +1524,12 @@
   .chat-list mark{background:color-mix(in srgb,var(--maybe) 55%,transparent);color:inherit;border-radius:3px;padding:0 1px}
   .ubadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
   .ubadge svg{width:12px;height:12px}
+  .pc-chat{position:relative;z-index:1;align-self:stretch;justify-self:stretch;display:flex;align-items:center;gap:8px;min-width:0;margin-top:4px;padding:6px 8px;border-radius:10px;background:var(--sunken);color:var(--muted);font-size:13px;text-decoration:none}
+  .pc-chat:hover{text-decoration:none;background:var(--empty)} .pc-chat .tile.avatar{width:22px;height:22px;flex:none;margin:0} .pc-chat .tile.avatar .tile-i{font-size:10px} .pc-chat .tile.avatar .tile-e{font-size:13px}
+  .pcc-ic{display:inline-flex;width:22px;justify-content:center;flex:none} .pcc-ic svg{width:15px;height:15px}
+  .pcc-t{flex:1;min-width:0} .pcc-t b{font-weight:600;color:var(--ink)} .pc-chat time{flex:none;font-size:11.5px}
+  .pc-chat.un{color:var(--ink);font-weight:600} .pc-chat.un time{color:var(--yes-dark)}
+  .pcc-n{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--yes);color:#fff;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
 
   /* ---------- new poll page ---------- */
   .btn.withic svg{width:16px;height:16px;flex:none}
@@ -1724,7 +1730,49 @@
   .me-guest{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
   .tellbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;margin-bottom:12px;border-radius:var(--r-lg);background:var(--yes-bg);border:1px solid var(--yes)}
   .tellbar>svg{width:18px;height:18px;color:var(--yes-dark);flex:none}
-  .msend{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.msend svg{width:13px;height:13px;vertical-align:-2px}
+  /* Meetings tab: subscribe bar (subBar) */
+  .subbar{margin-bottom:var(--s3);padding:10px 12px;border-radius:var(--r-lg);background:color-mix(in srgb,var(--accent) 6%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line))}
+  .subbar-h{display:flex;align-items:center;gap:8px} .subbar-h>svg{width:18px;height:18px;color:var(--accent);flex:none} .subbar-h .tip{position:static}
+  .subbar-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .subbar.shut{padding:0;background:none;border:0} .subbar-open{display:inline-flex;align-items:center;gap:6px;padding:4px 2px;border:0;background:none;color:var(--accent-ink);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+  .subbar-open svg{width:16px;height:16px}
+  /* Subscribe guide (hsCalPhone): the poll page's bar, the calendar app's prompts, a month with the meetings */
+  .hs-sbar{display:flex;flex-direction:column;gap:5px;padding:7px;border-radius:8px;background:#EEF3FF;border:1px solid #C7D7FE}
+  .hs-sbar b{display:flex;align-items:center;gap:4px;font-size:9px} .hs-sbar b svg{width:11px;height:11px;color:#2563EB;flex:none}
+  .hs-cbs{display:flex;gap:4px} .hs-cbs span{flex:1;text-align:center;padding:4px 0;border-radius:6px;background:#fff;border:1px solid #CBD5E1;font-size:9px;font-weight:600;transition:background .12s,transform .12s}
+  .hs-mt{display:flex;gap:6px;align-items:center;padding:6px;border:1px solid #E2E8F0;border-radius:8px} .hs-mt>i{width:22px;height:22px;border-radius:6px;background:#DBEAFE;flex:none} .hs-mt>span{flex:1;display:flex;flex-direction:column;gap:4px}
+  .hs-calph .hs-scr:is([data-v="alert"],[data-v="gadd"]) .hs-dim{opacity:1}
+  .hs-calph .hs-scr[data-v="alert"] .hs-cal-al{opacity:1;transform:none}
+  .hs-calph .hs-scr[data-v="csheet"] .hs-csh{transform:none} .hs-csh .hs-list em{font-style:normal;color:#64748B;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-cdot{width:11px;height:11px;border-radius:50%;background:#AF52DE}
+  .hs-calph .hs-gadd{display:flex;flex-direction:column;gap:6px} .hs-calph .hs-scr[data-v="gadd"] .hs-gadd{opacity:1;transform:none} .hs-gq{font-size:10px;color:#475569}
+  .hs-oadd{position:absolute;inset:0;z-index:5;background:#fff;padding:10px;display:flex;flex-direction:column;gap:5px;transform:translateX(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .hs-calph .hs-scr[data-v="oadd"] .hs-oadd{transform:none}
+  .hs-oh{font-size:12px;font-weight:700;padding-bottom:6px;border-bottom:1px solid #E2E8F0;margin-bottom:4px} .hs-oadd label{font-size:9.5px;font-weight:600;color:#475569}
+  .hs-oadd .hs-url{text-align:left;border-radius:4px;border:1px solid #CBD5E1;background:#fff}
+  .hs-obtn{align-self:flex-end;margin-top:6px;padding:6px 14px;border-radius:4px;background:#0F6CBD;color:#fff;font-size:10.5px;font-weight:700;transition:transform .12s}
+  .hs-mo{position:absolute;inset:0;z-index:7;background:#fff;display:flex;flex-direction:column;opacity:0;transform:translateY(8%);pointer-events:none;transition:opacity .3s,transform .35s cubic-bezier(.2,.8,.2,1)}
+  .hs-calph .hs-scr:is([data-v="month"],[data-v="upd"]) .hs-mo{opacity:1;transform:none}
+  .hs-moh{display:flex;align-items:baseline;gap:8px;padding:8px 10px 6px} .hs-moh b{font-size:17px;color:#FF3B30} .hs-moh span{font-size:11px;font-weight:700}
+  .c-google .hs-moh{background:#fff;border-bottom:1px solid #E2E8F0} .c-google .hs-moh span{color:#1A73E8} .c-google .hs-moh b{font-size:13px;color:#0F172A;font-weight:500}
+  .c-outlook .hs-moh{background:#0F6CBD;color:#fff} .c-outlook .hs-moh b{font-size:13px;color:#fff;font-weight:600}
+  .hs-mow,.hs-mog{display:grid;grid-template-columns:repeat(7,1fr)} .hs-mow i{font-style:normal;text-align:center;font-size:8.5px;color:#64748B;padding:3px 0}
+  .hs-mog{flex:1;grid-auto-rows:1fr;border-top:1px solid #EEF1F5} .hs-mog span{border-bottom:1px solid #EEF1F5;padding:2px 1px;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .hs-mog small{font-size:8.5px;text-align:center;color:#334155}
+  .hs-mog em{font-style:normal;font-size:6.5px;line-height:1.3;color:#fff;background:#AF52DE;border-radius:3px;padding:1px 2px;white-space:nowrap;overflow:hidden;text-overflow:clip;opacity:0;transform:scale(.4)}
+  .c-google .hs-mog em{background:#039BE5} .c-outlook .hs-mog em{background:#0F6CBD}
+  .hs-calph .hs-scr:is([data-v="month"],[data-v="upd"]) .hs-mog em:not(.e3){animation:hspop .45s cubic-bezier(.3,1.6,.5,1) both}
+  .hs-mog em.e1{animation-delay:.45s!important} .hs-mog em.e2{animation-delay:.65s!important} .hs-mog em.e0{animation-delay:.25s!important}
+  .hs-calph .hs-scr[data-v="upd"] .hs-mog em.e3{animation:hspop .5s .5s cubic-bezier(.3,1.6,.5,1) both;outline:2px solid #FACC15;outline-offset:1px}
+  @media (prefers-reduced-motion:reduce){ .hs-mog em{opacity:1;transform:none} .hs-calph .hs-scr:not([data-v="upd"]) .hs-mog em.e3{opacity:0} }
+  .mmeta .msent{color:var(--muted);font-size:12.5px} .mmeta .msent svg{color:var(--yes)}
+  .mtools{display:flex;align-items:center;gap:6px;margin-left:auto} .mtools .tip{margin-left:2px}
+  .mleg{display:flex;align-items:flex-start;gap:8px;text-align:left} .mleg+.mleg{margin-top:6px} .mleg-s{display:block;margin:10px 0 6px;font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;opacity:.7} .mleg svg{width:15px;height:15px;flex:none;margin-top:2px}
+  .mm-list{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:180px;overflow:auto}
+  .mm-cnt{margin-left:4px;text-transform:none;letter-spacing:0;font-weight:500} .dlg-s .mm-all[hidden]{display:none} .dlg-s .mm-all{margin-left:auto;min-height:26px;padding:2px 8px;font-size:12px;text-transform:none;letter-spacing:0}
+  .mmdlg textarea{min-height:72px;margin:0} .mmdlg input{margin:0}
+  .mm-foot{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;border-bottom:0;padding-top:12px} .mmd-acts{display:flex;gap:8px;margin-left:auto}
+  .mm-app{color:var(--muted)}
   .me-help{margin:8px 0 0}.me-help.sent{color:var(--yes-dark)}.me-help.sent .btn{margin:6px 0 0;display:inline-flex}.me-help.sent svg{margin-right:3px}.me-help svg{width:14px;height:14px;vertical-align:-2px}.me-help .btn{color:var(--ink)}
   .me-f{position:relative;display:block;margin:0;min-width:0}
   .me-f input{width:100%;margin:0;padding-left:38px;height:42px;border-radius:12px}
@@ -2154,6 +2202,123 @@
   .hs-ctl{display:flex;align-items:center;gap:4px} .hs-pv{width:34px;padding:0;justify-content:center} .hs-pv svg{width:16px;height:16px}
   .hs-dots{display:flex;gap:6px;padding:0 6px} .hs-dots button{width:8px;height:8px;padding:0;border:0;border-radius:4px;background:var(--line-strong);cursor:pointer;transition:width .2s,background .2s}
   .hs-dots button.on{width:20px;background:var(--accent)}
+  @media (max-width:560px){ .hs-b .seg{max-width:100%} .hs-b .seg button{padding-left:9px;padding-right:9px} }
+  .hs-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+  /* Notifications on a phone (topic push): chat button, chat sheet with Turn on, the system's permission alert */
+  .hs-fab{position:absolute;right:12px;bottom:26px;z-index:2;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#1F5EFF;color:#fff;box-shadow:0 3px 10px rgba(31,94,255,.4);transition:transform .12s} .hs-fab svg{width:15px;height:15px}
+  .hs-fab.press{background:#1849D6!important;transform:scale(.9)}
+  .hs-chat{position:absolute;left:0;right:0;bottom:0;top:26%;z-index:3;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -6px 20px rgba(6,12,26,.18);display:flex;flex-direction:column;transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  .hs-ph .hs-scr:is([data-v="pchat"],[data-v="palert"],[data-v="pnote"]) .hs-chat{transform:none}
+  .hs-chh{display:flex;align-items:center;gap:6px;padding:9px 10px 7px;font-size:11px} .hs-chh svg{width:14px;height:14px;color:#1F5EFF}
+  .hs-ask{display:flex;align-items:center;gap:6px;margin:0 8px;padding:6px 8px;border-radius:9px;background:#E8EFFF;font-size:9.5px;transition:opacity .3s} .hs-ask svg{width:13px;height:13px;flex:none;color:#1F5EFF}
+  .hs-ask em{flex:1;font-style:normal;min-width:0} .hs-ask b{flex:none;padding:4px 7px;border-radius:7px;background:#1F5EFF;color:#fff;font-size:9.5px;transition:transform .12s}
+  .hs-ask b.press{background:#1849D6!important}
+  :is(.hs-scr,.hs-dk)[data-v="pnote"] .hs-ask{opacity:0}
+  .hs-msgs{flex:1;display:flex;flex-direction:column;gap:7px;padding:10px} .hs-msgs i{display:block;height:15px;border-radius:8px;background:#EEF1F5} .hs-msgs i.me{align-self:flex-end;background:#C9D8FF}
+  .hs-msgs .w70{width:70%} .hs-msgs .w45{width:45%} .hs-msgs .w60{width:60%} .hs-msgs .w35{width:35%}
+  .hs-ph .hs-scr[data-v="palert"] .hs-dim{opacity:1} .hs-ph.push .hs-dim{z-index:4}
+  .hs-alert{position:absolute;left:20px;right:20px;top:32%;z-index:5;background:rgba(242,242,247,.98);border-radius:14px;text-align:center;opacity:0;transform:scale(1.12);pointer-events:none;transition:opacity .2s,transform .25s;overflow:hidden}
+  .hs-alert b{display:block;padding:12px 12px 4px;font-size:10.5px} .hs-alert .sub{display:block;padding:0 12px 10px;font-size:9px;color:#475569}
+  .hs-abtn{display:flex;border-top:1px solid #D4D4DA} .hs-abtn span{flex:1;padding:8px 0;font-size:10.5px;color:#2563EB;transition:background .12s} .hs-abtn span+span{border-left:1px solid #D4D4DA;font-weight:700}
+  .hs-alert.a{left:14px;right:14px;background:#fff;border-radius:20px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .hs-alert.a>svg{width:20px;height:20px;color:#1F5EFF} .hs-alert.a b{padding:0 0 6px;font-size:11px}
+  .hs-alert.a>span{align-self:stretch;padding:7px;border-radius:16px;font-size:10.5px;font-weight:700;color:#1F5EFF;background:#EEF1F5;transition:transform .12s} .hs-alert.a .pri{background:#1F5EFF;color:#fff}
+  .hs-ph .hs-scr[data-v="palert"] .hs-alert{opacity:1;transform:none}
+  .hs-ph.push .hs-note{z-index:6} .hs-ph .hs-scr[data-v="pnote"] .hs-note{transform:none;opacity:1}
+  /* The drawn computer (hsDesk): a screen with a browser window, Mac menu bar + Dock or Windows taskbar */
+  @media (min-width:561px){ .hsdlg.desk{width:580px} }
+  .hsdlg.desk .hs-stage{zoom:1} @media (max-width:560px){ .hsdlg.desk .hs-stage{zoom:.66} }
+  .hs-mon{position:relative;padding:7px;border-radius:14px;background:#0b0d12;box-shadow:0 10px 30px rgba(6,12,26,.3),inset 0 0 0 2px #2a2f3a;margin-bottom:18px}
+  .hs-mon::after{content:"";position:absolute;left:50%;bottom:-18px;width:120px;height:14px;margin-left:-60px;border-radius:0 0 10px 10px;background:linear-gradient(#2a2f3a,#14171e)}
+  .hs-dk{position:relative;width:480px;height:290px;border-radius:8px;overflow:hidden;background:linear-gradient(160deg,#3B5BDB,#7048E8 55%,#E8590C);color:#0F172A;font-size:10px;line-height:1.3}
+  .hs-dk svg{width:14px;height:14px}
+  .hs-dk .press{background:rgba(37,99,235,.18)!important;transform:scale(.95)}
+  .hs-mb{position:absolute;left:0;right:0;top:0;z-index:7;height:18px;display:flex;align-items:center;gap:2px;padding:0 8px;background:rgba(248,250,252,.82);font-size:9.5px}
+  .hs-apple{width:9px;height:10px;border-radius:50% 50% 45% 45%;background:#0F172A;margin-right:6px}
+  .hs-mi{position:relative} .hs-mi>b,.hs-mi>em{display:block;padding:2px 6px;border-radius:4px;font-style:normal;transition:background .12s}
+  .hs-mbr{margin-left:auto}
+  .hs-mm{position:absolute;left:0;top:19px;width:150px;padding:4px;border-radius:7px;background:rgba(248,250,252,.98);box-shadow:0 8px 24px rgba(6,12,26,.3);display:flex;flex-direction:column;opacity:0;transform:translateY(-4px);pointer-events:none;transition:opacity .15s,transform .2s}
+  .hs-mm>span{padding:4px 8px;border-radius:4px;white-space:nowrap;transition:background .12s,transform .12s} .hs-mm .hl{font-weight:700}
+  .hs-dk[data-v="fmenu"] .hs-fm,.hs-dk[data-v="smenu"] .hs-sm{opacity:1;transform:none}
+  .hs-win{position:absolute;left:26px;right:26px;top:28px;bottom:44px;z-index:2;background:#fff;border-radius:8px;box-shadow:0 12px 30px rgba(6,12,26,.35);display:flex;flex-direction:column;overflow:hidden}
+  .hs-dk.win .hs-win{top:12px;bottom:36px}
+  .hs-tabs{display:flex;align-items:flex-end;gap:4px;height:24px;padding:0 6px;background:#DEE3EA}
+  .hs-tab{display:flex;align-items:center;gap:5px;width:130px;height:19px;padding:0 8px;border-radius:7px 7px 0 0;background:#fff;font-size:9.5px} .hs-tab img{width:11px;height:11px}
+  .hs-tabs .hs-ic{height:19px}
+  .hs-lights{display:flex;gap:4px;align-self:center;margin-right:6px} .hs-lights i{width:8px;height:8px;border-radius:50%;background:#FF5F57} .hs-lights i:nth-child(2){background:#FEBC2E} .hs-lights i:nth-child(3){background:#28C840}
+  .hs-wc{margin-left:auto;align-self:center;display:flex;gap:12px} .hs-wc i{width:8px;height:8px;border:1.5px solid #475569;border-radius:1px} .hs-wc i:first-child{height:0;border-width:1.5px 0 0;align-self:center}
+  .hs-tb{display:flex;align-items:center;gap:3px;height:28px;padding:0 6px;border-bottom:1px solid #E2E8F0;background:#fff;color:#475569}
+  .hs-dk.saf .hs-tb{background:#F6F6F8;height:30px}
+  .hs-ic{width:20px;height:20px;display:grid;place-items:center} .hs-ic svg{width:13px;height:13px}
+  .hs-omni{flex:1;display:flex;align-items:center;gap:4px;height:20px;padding:0 3px 0 4px;border-radius:10px;background:#EEF1F5;color:#334155;min-width:0}
+  .hs-omni.c{justify-content:center;text-align:center;margin:0 20px;border-radius:6px}
+  .hs-omni .hs-ib{width:18px;height:16px;border-radius:8px} .hs-omni .hs-ib svg{width:12px;height:12px}
+  .hs-g{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hs-wb{position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .hs-dk .hs-fab{right:12px;bottom:12px}
+  .hs-dk .hs-cal{grid-template-columns:repeat(14,1fr)} .hs-dk .hs-cal i{border-radius:3px}
+  .hs-dk .hs-chat{left:auto;top:0;width:44%;border-radius:0;box-shadow:-6px 0 20px rgba(6,12,26,.12);transform:translateX(105%)}
+  .hs-dk:is([data-v="chat"],[data-v="perm"],[data-v="pnote"]) .hs-chat{transform:none}
+  .hs-pop{position:absolute;z-index:5;width:180px;padding:9px;border-radius:9px;background:#fff;box-shadow:0 8px 26px rgba(6,12,26,.3);border:1px solid #E2E8F0;opacity:0;transform:translateY(-6px) scale(.96);pointer-events:none;transition:opacity .2s,transform .25s}
+  .hs-pop>b{display:block;font-size:10.5px;margin-bottom:6px} .hs-pop .sub{display:block;font-size:9px;color:#475569;margin-bottom:8px}
+  .hs-pop .hs-row{padding:2px 0 8px} .hs-pop .hs-row img{width:24px;height:24px;padding:3px}
+  .hs-pop .hs-btns span{font-size:10px}
+  .hs-pl{display:flex;align-items:center;gap:6px;padding:2px 0 8px} .hs-pl svg{width:13px;height:13px;color:#475569}
+  .hs-ipop{right:28px;top:52px} .hs-perm{left:8px;top:52px} .hs-spop{left:8px;top:52px;width:236px}
+  .hs-dk.saf .hs-pop{top:30px} .hs-perm.c,.hs-dsheet{left:50%;margin-left:-95px;width:190px}
+  .hs-dsheet{border-radius:0 0 9px 9px;transform:translateY(-110%)}
+  .hs-dk[data-v="ipop"] .hs-ipop,.hs-dk[data-v="perm"] .hs-perm,.hs-dk:is([data-v="spop"],[data-v="spop2"]) .hs-spop,.hs-dk[data-v="dsheet"] .hs-dsheet{opacity:1;transform:none}
+  .hs-stog{flex:none;width:24px;height:14px;border-radius:7px;background:#CBD5E1;position:relative;transition:background .2s,transform .12s} .hs-stog::after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:left .2s}
+  .hs-dk[data-v="spop2"] .hs-stog{background:#1F5EFF!important} .hs-dk[data-v="spop2"] .hs-stog::after{left:12px}
+  .hs-rl{display:none;align-items:center;gap:6px;padding-top:6px;border-top:1px solid #EEF1F5;font-size:9px;color:#475569}
+  .hs-rl em{flex:none;font-style:normal;font-weight:700;color:#fff;background:#1F5EFF;padding:4px 8px;border-radius:12px;transition:transform .12s}
+  .hs-dk[data-v="spop2"] .hs-rl{display:flex}
+  .hs-swin{position:absolute;left:70px;right:70px;top:36px;height:190px;z-index:6;background:#F6F6F8;border-radius:9px;box-shadow:0 14px 36px rgba(6,12,26,.4);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:scale(.94);pointer-events:none;transition:opacity .2s,transform .25s}
+  .hs-dk[data-v="swin"] .hs-swin{opacity:1;transform:none}
+  .hs-swh{display:flex;align-items:center;padding:7px 8px;border-bottom:1px solid #E2E8F0} .hs-swh b{flex:1;text-align:center;margin-right:30px}
+  .hs-swb{flex:1;display:flex;min-height:0}
+  .hs-sws{width:100px;display:flex;flex-direction:column;gap:2px;padding:6px;border-right:1px solid #E2E8F0} .hs-sws span{padding:3px 6px;border-radius:4px} .hs-sws .on{background:#1F5EFF;color:#fff}
+  .hs-swr{flex:1;display:flex;flex-direction:column;gap:4px;padding:8px}
+  .hs-site{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:5px;background:#fff} .hs-site img{width:14px;height:14px;border-radius:3px;background:#0B1F3A;padding:2px}
+  .hs-site.dim i{display:block;height:8px;width:60%;border-radius:4px;background:#E2E8F0}
+  .hs-site em{flex:none;display:grid;font-style:normal;border:1px solid #CBD5E1;border-radius:5px;padding:2px 6px;transition:background .12s,transform .12s}
+  .hs-site s{grid-area:1/1;text-decoration:none;text-align:center} .hs-site s+s{opacity:0;font-weight:700;color:#15803D}
+  .hs-dk[data-v="swin"] .hs-site s:first-child{animation:hsoff 0s 1.25s forwards} .hs-dk[data-v="swin"] .hs-site s+s{animation:hson 0s 1.25s forwards}
+  @keyframes hsoff{to{opacity:0}} @keyframes hson{to{opacity:1}}
+  .hs-appw{position:absolute;left:86px;top:34px;width:290px;height:190px;z-index:6;background:#fff;border-radius:9px;box-shadow:0 14px 36px rgba(6,12,26,.4);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:scale(.2) translateY(260px);pointer-events:none;transition:opacity .25s,transform .45s cubic-bezier(.2,.8,.2,1)}
+  .hs-dk.win .hs-appw{top:20px}
+  .hs-awh{display:flex;align-items:center;gap:5px;padding:5px 8px;background:#0B1F3A;color:#fff;font-size:9.5px} .hs-awh img{width:12px;height:12px} .hs-awh .hs-wc i{border-color:#fff}
+  .hs-appw .hs-pbar{display:none}
+  .hs-dk:is([data-v="appw"],[data-v="anote"]) .hs-appw{opacity:1;transform:none}
+  .hs-dock2{position:absolute;left:50%;bottom:5px;z-index:7;transform:translateX(-50%);display:flex;gap:5px;padding:4px 6px;border-radius:10px;background:rgba(255,255,255,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+  .hs-dock2>i{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.65)} .hs-dock2>i:nth-child(2){background:#FFD43B} .hs-dock2>i:nth-child(4){background:#69DB7C}
+  .hs-task{position:absolute;left:0;right:0;bottom:0;z-index:7;height:26px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(240,243,248,.92)}
+  .hs-task>i{width:16px;height:16px;border-radius:4px;background:#CBD5E1} .hs-task>i.st{background:#1F5EFF} .hs-task>em{position:absolute;right:10px;font-style:normal;font-size:9px}
+  .hs-dkme{display:none;place-items:center;width:24px;height:24px;border-radius:7px;background:#0B1F3A;transition:transform .12s} .hs-dkme img{width:17px;height:17px}
+  .hs-task .hs-dkme{width:18px;height:18px;border-radius:4px} .hs-task .hs-dkme img{width:13px;height:13px}
+  .hs-dk:is([data-v="appw"],[data-v="anote"]) .hs-dkme{display:grid;animation:hspop .5s cubic-bezier(.3,1.6,.5,1) both}
+  .hs-dk.mac[data-v="appw"] .hs-dkme{animation:hspop .5s cubic-bezier(.3,1.6,.5,1) both,hsbounce .5s .5s ease-in-out 2}
+  @keyframes hsbounce{50%{transform:translateY(-8px)}}
+  .hs-dk .hs-dkme.press{background:#0B1F3A!important;transform:scale(.88)}
+  .hs-toast{position:absolute;right:10px;top:24px;z-index:8;width:180px;display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:rgba(248,250,252,.97);box-shadow:0 8px 22px rgba(6,12,26,.3);opacity:0;transform:translateX(120%);transition:transform .45s cubic-bezier(.2,.8,.2,1) .7s,opacity .3s .7s}
+  .hs-dk.win .hs-toast{top:auto;bottom:34px}
+  .hs-toast img{width:22px;height:22px;border-radius:6px;background:#0B1F3A;padding:3px} .hs-toast b{display:block;font-size:10px} .hs-toast span{display:block;font-size:9.5px;color:#475569}
+  .hs-dk:is([data-v="pnote"],[data-v="anote"]) .hs-toast{opacity:1;transform:none}
+  /* Mouse cursor instead of the finger on the computer: the arrow's tip sits on the target */
+  .hs-ptr.cur{width:0;height:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none}
+  .hs-ptr.cur svg{position:absolute;left:-1px;top:-1px;width:16px;height:22px;filter:drop-shadow(0 2px 3px rgba(6,12,26,.35))}
+  .hs-ptr.cur.down{transform:none;background:none} .hs-ptr.cur.down svg{transform:scale(.88);transform-origin:0 0}
+  .hs-ptr.cur.tap::after{inset:-11px}
+  /* Occasional nudge (nudgeShow): install the app / turn on notifications */
+  .nudge{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:59;width:min(380px,calc(100vw - 40px));display:flex;gap:10px;align-items:flex-start;padding:12px 8px 12px 14px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-pop);animation:nudgeIn .45s cubic-bezier(.3,1.3,.6,1) both}
+  .nudge.out{opacity:0;transform:translateY(12px);transition:opacity .2s,transform .2s}
+  .nudge p{margin:5px 0 0;font-size:14px;line-height:1.4}
+  .nudge-ic{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--accent-weak);color:var(--accent)} .nudge-ic svg{width:18px;height:18px}
+  .nudge-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  @keyframes nudgeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  body:has(.savebar) .nudge{bottom:calc(96px + env(safe-area-inset-bottom))}
+  @media (max-width:640px){ .nudge{left:12px;right:12px;width:auto;bottom:calc(14px + env(safe-area-inset-bottom))} body:has(.chatdock:not([hidden])) .nudge{right:76px} }
+  @media (prefers-reduced-motion:reduce){ .nudge{animation:none} }
   @media (prefers-reduced-motion:reduce){ .hsdlg [class^="hs-"],.hsdlg [class*=" hs-"]{transition:none!important;animation:none!important} .hs-ptr.tap::after{animation:none} }
 </style>
 </head>
@@ -2754,6 +2919,7 @@ function tourSteps(key){
     S('.hero-me .btn.primary',t('New poll'),t('Create a poll: pick dates (one-off, recurring or a weekly slot), how people answer, and share the link. Answering needs no account.'),{demo:demoNewBtn}),
     S('#hp_own_tools',t('Find your polls'),t('Search, show only open or closed polls, filter by kind and sort. Hide old polls with ⋯ on a card; they wait under Hidden.')),
     S('#hp_own',t('Your polls'),t('Polls you own. Open one to see answers, plan meetings, ask questions and invite people.')),
+    S('.pc-chat',t('Chats'),t('Each poll has a group chat. The newest message shows on its card, in bold with a green count while unread. Tap it to open the chat.')),
     S('#hp_ans',t('Polls you answered'),t('Polls you answered while signed in. Your answers follow you to every device.')),
     S('details.me',t('Your account'),t('Profile, calendars (to grey out busy hours), contacts and groups, and your data.')),
     S('details.me',t('Add to Home Screen'),t('Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.'),{when:()=>hsCan()}),help,end];
@@ -2801,6 +2967,7 @@ function tourSteps(key){
     S('[data-tab="group"]',t('Results'),t('Everyone’s answers at a glance: the best days stand out. Tap a day to see who can make it.'),{go:tgResultsDemo,demo:demoResults}),
     // Meetings: everyone sees the list; editors also the planner.
     S('#pane-meetings',t('Meetings'),t('The times the organiser picked. When there are options to vote on, pick the ones that suit you. Add meetings to your calendar from here.'),{go:tgTab('meetings'),when:()=>!edit}),
+    S('#subbar',t('In your calendar'),t('Subscribe once and new or changed meetings land in your calendar app by themselves. <b>Show me how</b> plays a short guide.'),{go:tgTab('meetings')}),
     S('#mplan',t('Plan meetings'),t('Pick times from everyone’s answers: drag in the grid to draft meetings, then save them or let people vote on them.'),{go:tgPlanDemo,demo:demoPlan,when:()=>edit}),
     S('[data-sugopen]',t('Quick Suggest'),t('Let when-who find the best times for the people, days and hours you pick.'),{go:tgPlanDemo,demo:demoSuggest,when:()=>edit}),
     S('[data-sugai]',t('Suggest with AI'),t('Describe what you need, like “2 evening meetings a week, not Fridays”, and it sets up the suggestions.')+' <span class="muted">'+t('Just an example: nothing is sent or saved.')+'</span>',{go:tgPlanDemo,demo:demoSugAi,when:()=>edit}),
@@ -3133,7 +3300,8 @@ function tourPlace(){
   b.style.top=y+'px'; b.style.left=x+'px';
 }
 function tourEnd(){
-  if(!TOUR.on) return; TOUR.demoId++; tourDemoRestore(); TOUR.on=false; TOUR.el=null; TOUR.also=null; TOUR.elSel=TOUR.alsoSel=null;
+  if(!TOUR.on) return; TOUR.demoId++; tourDemoRestore(); TOUR.on=false;
+  if(TOUR.auto){ TOUR.auto=false; setTimeout(onboardNext,600); } // first time here: install / notifications right after TOUR.el=null; TOUR.also=null; TOUR.elSel=TOUR.alsoSel=null;
   ['tourov','tourhole','tourb'].forEach(id=>{ const x=$(id); if(x) x.remove(); });
   const bk=TOUR.back; TOUR.back=null;
   if(bk&&P.data){ try{ if(bk.msub&&P.msub!==bk.msub&&P.data.isAdmin) setMsub(bk.msub,false); if(P.atab!==bk.atab) setPollTab(bk.atab); if(P.tab!==bk.tab){ P.tab=bk.tab; } renderBody(); }catch(e){} }
@@ -3141,6 +3309,7 @@ function tourEnd(){
 }
 // Auto-start once per tour, a moment after the page is drawn (not over a dialog, the after-meeting prompt or the pigeon).
 function tourAuto(){
+  nudgeAuto();
   setTimeout(()=>{ const key=tourKey(); if(!key||TOUR.on||TOUR.autoTried) return;
     if(store.get('tour',{})[key]) return;
     if(document.querySelector('dialog[open],.pigeon-ov')||(P.data&&!P.data.draft&&chatState().open)) return;
@@ -3327,7 +3496,7 @@ document.addEventListener('change',async e=>{
 function accountBar(){
   if(ME.user) return `<details class="dd me"><summary aria-label="${t('Account menu')}">${avatarOf(ME.user)}<span class="nm hide-sm">${esc(displayName(ME.user))}</span></summary>
     <div class="ddp right menu"><div class="menu-h">${avatarOf(ME.user,'lg')}<div class="grow"><b>${esc(displayName(ME.user))}</b><span>${esc(ME.user.email)}</span></div></div>
-    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${CONFIG.help?`<a href="#" data-helpopen>${t('Ask for help')}</a>`:''}${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}${hsCan()?`<a href="#" data-hsopen>${t('Add to Home Screen')}</a>`:''}
+    <a href="?account">${t('Account')}</a><a href="${esc(origin)}">${t('Your polls')}</a>${CONFIG.help?`<a href="#" data-helpopen>${t('Ask for help')}</a>`:''}${tourKey()?`<a href="#" data-tour>${t('Take the tour')}</a>`:''}${hsCan()||hsDeskInstall()?`<a href="#" data-hsopen>${hsCan()?t('Add to Home Screen'):t('Install app')}</a>`:''}
     <div class="menu-sep"></div><a href="#" data-logout>${t('Sign out')}</a><a href="#" data-logout="all" title="${t('Sign out on every device')}">${t('Sign out everywhere')}</a></div></details>`;
   // Two separate forms so password managers (Proton Pass etc.) tell a login from a sign-up; both send an emailed code.
   return `<button type="button" class="btn ghost hide-sm su-btn" data-opensignin="signup">${t('Sign up')}</button><details class="dd" id="signin"><summary>${t('Sign in')}</summary><div class="ddp signin right">
@@ -3434,12 +3603,21 @@ function hoursText(arr){
 // ================= HOME =================
 
 // Unread chat messages of a poll (My polls).
+// WhatsApp-style chat line on a poll card: newest message (avatar · Name: text · time), bold with a count while unread; opens the chat.
+const chatWhen=at=>{ const d=new Date(at), n=new Date(), days=Math.round((new Date(n.toDateString())-new Date(d.toDateString()))/864e5);
+  return days<=0?d.toLocaleTimeString(LOC,{hour:'2-digit',minute:'2-digit'}):days===1?t('Yesterday'):days<7?d.toLocaleDateString(LOC,{weekday:'long'}):d.toLocaleDateString(LOC,{day:'numeric',month:'numeric',year:'2-digit'}); };
+function pcChat(p){
+  const l=p.last; if(!l) return '';
+  const n=p.unread||0, who=l.mine?t('You'):l.name;
+  return `<a class="pc-chat${n?' un':''}" href="?p=${esc(p.id)}&amp;chat=1" title="${esc(n?t('{n} unread messages',{n}):t('Open the chat'))}">${l.mine?`<span class="pcc-ic">${ICON.chat}</span>`:tile({img:l.avatarImg,emoji:l.avatar,text:l.name,seed:l.name},'avatar')}
+    <span class="pcc-t ell"><b>${esc(who)}:</b> ${esc(l.body||'')}</span><time datetime="${esc(l.at)}" title="${esc(new Date(l.at).toLocaleString(LOC))}">${esc(chatWhen(l.at))}</time>${n?`<span class="pcc-n">${n>99?'99+':n}</span>`:''}</a>`;
+}
 const unreadBadge=p=>p.unread?` <span class="ubadge" title="${esc(t('{n} unread messages',{n:p.unread}))}">${ICON.chat}${p.unread}</span>`:'';
 function pollCard(p,answered){
   const c=p.current, open=c&&c.status==='open';
   const as=answered?`<span class="pc-n minw" title="${esc(t('as {name}',{name:p.name}))}">${ICON.check}<span class="ell">${esc(p.name)}${p.lastAnswered?` · ${esc(new Date(p.lastAnswered).toLocaleDateString(LOC,{day:'numeric',month:'short'}))}`:''}</span></span>`:'';
   return `<div class="pcard${p.hidden?' hid':''}">${pollTile(p)}
-    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${unreadBadge(p)}${p.role?roleTag(p.role):''}
+    <a class="pc-title" href="?p=${esc(p.id)}">${esc(p.title)}</a>${p.last?'':unreadBadge(p)}${p.role?roleTag(p.role):''}${pcChat(p)}
     <span class="pc-meta">${p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off')}${c&&p.kind!=='weekly'?` · ${esc(dayLabel(c.startDate))} – ${esc(dayLabel(c.endDate))}`:''}</span>
     <span class="pc-foot">${c?`<span class="st ${open?'open':'closed'}">${open?t('Open'):t('Closed')}</span><span class="pc-n" title="${t('Answers')}">${ICON.users}${c.answers}</span>
       ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}</span>
@@ -3452,12 +3630,12 @@ function pollCard(p,answered){
 // Each list has a toolbar (homeTools): title search, status (all = not hidden | open | closed | hidden), kind and sort.
 // Status / kind / sort are kept in localStorage `hpv`; hidden polls are stored on the account (PUT /api/me/polls/:id/hidden).
 const HOME_PAGE=9, HOME_PG={own:0,ans:0};
-const HOME_V=(()=>{ const sv=store.get('hpv',{}), d=k=>({q:'',st:'all',kind:'all',sort:k==='own'?'new':'last',...(sv[k]||{}),q:''}); return {own:d('own'),ans:d('ans')}; })();
+const HOME_V=(()=>{ const sv=store.get('hpv',{}), d=k=>({q:'',st:'all',kind:'all',sort:'chat',...(sv[k]||{}),q:''}); return {own:d('own'),ans:d('ans')}; })();
 const homeSave=()=>store.set('hpv',Object.fromEntries(['own','ans'].map(k=>{ const {st,kind,sort}=HOME_V[k]; return [k,{st,kind,sort}]; })));
 const homeAll=key=>(key==='own'?ME.polls:ME.answered)||[];
 // Leave the Hidden view once nothing is hidden (also after a reload that remembered it).
 const homeNorm=key=>{ const v=HOME_V[key]; if(v.st==='hidden'&&!homeAll(key).some(p=>p.hidden)){ v.st='all'; homeSave(); } };
-const HOME_SORTS=key=>[key==='ans'?['last',t('Recently answered')]:['new',t('Newest first')],['start',t('By date')],['deadline',t('Reply by, soonest')],['az',t('Title A–Z')]];
+const HOME_SORTS=key=>[['chat',t('Latest message')],key==='ans'?['last',t('Recently answered')]:['new',t('Newest first')],['start',t('By date')],['deadline',t('Reply by, soonest')],['az',t('Title A–Z')]];
 const HOME_KINDS=()=>[['all',t('All kinds')],['single',t('One-off')],['series',t('Recurring')],['weekly',t('Weekly schedule')]];
 function homeList(key){
   const v=HOME_V[key], q=v.q.trim().toLowerCase(), all=homeAll(key);
@@ -3472,6 +3650,7 @@ function homeList(key){
     start:(a,b)=>(a.current?.startDate||last).localeCompare(b.current?.startDate||last)||byIdx(a,b),
     deadline:(a,b)=>((isOpen(a)&&a.current.deadline)||last).localeCompare((isOpen(b)&&b.current.deadline)||last)||byIdx(a,b),
     az:(a,b)=>String(a.title||'').localeCompare(String(b.title||''),LOC,{sensitivity:'base'})||byIdx(a,b),
+    chat:(a,b)=>(!!b.unread-!!a.unread)||String(b.last?.at||'').localeCompare(String(a.last?.at||''))||byIdx(a,b),
   }[v.sort];
   return cmp?l.sort(cmp):l;
 }
@@ -3564,7 +3743,7 @@ function renderHome(){
     </div></main>${siteFoot()}`;
 }
 
-const PRIVACY_UPDATED='2026-11-25';
+const PRIVACY_UPDATED='2026-11-27';
 const siteFoot = () => `<footer class="site-foot"><a href="?imprint">${t('Legal notice')}</a><a href="?privacy">${t('Privacy policy')}</a><a href="?rules">${t('Rules')}</a></footer>`;
 // Shared pieces of the legal pages. Values come from OPERATOR_NAME / OPERATOR_ADDRESS / OPERATOR_PHONE / CONTACT_EMAIL / DPA_NAME (wrangler.toml, via /api/config).
 const legalMail = () => CONFIG.contact?`<a href="mailto:${esc(CONFIG.contact)}">${esc(CONFIG.contact)}</a>`:'';
@@ -3646,9 +3825,10 @@ function renderPrivacy(){
         t('<b>Cloudflare</b>: hosting and database, and Turnstile, a check that keeps bots from signing in. Turnstile is loaded only when you open the sign-in box.'),
         t('<b>Cloudflare Workers AI</b>: only when you use Fill with AI, Suggest with AI, Generate questions with AI, describe a new poll for AI to fill in or ask the help assistant, the text you type is sent to an AI model run by Cloudflare to turn it into answers, suggestions, draft questions, poll settings or a help answer (for questions, together with the poll’s title; for the help assistant, the last few questions and answers of that conversation and which kind of page you are on). It is not stored by when-who.'),
         t('<b>Resend</b>: sends sign-in codes, invitations, reminders and the hourly notification emails you asked for.'),
-        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.'),
+        t('<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name, profile emoji or a link to their picture, and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.'),
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
+        t('<b>Your calendar app</b>: only if you subscribe to a poll’s meetings (Meetings tab). Your calendar app or service (for example Apple, Google or Outlook) then fetches the meetings (titles, times, places, notes and who is coming) from when-who every few hours. The Google and Outlook buttons open their website with the subscription link; what they do with it is covered by their own privacy policies.'),
       ]))}
       <p>${t('The fonts are served by when-who itself; no third party is contacted when the page loads.')}</p>
       ${legalSec(t('Transfers outside the EU'),`<p>${t('Cloudflare, Resend, Google and Microsoft are based in the USA, so data may be processed there. These transfers rely on the EU–U.S. Data Privacy Framework or the EU standard contractual clauses (Art. 45 and 46 GDPR). We have data processing agreements with the services that process data for us.')}</p>`)}
@@ -5384,7 +5564,9 @@ function ntDevice(){
   const note=a==='homescreen'?t('On iPhone and iPad, add when-who to your Home Screen (Share → Add to Home Screen) and open it from there.')
     :a==='unsupported'?t('This browser can’t show notifications.'):a==='denied'?t('Notifications are blocked. Allow them in your browser’s site settings.'):'';
   if(a==='homescreen') return `<div class="row ntdev"><span class="grow help m0">${note}</span><button type="button" class="btn sm withic" data-hsopen>${ICON.tap}<span>${t('Show me how')}</span></button></div>`;
-  return note?`<p class="help m0 ntdev">${note}</p>`:`<div class="row ntdev"><span class="grow help m0">${t('Notifications are off on this device.')}</span><button type="button" class="btn sm primary withic" data-pushon>${ICON.bell}<span>${t('Turn on')}</span></button></div>`;
+  const how=ib('tap',t('Show me how'),'data-hsopen="push"','sm ghost');
+  if(a==='denied') return `<div class="row ntdev"><span class="grow help m0">${note}</span>${how}</div>`;
+  return note?`<p class="help m0 ntdev">${note}</p>`:`<div class="row ntdev"><span class="grow help m0">${t('Notifications are off on this device.')}</span>${how}<button type="button" class="btn sm primary withic" data-pushon>${ICON.bell}<span>${t('Turn on')}</span></button></div>`;
 }
 function ntOpen(){
   const d0=P.data, n=d0&&d0.me&&d0.me.notify; if(!n) return;
@@ -5628,7 +5810,7 @@ function renderMeetings(listOnly){
   const d=P.data, ms=confirmedMeetings(), props=proposals(), adm=d.isAdmin;
   ['mtabn','msubn'].forEach(id=>{ const n=$(id); if(n){ n.textContent=ms.length+props.length; n.hidden=!(ms.length+props.length); } });
   if(!ms.length&&!props.length){ P.msel=null;
-    el.innerHTML=`<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Results.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
+    el.innerHTML=`${subBar()}<div class="mcard"><div class="empty-v"><span class="ev-ic">${ICON.star}</span><b>${t('No meetings yet')}</b>${adm?`<span class="muted small">${t('Plan them, or ★ a day under Results.')}</span><button type="button" class="btn sm primary withic mt-2" data-msub="plan">${ICON.cal}<span>${t('Plan new')}</span></button>`:`<span class="muted small">${t('The organiser hasn’t scheduled any meetings yet.')}</span>`}</div></div>`;
     return; }
   if(P.mfold==null) P.mfold=store.get('mfold:'+P.id,false);
   // Select and Collapse act on the whole section: vote options and scheduled meetings.
@@ -5648,31 +5830,46 @@ function renderMeetings(listOnly){
     const range=m.repeat?repeatText(m).split(' · ').slice(1).join(' · '):'';
     const calB=`<a class="qb" href="${esc(icsUrl(m.id,true))}" title="${t('Download calendar file (.ics)')}" aria-label="${t('Download calendar file (.ics)')}">${ICON.download}</a>`;
     const shareB=qb('data-copyinvite',m.id,shareIc,shareL);
-    // Icon buttons, top right; the same order everywhere, share and download last (like the Scheduled header).
-    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra||m.inc||m.location?t('Edit details'):t('Add details'))+qMeetAsk(m):''}${
-      d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
+    // Email the invite from when-who: managers only (respondents can share / download, never send).
+    const canSend=!m.proposed&&d.emailEnabled&&canManage();
+    const sendB=canSend?qb('data-sendinvite',m.id,'send',m.sentAt?t('Email this invite again to the people invited'):t('Email this invite to the people invited, with the calendar file')):'';
+    const sentL=canSend&&m.sentAt?`<span class="msent" title="${t('Invite emailed {when}',{when:new Date(m.sentAt).toLocaleString(LOC,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})})}">${ICON.check}<span>${t('Emailed {when}',{when:new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'})})}</span></span>`:'';
+    // Icon buttons, top right; the same order everywhere: chat, edit, ask, send, delete, then share and download (like the Scheduled header).
+    const acts=full=>sel?'':`<span class="macts">${chatRefBtn('m:'+m.id)}${d.isAdmin&&full&&!edit?qb('data-mdesc',m.id,'edit',m.note||m.extra||m.inc||m.location?t('Edit details: place, description, answers'):t('Add details: place, description, answers'))+qMeetAsk(m):''}${
+      full?sendB:''}${d.isAdmin?qb('data-delmeet',m.id,'trash',t('Delete meeting'),' danger'):''}${shareB}${calB}</span>`;
     const tm=`<span class="tm">${ICON.clock}<span>${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span></span>`;
     // Compact: date, time and place plus the icon buttons; no title or description.
     if(fold) return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}<div class="mbody"><div class="mhead"><div class="mmeta">${tm}${where}</div>${acts(false)}</div></div></div>`;
     return `<div class="meet${m.proposed?' prop':''}${on?' sel':''}${chc}" data-mtg="${m.id}"${sel?` data-mpick="${m.id}" role="checkbox" aria-checked="${!!on}" tabindex="0"`:''}>
       ${sel?`<input type="checkbox" class="mchk" tabindex="-1" aria-hidden="true"${on?' checked':''}>`:''}${dateTile(m)}
       <div class="mbody"><div class="mhead"><div class="mtitle">${esc(m.title||d.poll.title)}</div>${acts(true)}</div>
-        <div class="mmeta"><span class="tm">${ICON.clock}${m.allDay?allDayText(m):`${hh(m.start)}–${hh(m.end)}`}</span>${where||(d.isAdmin&&!sel&&!edit?`<button type="button" class="mlocadd" data-mdesc="${m.id}" data-mfocus="loc">${ICON.pin}<span>${t('Add place')}</span></button>`:'')}<span>${ICON.users}<span>${esc(whoText(m))}</span></span></div>
-        ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${!sel&&!m.proposed&&d.emailEnabled&&canManage()?`<div class="msend">${m.sentAt?`<span class="muted small">${ICON.check} ${t('Invite emailed {when}',{when:new Date(m.sentAt).toLocaleDateString(LOC,{day:'numeric',month:'short'})})}</span>`:''}<button type="button" class="btn sm ghost withic" data-sendinvite="${m.id}">${ICON.send}<span>${m.sentAt?t('Send again'):t('Email invite')}</span></button></div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
+        <div class="mmeta">${tm}${where||(d.isAdmin&&!sel&&!edit?`<button type="button" class="mlocadd" data-mdesc="${m.id}" data-mfocus="loc">${ICON.pin}<span>${t('Add place')}</span></button>`:'')}<span>${ICON.users}<span>${esc(whoText(m))}</span></span>${sel?'':sentL}</div>
+        ${range?`<div class="mrep">${esc(range[0].toUpperCase()+range.slice(1))}</div>`:''}${bad?`<div class="mwarn">${t('Would run past midnight')}</div>`:''}
         ${edit?descEditor(m.id,m.note||'','',m.extra||'',m.inc,m.location):m.note||m.extra||m.answersText?`<div class="mnotes">${ICON.note}<div class="mnotes-b">${m.note?`<div class="mnote">${linkText(m.note)}</div>`:''}${m.extra?`<div class="mnote mextra"><span class="mx-l">${t('Only for this meeting')}</span>${linkText(m.extra)}</div>`:''}${m.answersText?`<div class="mnote mextra mans"><span class="mx-l">${t('From the answers')} · ${t('live')}${tip(t('Updated from the current answers each time the invite email, calendar file or this page is shown.'))}</span>${linkText(m.answersText)}</div>`:''}</div></div>`:''}${sel?'':qMeetBlock(m)}</div></div>`; };
   const sb=(attr,v,ic,label)=>`<button type="button" ${attr}="${v}" title="${label}" aria-label="${label}">${ICON[ic]}</button>`;
   const sa=(href,ic,label,tl=label)=>`<a href="${esc(href)}" title="${tl}" aria-label="${label}">${ICON[ic]}</a>`;
-  const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe: calendar apps keep this up to date as meetings are added'))}${sa(icsUrl(null,true),'download',t('Download all'))}${sel?'':sb('data-mshare','mail','mail',t('Write all meetings in my own email app'))+sb('data-mshare','copy',shareIc,navigator.share?t('Share all meetings'):t('Copy all meetings as text'))}</div>`;
-  const mailAll=d.emailEnabled&&!sel?ib('mail',t('Email all'),`data-mailall aria-expanded="${!!P.mmail}" title="${t('Email all meetings with the calendar file and the subscription link')}"`,'sm '+(P.mmail?'primary':'ghost')):'';
+  // Calendar & sharing icons, for everyone. Emailing (from when-who or the own email app) is only in the managers' Email all popup.
+  const shareAllL=navigator.share?t('Share all meetings as text'):t('Copy all meetings as text');
+  const cal=`<div class="seg iseg hseg mcal" role="group" aria-label="${t('Calendar & sharing')}">${sa(sub,'rss',t('Subscribe'),t('Subscribe in your calendar app: it stays up to date as meetings are added or changed'))}${sa(icsUrl(null,true),'download',t('Download all'),t('Download all meetings as a calendar file (.ics)'))}${sel?'':sb('data-mshare','copy',shareIc,shareAllL)}</div>`;
+  const mailOk=d.emailEnabled&&canManage()&&!sel;
+  const mailAll=mailOk?ib('mail',t('Email all'),`data-mailall aria-haspopup="dialog"`,'sm ghost'):'';
+  // What the icons do, for phones (no hover titles there).
+  const li=(ic,l)=>`<span class="mleg">${ICON[ic]}<span>${l}</span></span>`;
+  const legend=sel?'':tip(`${li('rss',t('Subscribe: your calendar app keeps the meetings up to date.'))}${li('download',t('Download a calendar file (.ics) to import.'))}${li(shareIc,navigator.share?t('Share the meetings as text.'):t('Copy the meetings as text.'))}${
+    mailOk?li('mail',t('Email all: send every meeting to the people you pick, from when-who.')):''}<span class="mleg-s">${t('On each meeting')}</span>${
+    chatRead()?li('chat',t('Talk about it in the chat.')):''}${
+    adm?li('edit',t('Add a place, description or answers.'))+li('ask',t('Ask people something, e.g. vote on the place.')):''}${
+    mailOk?li('send',t('Email its invite to the people invited.')):''}${adm?li('trash',t('Delete it.')):''}${
+    li(shareIc,navigator.share?t('Share the invite as text.'):t('Copy the invite as text.'))}${li('download',t('Download it as a calendar file (.ics).'))}`,'right mlegend');
   const groups=voteGroups(), vote=groups.map(g=>votePanel(g,fold,sel?g.opts.map(card).join(''):null)).join('');
   // Section toolbar (top right): Select (organiser) and Collapse, both for votes and scheduled meetings.
   const foldL=fold?t('Show meeting details'):t('Compact view');
   const selL=sel?t('Close multi-edit'):t('Select several meetings to edit, move or delete them together');
   const top=`<div class="msec-h"><div class="seg iseg hseg mview" role="group" aria-label="${t('View')}">${adm?`<button type="button" class="${sel?'on':''}" data-mselect aria-pressed="${!!sel}" title="${selL}" aria-label="${sel?t('Close multi-edit'):t('Select')}">${ICON.select}</button>`:''}<button type="button" class="${fold?'on':''}" data-mfold aria-pressed="${!!fold}" title="${foldL}" aria-label="${foldL}">${ICON[fold?'grow':'shrink']}</button></div></div>`;
-  const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div>${sel?'':cal}${canManage()&&!sel?mailAll:''}</div>`;
+  const head=`<div class="card-h"><div class="mfold mfh">${ICON.star}<h3 class="mfl">${t('Scheduled')}</h3><span class="count">${ms.length}</span></div><div class="mtools">${sel?'':cal}${mailAll}${legend}</div></div>`;
   if(listOnly&&sel&&$('mlist')){ $('mlist').innerHTML=ms.map(card).join(''); document.querySelectorAll('[data-vlist]').forEach(vl=>{ const g=groups.find(x=>vgKey(x)===vl.dataset.vlist); if(g) vl.innerHTML=g.opts.map(card).join(''); }); syncBatchBar(pv,nSel,all.length); return; }
   const list=`<div class="mlist${fold?' compact':''}" id="mlist">${ms.map(card).join('')}</div>`;
-  el.innerHTML=`<div class="mcard${sel?' selecting':''}">${top}${sel?'':tellBar()}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${!sel&&canManage()&&P.mmail?mailAllPanel():''}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
+  el.innerHTML=`${sel?'':subBar()}<div class="mcard${sel?' selecting':''}">${top}${sel?'':tellBar()}${sel?batchPanel(all,nSel):''}${vote}${ms.length?`${head}${list}`:''}${sel?batchBar(all,nSel):''}</div>`;
   if(sel){ syncBatchBar(pv,nSel,all.length); const ta=$('mb_desc'); if(ta&&ta.value) growTa(ta); }
   if($('mb_loc')) placeSearch($('mb_loc'),$('mb_loc_sug'),v=>{ (P.mbatch||(P.mbatch={})).loc=v; batchPreview(0); });
   if($('mdesc_loc')) placeSearch($('mdesc_loc'),$('mdesc_loc_sug'),()=>{});
@@ -5725,6 +5922,83 @@ async function toggleVote(id,btn){
 // invite (with the calendar file) or share the text. It stays until used or closed (✕), for this round only.
 function tellSet(ids){ P.tell=ids.length?{poll:P.id,iid:inst().id,ids}:null; renderMeetings(); }
 function tellMeets(){ const x=P.tell; if(!x||x.poll!==P.id||x.iid!==inst().id) return []; return inst().meetings.filter(m=>x.ids.includes(m.id)&&!m.proposed); }
+// Top of the Meetings tab: subscribe to the poll's meetings feed (calendar.ics) in a calendar app, with a Show me how guide (hsOpen(os,'cal')).
+// ✕ folds it to one line (localStorage subbar:<poll>).
+function subLinks(){ const https=icsUrl(null,false), webcal=https.replace(/^https?:/,'webcal:'), title=(P.data&&P.data.poll&&P.data.poll.title)||'when-who';
+  return { https, webcal, google:'https://calendar.google.com/calendar/r?cid='+encodeURIComponent(webcal),
+    outlook:`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent(title)}` }; }
+function subBar(){
+  if(!P.data||!P.data.poll) return '';
+  const shut=store.get('subbar:'+P.id,false), L=subLinks();
+  if(shut) return `<div class="subbar shut" id="subbar"><button type="button" class="subbar-open" data-subbar="open" aria-expanded="false">${ICON.cal}<span>${t('Get these meetings in your calendar')}</span>${ICON.chev||'⌄'}</button></div>`;
+  const a=(href,lb,tl,ext)=>`<a class="btn sm" href="${esc(href)}"${ext?' target="_blank" rel="noopener"':''} title="${esc(tl)}">${lb}</a>`;
+  return `<div class="subbar" id="subbar"><div class="subbar-h">${ICON.cal}<b class="grow minw">${t('Get these meetings in your calendar')}</b>${tip(t('Subscribe once and your calendar app keeps it up to date: new, changed and cancelled meetings show up on their own. Calendar apps check every few hours.'),'left')}${pqb('x',t('Close'),'data-subbar="close"')}</div>
+    <div class="subbar-b">${a(L.webcal,'Apple',t('iPhone, iPad and Mac: opens the Calendar app'))}${a(L.google,'Google',t('Opens Google Calendar to add it'),1)}${a(L.outlook,'Outlook',t('Opens Outlook on the web to add it'),1)}
+      <button type="button" class="btn sm ghost withic" data-subcopy title="${esc(t('Copy the link for other calendar apps'))}">${ICON.copy}<span>${t('Copy link')}</span></button>
+      <button type="button" class="btn sm ghost withic" data-subhow>${ICON.tap}<span>${t('Show me how')}</span></button></div></div>`; }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-subbar],[data-subcopy],[data-subhow]'); if(!b) return; e.preventDefault();
+  if(b.dataset.subbar){ store.set('subbar:'+P.id,b.dataset.subbar==='close'); const n=$('subbar'); if(n) n.outerHTML=subBar(); return; }
+  if(b.dataset.subcopy!==undefined){ copy(subLinks().https); return; }
+  hsOpen('cal'); });
+// The "Show me how" guide for subscribing (topic 'cal' of the device guides, hsOpen('cal:<app>')): a drawn phone, app = ios (Apple Calendar) / google / outlook.
+const HS_CAL=['ios','google','outlook'];
+const hsCalDevice=()=>pushIos()||hsMac()?'ios':'google';
+function hsCalSteps(os){
+  const upd=x=>({v:'upd',at:null,cap:x});
+  if(os==='google') return [
+    {v:'page',at:'[data-hst="google"]',cap:t('At the top of <b>Meetings</b>, tap <b>Google</b>. Google Calendar opens (sign in if it asks).')},
+    {v:'gadd',at:'[data-hst="ok"]',cap:t('Tap <b>Add</b>. On a phone, if the Google Calendar app opens instead, do this once on a computer.')},
+    {v:'month',at:null,cap:t('Done. The meetings are in Google Calendar, on your phone too.')},
+    upd(t('New and changed meetings show up on their own. Google checks every few hours.'))];
+  if(os==='outlook') return [
+    {v:'page',at:'[data-hst="outlook"]',cap:t('At the top of <b>Meetings</b>, tap <b>Outlook</b>. Outlook on the web opens (sign in if it asks).')},
+    {v:'oadd',at:'[data-hst="ok"]',cap:t('The link is already filled in. Tap <b>Import</b>.')},
+    {v:'month',at:null,cap:t('Done. The meetings are in Outlook, on all your devices.')},
+    upd(t('New and changed meetings show up on their own. Outlook checks every few hours.'))];
+  return [
+    {v:'page',at:'[data-hst="ios"]',cap:t('At the top of <b>Meetings</b>, tap <b>Apple</b> (iPhone, iPad or Mac).')},
+    {v:'alert',at:'[data-hst="ok"]',cap:t('Tap <b>Subscribe</b>.')},
+    {v:'csheet',at:'[data-hst="ok2"]',cap:t('Pick a colour if you like and tap <b>Add</b>.')},
+    {v:'month',at:null,cap:t('Done. The meetings are in your Calendar app.')},
+    upd(t('New and changed meetings show up on their own.'))];
+}
+function hsCalPhone(os){
+  const host=esc(location.host||'when-who'), ti=esc((P.data&&P.data.poll&&P.data.poll.title)||'when-who');
+  const sb=`<div class="hs-sb"><span>9:41</span>${os==='ios'?'<span class="hs-isl"></span>':''}<span class="hs-sbi"><i></i><i></i></span></div>`;
+  const meet='<span class="hs-mt"><i></i><span><i class="hs-ln w60"></i><i class="hs-ln w35"></i></span></span>';
+  const page=`<div class="hs-page"><div class="hs-pbar">${hsLogo}<span>when-who</span></div><div class="hs-pbody">
+      <div class="hs-sbar"><b>${ICON.cal}<span>${t('Get these meetings in your calendar')}</span></b><span class="hs-cbs">${[['ios','Apple'],['google','Google'],['outlook','Outlook']].map(([k,l])=>`<span data-hst="${k}">${l}</span>`).join('')}</span></div>
+      ${meet}${meet}<i class="hs-ln w45"></i></div></div>`;
+  const wk=Array.from({length:7},(_,k)=>new Date(2024,0,1+k).toLocaleDateString(LOC,{weekday:'narrow'})); // 1 Jan 2024 = Monday
+  const mon=new Date().toLocaleDateString(LOC,{month:'long'}), ev={6:0,14:1,20:2,27:3};
+  const grid=Array.from({length:35},(_,k)=>{ const n=k-2, e=ev[n]; return `<span>${n>=1&&n<=30?`<small>${n}</small>`:''}${e!=null?`<em class="e${e}">${ti}</em>`:''}</span>`; }).join('');
+  const month=`<div class="hs-mo"><div class="hs-moh">${os==='ios'?'':`<span>${os==='google'?t('Calendar'):'Outlook'}</span>`}<b>${esc(mon)}</b></div>
+      <div class="hs-mow">${wk.map(w=>`<i>${esc(w)}</i>`).join('')}</div><div class="hs-mog">${grid}</div></div>`;
+  const over=os==='google'
+    ?`<div class="hs-dlgm hs-gadd"><b>${t('Add calendar')}</b><span class="hs-gq">${t('Do you want to add this calendar?')}</span><span class="hs-url">webcal://${host}/…/calendar.ics</span>
+        <div class="hs-btns"><span>${t('Cancel')}</span><span class="pri" data-hst="ok">${t('Add')}</span></div></div>`
+    :os==='outlook'
+    ?`<div class="hs-oadd"><div class="hs-oh">${t('Subscribe from web')}</div><label>${t('Link to the calendar')}</label><span class="hs-url">https://${host}/…/calendar.ics</span>
+        <label>${t('Calendar name')}</label><span class="hs-url">${ti}</span><span class="hs-obtn" data-hst="ok">${t('Import')}</span></div>`
+    :`<div class="hs-alert hs-cal-al"><b>${t('Subscribe to calendar?')}</b><span class="sub">${host}/…/calendar.ics</span><div class="hs-abtn"><span>${t('Cancel')}</span><span data-hst="ok">${t('Subscribe')}</span></div></div>
+      <div class="hs-addv hs-csh"><div class="hs-addh"><span>${t('Cancel')}</span><b>${t('Subscription')}</b><span class="pri" data-hst="ok2">${t('Add')}</span></div>
+        <div class="hs-list"><span>${t('Name')}<em>${ti}</em></span><span>${t('Colour')}<i class="hs-cdot"></i></span><span>${t('Location')}<em>iCloud</em></span><span>${t('Alerts')}<em>${t('Off')}</em></span></div></div>`;
+  return `<div class="hs-ph ${os==='ios'?'ios':'and'} hs-calph c-${os}">${sb}<div class="hs-scr">${os==='ios'?'':`<div class="hs-top"><span class="hs-url">${host}</span></div>`}${page}
+      <div class="hs-dim"></div>${over}${month}</div><div class="hs-nav"><i></i></div></div>`;
+}
+function hsCalDraw(d){
+  const n=hsSteps().length; d.classList.remove('desk');
+  d.innerHTML=`<div class="dlg-h"><h2 id="hs_h">${t('Add to your calendar')}</h2>${ib('x',t('Close'),'data-hsclose','sm ghost')}</div>
+    <div class="dlg-b hs-b"><div class="seg" role="group" aria-label="${esc(t('Calendar app'))}">${[['ios','Apple',t('iPhone, iPad and Mac')],['google','Google'],['outlook','Outlook']].map(([k,l,ti])=>`<button type="button" data-hsos="${k}" class="${HS.os===k?'on':''}" aria-pressed="${HS.os===k}"${ti?` title="${esc(ti)}"`:''}>${l}</button>`).join('')}</div>
+      <div class="hs-stage" role="img" aria-label="${esc(t('Animation: where to tap on the phone'))}">${hsCalPhone(HS.os)}<div class="hs-ptr off" aria-hidden="true"></div></div>
+      <p class="hs-cap" aria-live="polite"><span class="hs-n"></span><span class="hs-t"></span></p>
+      <div class="hs-ctl"><button type="button" class="btn sm ghost hs-pv" data-hsgo="p" aria-label="${esc(t('Back'))}">${HSI.back}</button>
+        <div class="hs-dots">${Array.from({length:n},(_,k)=>`<button type="button" data-hsgo="${k}" aria-label="${esc(t('Step {n}',{n:k+1}))}"></button>`).join('')}</div>
+        <button type="button" class="btn sm ghost hs-pv" data-hsgo="n" aria-label="${esc(t('Next'))}">${HSI.fwd}</button>
+        <button type="button" class="btn sm ghost hs-pv" data-hsplay></button></div>
+      <div class="hs-acts"><button type="button" class="btn withic" data-subcopy>${ICON.copy}<span>${t('Copy link')}</span></button></div></div>`;
+  hsShow(HS.i);
+}
 function tellBar(){ const ms=tellMeets(); if(!ms.length||!P.data.isAdmin) return ''; const n=ms.length, mail=P.data.emailEnabled&&canManage();
   return `<div class="tellbar" role="status">${ICON.check}<div class="grow minw"><b>${n===1?t('Meeting set.'):t('{n} meetings set.',{n})}</b> ${t('Let people know, so it lands in their calendars.')}</div>
     <div class="row tight">${mail?`<button type="button" class="btn sm primary withic" data-tellmail>${ICON.send}<span>${t('Email invite')}</span></button>`:''}<button type="button" class="btn sm withic" data-tellshare>${ICON[navigator.share?'share':'copy']}<span>${navigator.share?t('Share'):t('Copy message')}</span></button>${pqb('x',t('Close'),'data-tellx=""')}</div></div>`; }
@@ -6539,34 +6813,51 @@ const meMirror=(id,v)=>{ const x=$(id); if(x&&x.value!==v) x.value=v; };
 document.addEventListener('input',e=>{ const id=e.target.id; if(id!=='fq_name'&&id!=='fq_email') return;
   const v=e.target.value; if(id==='fq_name'){ P.mine.name=v; meMirror('name',v); if($('name')) nameHint(); } else { P.mine.email=v; meMirror('email',v); }
   if(Object.keys(P.mine.entries||{}).length) changed(); });
-// "Email all": pick recipients (the poll's people, plus any other addresses) and send every meeting in one email.
-function mailAllPanel(){
-  const M=P.mmail, parts=M.parts;
-  const list=!parts?`<span class="muted small">${t('Loading…')}</span>`:!parts.length?`<span class="muted small">${t('No people yet')}</span>`
+// "Email all" popup (#mmdlg, managers): pick recipients (the poll's people, plus any other addresses) and send every meeting
+// in one email from when-who; or write it in your own email app instead. P.mmail = its state while open.
+function mmDraw(){
+  const M=P.mmail, box=$('mm_list'); if(!M||!box) return; const parts=M.parts;
+  const n=parts?parts.filter(p=>M.pick.has(p.id)).length:0, all=parts?parts.filter(p=>p.canMail):[];
+  box.innerHTML=!parts?`<span class="muted small">${t('Loading…')}</span>`:!parts.length?`<span class="muted small">${t('No people yet')}</span>`
     :parts.map(p=>`<label class="mm-p${p.canMail?'':' off'}" title="${esc(p.canMail?(p.email||''):t('No email address'))}"><input type="checkbox" data-mmpick="${esc(p.id)}"${M.pick.has(p.id)?' checked':''}${p.canMail?'':' disabled'}><span>${esc(p.name)}</span></label>`).join('');
-  const n=parts?parts.filter(p=>M.pick.has(p.id)).length:0, all=parts&&parts.filter(p=>p.canMail);
-  return `<div class="mbatch"><div class="mbatch-g">
-      <label>${t('Recipients')}</label><div class="mbatch-r mm-list">${list}${all&&all.length>1?`<button type="button" class="btn sm ghost" data-mmall>${n===all.length?t('Select none'):t('Select all')}</button>`:''}</div>
-      <label for="mm_extra">${t('Others')}</label><div class="mbatch-r"><input id="mm_extra" type="text" maxlength="2000" placeholder="${t('More email addresses, separated by commas')}" value="${esc(M.extra)}" autocomplete="off" spellcheck="false"></div>
-      <label for="mm_msg">${t('Message')}</label><div class="mbatch-r"><textarea id="mm_msg" maxlength="1000" placeholder="${t('Optional, shown above the meetings')}">${esc(M.msg)}</textarea></div>
-    </div><div class="row"><button class="btn sm primary withic" data-mmsend>${ICON.send}<span>${t('Send')}</span></button><button class="btn sm" data-mailall>${t('Cancel')}</button>
-      ${tip(t('One email with every meeting (when, where, who, description), all of them as a calendar file, and the link to subscribe so calendars stay up to date.'))}</div></div>`;
+  const sa=$('mm_all'); if(sa){ sa.hidden=all.length<2; sa.textContent=n===all.length?t('Select none'):t('Select all'); }
+  const c=$('mm_cnt'); if(c) c.textContent=parts?t('{n} of {m} picked',{n,m:all.length}):'';
 }
+function mmClose(){ P.mmail=null; const d=$('mmdlg'); if(d&&d.open) d.close(); }
 async function openMailAll(){
-  P.mmail={parts:null,pick:new Set(),extra:'',msg:''}; renderMeetings();
+  if(!confirmedMeetings().length) return;
+  P.mmail={parts:null,pick:new Set()};
+  let d=$('mmdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='mmdlg'; d.className='dlg mmdlg'; d.setAttribute('aria-labelledby','mm_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) d.close(); });
+    d.addEventListener('close',()=>{ P.mmail=null; }); }
+  const n=confirmedMeetings().length;
+  d.innerHTML=`<div class="dlg-h"><h2 id="mm_h">${t('Email all meetings')}</h2>${tip(t('One email from when-who with every scheduled meeting (when, where, who, description), all of them as a calendar file, and the link to subscribe so calendars stay up to date.'),'right')}${pqb('x',t('Close'),'data-mmclose=""')}</div>
+    <div class="dlg-b">
+      <div class="muted small">${t('Every scheduled meeting ({n}) in one email.',{n})}</div>
+      <div class="dlg-s">${ICON.users}${t('Recipients')}<span class="mm-cnt" id="mm_cnt"></span><button type="button" class="btn sm ghost mm-all" id="mm_all" data-mmall hidden></button></div>
+      <div class="mm-list" id="mm_list"></div>
+      <div class="dlg-s">${ICON.mail}${t('Others')}</div>
+      <input id="mm_extra" type="text" maxlength="2000" placeholder="${t('More email addresses, separated by commas')}" aria-label="${t('Others')}" autocomplete="off" spellcheck="false">
+      <div class="dlg-s">${ICON.note}${t('Message')}</div>
+      <textarea id="mm_msg" maxlength="1000" rows="3" placeholder="${t('Optional, shown above the meetings')}" aria-label="${t('Message')}"></textarea>
+    </div>
+    <div class="dlg-b mm-foot"><button type="button" class="btn sm ghost withic mm-app" data-mshare="mail" title="${t('Opens your own email app with all meetings written out; nothing is sent by when-who')}">${ICON.mail}<span>${t('Write in my own email app')}</span></button>
+      <span class="mmd-acts"><button type="button" class="btn sm" data-mmclose>${t('Cancel')}</button><button type="button" class="btn sm primary withic" data-mmsend>${ICON.send}<span>${t('Send')}</span></button></span></div>`;
+  mmDraw(); if(!d.open) d.showModal(); if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
   try{ const r=await api('GET',`/polls/${P.id}/participants`,null,headers()); if(!P.mmail) return;
     P.mmail.parts=r.participants; P.mmail.pick=new Set(r.participants.filter(p=>p.canMail).map(p=>p.id)); }
   catch(ex){ toast(ex.message); if(P.mmail) P.mmail.parts=[]; }
-  renderMeetings();
+  mmDraw();
 }
 async function sendMailAll(btn){
-  const M=P.mmail, emails=M.extra.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean), bad=emails.find(x=>!EMAIL_RE.test(x));
+  const M=P.mmail, msg=$('mm_msg').value, emails=$('mm_extra').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean), bad=emails.find(x=>!EMAIL_RE.test(x));
   if(bad){ toast(t('That address doesn’t look right: {e}',{e:bad})); return; }
   const ids=(M.parts||[]).filter(p=>M.pick.has(p.id)).map(p=>p.id);
   if(!ids.length&&!emails.length){ toast(t('Pick at least one person')); return; }
   btn.disabled=true;
-  try{ const r=await api('POST',`/polls/${P.id}/meetings/send`,{ids,emails,message:M.msg},headers());
-    P.mmail=null; renderMeetings();
+  try{ const r=await api('POST',`/polls/${P.id}/meetings/send`,{ids,emails,message:msg},headers());
+    mmClose();
     toast(t('Meetings sent to {n}',{n:plural(r.sent,t('person'),t('people'))})+(r.missing&&r.missing.length?' '+t('No email for {names}.',{names:r.missing.join(', ')}):'')); }
   catch(ex){ toast(ex.message); btn.disabled=false; }
 }
@@ -6650,14 +6941,15 @@ async function runBatch(kind,btn){
   if(await saveMeetings(list)){ P.mbatch={}; renderMeetings(); toast(msg); } else btn.disabled=false;
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mbstep],[data-mbu],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend],[data-mshare]'); if(!t||!P.data) return;
+  const t=e.target.closest('[data-mfold],[data-mselect],[data-mpick],[data-mselall],[data-mbatch],[data-mbstep],[data-mbu],[data-mailall],[data-mmpick],[data-mmall],[data-mmsend],[data-mmclose],[data-mshare]'); if(!t||!P.data) return;
   const ds=t.dataset, ms=[...proposals(),...confirmedMeetings()];
   if(ds.mbstep&&P.msel){ const b=P.mbatch||(P.mbatch={}), v=parseInt(b.n,10)||0, nv=v+(+ds.mbstep); b.n=nv?String(nv):''; const f=$('mb_n'); if(f) f.value=b.n; batchPreview(0); return; }
   if(ds.mbu&&P.msel){ const b=P.mbatch||(P.mbatch={}); b.u=ds.mbu; t.parentNode.querySelectorAll('[data-mbu]').forEach(x=>{ const on=x===t; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on); }); batchPreview(0); return; }
   if(ds.mshare){ shareAllMeetings(ds.mshare); return; }
-  if(ds.mailall!==undefined){ if(P.mmail){ P.mmail=null; renderMeetings(); } else openMailAll(); return; }
-  if(ds.mmpick&&P.mmail){ t.checked?P.mmail.pick.add(ds.mmpick):P.mmail.pick.delete(ds.mmpick); renderMeetings(); return; }
-  if(ds.mmall!==undefined&&P.mmail){ const ok=P.mmail.parts.filter(p=>p.canMail), all=ok.every(p=>P.mmail.pick.has(p.id)); P.mmail.pick=new Set(all?[]:ok.map(p=>p.id)); renderMeetings(); return; }
+  if(ds.mailall!==undefined){ openMailAll(); return; }
+  if(ds.mmclose!==undefined){ mmClose(); return; }
+  if(ds.mmpick&&P.mmail){ t.checked?P.mmail.pick.add(ds.mmpick):P.mmail.pick.delete(ds.mmpick); mmDraw(); return; }
+  if(ds.mmall!==undefined&&P.mmail&&P.mmail.parts){ const ok=P.mmail.parts.filter(p=>p.canMail), all=ok.every(p=>P.mmail.pick.has(p.id)); P.mmail.pick=new Set(all?[]:ok.map(p=>p.id)); mmDraw(); return; }
   if(ds.mmsend!==undefined&&P.mmail){ sendMailAll(t); return; }
   if(ds.mfold!==undefined){ P.mfold=!P.mfold; store.set('mfold:'+P.id,P.mfold); renderMeetings(); return; }
   if(ds.mselect!==undefined){ P.msel=P.msel?null:new Set(); P.mbatch={}; P.mdesc=null; P.mmail=null; renderMeetings(); return; }
@@ -8333,6 +8625,14 @@ function chatUnreadBadges(n){
   if(n>was&&!(P.chat&&P.chat.open)) chatPeek(3000);
   const el=$('chatn'); if(el){ el.textContent=n; el.hidden=!n; }
   const a=$('chatat'); if(a) a.hidden=!(n&&ch&&ch.mentions);
+  appBadge();
+}
+// App icon badge (installed app, iPhone Home Screen / Chrome): my unread chat messages across polls, the open poll's live.
+function appBadge(){
+  if(!navigator.setAppBadge||!ME.user) return;
+  const ch=P.data&&!P.data.draft&&P.data.chat, ids=new Set(); let n=0;
+  [...(ME.polls||[]),...(ME.answered||[])].forEach(p=>{ if(ids.has(p.id)) return; ids.add(p.id); if(ch&&p.id===P.id) p.unread=ch.unread||0; n+=p.unread||0; });
+  (n?navigator.setAppBadge(n):navigator.clearAppBadge()).catch(()=>{});
 }
 function chatSetOpen(on,ref){
   const c=chatState();
@@ -8785,7 +9085,7 @@ async function pushDisable(quiet){
     const r=await pushReg(), sub=await r.pushManager.getSubscription();
     if(sub){ try{ await api('DELETE','/me/push',{endpoint:sub.endpoint}); }catch(e){} await sub.unsubscribe(); }
   }catch(e){}
-  PUSH.sub=null; store.set('pushOn',false); if(!quiet){ pushRedraw(); toast(t('Notifications are off')); }
+  PUSH.sub=null; store.set('pushOn',false); if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{}); if(!quiet){ pushRedraw(); toast(t('Notifications are off')); }
 }
 // Once a day: keep the server's copy of this browser's subscription (it may belong to whoever signed in last).
 async function pushResync(){
@@ -8827,14 +9127,24 @@ function pushRedraw(){
   const mb=$('chatmute'), slot=$('chatmuteslot'); if(mb) mb.remove(); if(slot) slot.innerHTML=chatMuteBtn();
   if($('pushsec')) pushSecDraw();
 }
-// ---- "Add to Home Screen" walkthrough: an animated phone shows where to tap (iPhone Safari / Android Chrome) ----
-// hsOpen(os) opens it; a fake finger moves and taps each step, autoplaying (not with reduced motion); tap the phone or ‹ › to step.
-const HS={os:'ios',i:0,play:true,tm:[],bip:null};
+// ---- Device guides: "Add to Home Screen" / install the app, and "Turn on notifications", for phones and computers ----
+// hsOpen('<topic>:<os>') opens it: topic 'home' (add to Home Screen / install as an app) or 'push' (turn on notifications);
+// os 'ios' | 'android' (a drawn phone) or 'chrome' | 'safari' (a drawn computer screen; Chrome also stands for Edge / Brave).
+// Missing parts = 'home' and this device. A fake finger (phones) or mouse cursor (computers) moves and taps each step,
+// autoplaying (not with reduced motion); tap the drawing or ‹ › to step. HS.fix = notifications are blocked here (desktop: how to unblock).
+const HS={topic:'home',os:'ios',fix:false,i:0,play:true,tm:[],bip:null};
+const HS_OS=['ios','android','chrome','safari'];
 const hsAndroid=()=>/Android/i.test(navigator.userAgent);
+const hsMac=()=>/Macintosh/.test(navigator.userAgent)&&!pushIos();
+const hsSafari=()=>/Safari\//.test(navigator.userAgent)&&!/Chrome\/|Chromium\/|CriOS|Edg|OPR\/|Firefox\/|FxiOS/.test(navigator.userAgent);
+const hsPhoneOs=os=>os==='ios'||os==='android';
+const hsDevice=()=>pushIos()?'ios':hsAndroid()?'android':hsMac()&&hsSafari()?'safari':'chrome';
 // Phones that can add the site and aren't already running it from the Home Screen.
 const hsCan=()=>(pushIos()||hsAndroid())&&!pushStandalone();
+// Computers whose browser can install the site: Chrome / Edge offered it (beforeinstallprompt) or Safari 17+ on a Mac (File → Add to Dock).
+const hsDeskInstall=()=>!pushIos()&&!hsAndroid()&&!pushStandalone()&&(!!HS.bip||(hsMac()&&hsSafari()&&+((navigator.userAgent.match(/Version\/(\d+)/)||[])[1]||0)>=17));
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); HS.bip=e; });
-window.addEventListener('appinstalled',()=>{ HS.bip=null; });
+window.addEventListener('appinstalled',()=>{ HS.bip=null; nudgeHide(); });
 const HSI={
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M8 11H6v10h12V11h-2"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>',
@@ -8844,9 +9154,49 @@ const HSI={
   dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
   addsq:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>',
   play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-  pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>'};
-// Steps: v = what the phone shows, at = what the finger taps (null = no tap), cap = caption.
-function hsSteps(os){
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>',
+  inst:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 7v6M9.5 10.5 12 13l2.5-2.5"/></svg>',
+  tune:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>',
+  reload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  side:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M9 5v14"/></svg>',
+  cursor:'<svg viewBox="0 0 16 22"><path d="M1 1v17l4.5-4.2 3 6.7 2.6-1.2-3-6.6H14z" fill="#0F172A" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>'};
+// Steps: v = what the drawing shows, at = what the finger / cursor taps (null = no tap), cap = caption.
+function hsSteps(){
+  const os=HS.os;
+  if(HS.topic==='cal') return hsCalSteps(os);
+  if(HS.topic==='push'&&hsPhoneOs(os)) return [
+    {v:'papp',at:'[data-hst="chat"]',cap:os==='ios'?t('Open when-who from your Home Screen (notifications only work there), open a poll and tap the chat button.'):t('Open a poll and tap the chat button.')},
+    {v:'pchat',at:'[data-hst="on"]',cap:t('At the top of the chat, tap <b>Turn on</b>.')},
+    {v:'palert',at:'[data-hst="allow"]',cap:t('Tap <b>Allow</b>.')},
+    {v:'pnote',at:null,cap:t('Done. New chat messages now show up as notifications, even when when-who is closed.')}];
+  if(HS.topic==='push'){
+    const done={v:'pnote',at:null,cap:t('Done. New chat messages now pop up in the corner of your screen.')};
+    if(HS.fix) return [...(os==='safari'?[
+      {v:'page',at:'[data-hst="smenu"]',cap:t('Notifications are blocked for when-who. Open the <b>Safari</b> menu.')},
+      {v:'smenu',at:'[data-hst="set"]',cap:t('Click <b>Settings…</b>')},
+      {v:'swin',at:'[data-hst="allowsel"]',cap:t('Under <b>Websites</b> → <b>Notifications</b>, set when-who to <b>Allow</b>.')}]:[
+      {v:'page',at:'[data-hst="site"]',cap:t('Notifications are blocked for when-who. Click the icon left of the address.')},
+      {v:'spop',at:'[data-hst="tog"]',cap:t('Switch <b>Notifications</b> on.')},
+      {v:'spop2',at:'[data-hst="reload"]',cap:t('Click <b>Reload</b>.')}]),
+      {v:'chat',at:'[data-hst="on"]',cap:t('Then open the chat and click <b>Turn on</b>.')},done];
+    return [
+      {v:'page',at:'[data-hst="chat"]',cap:t('Open a poll and click the chat button.')},
+      {v:'chat',at:'[data-hst="on"]',cap:t('At the top of the chat, click <b>Turn on</b>.')},
+      {v:'perm',at:'[data-hst="allow"]',cap:os==='safari'?t('Click <b>Allow</b>.'):t('Your browser asks under the address bar: click <b>Allow</b>.')},done];
+  }
+  const runs={v:'anote',at:null,cap:t('It works like an app and can show notifications.')};
+  if(os==='safari') return [
+    {v:'page',at:'[data-hst="file"]',cap:t('In Safari, open the <b>File</b> menu in the menu bar.')},
+    {v:'fmenu',at:'[data-hst="add"]',cap:t('Click <b>Add to Dock…</b>')},
+    {v:'dsheet',at:'[data-hst="ok"]',cap:t('Click <b>Add</b>.')},
+    {v:'appw',at:'[data-hst="icon"]',cap:t('when-who is now in your Dock and opens in its own window.')},runs];
+  if(os==='chrome') return [
+    {v:'page',at:'[data-hst="inst"]',cap:t('In Chrome or Edge, click the <b>Install</b> icon at the right end of the address bar. Not there? Look for <b>Install</b> in the ⋮ menu.')},
+    {v:'ipop',at:'[data-hst="ok"]',cap:t('Click <b>Install</b>.')},
+    {v:'appw',at:'[data-hst="icon"]',cap:t('when-who opens in its own window, with an icon in your dock or taskbar. Pin it to keep it there.')},runs];
   if(os==='android') return [
     {v:'page',at:'[data-hst="menu"]',cap:t('In Chrome, tap the ⋮ menu at the top right.')},
     {v:'menu',at:'[data-hst="add"]',cap:t('Tap <b>Add to Home screen</b> (some phones say <b>Install app</b>).')},
@@ -8860,23 +9210,37 @@ function hsSteps(os){
     {v:'home',at:'[data-hst="icon"]',cap:t('when-who is now on your Home Screen. Always open it from there.')},
     {v:'app',at:null,cap:t('It opens like an app, and can show notifications.')}];
 }
-// The drawn phone (labels in the phone's own words, so people find the same text on theirs).
-function hsPhone(os){
-  const host=esc(location.host||'when-who'), logo='<img src="/logo.svg" alt="">';
-  const page=`<div class="hs-page"><div class="hs-pbar">${logo}<span>when-who</span></div>
+// Shared drawn pieces: the poll page, the chat with its "Turn on" bar, a notification.
+const hsLogo='<img src="/logo.svg" alt="">';
+const hsPage=()=>`<div class="hs-page"><div class="hs-pbar">${hsLogo}<span>when-who</span></div>
     <div class="hs-pbody"><i class="hs-ln w70"></i><i class="hs-ln w45"></i>
       <div class="hs-cal">${Array.from({length:21},(_,k)=>`<i class="${[1,2,4,8,9,10,15,16].includes(k)?'y':k===11||k===17?'m':''}"></i>`).join('')}</div>
       <i class="hs-ln w60"></i><i class="hs-ln w35"></i></div></div>`;
+const hsChat=()=>`<div class="hs-chat"><div class="hs-chh">${HSI.chat}<b>${t('Chat')}</b></div>
+    <div class="hs-ask">${HSI.bell}<em>${t('Get notified about new messages?')}</em><b data-hst="on">${t('Turn on')}</b></div>
+    <div class="hs-msgs"><i class="o w70"></i><i class="o w45"></i><i class="me w60"></i><i class="o w35"></i></div></div>`;
+const hsNote=cls=>`<div class="${cls}">${hsLogo}<div><b>when-who</b><span>${t('Anna: Friday works for me!')}</span></div></div>`;
+// The drawn phone (labels in the phone's own words, so people find the same text on theirs).
+function hsPhone(os){
+  const host=esc(location.host||'when-who'), logo=hsLogo, page=hsPage();
+  const sb=`<div class="hs-sb"><span>9:41</span>${os==='android'?'':'<span class="hs-isl"></span>'}<span class="hs-sbi"><i></i><i></i></span></div>`;
+  if(HS.topic==='push'){
+    const alert=os==='android'
+      ?`<div class="hs-alert a">${HSI.bell}<b>${t('Allow when-who to send you notifications?')}</b><span class="pri" data-hst="allow">${t('Allow')}</span><span>${t('Don’t allow')}</span></div>`
+      :`<div class="hs-alert"><b>${t('“when-who” would like to send you notifications')}</b><span class="sub">${t('Notifications may include alerts, sounds and icon badges.')}</span><div class="hs-abtn"><span>${t('Don’t Allow')}</span><span data-hst="allow">${t('Allow')}</span></div></div>`;
+    return `<div class="hs-ph ${os==='android'?'and':'ios'} push">${sb}<div class="hs-scr">${page}<span class="hs-fab" data-hst="chat">${HSI.chat}</span>${hsChat()}
+      <div class="hs-dim"></div>${alert}${hsNote('hs-note')}</div><div class="hs-nav"><i></i></div></div>`;
+  }
   const home=`<div class="hs-home"><div class="hs-grid">${Array.from({length:11},(_,k)=>`<span class="hs-app c${k%6}"><i></i><b></b></span>`).join('')}
       <span class="hs-app me" data-hst="icon"><i>${logo}</i><b>when-who</b></span></div><div class="hs-dock">${'<i></i>'.repeat(4)}</div></div>`;
-  const app=`<div class="hs-run">${page}<div class="hs-note">${logo}<div><b>when-who</b><span>${t('Anna: Friday works for me!')}</span></div></div></div>`;
-  if(os==='android') return `<div class="hs-ph and"><div class="hs-sb"><span>9:41</span><span class="hs-sbi"><i></i><i></i></span></div>
+  const app=`<div class="hs-run">${page}${hsNote('hs-note')}</div>`;
+  if(os==='android') return `<div class="hs-ph and">${sb}
     <div class="hs-scr"><div class="hs-top"><span class="hs-url">${host}</span><span class="hs-ib" data-hst="menu">${HSI.dots}</span></div>${page}
       <div class="hs-menu">${['New tab','History','Downloads','Share…'].map(x=>`<span>${esc(t(x))}</span>`).join('')}<span class="hl" data-hst="add">${HSI.addsq}${t('Add to Home screen')}</span><span>${t('Settings')}</span></div>
       <div class="hs-dim"></div><div class="hs-dlgm"><b>${t('Install app')}</b><div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>
         <div class="hs-btns"><span>${t('Cancel')}</span><span class="pri" data-hst="ok">${t('Install')}</span></div></div>
       ${home}${app}</div><div class="hs-nav"><i></i></div></div>`;
-  return `<div class="hs-ph ios"><div class="hs-sb"><span>9:41</span><span class="hs-isl"></span><span class="hs-sbi"><i></i><i></i></span></div>
+  return `<div class="hs-ph ios">${sb}
     <div class="hs-scr">${page}<div class="hs-bar"><span class="hs-url">${host}</span>
         <div class="hs-tools"><span>${HSI.back}</span><span>${HSI.fwd}</span><span class="hs-ib" data-hst="share">${HSI.share}</span><span>${HSI.book}</span><span>${HSI.tabs}</span></div></div>
       <div class="hs-dim"></div><div class="hs-sheet"><div class="hs-sh-h">${logo}<div><b>when-who</b><span>${host}</span></div></div>
@@ -8886,6 +9250,36 @@ function hsPhone(os){
         <div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>
         <div class="hs-tog"><span>${t('Open as Web App')}</span><i></i></div></div>
       ${home}${app}</div><div class="hs-nav"><i></i></div></div>`;
+}
+// The drawn computer: a screen with a browser window (Chrome / Edge or Safari), Mac menu bar + Dock or Windows taskbar.
+function hsDesk(os){
+  const host=esc(location.host||'when-who'), logo=hsLogo, saf=os==='safari', mac=saf||hsMac();
+  const lights='<span class="hs-lights"><i></i><i></i><i></i></span>', wc='<span class="hs-wc"><i></i><i></i><i></i></span>';
+  const menubar=`<div class="hs-mb"><span class="hs-apple"></span>
+    <span class="hs-mi"><b data-hst="smenu">${saf?'Safari':'Chrome'}</b><span class="hs-mm hs-sm"><span>${saf?t('About Safari'):t('About Google Chrome')}</span><span class="hl" data-hst="set">${t('Settings…')}</span><span>${t('Clear History…')}</span><span>${saf?t('Quit Safari'):t('Quit Google Chrome')}</span></span></span>
+    <span class="hs-mi"><em data-hst="file">${t('File')}</em><span class="hs-mm hs-fm">${['New Window','New Private Window','New Tab','Open File…','Close Window'].map(x=>`<span>${esc(t(x))}</span>`).join('')}<span class="hl" data-hst="add">${t('Add to Dock…')}</span><span>${t('Share')}</span><span>${t('Print…')}</span></span></span>
+    <span class="hs-mi"><em>${t('Edit')}</em></span><span class="hs-mi"><em>${t('View')}</em></span><span class="hs-mbr">9:41</span></div>`;
+  const bar=saf?`<div class="hs-tb">${lights}<span class="hs-ic">${HSI.side}</span><span class="hs-ic">${HSI.back}</span><span class="hs-ic">${HSI.fwd}</span>
+      <span class="hs-omni c"><span class="hs-g">${host}</span></span><span class="hs-ic">${HSI.share}</span><span class="hs-ic">${HSI.plus}</span><span class="hs-ic">${HSI.tabs}</span></div>`
+    :`<div class="hs-tabs">${mac?lights:''}<span class="hs-tab">${logo}<span>when-who</span></span><span class="hs-ic">${HSI.plus}</span>${mac?'':wc}</div>
+      <div class="hs-tb"><span class="hs-ic">${HSI.back}</span><span class="hs-ic">${HSI.fwd}</span><span class="hs-ic">${HSI.reload}</span>
+      <span class="hs-omni"><span class="hs-ib" data-hst="site">${HSI.tune}</span><span class="hs-g">${host}</span><span class="hs-ib" data-hst="inst">${HSI.inst}</span></span><span class="hs-ic">${HSI.dots}</span></div>`;
+  const btns=(no,yes,at)=>`<div class="hs-btns"><span>${no}</span><span class="pri" data-hst="${at}">${yes}</span></div>`;
+  const pops=saf?`<div class="hs-pop hs-dsheet"><b>${t('Add to Dock')}</b><div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>${btns(t('Cancel'),t('Add'),'ok')}</div>
+      <div class="hs-pop hs-perm c"><b>${t('“{host}” wants to send you notifications',{host})}</b><span class="sub">${t('Notifications may include alerts, sounds and icon badges.')}</span>${btns(t('Don’t Allow'),t('Allow'),'allow')}</div>`
+    :`<div class="hs-pop hs-ipop"><b>${t('Install app?')}</b><div class="hs-row">${logo}<div><b>when-who</b><span>${host}</span></div></div>${btns(t('Cancel'),t('Install'),'ok')}</div>
+      <div class="hs-pop hs-perm"><b>${t('{host} wants to',{host})}</b><span class="hs-pl">${HSI.bell}${t('Show notifications')}</span>${btns(t('Block'),t('Allow'),'allow')}</div>
+      <div class="hs-pop hs-spop"><b>${host}</b><span class="hs-pl">${HSI.bell}<span class="hs-g">${t('Notifications')}</span><i class="hs-stog" data-hst="tog"></i></span>
+        <span class="hs-rl"><span class="hs-g">${t('Reload this page to apply the new setting.')}</span><em data-hst="reload">${t('Reload')}</em></span></div>`;
+  const swin=saf?`<div class="hs-swin"><div class="hs-swh">${lights}<b>${t('Websites')}</b></div><div class="hs-swb">
+      <div class="hs-sws">${['Camera','Microphone','Location'].map(x=>`<span>${esc(t(x))}</span>`).join('')}<span class="on">${t('Notifications')}</span><span>${t('Pop-up Windows')}</span></div>
+      <div class="hs-swr"><span class="hs-site">${logo}<span class="hs-g">${host}</span><em data-hst="allowsel"><s>${t('Deny')}</s><s>${t('Allow')}</s></em></span><span class="hs-site dim"><i></i></span><span class="hs-site dim"><i></i></span></div></div></div>`:'';
+  const appw=`<div class="hs-appw"><div class="hs-awh">${mac?lights:''}${logo}<b>when-who</b>${mac?'':wc}</div>${hsPage()}</div>`;
+  const dock=mac?`<div class="hs-dock2">${'<i></i>'.repeat(5)}<span class="hs-dkme" data-hst="icon">${logo}</span></div>`
+    :`<div class="hs-task"><i class="st"></i>${'<i></i>'.repeat(4)}<span class="hs-dkme" data-hst="icon">${logo}</span><em>9:41</em></div>`;
+  return `<div class="hs-mon"><div class="hs-dk ${mac?'mac':'win'} ${saf?'saf':'chr'}">${mac?menubar:''}
+    <div class="hs-win">${bar}<div class="hs-wb">${hsPage()}<span class="hs-fab" data-hst="chat">${HSI.chat}</span>${hsChat()}</div>${pops}</div>
+    ${swin}${appw}${dock}${hsNote('hs-toast')}</div></div>`;
 }
 // ---- help assistant ----
 // Opened from the ? menu (data-helpopen). The question and the last few turns go to POST /api/help (Workers AI, not stored);
@@ -8983,16 +9377,19 @@ document.addEventListener('click',e=>{
   const b=e.target.closest&&e.target.closest('[data-helpopen]'); if(!b) return;
   e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; helpOpen();
 });
-function hsOpen(os){
-  HS.os=os||(hsAndroid()?'android':'ios'); HS.i=0; HS.play=!tourRM();
+function hsOpen(spec){
+  const p=String(spec||'').split(':'), topic=p[0]==='push'||p[0]==='home'||p[0]==='cal'?p.shift():'home';
+  HS.topic=topic; HS.os=topic==='cal'?(HS_CAL.includes(p[0])?p[0]:hsCalDevice()):HS_OS.includes(p[0])?p[0]:hsDevice(); HS.i=0; HS.play=!tourRM();
   let d=$('hsdlg');
   if(!d){ d=document.createElement('dialog'); d.id='hsdlg'; d.className='dlg hsdlg'; d.setAttribute('aria-labelledby','hs_h'); document.body.appendChild(d);
     d.addEventListener('click',e=>{
       if(e.target===d||e.target.closest('[data-hsclose]')){ d.close(); return; }
       const o=e.target.closest('[data-hsos]'); if(o){ HS.os=o.dataset.hsos; HS.i=0; hsDraw(); return; }
       const g=e.target.closest('[data-hsgo]'); if(g){ HS.play=false; hsShow(g.dataset.hsgo==='p'?HS.i-1:g.dataset.hsgo==='n'?HS.i+1:+g.dataset.hsgo); return; }
-      if(e.target.closest('[data-hsplay]')){ HS.play=!HS.play; hsShow(HS.play&&HS.i===hsSteps(HS.os).length-1?0:HS.i); return; }
+      if(e.target.closest('[data-hsplay]')){ HS.play=!HS.play; hsShow(HS.play&&HS.i===hsSteps().length-1?0:HS.i); return; }
       if(e.target.closest('[data-hsinst]')&&HS.bip){ const p=HS.bip; HS.bip=null; p.prompt(); p.userChoice.then(c=>{ if(c&&c.outcome==='accepted') d.close(); else hsDraw(); }).catch(()=>{}); return; }
+      if(e.target.closest('[data-hsnow]')){ d.close(); pushEnable(); return; }
+      if(e.target.closest('[data-hsfirst]')){ HS.topic='home'; HS.i=0; hsDraw(); return; }
       if(e.target.closest('.hs-stage')){ HS.play=false; hsShow(HS.i+1); }
     });
     d.addEventListener('keydown',e=>{ if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); HS.play=false; hsShow(HS.i+(e.key==='ArrowRight'?1:-1)); } });
@@ -9001,22 +9398,30 @@ function hsOpen(os){
   if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
 }
 function hsDraw(){
-  const d=$('hsdlg'); if(!d) return; const n=hsSteps(HS.os).length;
-  d.innerHTML=`<div class="dlg-h"><h2 id="hs_h">${t('Add to Home Screen')}</h2>${ib('x',t('Close'),'data-hsclose','sm ghost')}</div>
-    <div class="dlg-b hs-b"><div class="seg" role="group" aria-label="${esc(t('Phone'))}">${[['ios','iPhone'],['android','Android']].map(([k,l])=>`<button type="button" data-hsos="${k}" class="${HS.os===k?'on':''}" aria-pressed="${HS.os===k}">${l}</button>`).join('')}</div>
-      <div class="hs-stage" role="img" aria-label="${esc(t('Animation: where to tap on the phone'))}">${hsPhone(HS.os)}<div class="hs-ptr off" aria-hidden="true"></div></div>
+  const d=$('hsdlg'); if(!d) return;
+  if(HS.topic==='cal') return hsCalDraw(d);
+  const desk=!hsPhoneOs(HS.os), me=HS.os===hsDevice(), a=pushAvail(), push=HS.topic==='push';
+  HS.fix=push&&desk&&me&&a==='denied';
+  const n=hsSteps().length; d.classList.toggle('desk',desk);
+  const acts=[];
+  if(!push&&me&&HS.bip) acts.push(`<button type="button" class="btn primary withic" data-hsinst>${ICON.download}<span>${t('Install now')}</span></button>`);
+  if(push&&me&&(a==='default'||(a==='granted'&&!pushIsOn()))) acts.push(`<button type="button" class="btn primary withic" data-hsnow>${ICON.bell}<span>${t('Turn on now')}</span></button>`);
+  if(push&&HS.os==='ios'&&!(pushIos()&&pushStandalone())) acts.push(`<button type="button" class="btn withic" data-hsfirst>${ICON.tap}<span>${t('Add to Home Screen first')}</span></button>`);
+  d.innerHTML=`<div class="dlg-h"><h2 id="hs_h">${push?t('Turn on notifications'):desk?t('Install when-who'):t('Add to Home Screen')}</h2>${ib('x',t('Close'),'data-hsclose','sm ghost')}</div>
+    <div class="dlg-b hs-b"><div class="seg" role="group" aria-label="${esc(t('Device'))}">${[['ios','iPhone'],['android','Android'],['chrome','Chrome',t('Chrome, Edge, Brave')],['safari','Safari',t('Safari on a Mac')]].map(([k,l,ti])=>`<button type="button" data-hsos="${k}" class="${HS.os===k?'on':''}" aria-pressed="${HS.os===k}"${ti?` title="${esc(ti)}"`:''}>${l}</button>`).join('')}</div>
+      <div class="hs-stage" role="img" aria-label="${esc(desk?t('Animation: where to click on the computer'):t('Animation: where to tap on the phone'))}">${desk?hsDesk(HS.os):hsPhone(HS.os)}<div class="hs-ptr${desk?' cur':''} off" aria-hidden="true">${desk?HSI.cursor:''}</div></div>
       <p class="hs-cap" aria-live="polite"><span class="hs-n"></span><span class="hs-t"></span></p>
       <div class="hs-ctl"><button type="button" class="btn sm ghost hs-pv" data-hsgo="p" aria-label="${esc(t('Back'))}">${HSI.back}</button>
         <div class="hs-dots">${Array.from({length:n},(_,k)=>`<button type="button" data-hsgo="${k}" aria-label="${esc(t('Step {n}',{n:k+1}))}"></button>`).join('')}</div>
         <button type="button" class="btn sm ghost hs-pv" data-hsgo="n" aria-label="${esc(t('Next'))}">${HSI.fwd}</button>
         <button type="button" class="btn sm ghost hs-pv" data-hsplay></button></div>
-      ${HS.os==='android'&&HS.bip&&hsAndroid()?`<button type="button" class="btn primary withic" data-hsinst>${ICON.download}<span>${t('Install now')}</span></button>`:''}</div>`;
+      ${acts.length?`<div class="hs-acts">${acts.join('')}</div>`:''}</div>`;
   hsShow(HS.i);
 }
 function hsStop(){ HS.tm.forEach(clearTimeout); HS.tm=[]; }
 function hsShow(i){
-  const d=$('hsdlg'); if(!d) return; const S=hsSteps(HS.os), n=S.length; hsStop();
-  i=(i+n)%n; HS.i=i; const s=S[i], scr=d.querySelector('.hs-scr'), st=d.querySelector('.hs-stage'), ptr=d.querySelector('.hs-ptr');
+  const d=$('hsdlg'); if(!d) return; const S=hsSteps(), n=S.length; hsStop();
+  i=(i+n)%n; HS.i=i; const s=S[i], scr=d.querySelector('.hs-scr,.hs-dk'), st=d.querySelector('.hs-stage'), ptr=d.querySelector('.hs-ptr');
   scr.dataset.v=s.v; d.querySelectorAll('.press').forEach(x=>x.classList.remove('press'));
   d.querySelector('.hs-n').textContent=`${i+1}/${n}`; d.querySelector('.hs-t').innerHTML=s.cap;
   d.querySelectorAll('.hs-dots button').forEach((b,k)=>b.classList.toggle('on',k===i));
@@ -9036,7 +9441,70 @@ function hsShow(i){
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest&&e.target.closest('[data-hsopen]'); if(!b) return;
-  e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; hsOpen(b.dataset.hsopen||'');
+  e.preventDefault(); const m=b.closest('details'); if(m) m.open=false; if(b.closest('#nudge')) nudgeHide(); hsOpen(b.dataset.hsopen||'');
+});
+// ---- Occasional nudge (signed-in accounts): install the app, or turn on notifications, with Show me how ----
+// localStorage 'nudge' = { last: day, visits: days seen, at: last shown, home|push: { n: times dismissed, at: last dismissed, off } }.
+// From the 2nd day someone visits, at most once every NUDGE_GAP; a dismissed topic waits NUDGE_WAIT, 3 dismissals (or Don't show again) end it.
+const NUDGE_GAP=5*864e5, NUDGE_WAIT=21*864e5, NUDGE={tried:false};
+function nudgeState(){ const s=store.get('nudge',null); return s&&typeof s==='object'&&!Array.isArray(s)?s:{}; }
+// What to suggest on this device (iPhone: install first, notifications need it), skipping topics that are resting or turned off.
+function nudgePick(s){
+  if(!ME.user) return null;
+  const a=pushAvail(), now=Date.now(), c=[];
+  if(hsPhoneOs(hsDevice())?hsCan():hsDeskInstall()) c.push('home');
+  if(a==='default'||(a==='granted'&&!store.get('pushOn',false))) c.push('push');
+  return c.find(k=>{ const x=s[k]||{}; return !x.off&&!(x.at&&now-Date.parse(x.at)<NUDGE_WAIT); })||null;
+}
+// Runs with tourAuto (home, account, poll pages), once per page load, after the tour had its chance.
+function nudgeAuto(){
+  if(NUDGE.tried||!ME.user) return;
+  const qs=new URLSearchParams(location.search); if(['privacy','imprint','rules','connect'].some(k=>qs.has(k))) return;
+  NUDGE.tried=true;
+  setTimeout(()=>{
+    const s=nudgeState(), day=isoL(new Date());
+    if(s.last!==day){ s.last=day; s.visits=(s.visits||0)+1; store.set('nudge',s); }
+    // First start of the installed app (iPhone: the moment push becomes possible): ask for notifications right away.
+    if(pushStandalone()&&!(s.onb&&s.onb.push)&&!TOUR.on&&!TOUR.autoTried&&onboardNext()) return;
+    if(s.visits<2||TOUR.on||TOUR.autoTried||$('nudge')||document.querySelector('dialog[open],.pigeon-ov')) return;
+    if(P.data&&!P.data.draft&&qs.has('p')&&chatState().open) return;
+    if(s.at&&Date.now()-Date.parse(s.at)<NUDGE_GAP) return;
+    const k=nudgePick(s); if(!k) return;
+    s.at=new Date().toISOString(); store.set('nudge',s); nudgeShow(k,s);
+  },2500);
+}
+// Onboarding, once per topic on this device (localStorage nudge.onb): after the first tour and on the installed app's first
+// start, open the device guide itself: phones not running the app install first, then notifications (Turn on now = the tap
+// the browser needs for its permission prompt). Returns true when it opened one.
+function onboardNext(){
+  if(!ME.user||TOUR.on||$('nudge')||document.querySelector('dialog[open],.pigeon-ov')) return false;
+  if(P.data&&!P.data.draft&&new URLSearchParams(location.search).has('p')&&chatState().open) return false;
+  const s=nudgeState(), o=s.onb=s.onb||{}, a=pushAvail(), dev=hsDevice();
+  const k=hsPhoneOs(dev)&&hsCan()&&!o.home?'home':(a==='default'||(a==='granted'&&!store.get('pushOn',false)))&&!o.push?'push':null;
+  if(!k) return false;
+  o[k]=s.at=new Date().toISOString(); store.set('nudge',s);
+  hsOpen(k+':'+dev); return true;
+}
+function nudgeShow(k,s){
+  const dev=hsDevice(), phone=hsPhoneOs(dev), x=(s&&s[k])||{};
+  const msg=k==='home'?(phone?t('Add when-who to your Home Screen and open it like an app.'):t('Install when-who and open it in its own window, like an app.'))
+    :t('Turn on notifications to hear about new chat messages right away.');
+  const go=k==='home'?(HS.bip?t('Install'):''):t('Turn on');
+  const el=document.createElement('div'); el.id='nudge'; el.className='nudge'; el.setAttribute('role','status');
+  el.innerHTML=`<span class="nudge-ic">${k==='home'?ICON.download:ICON.bell}</span><div class="grow"><p>${msg}</p>
+    <div class="nudge-acts">${go?`<button type="button" class="btn sm primary" data-nudgego="${k}">${go}</button>`:''}<button type="button" class="btn sm withic" data-hsopen="${k}:${dev}">${ICON.tap}<span>${t('Show me how')}</span></button>${x.n?`<button type="button" class="btn sm ghost" data-nudgeoff="${k}">${t('Don’t show again')}</button>`:''}</div></div>
+    ${ib('x',t('Not now'),`data-nudgeno="${k}"`,'sm ghost')}`;
+  document.body.appendChild(el);
+}
+function nudgeHide(){ const el=$('nudge'); if(!el) return; el.classList.add('out'); setTimeout(()=>el.remove(),tourRM()?0:220); }
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-nudgego],[data-nudgeno],[data-nudgeoff]'); if(!b) return;
+  const ds=b.dataset, s=nudgeState(), k=ds.nudgego||ds.nudgeno||ds.nudgeoff, x=s[k]=s[k]||{};
+  if(ds.nudgeno){ x.n=(x.n||0)+1; x.at=new Date().toISOString(); if(x.n>=3) x.off=true; }
+  if(ds.nudgeoff) x.off=true;
+  store.set('nudge',s); nudgeHide();
+  if(ds.nudgego==='push') pushEnable();
+  else if(ds.nudgego==='home'&&HS.bip){ const p=HS.bip; HS.bip=null; p.prompt(); p.userChoice.catch(()=>{}); }
 });
 // Account page: "Chat notifications on this device".
 function pushSecDraw(){
@@ -9049,8 +9517,8 @@ function pushSecDraw(){
   el.hidden=false;
   el.innerHTML=`<div class="card-h"><h2 class="grow" id="notifications">${t('Notifications')}</h2>${a==='off'?'':tip(t('Get notifications from when-who on this device, even when it’s closed. What you get is set below, and per poll with the bell at the top of the poll.'),'left')}</div>
     ${a==='off'?'':`<div class="row"><span class="grow">${t('Notifications on this device')}</span>
-      ${note?'':`<label class="sw" title="${esc(t('Notifications on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Notifications on this device'))}"><span></span></label>`}</div>
-    ${note?`<p class="help m0">${note}</p>${a==='homescreen'?`<div class="row mt-3"><button type="button" class="btn sm withic" data-hsopen>${ICON.tap}<span>${t('Show me how')}</span></button></div>`:''}`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
+      ${note||on?'':ib('tap',t('Show me how'),'data-hsopen="push"','sm ghost')}${note?'':`<label class="sw" title="${esc(t('Notifications on this device'))}"><input type="checkbox" id="push_cb"${on?' checked':''} aria-label="${esc(t('Notifications on this device'))}"><span></span></label>`}</div>
+    ${note?`<p class="help m0">${note}</p>${a==='homescreen'||a==='denied'?`<div class="row mt-3"><button type="button" class="btn sm withic" data-hsopen="${a==='denied'?'push':'home'}">${ICON.tap}<span>${t('Show me how')}</span></button></div>`:''}`:on?`<div class="row mt-3"><button type="button" class="btn sm withic" data-pushtest>${ICON.bell}${t('Send a test')}</button></div>`:''}`}
     ${ntAcctHtml()}`;
   const cb=$('push_cb'); if(cb) cb.onchange=async()=>{ cb.disabled=true; if(cb.checked) await pushEnable(); else await pushDisable(); pushSecDraw(); };
   if(location.hash==='#notifications'&&NTA.prefs&&!NTA.scrolled){ NTA.scrolled=1; el.scrollIntoView({block:'start',behavior:'smooth'}); }
@@ -9068,8 +9536,12 @@ document.addEventListener('click',async e=>{
 // Messages from the service worker: a push for the poll on screen, or a tapped notification.
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('message',e=>{
-    const d=e.data||{}; if(!d.poll||d.poll!==P.id||!P.data) return;
+    const d=e.data||{};
+    // A tapped notification for another page (the app was open elsewhere): go there.
+    if(d.type==='go'){ try{ const u=new URL(d.url,location.origin); if(u.origin===location.origin) location.href=u.href; }catch(x){} return; }
+    if(!d.poll||d.poll!==P.id||!P.data) return;
     if(d.type==='openchat'){ chatSetOpen(true,null); return; }
+    if(d.type==='opentab'){ if(['meetings','questions'].includes(d.tab)){ setPollTab(d.tab); } loadPoll(); return; }
     if(d.type==='event'){ if(!$('dmenu')&&!document.querySelector('dialog[open]')) loadPoll(); return; }
     if(d.type==='chat'){ if(chatVisible()){ chatFast(); chatFetch(false); } else if(P.data.chat&&chatCan()) chatUnreadBadges((P.data.chat.unread||0)+1); }
   });
@@ -9768,7 +10240,10 @@ document.addEventListener('click',async e=>{
     const m=inst().meetings.find(x=>x.id===(ds.mail||ds.copyinvite||ds.delmeet||ds.sendinvite)); if(!m) return;
     if(ds.copyinvite){ shareOrCopy(m.title||P.data.poll.title,inviteText(m)); return; }
     if(ds.delmeet){ if(confirm(m.proposed?t('Remove this option?'):t('Delete this meeting?'))) saveMeetings(inst().meetings.filter(x=>x.id!==m.id)); return; }
-    if(ds.sendinvite){ tg.disabled=true;
+    if(ds.sendinvite){ const n=invited(m).filter(r=>r.email).length;
+      if(!n){ toast(t('Nobody invited to this meeting left an email address.')); return; }
+      if(!confirm(t(m.sentAt?'Email this invite again to {n}?':'Email this invite to {n}?',{n:plural(n,t('person'),t('people'))}))) return;
+      tg.disabled=true;
       try{ const r=await api('POST',`/polls/${P.id}/instances/${inst().id}/meetings/${m.id}/send`,{},headers());
         toast(t('Invite sent to {n}',{n:plural(r.sent,t('person'),t('people'))})); await loadPoll(false); }
       catch(ex){ toast(ex.message); tg.disabled=false; } return; }
@@ -10046,7 +10521,7 @@ window.addEventListener('beforeunload',e=>{ if(P.dirty||P.saving||(P.form&&P.for
   if(ME.user){
     pushResync(); pbLegacy();
     if(store.get('myPolls',[]).some(p=>p.adminKey)) await claimLocalPolls();
-    try{ Object.assign(ME, await api('GET','/me/polls')); }catch(e){}
+    try{ Object.assign(ME, await api('GET','/me/polls')); appBadge(); }catch(e){}
   }
   if(pid){
     const em=/^#e=([\w-]{1,40})\.([\w-]{1,40})\.([\w-]{8,200})$/.exec(location.hash);
@@ -10078,6 +10553,39 @@ document.addEventListener('click',async e=>{
     await copy(r.url); }catch(err){ toast(err.message); }
 });
 function germanText(){ return {
+  'Get these meetings in your calendar':'Diese Termine in deinen Kalender holen',
+  'Subscribe once and your calendar app keeps it up to date: new, changed and cancelled meetings show up on their own. Calendar apps check every few hours.':'Einmal abonnieren, und deine Kalender-App hält alles aktuell: neue, geänderte und abgesagte Termine kommen von selbst. Kalender-Apps schauen alle paar Stunden nach.',
+  'iPhone, iPad and Mac: opens the Calendar app':'iPhone, iPad und Mac: öffnet die Kalender-App',
+  'Opens Google Calendar to add it':'Öffnet Google Kalender zum Hinzufügen',
+  'Opens Outlook on the web to add it':'Öffnet Outlook im Web zum Hinzufügen',
+  'Copy the link for other calendar apps':'Link für andere Kalender-Apps kopieren',
+  'At the top of <b>Meetings</b>, tap <b>Google</b>. Google Calendar opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Google</b>. Google Kalender öffnet sich (melde dich an, falls gefragt).',
+  'Tap <b>Add</b>. On a phone, if the Google Calendar app opens instead, do this once on a computer.':'Tippe auf <b>Hinzufügen</b>. Öffnet sich auf dem Handy stattdessen die Google-Kalender-App, mach das einmal am Computer.',
+  'Done. The meetings are in Google Calendar, on your phone too.':'Fertig. Die Termine sind in Google Kalender, auch auf deinem Handy.',
+  'New and changed meetings show up on their own. Google checks every few hours.':'Neue und geänderte Termine kommen von selbst. Google schaut alle paar Stunden nach.',
+  'At the top of <b>Meetings</b>, tap <b>Outlook</b>. Outlook on the web opens (sign in if it asks).':'Tippe oben unter <b>Termine</b> auf <b>Outlook</b>. Outlook im Web öffnet sich (melde dich an, falls gefragt).',
+  'The link is already filled in. Tap <b>Import</b>.':'Der Link ist schon eingetragen. Tippe auf <b>Importieren</b>.',
+  'Done. The meetings are in Outlook, on all your devices.':'Fertig. Die Termine sind in Outlook, auf all deinen Geräten.',
+  'New and changed meetings show up on their own. Outlook checks every few hours.':'Neue und geänderte Termine kommen von selbst. Outlook schaut alle paar Stunden nach.',
+  'At the top of <b>Meetings</b>, tap <b>Apple</b> (iPhone, iPad or Mac).':'Tippe oben unter <b>Termine</b> auf <b>Apple</b> (iPhone, iPad oder Mac).',
+  'Tap <b>Subscribe</b>.':'Tippe auf <b>Abonnieren</b>.',
+  'Pick a colour if you like and tap <b>Add</b>.':'Wähle eine Farbe, wenn du magst, und tippe auf <b>Hinzufügen</b>.',
+  'Done. The meetings are in your Calendar app.':'Fertig. Die Termine sind in deiner Kalender-App.',
+  'New and changed meetings show up on their own.':'Neue und geänderte Termine kommen von selbst.',
+  'Do you want to add this calendar?':'Möchtest du diesen Kalender hinzufügen?',
+  'Subscribe from web':'Aus dem Web abonnieren',
+  'Link to the calendar':'Link zum Kalender',
+  'Calendar name':'Kalendername',
+  'Subscribe to calendar?':'Kalender abonnieren?',
+  'Subscription':'Abonnement',
+  'Colour':'Farbe',
+  'Alerts':'Hinweise',
+  'Add to your calendar':'In deinen Kalender holen',
+  'Calendar app':'Kalender-App',
+  'iPhone, iPad and Mac':'iPhone, iPad und Mac',
+  'In your calendar':'In deinem Kalender',
+  'Subscribe once and new or changed meetings land in your calendar app by themselves. <b>Show me how</b> plays a short guide.':'Einmal abonnieren, und neue oder geänderte Termine landen von selbst in deiner Kalender-App. <b>Zeig mir, wie</b> spielt eine kurze Anleitung ab.',
+  '<b>Your calendar app</b>: only if you subscribe to a poll’s meetings (Meetings tab). Your calendar app or service (for example Apple, Google or Outlook) then fetches the meetings (titles, times, places, notes and who is coming) from when-who every few hours. The Google and Outlook buttons open their website with the subscription link; what they do with it is covered by their own privacy policies.':'<b>Deine Kalender-App</b>: nur wenn du die Termine einer Umfrage abonnierst (Tab Termine). Deine Kalender-App oder dein Kalenderdienst (zum Beispiel Apple, Google oder Outlook) holt die Termine (Titel, Zeiten, Orte, Notizen und wer kommt) dann alle paar Stunden bei when-who ab. Die Buttons Google und Outlook öffnen deren Website mit dem Abo-Link; was sie damit tun, regeln ihre eigenen Datenschutzerklärungen.',
   'Create the meetings from these times':'Termine aus diesen Zeiten anlegen',
   'For meetings that already exist: every offered day gets its meetings right away, one for each run of hours without a break (e.g. 9–12 and 14–18 make two). New rounds get theirs too, and they follow when you change the days or hours. Up to 100 per round. A meeting whose time you change by hand stays as it is.':'Für Termine, die schon feststehen: Jeder angebotene Tag bekommt sofort seine Termine, einen für jeden Zeitraum ohne Pause (z. B. 9–12 und 14–18 ergeben zwei). Neue Runden bekommen ihre auch, und sie passen sich an, wenn du Tage oder Uhrzeiten änderst. Bis zu 100 pro Runde. Ein Termin, dessen Zeit du von Hand änderst, bleibt, wie er ist.',
 "Just an example: nothing is sent or saved.": "Nur ein Beispiel: Nichts wird gesendet oder gespeichert.",
@@ -11838,6 +12346,37 @@ function germanText(){ return {
 "Toggle sound": "Ton an/aus",
 "Too many people": "Zu viele Personen",
 "Email all": "Alle mailen",
+"Email this invite again to the people invited": "Einladung erneut an die Eingeladenen mailen",
+"Email this invite to the people invited, with the calendar file": "Einladung mit Kalenderdatei an die Eingeladenen mailen",
+"Emailed {when}": "Gemailt am {when}",
+"Edit details: place, description, answers": "Details bearbeiten: Ort, Beschreibung, Antworten",
+"Add details: place, description, answers": "Details hinzufügen: Ort, Beschreibung, Antworten",
+"Share all meetings as text": "Alle Termine als Text teilen",
+"Subscribe in your calendar app: it stays up to date as meetings are added or changed": "In deiner Kalender-App abonnieren: bleibt aktuell, wenn Termine dazukommen oder sich ändern",
+"Download all meetings as a calendar file (.ics)": "Alle Termine als Kalenderdatei (.ics) herunterladen",
+"Subscribe: your calendar app keeps the meetings up to date.": "Abonnieren: deine Kalender-App hält die Termine aktuell.",
+"Download a calendar file (.ics) to import.": "Kalenderdatei (.ics) zum Importieren herunterladen.",
+"Share the meetings as text.": "Die Termine als Text teilen.",
+"Copy the meetings as text.": "Die Termine als Text kopieren.",
+"Email all: send every meeting to the people you pick, from when-who.": "Alle mailen: alle Termine von when-who an die gewählten Leute schicken.",
+"On each meeting": "An jedem Termin",
+"Talk about it in the chat.": "Im Chat darüber sprechen.",
+"Add a place, description or answers.": "Ort, Beschreibung oder Antworten hinzufügen.",
+"Ask people something, e.g. vote on the place.": "Die Leute etwas fragen, z. B. über den Ort abstimmen.",
+"Email its invite to the people invited.": "Die Einladung an die Eingeladenen mailen.",
+"Delete it.": "Löschen.",
+"Share the invite as text.": "Die Einladung als Text teilen.",
+"Copy the invite as text.": "Die Einladung als Text kopieren.",
+"Download it as a calendar file (.ics).": "Als Kalenderdatei (.ics) herunterladen.",
+"Email all meetings": "Alle Termine mailen",
+"One email from when-who with every scheduled meeting (when, where, who, description), all of them as a calendar file, and the link to subscribe so calendars stay up to date.": "Eine E-Mail von when-who mit allen festgelegten Terminen (wann, wo, wer, Beschreibung), alle als Kalenderdatei, und dem Abo-Link, damit Kalender aktuell bleiben.",
+"Every scheduled meeting ({n}) in one email.": "Alle festgelegten Termine ({n}) in einer E-Mail.",
+"{n} of {m} picked": "{n} von {m} gewählt",
+"Opens your own email app with all meetings written out; nothing is sent by when-who": "Öffnet dein eigenes E-Mail-Programm mit allen Terminen; when-who verschickt nichts",
+"Write in my own email app": "In meinem E-Mail-Programm schreiben",
+"Nobody invited to this meeting left an email address.": "Niemand, der zu diesem Termin eingeladen ist, hat eine E-Mail-Adresse angegeben.",
+"Email this invite again to {n}?": "Diese Einladung erneut an {n} mailen?",
+"Email this invite to {n}?": "Diese Einladung an {n} mailen?",
 "Require name and email to answer": "Name und E-Mail zum Antworten verlangen",
 "Guests must give their email address as well as their name before they can send an answer. Signed-in people answer with their account email.": "Gäste müssen neben ihrem Namen auch ihre E-Mail-Adresse angeben, bevor sie antworten können. Angemeldete Personen antworten mit der E-Mail ihres Kontos.",
 "Email (required, only the organiser sees it)": "E-Mail (Pflicht, nur die Organisator:in sieht sie)",
@@ -12145,6 +12684,10 @@ function germanText(){ return {
 "Activity": "Verlauf",
 "Activity shows who answered and which meetings were set. To chat, answer with an account.": "Der Verlauf zeigt, wer geantwortet hat und welche Termine stehen. Zum Chatten antworte mit einem Konto.",
 "Open the chat": "Chat öffnen",
+"Yesterday": "Gestern",
+"Latest message": "Neueste Nachricht",
+"Chats": "Chats",
+"Each poll has a group chat. The newest message shows on its card, in bold with a green count while unread. Tap it to open the chat.": "Jede Umfrage hat einen Gruppenchat. Die neueste Nachricht steht auf ihrer Karte, fett und mit grüner Zahl, solange sie ungelesen ist. Tipp darauf, um den Chat zu öffnen.",
 "You": "Du",
 "Meeting": "Termin",
 "{name} answered": "{name} hat geantwortet",
@@ -12248,7 +12791,7 @@ function germanText(){ return {
 "Notifications for this chat are on": "Benachrichtigungen für diesen Chat sind an",
 "Get chat messages as notifications on this device, even when when-who is closed.": "Chat-Nachrichten als Benachrichtigung auf diesem Gerät, auch wenn when-who geschlossen ist.",
 "<b>Notifications (only if you turn them on):</b> for each device, the push address your browser gives us and its encryption keys, so new chat messages can reach you, and which chats you muted. Turning notifications off, signing out on that device or deleting your account removes them.": "<b>Benachrichtigungen (nur wenn du sie einschaltest):</b> pro Gerät die Push-Adresse, die uns dein Browser gibt, und ihre Schlüssel, damit neue Chat-Nachrichten dich erreichen, und welche Chats du stummgeschaltet hast. Ausschalten, Abmelden auf dem Gerät oder Löschen deines Kontos entfernt sie.",
-"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders und Anfang der Nachricht) und die anderen Benachrichtigungen, die du gewählt hast (Titel der Umfrage, Name der Person und was passiert ist), auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
+"<b>Your browser’s push service</b> (Google for Chrome and Edge on Android, Mozilla for Firefox, Apple for Safari, Microsoft for Edge on Windows): only if you turn on notifications. It delivers new chat messages (poll title, sender’s name, profile emoji or a link to their picture, and the start of the message) and the other notifications you chose (poll title, the person’s name and what happened) to your device. They are encrypted end to end, so the push service can’t read them.": "<b>Der Push-Dienst deines Browsers</b> (Google für Chrome und Edge auf Android, Mozilla für Firefox, Apple für Safari, Microsoft für Edge unter Windows): nur wenn du Benachrichtigungen einschaltest. Er stellt neue Chat-Nachrichten (Titel der Umfrage, Name des Absenders, Profil-Emoji oder ein Link zu seinem Bild und Anfang der Nachricht) und die anderen Benachrichtigungen, die du gewählt hast (Titel der Umfrage, Name der Person und was passiert ist), auf deinem Gerät zu. Sie sind Ende-zu-Ende-verschlüsselt, der Push-Dienst kann sie nicht lesen.",
 "This browser’s push service isn’t supported": "Der Push-Dienst dieses Browsers wird nicht unterstützt",
 "Invalid push keys": "Ungültige Push-Schlüssel",
 "Notifications aren’t set up on this site": "Benachrichtigungen sind auf dieser Website nicht eingerichtet",
@@ -12340,7 +12883,75 @@ function germanText(){ return {
 "Pause": "Pause",
 "Play": "Abspielen",
 "Show me how": "Zeig mir, wie",
-"Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.": "Öffne when-who wie eine App, mit Benachrichtigungen: Kontomenü → Zum Home-Bildschirm zeigt dir, wie."}; }
+"Open when-who like an app, with notifications: account menu → Add to Home Screen shows you how.": "Öffne when-who wie eine App, mit Benachrichtigungen: Kontomenü → Zum Home-Bildschirm zeigt dir, wie.",
+"About Google Chrome": "Über Google Chrome",
+"About Safari": "Über Safari",
+"Add to Dock": "Zum Dock hinzufügen",
+"Add to Dock…": "Zum Dock hinzufügen …",
+"Add to Home Screen first": "Erst zum Home-Bildschirm hinzufügen",
+"Add when-who to your Home Screen and open it like an app.": "Füge when-who zum Home-Bildschirm hinzu und öffne es wie eine App.",
+"Allow when-who to send you notifications?": "when-who erlauben, dir Benachrichtigungen zu senden?",
+"Animation: where to click on the computer": "Animation: wo du am Computer klickst",
+"At the top of the chat, click <b>Turn on</b>.": "Klicke oben im Chat auf <b>Einschalten</b>.",
+"At the top of the chat, tap <b>Turn on</b>.": "Tippe oben im Chat auf <b>Einschalten</b>.",
+"Block": "Blockieren",
+"Camera": "Kamera",
+"Microphone": "Mikrofon",
+"Chrome, Edge, Brave": "Chrome, Edge, Brave",
+"Clear History…": "Verlauf löschen …",
+"Click <b>Add to Dock…</b>": "Klicke auf <b>Zum Dock hinzufügen …</b>",
+"Click <b>Add</b>.": "Klicke auf <b>Hinzufügen</b>.",
+"Click <b>Allow</b>.": "Klicke auf <b>Erlauben</b>.",
+"Click <b>Install</b>.": "Klicke auf <b>Installieren</b>.",
+"Click <b>Reload</b>.": "Klicke auf <b>Neu laden</b>.",
+"Click <b>Settings…</b>": "Klicke auf <b>Einstellungen …</b>",
+"Device": "Gerät",
+"Done. New chat messages now pop up in the corner of your screen.": "Fertig. Neue Chat-Nachrichten erscheinen jetzt in der Ecke deines Bildschirms.",
+"Done. New chat messages now show up as notifications, even when when-who is closed.": "Fertig. Neue Chat-Nachrichten kommen jetzt als Benachrichtigung, auch wenn when-who geschlossen ist.",
+"Don’t Allow": "Nicht erlauben",
+"Don’t allow": "Nicht zulassen",
+"Don’t show again": "Nicht mehr zeigen",
+"File": "Ablage",
+"In Chrome or Edge, click the <b>Install</b> icon at the right end of the address bar. Not there? Look for <b>Install</b> in the ⋮ menu.": "Klicke in Chrome oder Edge auf das <b>Installieren</b>-Symbol rechts in der Adressleiste. Nicht da? Such im ⋮-Menü nach <b>Installieren</b>.",
+"In Safari, open the <b>File</b> menu in the menu bar.": "Öffne in Safari das Menü <b>Ablage</b> in der Menüleiste.",
+"Install app?": "App installieren?",
+"Install when-who": "when-who installieren",
+"Install when-who and open it in its own window, like an app.": "Installiere when-who und öffne es in einem eigenen Fenster, wie eine App.",
+"It works like an app and can show notifications.": "Es funktioniert wie eine App und kann Benachrichtigungen zeigen.",
+"New Window": "Neues Fenster",
+"New Private Window": "Neues privates Fenster",
+"New Tab": "Neuer Tab",
+"Open File…": "Datei öffnen …",
+"Close Window": "Fenster schließen",
+"Notifications are blocked for when-who. Click the icon left of the address.": "Benachrichtigungen für when-who sind blockiert. Klicke auf das Symbol links neben der Adresse.",
+"Notifications are blocked for when-who. Open the <b>Safari</b> menu.": "Benachrichtigungen für when-who sind blockiert. Öffne das Menü <b>Safari</b>.",
+"Notifications may include alerts, sounds and icon badges.": "Mitteilungen können Hinweise, Töne und Kennzeichen enthalten.",
+"Open a poll and click the chat button.": "Öffne eine Umfrage und klicke auf den Chat-Knopf.",
+"Open a poll and tap the chat button.": "Öffne eine Umfrage und tippe auf den Chat-Knopf.",
+"Open when-who from your Home Screen (notifications only work there), open a poll and tap the chat button.": "Öffne when-who vom Home-Bildschirm (nur dort gibt es Benachrichtigungen), öffne eine Umfrage und tippe auf den Chat-Knopf.",
+"Pop-up Windows": "Pop-up-Fenster",
+"Print…": "Drucken …",
+"Quit Google Chrome": "Google Chrome beenden",
+"Quit Safari": "Safari beenden",
+"Reload": "Neu laden",
+"Reload this page to apply the new setting.": "Lade die Seite neu, damit die Einstellung gilt.",
+"Safari on a Mac": "Safari auf dem Mac",
+"Settings…": "Einstellungen …",
+"Show notifications": "Benachrichtigungen anzeigen",
+"Switch <b>Notifications</b> on.": "Schalte <b>Benachrichtigungen</b> ein.",
+"Tap <b>Allow</b>.": "Tippe auf <b>Erlauben</b>.",
+"Then open the chat and click <b>Turn on</b>.": "Öffne dann den Chat und klicke auf <b>Einschalten</b>.",
+"Turn on notifications": "Benachrichtigungen einschalten",
+"Turn on notifications to hear about new chat messages right away.": "Schalte Benachrichtigungen ein, um neue Chat-Nachrichten sofort mitzubekommen.",
+"Turn on now": "Jetzt einschalten",
+"Under <b>Websites</b> → <b>Notifications</b>, set when-who to <b>Allow</b>.": "Stelle unter <b>Websites</b> → <b>Mitteilungen</b> when-who auf <b>Erlauben</b>.",
+"Websites": "Websites",
+"Your browser asks under the address bar: click <b>Allow</b>.": "Dein Browser fragt unter der Adressleiste: Klicke auf <b>Zulassen</b>.",
+"when-who is now in your Dock and opens in its own window.": "when-who ist jetzt in deinem Dock und öffnet sich in einem eigenen Fenster.",
+"when-who opens in its own window, with an icon in your dock or taskbar. Pin it to keep it there.": "when-who öffnet sich in einem eigenen Fenster, mit einem Symbol im Dock oder in der Taskleiste. Heft es dort an, damit es bleibt.",
+"{host} wants to": "{host} möchte",
+"“when-who” would like to send you notifications": "„when-who“ möchte dir Mitteilungen senden",
+"“{host}” wants to send you notifications": "„{host}“ möchte dir Mitteilungen senden"}; }
 })();
 </script>
 </body>

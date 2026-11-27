@@ -1,5 +1,6 @@
 // Service worker: only for notifications (Web Push): chat messages and what happens in polls (answers, votes, meetings, questions, rounds). No caching, no offline mode.
-// A push carries { kind, title, name, body, url, tag, poll, at }, encrypted by the Worker (notifyEvent).
+// A push carries { kind, title, name, body, url, tag, poll, at, av?, icon?, badge? }, encrypted by the Worker (notifyEvent):
+// av = the sender's emoji avatar, icon = signed link to their picture, badge = my unread chat messages (app icon badge).
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -9,6 +10,9 @@ self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (x) { d = { title: 'when-who', body: e.data ? e.data.text() : '' }; }
   e.waitUntil((async () => {
+    if (typeof d.badge === 'number' && self.navigator.setAppBadge) {
+      try { await (d.badge ? self.navigator.setAppBadge(d.badge) : self.navigator.clearAppBadge()); } catch (x) {}
+    }
     if (d.poll && d.kind !== 'test') {
       const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const here = wins.filter((w) => pollOf(w.url) === d.poll);
@@ -16,9 +20,10 @@ self.addEventListener('push', (e) => {
       // Someone is looking at this poll right now: the page shows the message / answer itself.
       if (here.some((w) => w.focused && w.visibilityState === 'visible')) return;
     }
+    const who = d.name ? (d.av ? d.av + ' ' : '') + d.name : '';
     await self.registration.showNotification(d.title || 'when-who', {
-      body: d.name ? d.name + ': ' + (d.body || '') : d.body || '',
-      tag: d.tag || undefined, renotify: !!d.tag, icon: '/apple-touch-icon.png',
+      body: who ? who + ': ' + (d.body || '') : d.body || '',
+      tag: d.tag || undefined, renotify: !!d.tag, icon: d.icon || '/apple-touch-icon.png', badge: '/apple-touch-icon.png',
       timestamp: d.at ? Date.parse(d.at) : Date.now(), data: { url: d.url || '/', poll: d.poll || null, kind: d.kind || '' },
     });
   })());
@@ -31,7 +36,15 @@ self.addEventListener('notificationclick', (e) => {
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const w = poll ? wins.find((x) => pollOf(x.url) === poll) : null;
-    if (w) { await w.focus(); if (!kind || kind === 'chat') w.postMessage({ type: 'openchat', poll }); return; }
+    const tab = (() => { try { return new URL(target).searchParams.get('tab'); } catch (x) { return null; } })();
+    // Already on that poll: open the chat / the tab there.
+    if (w) { await w.focus(); w.postMessage(!kind || kind === 'chat' ? { type: 'openchat', poll } : { type: 'opentab', poll, tab }); return; }
+    // The app is open elsewhere (an installed iPhone app only gets focused by openWindow): send that window to the page.
+    const any = wins.find((x) => x.focused) || wins[0];
+    if (any) {
+      try { const n = await any.navigate(target); await (n || any).focus(); return; } catch (x) {}
+      try { await any.focus(); any.postMessage({ type: 'go', url: target }); return; } catch (x) {}
+    }
     await self.clients.openWindow(target);
   })());
 });
