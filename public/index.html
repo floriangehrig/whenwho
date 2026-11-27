@@ -706,6 +706,10 @@
   .grp-x svg{transition:transform .15s} .grp-x[aria-expanded=true] svg{transform:rotate(180deg)}
   .gin{display:inline-flex;align-items:center;gap:4px;color:var(--yes-dark,var(--accent));font-size:12.5px;font-weight:600;padding:0 6px} .gin svg{width:16px;height:16px}
   .gs-list .list li{padding:0;margin:0} .gs-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 6px;margin:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;border-radius:10px}
+  .fddlg.pk-on .pd-q,.fddlg.pk-on #fd_err,.fddlg.pk-on #fd_list,.fddlg.pk-on .dlg-f{display:none}
+  .acct-list.fd-wrap{max-height:none;overflow:visible} /* at most 20 groups; menus must not be clipped */
+  .fd-list .acts{align-items:center} .fd-sub>summary{list-style:none} .fd-sub>summary::-webkit-details-marker{display:none}
+  @media (max-width:560px){ .fd-sub .bl{display:none} }
   .gs-row:hover{background:var(--sunken)} .gs-row input{width:20px;height:20px;flex:none;accent-color:var(--accent)}
   .gs-new{color:var(--accent)} .gs-new svg{width:18px;height:18px;margin:0 7px}
   @media (max-width:560px){ .grp-tile{width:96px;min-height:86px} .grp-tile.new{width:76px} .dlg-f .btn.primary{flex:1} }
@@ -3207,6 +3211,7 @@ function tourSteps(key){
     S(null,t('Your account'),t('A quick look at your account page.')),
     S('#pf',t('Profile'),t('Your name and picture, shown to others in polls and chats. You can also change your email address here.')),
     S('#calcard',t('Calendars'),t('Connect Google or Outlook, or add iCal links. Busy hours are greyed out when you answer, and you can pre-fill answers from them.')),
+    S('#fdcard',t('Poll groups'),t('Group polls that belong together. Each group has one calendar link with the meetings you’re in from all its polls.')),
     S('#ctcard',t('Contacts'),t('Saved contacts, people from your polls and groups, to add many people to a poll at once. ✎ edits a contact.')),
     S('#pushsec',t('Notifications'),t('Get chat messages as notifications on this device, even when when-who is closed.')),
     S('#mcpcard',t('AI assistants'),t('Connect Claude, ChatGPT or another assistant to read and answer your polls, create new ones and set meetings by chatting.')),
@@ -3894,6 +3899,7 @@ function pollCard(p,answered){
       ${open&&c.deadline?`<span class="pc-n" title="${t('Reply by')}">${ICON.deadline}${esc(dayLabel(c.deadline))}</span>`:''}`:''}${as}${answered?pcTodo(p):''}</span>${pcChat(p)}
     <details class="dd qmore pc-copy pc-more"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
       <button type="button" data-copy="${esc(shareLink(p.id))}">${ICON.link}<span class="grow">${t('Copy share link')}</span></button>
+      <button type="button" data-fdsheet="${esc(p.id)}">${ICON.cal}<span class="grow">${t('Add to poll group…')}</span></button>
       <button type="button" data-hphide="${esc(p.id)}">${p.hidden?ICON.eye:ICON.eyeoff}<span class="grow">${p.hidden?t('Show on overview'):t('Hide from overview')}</span></button>${answered?'':`
       <div class="menu-sep"></div><button type="button" class="danger" data-hpdel="${esc(p.id)}">${ICON.trash}<span class="grow">${p.kind==='series'?t('Delete all rounds'):t('Delete poll')}</span></button>`}</div></details></div>`;
 }
@@ -4476,6 +4482,7 @@ function renderPrivacy(){
         t('<b>Photon (komoot)</b>: suggests places when you type a location. Only what you type in that field is sent.'),
         t('<b>Google / Microsoft</b>: only if you connect a calendar or import contacts, as described above.'),
         t('<b>Your calendar app</b>: only if you subscribe to a poll’s meetings (Meetings tab). Your calendar app or service (for example Apple, Google or Outlook) then fetches the meetings (titles, times, places, notes and who is coming) from when-who every few hours. The Google and Outlook buttons open their website with the subscription link; what they do with it is covered by their own privacy policies.'),
+        t('<b>Your calendar app, for poll groups</b>: only if you make a poll group on your Account page and subscribe to its calendar link. The group’s name, its list of polls and the secret link are stored with your account until you delete the group or the account. Your calendar app then fetches the meetings you’re in from those polls in the same way. Anyone who has the link can see those meetings; you can make a new link at any time, which stops the old one.'),
       ]))}
       <p>${t('The fonts are served by when-who itself; no third party is contacted when the page loads.')}</p>
       ${legalSec(t('Transfers outside the EU'),`<p>${t('Cloudflare, Resend, Google and Microsoft are based in the USA, so data may be processed there. These transfers rely on the EU–U.S. Data Privacy Framework or the EU standard contractual clauses (Art. 45 and 46 GDPR). We have data processing agreements with the services that process data for us.')}</p>`)}
@@ -5657,6 +5664,8 @@ function renderAccount(){
         <div id="calbox"><p class="help">${t('Loading…')}</p></div>
         <div class="row bp-row"><span class="grow">${t('Show my busy hours from other polls')}</span>${tip(t('While you answer a poll, the meetings you’re in and the hours you answered in your other open polls are greyed out. Only you see this. You can also switch it in the poll’s Busy ▾ menu.'),'left')}
           <label class="sw" title="${esc(t('Show my busy hours from other polls'))}"><input type="checkbox" id="bp_cb"${u.busyPolls?' checked':''} aria-label="${esc(t('Show my busy hours from other polls'))}"><span></span></label></div></div>
+      <div class="card span" id="fdcard"><div class="card-h"><h2 class="grow">${t('Poll groups')}<span class="count" id="fd_count" hidden></span></h2>${tip(t('Put polls that belong together in a group, for example Work or Choir. Each group has its own calendar link: subscribe to it once and your calendar app shows the meetings you’re in from all its polls, kept up to date. Anyone with the link sees those meetings, so keep it private.'),'right')}${pqb('plus',t('New poll group'),'data-fdopen=""',' add')}</div>
+        <div id="fdbox"><p class="help">${t('Loading…')}</p></div></div>
       <div class="card span" id="mcpcard"><div class="card-h"><h2 class="grow">${t('AI assistants')}<span class="count" id="mcp_count" hidden></span></h2>${tip(t('Use when-who from Claude, ChatGPT or another AI assistant that supports MCP: add a custom connector with this address, then sign in here when it asks. It can then read your polls, answer them, create polls, invite people and set meetings for you.'),'left')}</div>
         <div class="row mcp-url"><code class="grow ell" id="mcp_url">${esc(location.origin)}/mcp</code>${pqb('copy',t('Copy address'),'id="mcp_copy"')}</div>
         <div id="mcpbox"></div></div>
@@ -5676,7 +5685,7 @@ function renderAccount(){
           <div class="err" id="del_err"></div>
         </form></div>
     </div></main>${siteFoot()}`;
-  renderCalCard(); renderContactsCard(); renderMcpCard();
+  renderCalCard(); renderContactsCard(); renderMcpCard(); renderFolderCard();
   $('bp_cb').onchange=async e=>{ const cb=e.currentTarget; cb.disabled=true; await setBusyPolls(cb.checked); cb.checked=pbOn(); cb.disabled=false; };
   // Your data: download a copy (JSON), or delete the account after a code sent to its address.
   pushSecDraw();
@@ -5742,6 +5751,164 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('[data-mcp
   if(b.id==='mcp_copy') return copy($('mcp_url').textContent);
   if(!confirm(t('Disconnect this assistant? It loses access right away.'))) return;
   try{ await api('DELETE','/me/connections/'+encodeURIComponent(b.dataset.mcpdel)); renderMcpCard(); }catch(ex){ toast(ex.message); } });
+
+// ================= POLL GROUPS (Account page; Worker table poll_folders) =================
+// Named sets of my polls (a poll may be in several), each with a secret live calendar link (/api/feeds/<token>.ics) that
+// bundles the meetings I'm in across them. FD.list = GET /api/me/poll-groups; FD.g = the group open in the editor (#fddlg).
+const FD={list:null,g:null,q:'',busy:false,orig:''};
+async function fdLoad(force){
+  if(FD.list&&!force) return FD.list;
+  try{ FD.list=(await api('GET','/me/poll-groups')).groups; }catch(e){ if(!FD.list) FD.list=null; throw e; }
+  return FD.list;
+}
+// My polls for picking: Your polls first, then Polls you answered (no duplicates).
+function fdPolls(){ const own=ME.polls||[], ids=new Set(own.map(p=>p.id));
+  return {own, ans:(ME.answered||[]).filter(p=>!ids.has(p.id))}; }
+const fdPoll=id=>[...(ME.polls||[]),...(ME.answered||[])].find(p=>p.id===id);
+const fdCount=n=>n===1?t('1 poll'):t('{n} polls',{n});
+const fdTile=(g,cls='sm')=>tile({emoji:g.icon,text:g.name||'?',seed:g.id||g.name},cls);
+function fdSubMenu(g){
+  const it=(k,ic,lb)=>`<button type="button" data-fdsub="${k}" data-fd="${esc(g.id)}">${ICON[ic]}<span class="grow">${lb}</span></button>`;
+  return `<details class="dd qmore fd-sub"><summary class="btn sm withic" title="${esc(t('Add these meetings to your calendar app'))}">${ICON.cal}<span class="bl">${t('Subscribe')}</span></summary><div class="ddp right menu pickm">
+    ${it('apple','cal',t('Apple Calendar (iPhone, Mac)'))}${it('google','cal',t('Google Calendar'))}${it('outlook','cal',t('Outlook'))}
+    <div class="menu-sep"></div>${it('copy','copy',t('Copy link'))}${it('how','tap',t('Show me how'))}</div></details>`;
+}
+async function renderFolderCard(){
+  const box=$('fdbox'); if(!box) return;
+  let list; try{ list=await fdLoad(); }catch(ex){ box.innerHTML=`<p class="err">${esc(ex.message)}</p>`; return; }
+  if(!$('fdbox')) return;
+  const cnt=$('fd_count'); if(cnt){ cnt.textContent=list.length; cnt.hidden=!list.length; }
+  if(!list.length){ box.innerHTML=`<div class="acct-empty">${ICON.cal}<span>${t('No poll groups yet. Group your polls to get all their meetings in your calendar with one link.')}</span>
+    <button type="button" class="btn sm primary withic" data-fdopen>${ICON.plus}<span>${t('New poll group')}</span></button></div>`; return; }
+  box.innerHTML=`<div class="acct-list fd-wrap"><ul class="list fd-list">${list.map(g=>{
+    const names=g.polls.map(fdPoll).filter(Boolean).map(p=>p.title);
+    const sub=g.polls.length?`${fdCount(g.polls.length)}${names.length?' · '+names.slice(0,3).join(', ')+(names.length>3?` +${names.length-3}`:''):''}`:t('No polls yet');
+    return `<li>${fdTile(g)}<span class="grow pmain"><b class="ell">${esc(g.name)}</b><span class="muted small ell">${esc(sub)}</span></span>
+      <span class="acts">${fdSubMenu(g)}${pqb('edit',t('Edit group'),`data-fdopen="${esc(g.id)}"`)}
+        <details class="dd qmore"><summary class="qb" title="${t('More')}" aria-label="${t('More')}">${ICON.more}</summary><div class="ddp right menu pickm">
+          <button type="button" data-fdreset="${esc(g.id)}">${ICON.repeat}<span class="grow">${t('New calendar link')}</span></button>
+          <div class="menu-sep"></div><button type="button" class="danger" data-fddel="${esc(g.id)}">${ICON.trash}<span class="grow">${t('Delete group')}</span></button></div></details></span></li>`; }).join('')}</ul></div>`;
+}
+async function fdDelete(id){
+  const g=(FD.list||[]).find(x=>x.id===id); if(!g) return false;
+  if(!confirm(t('Delete the poll group “{name}”? Its calendar link stops working. The polls stay as they are.',{name:g.name}))) return false;
+  try{ await api('DELETE','/me/poll-groups/'+encodeURIComponent(id)); FD.list=FD.list.filter(x=>x.id!==id); renderFolderCard(); toast(t('Group deleted')); return true; }
+  catch(ex){ toast(ex.message); return false; }
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-fdsub],[data-fdreset],[data-fddel]'); if(!b) return;
+  const dd=b.closest('details[open]'); if(dd) dd.open=false;
+  if(b.dataset.fddel) return fdDelete(b.dataset.fddel);
+  if(b.dataset.fdreset){ const id=b.dataset.fdreset;
+    if(!confirm(t('Make a new calendar link? The old link stops working, so calendars subscribed to it stop updating. Subscribe again with the new one.'))) return;
+    try{ const r=await api('POST','/me/poll-groups/'+encodeURIComponent(id)+'/reset',{}); const g=FD.list.find(x=>x.id===id); if(g) g.feed=r.feed;
+      renderFolderCard(); toast(t('New link made. Subscribe again with it.')); }catch(ex){ toast(ex.message); }
+    return; }
+  const g=(FD.list||[]).find(x=>x.id===b.dataset.fd); if(!g) return;
+  const L=subLinksFor(location.origin+g.feed,g.name), k=b.dataset.fdsub;
+  if(k==='copy') return copy(L.https);
+  if(k==='how') return hsOpen('cal');
+  if(k==='apple') location.href=L.webcal; else window.open(L[k],'_blank','noopener');
+});
+// The editor: name, emoji icon (picker 'fd') and the polls in it (search + checkboxes).
+const fdState=()=>JSON.stringify({n:FD.g.name.trim(),i:FD.g.icon,p:[...FD.g.polls].sort()});
+async function fdOpen(id,addPoll){
+  if(!FD.list) try{ await fdLoad(); }catch(ex){ toast(ex.message); return; }
+  const src=id?FD.list.find(g=>g.id===id):null; if(id&&!src) return;
+  FD.g=src?{id:src.id,name:src.name,icon:src.icon,polls:[...src.polls]}:{id:'',name:'',icon:'',polls:[]};
+  if(addPoll&&!FD.g.polls.includes(addPoll)) FD.g.polls.push(addPoll);
+  FD.orig=src?JSON.stringify({n:src.name,i:src.icon,p:[...src.polls].sort()}):''; FD.q='';
+  let d=$('fddlg');
+  if(!d){ d=document.createElement('dialog'); d.id='fddlg'; d.className='dlg grdlg fddlg'; d.setAttribute('aria-labelledby','fd_n'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d) fdClose(); });
+    d.addEventListener('cancel',e=>{ e.preventDefault(); if(d.classList.contains('pk-on')) fdIcons(false); else fdClose(); });
+    d.addEventListener('input',e=>{ if(e.target.id==='fd_q'){ FD.q=e.target.value; fdRender(); } else if(e.target.id==='fd_n'){ FD.g.name=e.target.value; fdRender(); } });
+    d.addEventListener('change',e=>{ const cb=e.target.closest('[data-fdtog]'); if(!cb||!FD.g) return; const pid=cb.dataset.fdtog;
+      FD.g.polls=cb.checked?[...FD.g.polls.filter(x=>x!==pid),pid]:FD.g.polls.filter(x=>x!==pid); fdRender(); });
+    d.addEventListener('click',e=>{ if(e.target.closest('[data-fdclose]')) fdClose(); else if(e.target.closest('[data-fdpic]')) fdIcons(!d.classList.contains('pk-on'));
+      else if(e.target.closest('[data-pk="fd"],[data-pkclear="fd"]')) fdIcons(false);
+      else if(e.target.closest('[data-fdsave]')) fdSave(e.target.closest('[data-fdsave]'));
+      else if(e.target.closest('[data-fddelg]')){ const gid=FD.g&&FD.g.id; if(gid) fdDelete(gid).then(ok=>{ if(ok) fdClose(true); }); } }); }
+  const g=FD.g;
+  d.innerHTML=`<div class="dlg-h"><button type="button" class="grp-ic" data-fdpic aria-expanded="false" title="${t('Change icon')}" aria-label="${t('Change icon')}"><span data-pkprev="fd">${fdTile(g,'pf-tile')}</span></button>
+      <input type="text" id="fd_n" class="grp-name" maxlength="60" value="${esc(g.name)}" placeholder="${t('Group name, e.g. Work')}" aria-label="${t('Group name')}" autocomplete="off" enterkeyhint="next">
+      ${pqb('x',t('Close'),'data-fdclose=""')}</div>
+    <div class="dlg-b"><div id="fd_pk" hidden>${picker('fd',{emoji:g.icon,text:g.name||'?',seed:g.id||g.name})}</div>
+      <label class="pd-q">${ICON.search}<input type="search" id="fd_q" placeholder="${t('Search your polls')}" aria-label="${t('Search your polls')}" autocomplete="off" enterkeyhint="done"></label>
+      <div class="err" id="fd_err"></div></div>
+    <div id="fd_list" class="pd-list gs-list"></div>
+    <div class="dlg-f">${g.id?`<button type="button" class="btn sm ghost danger withic" data-fddelg>${ICON.trash}<span>${t('Delete group')}</span></button>`:''}<span class="grow"></span>
+      <button type="button" class="btn primary withic" data-fdsave>${ICON.check}<span>${t('Save')}</span></button></div>`;
+  d.classList.remove('pk-on'); if(!d.open) d.showModal();
+  fdRender(); if(!TOUCH) $(g.name?'fd_q':'fd_n').focus(); else if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+}
+function fdIcons(on){
+  const d=$('fddlg'), p=$('fd_pk'), b=d&&d.querySelector('[data-fdpic]'); if(!p||!b) return;
+  p.hidden=!on; d.classList.toggle('pk-on',on); b.setAttribute('aria-expanded',String(on));
+  if(on){ if(!TOUCH) p.querySelector('.pk-search')?.focus(); }
+  else { if(FD.g&&PICK.fd) FD.g.icon=PICK.fd.emoji||''; fdRender(); }
+}
+function fdClose(force){
+  const d=$('fddlg'); if(!d) return;
+  if(!force&&FD.g&&FD.orig!==''&&fdState()!==FD.orig&&!confirm(t('Discard your changes to this group?'))) return;
+  if(!force&&FD.g&&FD.orig===''&&(FD.g.name.trim()||FD.g.polls.length)&&!confirm(t('Discard your changes to this group?'))) return;
+  FD.g=null; d.close();
+}
+function fdRender(){
+  const box=$('fd_list'); if(!box||!FD.g) return;
+  const g=FD.g, q=FD.q.trim().toLowerCase(), on=new Set(g.polls), {own,ans}=fdPolls();
+  const hit=p=>!q||(p.title||'').toLowerCase().includes(q);
+  const kind=p=>p.kind==='series'?t('Recurring'):p.kind==='weekly'?t('Weekly schedule'):t('One-off');
+  const sec=(ic,title,ps)=>{ const l=ps.filter(hit); if(!l.length) return '';
+    return `<div class="cgrp">${ICON[ic]}<span class="grow">${title} <span class="muted">(${l.length})</span></span></div><ul class="list">${l.map(p=>`<li><label class="gs-row">${pollTile(p,'sm')}
+      <span class="grow pmain"><b class="ell">${esc(p.title)}</b><span class="muted small ell">${esc(kind(p))}</span></span>
+      <input type="checkbox" data-fdtog="${esc(p.id)}" ${on.has(p.id)?'checked':''} aria-label="${esc(p.title)}"></label></li>`).join('')}</ul>`; };
+  const h=sec('cal',t('Your polls'),own)+sec('check',t('Polls you answered'),ans);
+  box.innerHTML=h||`<p class="help">${own.length||ans.length?t('No poll matches.'):t('You have no polls yet. Create or answer one first.')}</p>`;
+  const s=document.querySelector('#fddlg [data-fdsave]'); if(s) s.disabled=FD.busy||!g.name.trim()||(!!g.id&&fdState()===FD.orig);
+  const pv=document.querySelector('#fddlg [data-pkprev="fd"]'); if(pv&&!$('fddlg').classList.contains('pk-on')) pv.innerHTML=fdTile(g,'pf-tile');
+}
+async function fdSave(btn){
+  const g=FD.g, err=$('fd_err'); if(!g) return; err.textContent='';
+  g.name=$('fd_n').value.trim(); if(PICK.fd) g.icon=PICK.fd.emoji||'';
+  if(!g.name){ err.textContent=t('Give the group a name.'); $('fd_n').focus(); return; }
+  FD.busy=true; btn.disabled=true;
+  try{ const b={name:g.name,icon:g.icon,polls:g.polls};
+    const r=g.id?await api('PATCH','/me/poll-groups/'+encodeURIComponent(g.id),b):await api('POST','/me/poll-groups',b);
+    FD.list=g.id?FD.list.map(x=>x.id===g.id?r.group:x):[...FD.list,r.group];
+    fdClose(true); renderFolderCard(); if($('fdsdlg')&&$('fdsdlg').open) fdsRender(); toast(t('Group saved')); }
+  catch(ex){ err.textContent=ex.message; }
+  finally{ FD.busy=false; if(btn.isConnected) fdRender(); }
+}
+// From a poll card's ⋯ menu: tick the groups this poll is in; changes save at once.
+const FDS={pid:''};
+async function fdSheet(pid){
+  FDS.pid=pid;
+  try{ await fdLoad(); }catch(ex){ toast(ex.message); return; }
+  let d=$('fdsdlg');
+  if(!d){ d=document.createElement('dialog'); d.id='fdsdlg'; d.className='dlg'; d.setAttribute('aria-labelledby','fds_h'); document.body.appendChild(d);
+    d.addEventListener('click',e=>{ if(e.target===d||e.target.closest('[data-fdsclose]')) d.close();
+      else if(e.target.closest('[data-fdsnew]')){ d.close(); fdOpen('',FDS.pid); } });
+    d.addEventListener('change',async e=>{ const cb=e.target.closest('[data-fdstog]'); if(!cb) return;
+      const g=FD.list.find(x=>x.id===cb.dataset.fdstog); if(!g) return;
+      const polls=cb.checked?[...g.polls.filter(x=>x!==FDS.pid),FDS.pid]:g.polls.filter(x=>x!==FDS.pid); cb.disabled=true;
+      try{ const r=await api('PATCH','/me/poll-groups/'+encodeURIComponent(g.id),{polls}); FD.list=FD.list.map(x=>x.id===g.id?r.group:x);
+        toast(cb.checked?t('Added to {group}',{group:g.name}):t('Removed from {group}',{group:g.name})); renderFolderCard(); fdsRender(); }
+      catch(ex){ toast(ex.message); cb.checked=!cb.checked; cb.disabled=false; } }); }
+  const p=fdPoll(pid);
+  d.innerHTML=`<div class="dlg-h"><h2 id="fds_h" class="ell">${t('Poll groups')}${p?` · ${esc(p.title)}`:''}</h2>${tip(t('Each poll group has one calendar link with the meetings you’re in from all its polls. Manage them on your Account page.'),'left')}${pqb('x',t('Close'),'data-fdsclose=""')}</div><div id="fds_list" class="pd-list gs-list"></div>`;
+  if(!d.open) d.showModal(); if(document.activeElement&&d.contains(document.activeElement)) document.activeElement.blur();
+  fdsRender();
+}
+function fdsRender(){
+  const box=$('fds_list'); if(!box) return;
+  box.innerHTML=`<ul class="list">${(FD.list||[]).map(g=>`<li><label class="gs-row">${fdTile(g)}<span class="grow pmain"><b class="ell">${esc(g.name)}</b><span class="muted small">${esc(fdCount(g.polls.length))}</span></span>
+      <input type="checkbox" data-fdstog="${esc(g.id)}" ${g.polls.includes(FDS.pid)?'checked':''} aria-label="${esc(g.name)}"></label></li>`).join('')}
+    <li><button type="button" class="gs-row gs-new" data-fdsnew>${ICON.plus}<b>${t('New poll group with this poll')}</b></button></li></ul>`;
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-fdopen],[data-fdsheet]'); if(!b) return;
+  const dd=b.closest('details[open]'); if(dd) dd.open=false;
+  if(b.dataset.fdsheet) fdSheet(b.dataset.fdsheet); else fdOpen(b.dataset.fdopen||''); });
 
 // ================= CONNECT AN AI ASSISTANT (?connect=<request id>) =================
 // /oauth/authorize (Worker) sends people here: sign in, then Allow or Deny. The answer sends the browser back to the app.
@@ -6574,9 +6741,10 @@ function tellSet(ids){ P.tell=ids.length?{poll:P.id,iid:inst().id,ids}:null; ren
 function tellMeets(){ const x=P.tell; if(!x||x.poll!==P.id||x.iid!==inst().id) return []; return inst().meetings.filter(m=>x.ids.includes(m.id)&&!m.proposed); }
 // Top of the Meetings tab: subscribe to the poll's meetings feed (calendar.ics) in a calendar app, with a Show me how guide (hsOpen(os,'cal')).
 // ✕ folds it to one line (localStorage subbar:<poll>).
-function subLinks(){ const https=icsUrl(null,false), webcal=https.replace(/^https?:/,'webcal:'), title=(P.data&&P.data.poll&&P.data.poll.title)||'when-who';
+function subLinksFor(https,title){ const webcal=https.replace(/^https?:/,'webcal:');
   return { https, webcal, google:'https://calendar.google.com/calendar/r?cid='+encodeURIComponent(webcal),
-    outlook:`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent(title)}` }; }
+    outlook:`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${encodeURIComponent(title||'when-who')}` }; }
+const subLinks=()=>subLinksFor(icsUrl(null,false),(P.data&&P.data.poll&&P.data.poll.title)||'when-who');
 function subBar(){
   if(!P.data||!P.data.poll) return '';
   const shut=store.get('subbar:'+P.id,false), L=subLinks();
@@ -13718,7 +13886,32 @@ function germanText(){ return {
 "when-who opens in its own window, with an icon in your dock or taskbar. Pin it to keep it there.": "when-who öffnet sich in einem eigenen Fenster, mit einem Symbol im Dock oder in der Taskleiste. Heft es dort an, damit es bleibt.",
 "{host} wants to": "{host} möchte",
 "“when-who” would like to send you notifications": "„when-who“ möchte dir Mitteilungen senden",
-"“{host}” wants to send you notifications": "„{host}“ möchte dir Mitteilungen senden"}; }
+"“{host}” wants to send you notifications": "„{host}“ möchte dir Mitteilungen senden",
+"Poll groups": "Umfragegruppen",
+"Put polls that belong together in a group, for example Work or Choir. Each group has its own calendar link: subscribe to it once and your calendar app shows the meetings you’re in from all its polls, kept up to date. Anyone with the link sees those meetings, so keep it private.": "Fasse zusammengehörige Umfragen in einer Gruppe zusammen, zum Beispiel Arbeit oder Chor. Jede Gruppe hat einen eigenen Kalenderlink: Abonniere ihn einmal, und deine Kalender-App zeigt die Termine, an denen du teilnimmst, aus allen ihren Umfragen, immer aktuell. Wer den Link hat, sieht diese Termine, also behalte ihn für dich.",
+"New poll group": "Neue Umfragegruppe",
+"Add to poll group…": "Zu Umfragegruppe hinzufügen…",
+"1 poll": "1 Umfrage",
+"{n} polls": "{n} Umfragen",
+"Add these meetings to your calendar app": "Diese Termine zu deiner Kalender-App hinzufügen",
+"Apple Calendar (iPhone, Mac)": "Apple Kalender (iPhone, Mac)",
+"Google Calendar": "Google Kalender",
+"Outlook": "Outlook",
+"No poll groups yet. Group your polls to get all their meetings in your calendar with one link.": "Noch keine Umfragegruppen. Gruppiere deine Umfragen, um alle ihre Termine mit einem Link in deinen Kalender zu holen.",
+"No polls yet": "Noch keine Umfragen",
+"Edit group": "Gruppe bearbeiten",
+"New calendar link": "Neuer Kalenderlink",
+"Delete the poll group “{name}”? Its calendar link stops working. The polls stay as they are.": "Umfragegruppe „{name}“ löschen? Ihr Kalenderlink funktioniert dann nicht mehr. Die Umfragen bleiben, wie sie sind.",
+"Make a new calendar link? The old link stops working, so calendars subscribed to it stop updating. Subscribe again with the new one.": "Neuen Kalenderlink erstellen? Der alte Link funktioniert dann nicht mehr, und Kalender, die ihn abonniert haben, werden nicht mehr aktualisiert. Abonniere danach den neuen Link.",
+"New link made. Subscribe again with it.": "Neuer Link erstellt. Abonniere ihn erneut.",
+"Group name, e.g. Work": "Gruppenname, z. B. Arbeit",
+"Search your polls": "Deine Umfragen durchsuchen",
+"No poll matches.": "Keine Umfrage passt.",
+"You have no polls yet. Create or answer one first.": "Du hast noch keine Umfragen. Erstelle oder beantworte zuerst eine.",
+"Each poll group has one calendar link with the meetings you’re in from all its polls. Manage them on your Account page.": "Jede Umfragegruppe hat einen Kalenderlink mit den Terminen, an denen du teilnimmst, aus allen ihren Umfragen. Verwalte sie auf deiner Kontoseite.",
+"New poll group with this poll": "Neue Umfragegruppe mit dieser Umfrage",
+"Group polls that belong together. Each group has one calendar link with the meetings you’re in from all its polls.": "Fasse zusammengehörige Umfragen zusammen. Jede Gruppe hat einen Kalenderlink mit den Terminen, an denen du teilnimmst, aus allen ihren Umfragen.",
+"<b>Your calendar app, for poll groups</b>: only if you make a poll group on your Account page and subscribe to its calendar link. The group’s name, its list of polls and the secret link are stored with your account until you delete the group or the account. Your calendar app then fetches the meetings you’re in from those polls in the same way. Anyone who has the link can see those meetings; you can make a new link at any time, which stops the old one.": "<b>Deine Kalender-App, für Umfragegruppen</b>: nur wenn du auf deiner Kontoseite eine Umfragegruppe anlegst und ihren Kalenderlink abonnierst. Der Name der Gruppe, ihre Liste von Umfragen und der geheime Link werden mit deinem Konto gespeichert, bis du die Gruppe oder das Konto löschst. Deine Kalender-App ruft dann die Termine, an denen du teilnimmst, aus diesen Umfragen auf dieselbe Weise ab. Wer den Link hat, kann diese Termine sehen; du kannst jederzeit einen neuen Link erstellen, der den alten ungültig macht."}; }
 })();
 </script>
 </body>

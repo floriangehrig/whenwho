@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-yDGzI2FFZe3k2mSmVK8AN3UQu2Ppw1+PVryLtC/qJLg=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ujlMOLwZzJkw22bdpHu8llBgzWlRNIvWI6IVLnhGQlg=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -132,6 +132,7 @@ async function route(request, env, ctx, url) {
   const rl = parts[1] === 'places' ? env.RL_PLACES : m !== 'GET' && m !== 'HEAD' ? env.RL_WRITE : null;
   if (rl && !(await rl.limit({ key: clientIp(request) })).success) throw new HttpError(429, 'Too many requests. Wait a minute and try again.');
   if (parts[1] === 'places' && m === 'GET') return placeSearch(url, ctx); // before the session lookup: it runs on every keystroke
+  if (parts[1] === 'feeds' && parts[2] && !parts[3] && (m === 'GET' || m === 'HEAD')) return folderFeed(request, env, url, parts[2]); // calendar apps: no cookies
   if (!INTERNAL.has(request)) USERS.set(request, await getUser(env, cookies)); // MCP tool calls come with their user set (callApi)
   if (parts[1] === 'config' && m === 'GET') return json({ emailEnabled: emailEnabled(env), turnstileSiteKey: env.TURNSTILE_SECRET ? env.TURNSTILE_SITE_KEY || '' : '', calProviders: calProviders(env), aiFill: !!env.AI, help: !!env.AI, personalLinks: !!env.LINK_KEY, push: pushOn(env) ? env.VAPID_PUBLIC_KEY : null, operator: env.OPERATOR_NAME || '', contact: env.CONTACT_EMAIL || '', address: env.OPERATOR_ADDRESS || '', phone: env.OPERATOR_PHONE || '', dpa: env.DPA_NAME || '' });
   if (parts[1] === 'help' && !parts[2]) { if (m === 'POST') return helpAsk(request, env); throw new HttpError(405, 'Method not allowed'); }
@@ -190,6 +191,13 @@ async function route(request, env, ctx, url) {
       if (!parts[3] && m === 'POST') return addGroup(request, env);
       if (parts[3] && !parts[4] && m === 'PATCH') return updateGroup(request, env, url, parts[3]);
       if (parts[3] && !parts[4] && m === 'DELETE') return deleteGroup(request, env, parts[3]);
+    }
+    if (parts[2] === 'poll-groups') {
+      if (!parts[3] && m === 'GET') return listFolders(request, env, url);
+      if (!parts[3] && m === 'POST') return addFolder(request, env, url);
+      if (parts[3] && !parts[4] && m === 'PATCH') return updateFolder(request, env, url, parts[3]);
+      if (parts[3] && !parts[4] && m === 'DELETE') return deleteFolder(request, env, parts[3]);
+      if (parts[3] && parts[4] === 'reset' && !parts[5] && m === 'POST') return resetFolderFeed(request, env, url, parts[3]);
     }
     if (parts[2] === 'presets') {
       if (!parts[3] && m === 'GET') return listPresets(request, env);
@@ -1002,7 +1010,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0041';
+const USER_DATA_REVIEWED = '0042';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1033,6 +1041,7 @@ const USER_DATA = {
   favourites: { rows: 'SELECT * FROM favourites WHERE user_id = ?', del: 'DELETE FROM favourites WHERE user_id = ?' },
   contact_groups: { rows: 'SELECT * FROM contact_groups WHERE user_id = ?', del: 'DELETE FROM contact_groups WHERE user_id = ?' },
   poll_presets: { rows: 'SELECT * FROM poll_presets WHERE user_id = ?', del: 'DELETE FROM poll_presets WHERE user_id = ?' },
+  poll_folders: { rows: 'SELECT * FROM poll_folders WHERE user_id = ?', del: 'DELETE FROM poll_folders WHERE user_id = ?' }, // my poll groups (feed_token left out of the export)
   friends: { rows: 'SELECT * FROM friends WHERE from_id = ? OR to_id = ?', del: 'DELETE FROM friends WHERE from_id = ? OR to_id = ?' },
   user_calendars: { rows: 'SELECT * FROM user_calendars WHERE user_id = ?', del: 'DELETE FROM user_calendars WHERE user_id = ?' },
   calendar_accounts: { rows: 'SELECT * FROM calendar_accounts WHERE user_id = ?', del: 'DELETE FROM calendar_accounts WHERE user_id = ?' }, // tokens revoked first
@@ -2530,10 +2539,12 @@ async function myPolls(request, env) {
 // The meetings of one round (row.meetings) I'm in, one call per date in from..to (repeats expanded, all-day ranges per day):
 // the owner is in all of them, others when the meeting is for everyone or lists their answer (mine = my response row).
 // Proposals are skipped unless `proposed` (Upcoming lists them for voting). each(mt, { kind, mtitle, allDay, hs?, he?, date }).
+// Am I in this meeting? The owner is in all; others when it's for everyone or lists their answer (mine = my response row).
+const inMeeting = (mt, mine, own) => own || mt.participants === 'all' || !!(mine && Array.isArray(mt.participants) && mt.participants.some((x) => x.id === mine.id));
 function myMeetingOccs(row, mine, own, from, to, each, proposed = false) {
   for (const mt of jsonList(row.meetings)) {
     if (mt.proposed && !proposed) continue;
-    if (!own && mt.participants !== 'all' && !(mine && Array.isArray(mt.participants) && mt.participants.some((x) => x.id === mine.id))) continue;
+    if (!inMeeting(mt, mine, own)) continue;
     const t = { kind: 'meeting', mtitle: mt.title || '', allDay: !!mt.allDay, ...(mt.allDay ? {} : { hs: mt.start, he: mt.end }) };
     if (mt.repeat && isDate(mt.repeat.from)) {
       for (let d = firstOnWeekday(mt.repeat.from, wdOf(mt.date)), i = 0; i < 520 && d <= to && (!mt.repeat.until || d <= mt.repeat.until); i++, d = addDays(d, 7 * (mt.repeat.every || 1)))
@@ -3114,7 +3125,7 @@ function icsFold(line) {
 }
 // A weekly meeting's first date: its weekday, on or after repeat.from.
 const meetingStart = (mt) => (mt.repeat ? firstOnWeekday(mt.repeat.from, wdOf(mt.date)) : mt.date);
-function meetingToIcs(mt, poll, link, texts) {
+function meetingToIcs(mt, poll, link, texts, { suffix = '' } = {}) {
   // Older single-day "all day" meetings of a poll that takes hours: export them over the poll's hours instead.
   if (mt.allDay && !mt.endDate && poll.answer_mode !== 'days' && poll.hour_end > poll.hour_start)
     mt = { ...mt, allDay: false, start: poll.hour_start, end: Math.min(24, poll.hour_end) };
@@ -3130,16 +3141,18 @@ function meetingToIcs(mt, poll, link, texts) {
     const until = mt.repeat.until ? `;UNTIL=${mt.repeat.until.replace(/-/g, '')}${mt.allDay ? '' : 'T235959'}` : '';
     lines.push(`RRULE:FREQ=WEEKLY;INTERVAL=${mt.repeat.every}${until}`);
   }
-  lines.push(`SUMMARY:${icsEscape(mt.title || poll.title)}`);
+  lines.push(`SUMMARY:${icsEscape(mt.title && suffix ? `${mt.title} · ${suffix}` : mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
   lines.push(`DESCRIPTION:${icsEscape(meetingDescText(poll, mt, texts && texts.get(mt.id), { link }))}`, 'END:VEVENT');
   return lines;
 }
-function buildIcs(poll, meetings, link, texts) {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//when-who//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-    `X-WR-CALNAME:${icsEscape(poll.title)}`, ...meetings.flatMap((mt) => meetingToIcs(mt, poll, link, texts)), 'END:VCALENDAR'];
+// One calendar from the meetings of several polls: parts = [{ poll, meetings, link, texts, suffix? }].
+function buildIcsMulti(calName, parts) {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//when-who//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsEscape(calName)}`,
+    ...parts.flatMap((p) => p.meetings.flatMap((mt) => meetingToIcs(mt, p.poll, p.link, p.texts, { suffix: p.suffix }))), 'END:VCALENDAR'];
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
+const buildIcs = (poll, meetings, link, texts) => buildIcsMulti(poll.title, [{ poll, meetings, link, texts }]);
 const whoText = (mt) => (mt.participants === 'all' ? 'Everyone' : mt.participants.map((p) => p.name).join(', '));
 // Plain-text sections for meeting descriptions (.ics, emails): "📝 Description" header line, then the body.
 const ANS_ICON = { y: '✅', i: '🟡', m: '🤔', n: '❌' };
@@ -3286,6 +3299,133 @@ async function calendar(request, env, url, id) {
   const name = (only ? `${meetings[0]?.title || poll.title} ${meetings[0] ? meetingStart(meetings[0]) : ''}` : poll.title).replace(/[^\w\- ]+/g, '').trim() || 'meetings';
   return new Response(buildIcs(poll, meetings, `${url.origin}/?p=${poll.id}`, texts), {
     headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `${url.searchParams.get('download') ? 'attachment' : 'inline'}; filename="${name}.ics"`, 'cache-control': 'no-cache' },
+  });
+}
+
+// ---------- poll groups (Account page): named sets of polls with one live calendar link each ----------
+// Table poll_folders ("folders" in code: poll_groups already links contact groups to polls). A poll may be in several groups.
+const MAX_FOLDERS = 20, MAX_FOLDER_POLLS = 100;
+const FEED_RE = /^[A-Za-z0-9_-]{20,64}$/;
+const FEED_KEEP_DAYS = 366; // meetings that ended longer ago stay out of the feed
+const ACCESS_SQL = 'owner_id = ?1 OR id IN (SELECT poll_id FROM participants WHERE user_id = ?1)';
+// The ids of these polls that the person can open (owner or in it), in the given order.
+async function accessiblePolls(env, uid, ids) {
+  if (!ids.length) return [];
+  const { results } = await env.DB.prepare(`SELECT id FROM polls WHERE id IN (SELECT value FROM json_each(?2)) AND (${ACCESS_SQL})`)
+    .bind(uid, JSON.stringify(ids)).all();
+  const ok = new Set(results.map((r) => r.id));
+  return ids.filter((x) => ok.has(x));
+}
+function folderInput(b, partial) {
+  const out = {};
+  if (!partial || b.name !== undefined) {
+    const name = typeof b.name === 'string' ? b.name.replace(/\s+/g, ' ').trim() : '';
+    if (!name) throw new HttpError(400, 'Give the group a name');
+    if (name.length > 60) throw new HttpError(400, 'Name is too long');
+    out.name = name;
+  }
+  if (b.icon !== undefined) out.icon = emojiIcon(b.icon, 'Icon');
+  if (b.polls !== undefined) {
+    if (!Array.isArray(b.polls) || b.polls.some((x) => typeof x !== 'string' || !ID_RE.test(x))) throw new HttpError(400, 'Invalid polls');
+    const ids = [...new Set(b.polls)];
+    if (ids.length > MAX_FOLDER_POLLS) throw new HttpError(400, `A group can hold at most ${MAX_FOLDER_POLLS} polls`);
+    out.polls = ids;
+  }
+  return out;
+}
+const feedPath = (url, token) => `/api/feeds/${token}.ics`; // a path: the page adds its own origin (under wrangler dev url.origin is the production host)
+async function folderOut(env, url, uid, f) {
+  return { id: f.id, name: f.name, icon: f.icon || '', polls: await accessiblePolls(env, uid, jsonList(f.polls)), feed: feedPath(url, f.feed_token) };
+}
+// GET /api/me/poll-groups — my poll groups, each with the polls I can still open and its secret calendar link.
+async function listFolders(request, env, url) {
+  const user = requireUser(request);
+  const { results } = await env.DB.prepare('SELECT * FROM poll_folders WHERE user_id = ? ORDER BY created_at').bind(user.id).all();
+  const all = [...new Set(results.flatMap((f) => jsonList(f.polls)))], ok = new Set(await accessiblePolls(env, user.id, all));
+  return json({ groups: results.map((f) => ({ id: f.id, name: f.name, icon: f.icon || '', polls: jsonList(f.polls).filter((x) => ok.has(x)), feed: feedPath(url, f.feed_token) })) });
+}
+// POST /api/me/poll-groups { name, icon?, polls? }
+async function addFolder(request, env, url) {
+  const user = requireUser(request);
+  const f = folderInput(await body(request), false);
+  const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM poll_folders WHERE user_id = ?').bind(user.id).first('n');
+  if (n >= MAX_FOLDERS) throw new HttpError(409, `You can have at most ${MAX_FOLDERS} poll groups`);
+  const row = { id: randomId(12), user_id: user.id, name: f.name, icon: f.icon || '', polls: JSON.stringify(await accessiblePolls(env, user.id, f.polls || [])),
+    feed_token: secret(), created_at: now() };
+  await env.DB.prepare('INSERT INTO poll_folders (id, user_id, name, icon, polls, feed_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(row.id, user.id, row.name, row.icon, row.polls, row.feed_token, row.created_at, row.created_at).run();
+  return json({ group: await folderOut(env, url, user.id, row) });
+}
+// PATCH /api/me/poll-groups/:id { name?, icon?, polls? } — polls replaces the list (only polls I can open are kept).
+async function updateFolder(request, env, url, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Group not found');
+  const f = folderInput(await body(request), true), sets = [], vals = [];
+  if ('name' in f) { sets.push('name = ?'); vals.push(f.name); }
+  if ('icon' in f) { sets.push('icon = ?'); vals.push(f.icon); }
+  if ('polls' in f) { sets.push('polls = ?'); vals.push(JSON.stringify(await accessiblePolls(env, user.id, f.polls))); }
+  sets.push('updated_at = ?'); vals.push(now());
+  const r = await env.DB.prepare(`UPDATE poll_folders SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`).bind(...vals, fid, user.id).run();
+  if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Group not found');
+  const row = await env.DB.prepare('SELECT * FROM poll_folders WHERE id = ?').bind(fid).first();
+  return json({ group: await folderOut(env, url, user.id, row) });
+}
+// POST /api/me/poll-groups/:id/reset — a new calendar link; the old one stops working.
+async function resetFolderFeed(request, env, url, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Group not found');
+  const token = secret();
+  const r = await env.DB.prepare('UPDATE poll_folders SET feed_token = ?, updated_at = ? WHERE id = ? AND user_id = ?').bind(token, now(), fid, user.id).run();
+  if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Group not found');
+  return json({ feed: feedPath(url, token) });
+}
+async function deleteFolder(request, env, fid) {
+  const user = requireUser(request);
+  if (!ID_RE.test(fid)) throw new HttpError(404, 'Group not found');
+  await env.DB.prepare('DELETE FROM poll_folders WHERE id = ? AND user_id = ?').bind(fid, user.id).run();
+  return json({ ok: true });
+}
+// GET /api/feeds/<token>.ics — a poll group's live calendar (calendar apps fetch it without cookies; the token is the secret).
+// The confirmed meetings the group's owner is in (inMeeting, as on Upcoming) across the group's polls they can still open,
+// repeats as RRULE, SUMMARY "Meeting · Poll". Meetings that ended over a year ago are left out.
+async function folderFeed(request, env, url, raw) {
+  const token = raw.replace(/\.ics$/, '');
+  await checkThrottle(env, request, 'feed', { max: 20, msg: `Too many calendar link attempts. Try again in ${FAIL_WINDOW_MIN} minutes.` });
+  const f = FEED_RE.test(token) ? await env.DB.prepare('SELECT id, user_id, name, icon, polls FROM poll_folders WHERE feed_token = ?').bind(token).first() : null;
+  if (!f) { await recordFail(env, request, 'feed'); throw new HttpError(404, 'Calendar not found'); }
+  const ids = jsonList(f.polls).slice(0, MAX_FOLDER_POLLS);
+  const { results: rows } = ids.length ? await env.DB.prepare(
+    `SELECT p.id AS pid, p.title, p.description, p.lang, p.answer_mode, p.hour_start, p.hour_end, p.kind, p.unit, p.owner_id,
+       i.id AS iid, i.seq, i.start_date, i.end_date, i.meetings, i.questions,
+       (SELECT r.id FROM responses r JOIN participants pa ON pa.id = r.participant_id WHERE pa.user_id = ?1 AND r.instance_id = i.id LIMIT 1) AS rid
+     FROM polls p JOIN instances i ON i.poll_id = p.id
+     WHERE p.id IN (SELECT value FROM json_each(?2)) AND (p.owner_id = ?1 OR p.id IN (SELECT poll_id FROM participants WHERE user_id = ?1))
+     ORDER BY p.id, i.seq LIMIT 2000`).bind(f.user_id, JSON.stringify(ids)).all() : { results: [] };
+  const cutoff = addDays(now().slice(0, 10), -FEED_KEEP_DAYS);
+  const lastDay = (mt) => (mt.repeat ? mt.repeat.until || '9999-12-31' : mt.endDate || mt.date);
+  const byPoll = new Map();
+  for (const row of rows) {
+    const mine = row.rid ? { id: row.rid } : null, own = row.owner_id === f.user_id;
+    const ms = jsonList(row.meetings).filter((mt) => !mt.proposed && isDate(mt.date) && lastDay(mt) >= cutoff && inMeeting(mt, mine, own));
+    if (!ms.length) continue;
+    if (!byPoll.has(row.pid)) byPoll.set(row.pid, { poll: { id: row.pid, title: row.title, description: row.description, lang: row.lang, answer_mode: row.answer_mode,
+      hour_start: row.hour_start, hour_end: row.hour_end, kind: row.kind, unit: row.unit, owner_id: row.owner_id }, meetings: [], insts: [] });
+    const e = byPoll.get(row.pid);
+    e.meetings.push(...ms);
+    if (ms.some((mt) => mt.inc)) e.insts.push({ ...row, id: row.iid, meetings: JSON.stringify(ms) });
+  }
+  let budget = 15; // answer texts read a round's answers (2 queries each); keep within the Free plan's per-request limit
+  const parts = [];
+  for (const pid of ids) {
+    const e = byPoll.get(pid);
+    if (!e) continue;
+    const insts = e.insts.slice(0, Math.max(0, budget)); budget -= insts.length;
+    parts.push({ poll: e.poll, meetings: e.meetings, link: `${siteUrl(env, url.origin)}/?p=${pid}`, texts: insts.length ? await meetingAnswerTexts(env, e.poll, insts) : null, suffix: e.poll.title });
+  }
+  const name = `${f.icon ? f.icon + ' ' : ''}${f.name} · when-who`;
+  return new Response(request.method === 'HEAD' ? null : buildIcsMulti(name, parts), {
+    headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${(f.name.replace(/[^\w\- ]+/g, '').trim() || 'meetings')}.ics"`,
+      'cache-control': 'private, max-age=900', 'x-robots-tag': 'noindex' },
   });
 }
 
@@ -4721,6 +4861,7 @@ POLLS. New poll (button on the home page). Which days and times: a list of rules
 SIGNING IN. Type your email, you get a 6-digit code by email (valid 10 minutes). There is no password.
 
 ANSWERING (Availability tab → Mine). Paint days with the brush: Yes (green), If needed (amber), No (red). Tap or range: tap marks one day, range marks from one day to another. Open a day to fine-tune hours. Quick fill… sets rules like "weekdays 18–22". Fill with AI (✨): type "weekdays after 6, not Fridays" and it marks it for you. Undo ↶ / redo ↷ (also Cmd/Ctrl+Z). Then press Send/Save. Guests give a name (and optionally an email); they can come back with the same browser, or with a personal link the organiser sends. Group view: see everyone's answers and the best days/times.
+POLL GROUPS (Account page): make groups of your polls (for example Work or Choir); a poll can be in several groups. Add polls in the group's editor or from a poll card's ⋯ menu on the overview (Add to poll group). Each group has one live calendar link: subscribe to it once (Apple, Google, Outlook or copy the link) and your calendar app shows the meetings you're in across all the group's polls, kept up to date. Anyone with the link sees those meetings, so keep it private; ⋯ New link makes a new one and the old one stops working.
 Calendars (Account page): connect Google or Outlook, or paste an iCal link; your busy hours show greyed out while answering (Busy ▾ in My answer). You can share when you're busy with the poll's people (Share switch); only the busy hours are shared, never event titles. Busy ▾ → Other polls (signed in) also greys out meetings you're in and hours you marked available / if needed in your other open polls; only you see that. It is off at first: switch it on there or in Account → Calendars (Show my busy hours from other polls). The Busy ▾ menu can limit it to My answers or Meetings, and to certain polls.
 
 MEETINGS tab. The organiser (and editors) plan meetings: Plan new, pick times from the answers, Quick Suggest (⚡) proposes the best times, Suggest with AI (✨) from a sentence like "2 evening meetings a week, not Fridays". Let people vote = propose several options and people vote. A meeting can have a place (place search), a note, repeat, and show answers from the poll. Everyone can add meetings to their calendar (.ics / subscribe), and the organiser can email everyone. At the top of the Meetings tab, "Get these meetings in your calendar" has one-tap buttons to subscribe in Apple Calendar (iPhone, iPad, Mac), Google Calendar or Outlook, Copy link for other apps, and Show me how (a short animated guide per app). A subscribed calendar updates by itself when meetings are added, changed or cancelled (calendar apps check every few hours). When the meetings already exist, Settings → Meetings → Create the meetings from these times makes one meeting per offered day for each run of hours without a break (also in every new round).

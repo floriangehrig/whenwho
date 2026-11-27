@@ -63,6 +63,15 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   same rule as the page's `todoList` (whose `req` item now counts every unanswered question, required ones named). One row per poll with a chip
   per item → `?p=<id>&todo=<kind>`, which runs that To do item once the poll is drawn (`TODO_GO`, `todoGoCheck` → `todoDo`). Poll cards
   in Polls you answered get a To do chip (`pcTodo`). The app icon badge (`appBadge`, `navigator.setAppBadge`) = sum of `unread`, the open poll's live.
+- **Poll groups** (0042 `poll_folders`; "folders" in code because `poll_groups` already links contact groups to polls; UI: Poll groups):
+  per account named sets of polls (`name`, `icon` emoji, `polls` JSON ids, a poll may be in several; max 20 groups, 100 polls), each with a
+  secret live calendar link `GET /api/feeds/<feed_token>.ics` (`folderFeed`, no session, routed before the session lookup; bad tokens throttled
+  as `login_attempts` kind `feed`). The feed = confirmed meetings the group's owner is in (`inMeeting`, the same rule `myMeetingOccs` / Upcoming
+  use: owner all, others meetings for everyone or listing their answer) across the group's polls they can still open (`accessiblePolls`),
+  repeats as RRULE, SUMMARY "Meeting · Poll" (`buildIcsMulti`; `buildIcs` is its one-poll case), meetings ended over a year ago left out,
+  answer texts for at most 15 rounds. `GET|POST /api/me/poll-groups`, `PATCH|DELETE /api/me/poll-groups/:id`, `POST .../:id/reset` (new token,
+  old link dead); `feed` is a path, the page adds its origin. Page: Account → **Poll groups** card (`renderFolderCard`, `#fdcard`, Subscribe ▾
+  via `subLinksFor`), editor `fdOpen` (`#fddlg`, picker key `fd`), overview poll card ⋯ → Add to poll group… (`fdSheet`, `#fdsdlg`), state `FD`.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
 - `mail_log`: recipients of person-started emails, for the daily cap (`MAIL_PER_DAY`).
 - `friends` (0010): friend requests between accounts. A request goes to an email (`to_email`; `to_id` once that address has an account),
