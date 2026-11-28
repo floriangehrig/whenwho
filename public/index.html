@@ -1491,7 +1491,7 @@
   .pc-copy svg{width:16px;height:16px}
   .pc-more{z-index:2;width:auto;min-height:0} .pc-more>summary.qb{width:32px;height:32px;color:var(--muted)} .pc-more .ddp{top:100%;margin-top:4px}
   .pcard:has(.pc-more[open]){z-index:5} .pcard.hid{opacity:.72;border-style:dashed}
-  .hp-tools{margin:12px 0 0} .hp-tools .pd-q{flex:1 1 200px} .hp-tools .seg .segic svg{width:14px;height:14px}
+  .hp-tools{margin:12px 0 0} .hp-tools .pd-q{flex:1 1 200px} .hp-hid{display:inline-flex;align-items:center;gap:6px} .hp-hid svg{width:15px;height:15px;flex:none} .hp-hid.on{border-color:var(--accent);color:var(--accent-ink)}
   .hp-dd{margin:0} .hp-dd>summary.btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;list-style:none} .hp-dd>summary::-webkit-details-marker{display:none}
   .hp-dd>summary svg{width:15px;height:15px} .hp-dd>summary.on{border-color:var(--accent);color:var(--accent-ink)}
   .hp-none{margin:14px 0 4px}
@@ -3904,21 +3904,20 @@ function pollCard(p,answered){
       <div class="menu-sep"></div><button type="button" class="danger" data-hpdel="${esc(p.id)}">${ICON.trash}<span class="grow">${p.kind==='series'?t('Delete all rounds'):t('Delete poll')}</span></button>`}</div></details></div>`;
 }
 // Home lists page after HOME_PAGE polls (own = Your polls, ans = Polls you answered). The page sticks until reload.
-// Each list has a toolbar (homeTools): title search, status (all = not hidden | open | closed | hidden), kind and sort.
+// Each list has a toolbar (homeTools): title search, a Hidden toggle (only when something is hidden), kind and sort.
 // Status / kind / sort are kept in localStorage `hpv`; hidden polls are stored on the account (PUT /api/me/polls/:id/hidden).
 const HOME_PAGE=9, HOME_PG={own:0,ans:0};
 const HOME_V=(()=>{ const sv=store.get('hpv',{}), d=k=>({q:'',st:'all',kind:'all',sort:'chat',...(sv[k]||{}),q:''}); return {own:d('own'),ans:d('ans')}; })();
 const homeSave=()=>store.set('hpv',Object.fromEntries(['own','ans'].map(k=>{ const {st,kind,sort}=HOME_V[k]; return [k,{st,kind,sort}]; })));
 const homeAll=key=>(key==='own'?ME.polls:ME.answered)||[];
 // Leave the Hidden view once nothing is hidden (also after a reload that remembered it).
-const homeNorm=key=>{ const v=HOME_V[key]; if(v.st==='hidden'&&!homeAll(key).some(p=>p.hidden)){ v.st='all'; homeSave(); } };
+const homeNorm=key=>{ const v=HOME_V[key]; if(v.st!=='all'&&(v.st!=='hidden'||!homeAll(key).some(p=>p.hidden))){ v.st='all'; homeSave(); } };
 const HOME_SORTS=key=>[['chat',t('Latest message')],key==='ans'?['last',t('Recently answered')]:['new',t('Newest first')],['start',t('By date')],['deadline',t('Reply by, soonest')],['az',t('Title A–Z')]];
 const HOME_KINDS=()=>[['all',t('All kinds')],['single',t('One-off')],['series',t('Recurring')],['weekly',t('Weekly schedule')]];
 function homeList(key){
   const v=HOME_V[key], q=v.q.trim().toLowerCase(), all=homeAll(key);
   const isOpen=p=>p.current&&p.current.status==='open';
   let l=all.filter(p=>(v.st==='hidden')===!!p.hidden
-    &&(v.st!=='open'||isOpen(p))&&(v.st!=='closed'||!isOpen(p))
     &&(v.kind==='all'||p.kind===v.kind)&&(!q||String(p.title||'').toLowerCase().includes(q)));
   const idx=new Map(all.map((p,i)=>[p.id,i])), byIdx=(a,b)=>idx.get(a.id)-idx.get(b.id), last='9999';
   const cmp={
@@ -3935,10 +3934,9 @@ const homeFiltered=key=>{ const v=HOME_V[key]; return !!v.q.trim()||v.st!=='all'
 function homeTools(key){ homeNorm(key);
   const all=homeAll(key), nHid=all.filter(p=>p.hidden).length, v=HOME_V[key];
   if(all.length<=3&&!nHid&&!homeFiltered(key)) return '';
-  const seg=[['all',t('All')],['open',t('Open')],['closed',t('Closed')],...(nHid||v.st==='hidden'?[['hidden',t('Hidden'),nHid]]:[])];
   const kinds=HOME_KINDS(), sorts=HOME_SORTS(key), kl=(kinds.find(k=>k[0]===v.kind)||kinds[0])[1], sl=(sorts.find(k=>k[0]===v.sort)||sorts[0])[1];
   return `<div class="acct-tools hp-tools" id="hp_${key}_tools"><label class="pd-q">${ICON.search}<input type="search" data-hpq="${key}" value="${esc(v.q)}" placeholder="${t('Search polls')}" aria-label="${t('Search polls')}" autocomplete="off"></label>
-    <div class="seg" role="group" aria-label="${t('Show')}">${seg.map(([k,l,n])=>`<button type="button" data-hpst="${key}" data-v="${k}" aria-pressed="${v.st===k}" class="${v.st===k?'on':''}"${k==='hidden'?` title="${t('Polls you hid from this overview')}"`:''}>${k==='hidden'?`<span class="segic">${ICON.eyeoff}</span>`:''}<span>${esc(l)}${n?` ${n}`:''}</span></button>`).join('')}</div>
+    ${nHid||v.st==='hidden'?`<button type="button" class="btn sm hp-hid${v.st==='hidden'?' on':''}" data-hpst="${key}" data-v="${v.st==='hidden'?'all':'hidden'}" aria-pressed="${v.st==='hidden'}" title="${t('Polls you hid from this overview')}">${ICON.eyeoff}<span>${t('Hidden')} ${nHid}</span></button>`:''}
     <details class="dd pickdd hp-dd"><summary class="btn sm${v.kind!=='all'?' on':''}" title="${t('Kind')}" aria-label="${t('Kind')}: ${esc(kl)}">${ICON.filter}<span class="hide-sm">${esc(kl)}</span></summary>
       <div class="ddp right menu pickm" role="menu">${kinds.map(([k,l])=>pickItem(`data-hpkind="${key}" data-v`,k,esc(l),v.kind===k)).join('')}</div></details>
     <details class="dd pickdd hp-dd"><summary class="btn sm" title="${t('Sort')}" aria-label="${t('Sort')}: ${esc(sl)}">${svgI('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>')}<span class="hide-sm">${esc(sl)}</span></summary>

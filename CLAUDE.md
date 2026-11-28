@@ -41,7 +41,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
 - `polls.invited_only` (0014): only invited people may answer. They must be signed in, as an account in the poll's `participants`
   or with the email of a guest row the owner added (that row then becomes the account's). The owner can always answer.
   Adding people (`POST .../participants`, invites) requires an email address, except friends picked by `uid`.
-- **Overview** (home page, signed in): Your polls / Polls you answered each get a toolbar (`homeTools`: title search, All / Open / Closed / Hidden,
+- **Overview** (home page, signed in): Your polls / Polls you answered each get a toolbar (`homeTools`: title search, Hidden toggle (only when some are hidden),
   kind, sort; `HOME_V`, kept in localStorage `hpv` without the search) and a ⋯ menu per card (Copy share link, Hide from overview; on your own polls Delete poll, in red).
   Hidden polls are per account in `poll_hidden` (0034), set by `PUT /api/me/polls/:id/hidden { hidden }`; `GET /api/me/polls` marks them `hidden: true`.
   **Upcoming** card on top (`upcomingCard` / `upLoad` / `upBody`, state `UP`): `GET /api/me/upcoming?from&to` (≤ 60 days, `upcoming`, read only) = meetings I'm in
