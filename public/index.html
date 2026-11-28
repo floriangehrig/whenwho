@@ -5770,7 +5770,7 @@ function fdSubMenu(g){
   return `<details class="dd qmore fd-sub"><summary class="btn sm withic" title="${esc(t('Add these meetings to your calendar app'))}">${ICON.cal}<span class="bl">${t('Subscribe')}</span></summary><div class="ddp right menu pickm">
     ${it('apple','cal',t('Apple Calendar (iPhone, Mac)'))}${it('google','cal',t('Google Calendar'))}${it('outlook','cal',t('Outlook'))}
     <div class="menu-sep"></div>${it('copy','copy',t('Copy link'))}${it('how','tap',t('Show me how'))}
-    ${g.busyFeed?`<div class="menu-sep"></div><div class="menu-h row tight">${t('Busy times only')}${tip(t('A second link with only the times, shown as “Busy”: no titles, places, notes or people. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.'),'right')}</div>
+    ${g.busyFeed?`<div class="menu-sep"></div><div class="menu-h row tight">${t('Busy times only')}${tip(t('A second link with only the times, shown as “Busy”: no titles, places, notes, people or group name. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.'),'right')}</div>
     ${it('apple','cal',t('Apple Calendar (iPhone, Mac)'),1)}${it('copy','copy',t('Copy busy link'),1)}`:''}</div></details>`;
 }
 async function renderFolderCard(){
@@ -5805,7 +5805,7 @@ document.addEventListener('click',async e=>{
       renderFolderCard(); toast(t('New link made. Subscribe again with it.')); }catch(ex){ toast(ex.message); }
     return; }
   const g=(FD.list||[]).find(x=>x.id===b.dataset.fd); if(!g) return;
-  const busy=!!b.dataset.fdbusy, L=subLinksFor(location.origin+(busy?g.busyFeed:g.feed),busy?`${g.name} · ${t('Busy')}`:g.name), k=b.dataset.fdsub;
+  const busy=!!b.dataset.fdbusy, L=subLinksFor(location.origin+(busy?g.busyFeed:g.feed),busy?t('Busy'):g.name), k=b.dataset.fdsub;
   if(k==='copy') return copy(L.https);
   if(k==='how') return hsOpen('cal');
   if(k==='apple') location.href=L.webcal; else window.open(L[k],'_blank','noopener');
@@ -13903,7 +13903,7 @@ function germanText(){ return {
 "New calendar link": "Neuer Kalenderlink",
 "Busy times only": "Nur Belegt-Zeiten",
 "Copy busy link": "Belegt-Link kopieren",
-"A second link with only the times, shown as “Busy”: no titles, places, notes or people. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.": "Ein zweiter Link nur mit den Zeiten, angezeigt als „Belegt“: keine Titel, Orte, Notizen oder Personen. Gib ihn anderen, damit sie sehen, wann du verplant bist. Den vollen Link können sie daraus nicht ableiten. Ein neuer Kalenderlink beendet beide.",
+"A second link with only the times, shown as “Busy”: no titles, places, notes, people or group name. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.": "Ein zweiter Link nur mit den Zeiten, angezeigt als „Belegt“: keine Titel, Orte, Notizen, Personen oder Gruppennamen. Gib ihn anderen, damit sie sehen, wann du verplant bist. Den vollen Link können sie daraus nicht ableiten. Ein neuer Kalenderlink beendet beide.",
 "Delete the poll group “{name}”? Its calendar link stops working. The polls stay as they are.": "Umfragegruppe „{name}“ löschen? Ihr Kalenderlink funktioniert dann nicht mehr. Die Umfragen bleiben, wie sie sind.",
 "Make a new calendar link? The old link stops working, so calendars subscribed to it stop updating. Subscribe again with the new one.": "Neuen Kalenderlink erstellen? Der alte Link funktioniert dann nicht mehr, und Kalender, die ihn abonniert haben, werden nicht mehr aktualisiert. Abonniere danach den neuen Link.",
 "New link made. Subscribe again with it.": "Neuer Link erstellt. Abonniere ihn erneut.",

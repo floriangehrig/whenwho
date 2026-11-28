@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-AisXRwAvzb/yWR50HZFVuoARlj/R12RsshBe235cbqI=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-LZNK6A5rWzN+kuLtXxtLH6WbmbZiLkFPZTiqYyjhuZI=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -3434,9 +3434,9 @@ async function folderFeed(request, env, url, raw) {
     const insts = e.insts.slice(0, Math.max(0, budget)); budget -= insts.length;
     parts.push({ poll: e.poll, meetings: e.meetings, link: `${siteUrl(env, url.origin)}/?p=${pid}`, texts: insts.length ? await meetingAnswerTexts(env, e.poll, insts) : null, suffix: e.poll.title });
   }
-  const name = `${f.icon ? f.icon + ' ' : ''}${f.name}${busy ? ' · busy' : ''} · when-who`;
+  const name = busy ? 'Busy · when-who' : `${f.icon ? f.icon + ' ' : ''}${f.name} · when-who`; // busy link: no group name either
   return new Response(request.method === 'HEAD' ? null : buildIcsMulti(name, parts, { busy }), {
-    headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${(f.name.replace(/[^\w\- ]+/g, '').trim() || 'meetings')}.ics"`,
+    headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${busy ? 'busy' : (f.name.replace(/[^\w\- ]+/g, '').trim() || 'meetings')}.ics"`,
       'cache-control': 'private, max-age=900', 'x-robots-tag': 'noindex' },
   });
 }

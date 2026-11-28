@@ -70,7 +70,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   use: owner all, others meetings for everyone or listing their answer) across the group's polls they can still open (`accessiblePolls`),
   repeats as RRULE, SUMMARY "Meeting · Poll" (`buildIcsMulti`; `buildIcs` is its one-poll case), meetings ended over a year ago left out,
   answer texts for at most 15 rounds. A second **busy-only** link `/api/feeds/b.<group id>.<sig>.ics` (sig = `busySig`, a hash of `feed_token`, so it can't be
-  turned into the full link; nothing stored; reset ends both) sends only the time blocks (SUMMARY Busy / Belegt, no place, notes, people, link); `busyFeed` next to `feed`. `GET|POST /api/me/poll-groups`, `PATCH|DELETE /api/me/poll-groups/:id`, `POST .../:id/reset` (new token,
+  turned into the full link; nothing stored; reset ends both) sends only the time blocks (SUMMARY Busy / Belegt, calendar name "Busy · when-who": no group name, place, notes, people, link); `busyFeed` next to `feed`. `GET|POST /api/me/poll-groups`, `PATCH|DELETE /api/me/poll-groups/:id`, `POST .../:id/reset` (new token,
   old link dead); `feed` is a path, the page adds its origin. Page: Account → **Poll groups** card (`renderFolderCard`, `#fdcard`, Subscribe ▾
   via `subLinksFor`), editor `fdOpen` (`#fddlg`, picker key `fd`), overview poll card ⋯ → Add to poll group… (`fdSheet`, `#fdsdlg`), state `FD`.
 - `sessions` / `login_attempts`: sessions (cookie `ww_session`, `user_id` = `users.id`) and rate limiting. `polls.owner_id` = owning user.
