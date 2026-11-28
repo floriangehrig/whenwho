@@ -610,7 +610,12 @@
   .cv-dots{display:none}
   /* week */
   .cv-week{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-  .cv-wkh,.cv-wka,.cv-wkg{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr))}
+  .cv-wkh,.cv-wka,.cv-wkg{display:grid;grid-template-columns:52px repeat(var(--nd,7),minmax(0,1fr))}
+  /* swipe (phones): the view follows the finger, then slides in from the side it came from */
+  .cv-view.cv-drag>*{transition:none}
+  .cv-view>.cv-in-l{animation:cvInL .22s ease-out} .cv-view>.cv-in-r{animation:cvInR .22s ease-out}
+  @keyframes cvInL{from{transform:translateX(-28%);opacity:.3}} @keyframes cvInR{from{transform:translateX(28%);opacity:.3}}
+  @media (prefers-reduced-motion:reduce){ .cv-view>.cv-in-l,.cv-view>.cv-in-r{animation:none} }
   .cv-wkh{background:var(--sunken);border-bottom:1px solid var(--line)}
   .cv-wkd{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 0;border:0;background:none;font:inherit;cursor:pointer;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:650}
   .cv-wkd b{font-size:18px;color:var(--ink);letter-spacing:0} .cv-wkd.today b{color:var(--accent)}
@@ -656,16 +661,18 @@
     .up-cal span{display:none}
     .cv-bar{padding:8px 12px} .cv-view{padding:8px}
     .cv-bar{gap:6px} .cv-nav .btn{padding-left:9px;padding-right:9px} .cv-nav .qb{width:30px} .cv-seg button{padding:5px 7px;font-size:12.5px} .cv-fbtn{padding-left:7px;padding-right:7px} .cv-fbtn>span:not(.pill){display:none}
+    .cv-lab{order:0;flex:1 1 0;min-width:0;font-size:15px;text-align:right} .cv-seg{order:5;margin-left:0;flex:1 1 auto;display:flex} .cv-seg button{flex:1 1 0}
     .cv-month{grid-template-rows:auto repeat(6,minmax(64px,1fr))}
     .cv-mc{padding:3px 2px;cursor:pointer;align-items:center}
     .cv-mc .cv-ev,.cv-mc .cv-more{display:none}
     .cv-dots{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;max-width:100%}
     .cv-dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
     .cv-wd{padding:4px 2px;text-align:center;font-size:10.5px}
-    .cv-wkh,.cv-wka,.cv-wkg{grid-template-columns:38px repeat(7,minmax(0,1fr))}
+    .cv-wkh,.cv-wka,.cv-wkg{grid-template-columns:38px repeat(var(--nd,7),minmax(0,1fr))}
     .cv-hl span{width:32px;font-size:10px}
-    .cv-wp .cv-ev{padding:2px 3px;font-size:10.5px} .cv-wp .cv-ev .cv-ki,.cv-wp .cv-ev .cv-ee,.cv-wp .cv-ev .cv-tm{display:none} .cv-wp .cv-et{width:100%}
-    .cv-wac .cv-ev .cv-tm,.cv-wac .cv-ev .cv-ki{display:none} .cv-wac .cv-ev{padding:1px 3px;font-size:10.5px}
+    .cv-week:not(.d3) .cv-wp .cv-ev{padding:2px 3px;font-size:10.5px} .cv-week:not(.d3) .cv-wp .cv-ev :is(.cv-ki,.cv-ee,.cv-tm){display:none} .cv-week:not(.d3) .cv-wp .cv-et{width:100%}
+    .cv-week:not(.d3) .cv-wac .cv-ev :is(.cv-tm,.cv-ki){display:none} .cv-wac .cv-ev{padding:1px 3px;font-size:10.5px}
+    .cv-week.d3 .cv-wp .cv-ev{font-size:12px}
     .cv-lr .up-time{width:74px;font-size:12px}
   }
   .acct-list li.off .cname{color:var(--muted)} .acct-list li.off .cmark{filter:grayscale(1);opacity:.6}
@@ -4083,10 +4090,13 @@ const CV_KINDS=['meeting','proposed','deadline','todo','answer','cal'];
 const CV_KICON={meeting:'users',proposed:'check',deadline:'deadline',todo:'star',answer:'brush',cal:'cal'};
 const CV_ICONS=['📅','🗓️','💼','🏠','👨‍👩‍👧','❤️','🎓','🏃','⚽','🎵','✈️','🎂','🍽️','☕','🏥','💻','📚','🛒','🐶','⭐','🔔','🌙','🎉','🙏'];
 const CV_WK_H=40;
-const CALV={view:['month','week','list'].includes(store.get('calv','month'))?store.get('calv','month'):'month',anchor:'',day:'',side:false,
+const CALV={view:['month','week','day3','list'].includes(store.get('calv','month'))?store.get('calv','month'):'month',anchor:'',day:'',side:false,
   cache:{},busy:'',key:'',items:[],polls:new Map(),cals:[],errs:[],pop:null};
 const CV_NARROW=matchMedia('(max-width:900px)');
-CV_NARROW.addEventListener('change',()=>{ if($('calvdlg')?.open) cvDraw(); });
+CV_NARROW.addEventListener('change',()=>{ if($('calvdlg')?.open) cvLoad(); });
+// The view drawn: 3 days is a phone / narrow view; wide screens show that choice as the week.
+const cvV=()=>CALV.view==='day3'&&!CV_NARROW.matches?'week':CALV.view;
+const cvTimed=()=>cvV()==='week'||cvV()==='day3';
 const cvKind=k=>({meeting:t('Meetings'),proposed:t('To vote on'),deadline:t('Reply-by dates'),todo:t('To do'),answer:t('My free hours'),cal:t('Linked calendars')})[k];
 const cvHash=s=>{ let h=0; for(const c of String(s)) h=(h*31+c.codePointAt(0))|0; return Math.abs(h); };
 const cvFilt=()=>{ const f=store.get('calvf',{})||{}; return {off:new Set(Array.isArray(f.off)?f.off:[]),kinds:new Set(Array.isArray(f.kinds)?f.kinds:[])}; };
@@ -4098,12 +4108,14 @@ function cvColor(src){
 }
 const cvToday=()=>isoL(new Date());
 const cvMonthEnd=k=>{ const d=parseD(k.slice(0,8)+'01'); d.setMonth(d.getMonth()+1); d.setDate(0); return isoL(d); };
-// The days drawn: week = Monday to Sunday; month = the 6 weeks around the month (list shows the month's own days of it).
-function cvRange(){ const a=CALV.anchor||cvToday();
-  if(CALV.view==='week'){ const s=addDaysL(a,-wdOf(a)); return [s,addDaysL(s,6)]; }
+// The days drawn: week = Monday to Sunday; 3 days = the anchor day and the 2 after it;
+// month = the 6 weeks around the month (list shows the month's own days of it).
+function cvRange(){ const a=CALV.anchor||cvToday(), v=cvV();
+  if(v==='week'){ const s=addDaysL(a,-wdOf(a)); return [s,addDaysL(s,6)]; }
+  if(v==='day3') return [a,addDaysL(a,2)];
   const f=a.slice(0,8)+'01', s=addDaysL(f,-wdOf(f)); return [s,addDaysL(s,41)]; }
 function cvLabel(){ const a=CALV.anchor||cvToday();
-  if(CALV.view!=='week') return parseD(a).toLocaleDateString(LOC,{month:'long',year:'numeric'});
+  if(!cvTimed()) return parseD(a).toLocaleDateString(LOC,{month:'long',year:'numeric'});
   const [s,e]=cvRange(); return rangeLabel('week',s,e); }
 // "9:30", "24:00" for an hour number with fractions.
 const cvHm=h=>{ const m=Math.round(h*60); return m>=1440?'24:00':`${pad(Math.floor(m/60))}:${pad(m%60)}`; };
@@ -4178,9 +4190,9 @@ function cvMonthHtml(vis){
       <span class="cv-dots">${l.slice(0,6).map(i=>`<i style="--c:${cvColor(vis[i].src)}"></i>`).join('')}</span></div>`; }).join('');
   return `<div class="cv-month">${head}${cells}</div>`;
 }
-// Week: an all-day row, then the hours (7:00–22:00 or wider when something is earlier / later); overlapping entries share the column.
+// Week / 3 days: an all-day row, then the hours (7:00–22:00 or wider when something is earlier / later); overlapping entries share the column.
 function cvWeekHtml(vis){
-  const [s]=cvRange(), days=[...Array(7)].map((_,i)=>addDaysL(s,i)), today=cvToday();
+  const [s,e_]=cvRange(), nd=Math.round((parseD(e_)-parseD(s))/864e5)+1, days=[...Array(nd)].map((_,i)=>addDaysL(s,i)), today=cvToday();
   const timed=vis.map((e,i)=>[e,i]).filter(([e])=>!e.allDay&&e.hs!=null);
   const H0=Math.min(7,...timed.map(([e])=>Math.floor(e.hs))), H1=Math.max(22,...timed.map(([e])=>Math.ceil(e.he??e.hs+1)));
   const col=d=>{ const l=timed.filter(([e])=>e.d===d).sort((a,b)=>a[0].hs-b[0].hs), out=[];
@@ -4192,7 +4204,7 @@ function cvWeekHtml(vis){
       return `<div class="cv-wp" style="top:${(Math.max(e.hs,H0)-H0)*CV_WK_H}px;height:${Math.max(20,(he-Math.max(e.hs,H0))*CV_WK_H-2)}px;left:calc(${x.lane}*100%/${n});width:calc(100%/${n})">${cvChip(e,i,'wk')}</div>`; }).join(''); };
   const now=new Date(), nowH=now.getHours()+now.getMinutes()/60;
   const hrs=[...Array(H1-H0)].map((_,i)=>`<div class="cv-hl" style="top:${i*CV_WK_H}px"><span>${hh(H0+i)}</span></div>`).join('');
-  return `<div class="cv-week" style="--wh:${CV_WK_H}px">
+  return `<div class="cv-week${nd===3?' d3':''}" style="--wh:${CV_WK_H}px;--nd:${nd}">
     <div class="cv-wkh"><div></div>${days.map(d=>{ const dt=parseD(d); return `<button type="button" class="cv-wkd${d===today?' today':''}" data-cvday="${d}"><span>${esc(dt.toLocaleDateString(LOC,{weekday:'short'}))}</span><b>${dt.getDate()}</b></button>`; }).join('')}</div>
     <div class="cv-wka"><div class="cv-wkl">${t('All day')}</div>${days.map(d=>`<div class="cv-wac">${vis.map((e,i)=>e.d===d&&(e.allDay||e.hs==null)?cvChip(e,i):'').join('')}</div>`).join('')}</div>
     <div class="cv-wkb" id="cv_wkb"><div class="cv-wkg" style="height:${(H1-H0)*CV_WK_H}px">${hrs}<div></div>
@@ -4238,8 +4250,9 @@ function cvSideHtml(){
 function cvDraw(loading){
   const d=$('calvdlg'); if(!d||!d.open) return;
   const vis=cvShown(); CALV.vis=vis;
-  const segs=[['month',t('Month')],['week',t('Week')],['list',t('List')]].map(([k,l])=>`<button type="button" data-cvview="${k}" class="${CALV.view===k?'on':''}" aria-pressed="${CALV.view===k}">${esc(l)}</button>`).join('');
-  const narrow=CV_NARROW.matches, side=!narrow||CALV.side, f=cvFilt(), nf=f.off.size+f.kinds.size;
+  const narrow=CV_NARROW.matches, cv=cvV();
+  const segs=[['month',t('Month')],['week',t('Week')],...(narrow?[['day3',t('3 days')]]:[]),['list',t('List')]].map(([k,l])=>`<button type="button" data-cvview="${k}" class="${cv===k?'on':''}" aria-pressed="${cv===k}">${esc(l)}</button>`).join('');
+  const side=!narrow||CALV.side, f=cvFilt(), nf=f.off.size+f.kinds.size;
   $('cv_bar').innerHTML=`<div class="cv-nav"><button type="button" class="qb" data-cvgo="-1" title="${t('Previous')}" aria-label="${t('Previous')}">${svgI('<path d="m15 18-6-6 6-6"/>')}</button><button type="button" class="btn sm" data-cvgo="0">${t('Today')}</button><button type="button" class="qb" data-cvgo="1" title="${t('Next')}" aria-label="${t('Next')}">${svgI('<path d="m9 18 6-6-6-6"/>')}</button></div>
     <h3 class="cv-lab">${esc(cvLabel())}${loading||CALV.busy?` <span class="muted small">${t('Loading…')}</span>`:''}</h3>
     <div class="seg cv-seg" role="group" aria-label="${t('View')}">${segs}</div>
@@ -4247,7 +4260,8 @@ function cvDraw(loading){
   const sd=$('cv_side'); sd.hidden=!side; if(side) sd.innerHTML=cvSideHtml();
   const v=$('cv_view'); v.hidden=narrow&&CALV.side;
   const keep=$('cv_wkb')?.scrollTop;
-  v.innerHTML=CALV.view==='week'?cvWeekHtml(vis):CALV.view==='list'?cvListHtml(vis):cvMonthHtml(vis);
+  v.innerHTML=cvTimed()?cvWeekHtml(vis):cv==='list'?cvListHtml(vis):cvMonthHtml(vis);
+  if(CALV.slide){ v.firstElementChild?.classList.add(CALV.slide>0?'cv-in-r':'cv-in-l'); CALV.slide=0; }
   const wb=$('cv_wkb'); if(wb){ if(keep!=null&&CALV.keepScroll) wb.scrollTop=keep; else { const first=vis.filter(e=>!e.allDay&&e.hs!=null).map(e=>e.hs); const H0=parseFloat(wb.querySelector('.cv-hl span')?.textContent)||7; wb.scrollTop=Math.max(0,(Math.min(8,...first)-H0-.5)*CV_WK_H); } }
   CALV.keepScroll=false; cvPopDraw();
 }
@@ -4266,9 +4280,14 @@ function calvOpen(day){
   CALV.anchor=day||cvToday(); CALV.day=''; CALV.side=false; CALV.pop=null;
   d.setAttribute('tabindex','-1'); d.showModal(); d.focus(); cvDraw(true); cvLoad();
 }
-function cvGo(n){ const a=CALV.anchor||cvToday(); CALV.day=''; CALV.pop=null;
+// n: -1 back, 1 on, 0 = today. slide: animate the new range in from that side (swipes).
+function cvGo(n,slide){ const a=CALV.anchor||cvToday(), v=cvV(); CALV.pop=null; CALV.slide=slide?n:0;
+  // The day list moves a day at a time; everything else drops back to its whole range.
+  if(v==='list'&&CALV.day&&n){ CALV.day=addDaysL(CALV.day,n); if(CALV.day.slice(0,7)===(CALV.anchor||'').slice(0,7)){ cvDraw(); return; } CALV.anchor=CALV.day; cvLoad(); return; }
+  CALV.day='';
   if(!n) CALV.anchor=cvToday();
-  else if(CALV.view==='week') CALV.anchor=addDaysL(a,7*n);
+  else if(v==='week') CALV.anchor=addDaysL(a,7*n);
+  else if(v==='day3') CALV.anchor=addDaysL(a,3*n);
   else { const x=parseD(a.slice(0,8)+'01'); x.setMonth(x.getMonth()+n); CALV.anchor=isoL(x); }
   cvLoad(); }
 async function cvCalPatch(id,body){
@@ -4284,7 +4303,10 @@ document.addEventListener('click',e=>{
   const ds=b.dataset;
   if(ds.cvclose!==undefined) $('calvdlg').close();
   else if(ds.cvgo!==undefined) cvGo(+ds.cvgo);
-  else if(ds.cvview){ const was=CALV.view; CALV.view=ds.cvview; CALV.day=''; store.set('calv',CALV.view); if((was==='week')!==(CALV.view==='week')) cvLoad(); else cvDraw(); }
+  else if(ds.cvview){ const was=cvV(), a=CALV.anchor||cvToday(), td=cvToday(), [s,e]=cvRange();
+    // 3 days start on today when it's in what was shown, else on the week's Monday / the month's 1st.
+    if(ds.cvview==='day3'&&was!=='day3') CALV.anchor=was==='week'?(td>=s&&td<=e?td:s):(td.slice(0,7)===a.slice(0,7)?td:a.slice(0,8)+'01');
+    CALV.view=ds.cvview; CALV.day=''; store.set('calv',CALV.view); cvLoad(); }
   else if(ds.cvday){ CALV.view='list'; CALV.day=ds.cvday; if(ds.cvday.slice(0,7)!==(CALV.anchor||'').slice(0,7)||CALV.key!==cvRange().join('|')){ CALV.anchor=ds.cvday; cvLoad(); } else cvDraw(); }
   else if(ds.cvallm!==undefined){ CALV.day=''; cvDraw(); }
   else if(ds.cvside!==undefined){ CALV.side=!CALV.side; cvDraw(); }
@@ -4301,6 +4323,19 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{ const x=e.target; if(!x.closest||!x.closest('#calvdlg')) return;
   if(x.dataset.cvkind){ const f=cvFilt(); x.checked?f.kinds.delete(x.dataset.cvkind):f.kinds.add(x.dataset.cvkind); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); }
   else if(x.dataset.cvsrcon){ const f=cvFilt(); x.checked?f.off.delete(x.dataset.cvsrcon):f.off.add(x.dataset.cvsrcon); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); } });
+// Swipe left / right on the calendar (phones) = next / previous. The view follows the finger once the move is clearly sideways,
+// so the week's hour list still scrolls up and down.
+(()=>{ let x0=0, y0=0, ax='', el=null;
+  const view=e=>{ const v=e.target.closest&&e.target.closest('#cv_view'); return v&&!v.hidden&&!e.target.closest('input,textarea,details')?v:null; };
+  document.addEventListener('touchstart',e=>{ const v=view(e); if(!v||e.touches.length!==1){ ax='x!'; return; } x0=e.touches[0].clientX; y0=e.touches[0].clientY; ax=''; el=v.firstElementChild; },{passive:true});
+  document.addEventListener('touchmove',e=>{ if(ax==='x!'||!el||e.touches.length!==1) return; const dx=e.touches[0].clientX-x0, dy=e.touches[0].clientY-y0;
+    if(!ax){ if(Math.abs(dx)<10&&Math.abs(dy)<10) return; ax=Math.abs(dx)>Math.abs(dy)*1.3?'x':'y'; }
+    if(ax!=='x') return; if(e.cancelable) e.preventDefault();
+    el.style.transition='none'; el.style.transform=`translateX(${dx*.6}px)`; el.style.opacity=String(1-Math.min(.5,Math.abs(dx)/600)); },{passive:false});
+  const end=e=>{ if(ax!=='x'||!el){ ax=''; el=null; return; } const dx=(e.changedTouches[0]||{}).clientX-x0, it=el; el=null; ax='';
+    if(Math.abs(dx)>60) { it.style.cssText=''; cvGo(dx<0?1:-1,true); return; }
+    it.style.transition='transform .18s ease-out,opacity .18s'; it.style.transform=''; it.style.opacity=''; setTimeout(()=>{ it.style.transition=''; },200); };
+  document.addEventListener('touchend',end,{passive:true}); document.addEventListener('touchcancel',end,{passive:true}); })();
 // ← / → move by a month or week while the calendar is open (not while typing).
 document.addEventListener('keydown',e=>{ if(!$('calvdlg')?.open||e.target.closest('input,textarea')||e.metaKey||e.ctrlKey||e.altKey) return;
   if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); cvGo(e.key==='ArrowLeft'?-1:1); }
@@ -11433,7 +11468,7 @@ function germanText(){ return {
   'Polls':'Umfragen',
   'No poll items in this range.':'Keine Umfrage-Einträge in diesem Zeitraum.',
   'No calendars yet.':'Noch keine Kalender.',
-  'Week':'Woche',
+  'Week':'Woche', '3 days':'3 Tage',
   'Filter':'Filter',
   'Open the calendar':'Kalender öffnen',
   'Grid':'Raster',
