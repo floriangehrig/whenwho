@@ -5766,10 +5766,12 @@ const fdPoll=id=>[...(ME.polls||[]),...(ME.answered||[])].find(p=>p.id===id);
 const fdCount=n=>n===1?t('1 poll'):t('{n} polls',{n});
 const fdTile=(g,cls='sm')=>tile({emoji:g.icon,text:g.name||'?',seed:g.id||g.name},cls);
 function fdSubMenu(g){
-  const it=(k,ic,lb)=>`<button type="button" data-fdsub="${k}" data-fd="${esc(g.id)}">${ICON[ic]}<span class="grow">${lb}</span></button>`;
+  const it=(k,ic,lb,busy)=>`<button type="button" data-fdsub="${k}" data-fd="${esc(g.id)}"${busy?' data-fdbusy="1"':''}>${ICON[ic]}<span class="grow">${lb}</span></button>`;
   return `<details class="dd qmore fd-sub"><summary class="btn sm withic" title="${esc(t('Add these meetings to your calendar app'))}">${ICON.cal}<span class="bl">${t('Subscribe')}</span></summary><div class="ddp right menu pickm">
     ${it('apple','cal',t('Apple Calendar (iPhone, Mac)'))}${it('google','cal',t('Google Calendar'))}${it('outlook','cal',t('Outlook'))}
-    <div class="menu-sep"></div>${it('copy','copy',t('Copy link'))}${it('how','tap',t('Show me how'))}</div></details>`;
+    <div class="menu-sep"></div>${it('copy','copy',t('Copy link'))}${it('how','tap',t('Show me how'))}
+    ${g.busyFeed?`<div class="menu-sep"></div><div class="menu-h row tight">${t('Busy times only')}${tip(t('A second link with only the times, shown as “Busy”: no titles, places, notes or people. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.'),'right')}</div>
+    ${it('apple','cal',t('Apple Calendar (iPhone, Mac)'),1)}${it('copy','copy',t('Copy busy link'),1)}`:''}</div></details>`;
 }
 async function renderFolderCard(){
   const box=$('fdbox'); if(!box) return;
@@ -5799,11 +5801,11 @@ document.addEventListener('click',async e=>{
   if(b.dataset.fddel) return fdDelete(b.dataset.fddel);
   if(b.dataset.fdreset){ const id=b.dataset.fdreset;
     if(!confirm(t('Make a new calendar link? The old link stops working, so calendars subscribed to it stop updating. Subscribe again with the new one.'))) return;
-    try{ const r=await api('POST','/me/poll-groups/'+encodeURIComponent(id)+'/reset',{}); const g=FD.list.find(x=>x.id===id); if(g) g.feed=r.feed;
+    try{ const r=await api('POST','/me/poll-groups/'+encodeURIComponent(id)+'/reset',{}); const g=FD.list.find(x=>x.id===id); if(g){ g.feed=r.feed; g.busyFeed=r.busyFeed; }
       renderFolderCard(); toast(t('New link made. Subscribe again with it.')); }catch(ex){ toast(ex.message); }
     return; }
   const g=(FD.list||[]).find(x=>x.id===b.dataset.fd); if(!g) return;
-  const L=subLinksFor(location.origin+g.feed,g.name), k=b.dataset.fdsub;
+  const busy=!!b.dataset.fdbusy, L=subLinksFor(location.origin+(busy?g.busyFeed:g.feed),busy?`${g.name} · ${t('Busy')}`:g.name), k=b.dataset.fdsub;
   if(k==='copy') return copy(L.https);
   if(k==='how') return hsOpen('cal');
   if(k==='apple') location.href=L.webcal; else window.open(L[k],'_blank','noopener');
@@ -13899,6 +13901,9 @@ function germanText(){ return {
 "No polls yet": "Noch keine Umfragen",
 "Edit group": "Gruppe bearbeiten",
 "New calendar link": "Neuer Kalenderlink",
+"Busy times only": "Nur Belegt-Zeiten",
+"Copy busy link": "Belegt-Link kopieren",
+"A second link with only the times, shown as “Busy”: no titles, places, notes or people. Give it to others so they see when you’re booked. They can’t get the full link from it. New calendar link ends both.": "Ein zweiter Link nur mit den Zeiten, angezeigt als „Belegt“: keine Titel, Orte, Notizen oder Personen. Gib ihn anderen, damit sie sehen, wann du verplant bist. Den vollen Link können sie daraus nicht ableiten. Ein neuer Kalenderlink beendet beide.",
 "Delete the poll group “{name}”? Its calendar link stops working. The polls stay as they are.": "Umfragegruppe „{name}“ löschen? Ihr Kalenderlink funktioniert dann nicht mehr. Die Umfragen bleiben, wie sie sind.",
 "Make a new calendar link? The old link stops working, so calendars subscribed to it stop updating. Subscribe again with the new one.": "Neuen Kalenderlink erstellen? Der alte Link funktioniert dann nicht mehr, und Kalender, die ihn abonniert haben, werden nicht mehr aktualisiert. Abonniere danach den neuen Link.",
 "New link made. Subscribe again with it.": "Neuer Link erstellt. Abonniere ihn erneut.",

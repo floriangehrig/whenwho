@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-ugBZFEJOcTh9fr84BJh+mEVB95OnLRm2qHL0/o2poik=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-AisXRwAvzb/yWR50HZFVuoARlj/R12RsshBe235cbqI=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -3125,13 +3125,13 @@ function icsFold(line) {
 }
 // A weekly meeting's first date: its weekday, on or after repeat.from.
 const meetingStart = (mt) => (mt.repeat ? firstOnWeekday(mt.repeat.from, wdOf(mt.date)) : mt.date);
-function meetingToIcs(mt, poll, link, texts, { suffix = '' } = {}) {
+function meetingToIcs(mt, poll, link, texts, { suffix = '', busy = false } = {}) {
   // Older single-day "all day" meetings of a poll that takes hours: export them over the poll's hours instead.
   if (mt.allDay && !mt.endDate && poll.answer_mode !== 'days' && poll.hour_end > poll.hour_start)
     mt = { ...mt, allDay: false, start: poll.hour_start, end: Math.min(24, poll.hour_end) };
   const day = meetingStart(mt), d = day.replace(/-/g, '');
   const stamp = now().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-  const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}@whenwho`, `DTSTAMP:${stamp}`];
+  const lines = ['BEGIN:VEVENT', `UID:${mt.id}-${poll.id}${busy ? '-busy' : ''}@whenwho`, `DTSTAMP:${stamp}`];
   if (mt.allDay) lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(mt.endDate || day, 1).replace(/-/g, '')}`);
   else {
     const endDate = mt.end === 24 ? addDays(day, 1).replace(/-/g, '') : d;
@@ -3141,15 +3141,17 @@ function meetingToIcs(mt, poll, link, texts, { suffix = '' } = {}) {
     const until = mt.repeat.until ? `;UNTIL=${mt.repeat.until.replace(/-/g, '')}${mt.allDay ? '' : 'T235959'}` : '';
     lines.push(`RRULE:FREQ=WEEKLY;INTERVAL=${mt.repeat.every}${until}`);
   }
+  // Busy only: just the time block (no title, place, notes, people or link), for sharing the times without the details.
+  if (busy) { lines.push(`SUMMARY:${poll.lang === 'de' ? 'Belegt' : 'Busy'}`, 'CLASS:PRIVATE', 'TRANSP:OPAQUE', 'END:VEVENT'); return lines; }
   lines.push(`SUMMARY:${icsEscape(mt.title && suffix ? `${mt.title} · ${suffix}` : mt.title || poll.title)}`);
   if (mt.location) lines.push(`LOCATION:${icsEscape(mt.location)}`);
   lines.push(`DESCRIPTION:${icsEscape(meetingDescText(poll, mt, texts && texts.get(mt.id), { link }))}`, 'END:VEVENT');
   return lines;
 }
-// One calendar from the meetings of several polls: parts = [{ poll, meetings, link, texts, suffix? }].
-function buildIcsMulti(calName, parts) {
+// One calendar from the meetings of several polls: parts = [{ poll, meetings, link, texts, suffix? }]. busy = time blocks only.
+function buildIcsMulti(calName, parts, { busy = false } = {}) {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//when-who//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${icsEscape(calName)}`,
-    ...parts.flatMap((p) => p.meetings.flatMap((mt) => meetingToIcs(mt, p.poll, p.link, p.texts, { suffix: p.suffix }))), 'END:VCALENDAR'];
+    ...parts.flatMap((p) => p.meetings.flatMap((mt) => meetingToIcs(mt, p.poll, p.link, p.texts, { suffix: p.suffix, busy }))), 'END:VCALENDAR'];
   return lines.map(icsFold).join('\r\n') + '\r\n';
 }
 const buildIcs = (poll, meetings, link, texts) => buildIcsMulti(poll.title, [{ poll, meetings, link, texts }]);
@@ -3334,15 +3336,21 @@ function folderInput(b, partial) {
   return out;
 }
 const feedPath = (url, token) => `/api/feeds/${token}.ics`; // a path: the page adds its own origin (under wrangler dev url.origin is the production host)
+// The busy-only link: b.<group id>.<sig>, sig = hash of the full link's token, so it can't be turned back into the full link
+// and a new calendar link (reset) ends both. Nothing extra is stored.
+const busySig = async (token) => (await sha256(`busy:${token}`)).slice(0, 32);
+const BUSY_FEED_RE = /^b\.([A-Za-z0-9]{6,20})\.([0-9a-f]{32})$/;
+const busyFeedPath = async (fid, token) => `/api/feeds/b.${fid}.${await busySig(token)}.ics`;
+const feedPaths = async (url, f) => ({ feed: feedPath(url, f.feed_token), busyFeed: await busyFeedPath(f.id, f.feed_token) });
 async function folderOut(env, url, uid, f) {
-  return { id: f.id, name: f.name, icon: f.icon || '', polls: await accessiblePolls(env, uid, jsonList(f.polls)), feed: feedPath(url, f.feed_token) };
+  return { id: f.id, name: f.name, icon: f.icon || '', polls: await accessiblePolls(env, uid, jsonList(f.polls)), ...(await feedPaths(url, f)) };
 }
 // GET /api/me/poll-groups — my poll groups, each with the polls I can still open and its secret calendar link.
 async function listFolders(request, env, url) {
   const user = requireUser(request);
   const { results } = await env.DB.prepare('SELECT * FROM poll_folders WHERE user_id = ? ORDER BY created_at').bind(user.id).all();
   const all = [...new Set(results.flatMap((f) => jsonList(f.polls)))], ok = new Set(await accessiblePolls(env, user.id, all));
-  return json({ groups: results.map((f) => ({ id: f.id, name: f.name, icon: f.icon || '', polls: jsonList(f.polls).filter((x) => ok.has(x)), feed: feedPath(url, f.feed_token) })) });
+  return json({ groups: await Promise.all(results.map(async (f) => ({ id: f.id, name: f.name, icon: f.icon || '', polls: jsonList(f.polls).filter((x) => ok.has(x)), ...(await feedPaths(url, f)) }))) });
 }
 // POST /api/me/poll-groups { name, icon?, polls? }
 async function addFolder(request, env, url) {
@@ -3377,7 +3385,7 @@ async function resetFolderFeed(request, env, url, fid) {
   const token = secret();
   const r = await env.DB.prepare('UPDATE poll_folders SET feed_token = ?, updated_at = ? WHERE id = ? AND user_id = ?').bind(token, now(), fid, user.id).run();
   if (!r.meta || !r.meta.changes) throw new HttpError(404, 'Group not found');
-  return json({ feed: feedPath(url, token) });
+  return json({ feed: feedPath(url, token), busyFeed: await busyFeedPath(fid, token) });
 }
 async function deleteFolder(request, env, fid) {
   const user = requireUser(request);
@@ -3389,9 +3397,13 @@ async function deleteFolder(request, env, fid) {
 // The confirmed meetings the group's owner is in (inMeeting, as on Upcoming) across the group's polls they can still open,
 // repeats as RRULE, SUMMARY "Meeting · Poll". Meetings that ended over a year ago are left out.
 async function folderFeed(request, env, url, raw) {
-  const token = raw.replace(/\.ics$/, '');
+  const token = raw.replace(/\.ics$/, ''), bm = BUSY_FEED_RE.exec(token), busy = !!bm;
   await checkThrottle(env, request, 'feed', { max: 20, msg: `Too many calendar link attempts. Try again in ${FAIL_WINDOW_MIN} minutes.` });
-  const f = FEED_RE.test(token) ? await env.DB.prepare('SELECT id, user_id, name, icon, polls FROM poll_folders WHERE feed_token = ?').bind(token).first() : null;
+  let f = null;
+  if (bm) {
+    const row = await env.DB.prepare('SELECT id, user_id, name, icon, polls, feed_token FROM poll_folders WHERE id = ?').bind(bm[1]).first();
+    if (row && safeEqual(await busySig(row.feed_token), bm[2])) f = row;
+  } else if (FEED_RE.test(token)) f = await env.DB.prepare('SELECT id, user_id, name, icon, polls FROM poll_folders WHERE feed_token = ?').bind(token).first();
   if (!f) { await recordFail(env, request, 'feed'); throw new HttpError(404, 'Calendar not found'); }
   const ids = jsonList(f.polls).slice(0, MAX_FOLDER_POLLS);
   const { results: rows } = ids.length ? await env.DB.prepare(
@@ -3412,7 +3424,7 @@ async function folderFeed(request, env, url, raw) {
       hour_start: row.hour_start, hour_end: row.hour_end, kind: row.kind, unit: row.unit, owner_id: row.owner_id }, meetings: [], insts: [] });
     const e = byPoll.get(row.pid);
     e.meetings.push(...ms);
-    if (ms.some((mt) => mt.inc)) e.insts.push({ ...row, id: row.iid, meetings: JSON.stringify(ms) });
+    if (!busy && ms.some((mt) => mt.inc)) e.insts.push({ ...row, id: row.iid, meetings: JSON.stringify(ms) });
   }
   let budget = 15; // answer texts read a round's answers (2 queries each); keep within the Free plan's per-request limit
   const parts = [];
@@ -3422,8 +3434,8 @@ async function folderFeed(request, env, url, raw) {
     const insts = e.insts.slice(0, Math.max(0, budget)); budget -= insts.length;
     parts.push({ poll: e.poll, meetings: e.meetings, link: `${siteUrl(env, url.origin)}/?p=${pid}`, texts: insts.length ? await meetingAnswerTexts(env, e.poll, insts) : null, suffix: e.poll.title });
   }
-  const name = `${f.icon ? f.icon + ' ' : ''}${f.name} · when-who`;
-  return new Response(request.method === 'HEAD' ? null : buildIcsMulti(name, parts), {
+  const name = `${f.icon ? f.icon + ' ' : ''}${f.name}${busy ? ' · busy' : ''} · when-who`;
+  return new Response(request.method === 'HEAD' ? null : buildIcsMulti(name, parts, { busy }), {
     headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': `inline; filename="${(f.name.replace(/[^\w\- ]+/g, '').trim() || 'meetings')}.ics"`,
       'cache-control': 'private, max-age=900', 'x-robots-tag': 'noindex' },
   });
