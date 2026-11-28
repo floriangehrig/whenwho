@@ -65,7 +65,7 @@ function servePage(request, env) {
 // Security headers on every response. Poll and admin keys travel in URLs, so never leak them as a Referer.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-nlH6oNmDy3Qa/7JFOuV+jKePFQZpzyogreE9oSTuUwc=' https://challenges.cloudflare.com",
+  "script-src 'self' 'sha256-Oj3uvXq69ArbY39pGovS1YnziZRWGq8i0+q5fssWv6E=' 'sha256-5MO+acIoBvuQL0EyvYrB+1WXxBaPf6wZalTwUa6rEBk=' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data:",
@@ -750,10 +750,10 @@ async function getUser(env, cookies) {
   const token = cookies.ww_session;
   if (!token || token.length > 100) return null;
   const s = await env.DB.prepare(
-    `SELECT u.id, u.email, u.name, u.avatar, u.bio, u.created_at, u.avatar_img IS NOT NULL AS has_img, u.busy_polls
+    `SELECT u.id, u.email, u.name, u.avatar, u.bio, u.created_at, u.avatar_img IS NOT NULL AS has_img, u.busy_polls, u.contact_names
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?`)
     .bind(await sha256('session:' + token), now()).first();
-  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', bio: s.bio || '', hasImg: !!s.has_img, created: s.created_at, busyPolls: !!s.busy_polls } : null;
+  return s ? { id: s.id, email: s.email, name: s.name || '', avatar: s.avatar || '', bio: s.bio || '', hasImg: !!s.has_img, created: s.created_at, busyPolls: !!s.busy_polls, contactNames: s.contact_names === 'theirs' ? 'theirs' : 'mine' } : null;
 }
 const clientIp = (request) => request.headers.get('cf-connecting-ip') || 'local';
 // login_attempts doubles as a rate-limit log; `key` is an IP or 'e:' + hash of an email address.
@@ -881,10 +881,10 @@ async function me(request, env) {
   const cal = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(auto) AS auto, (SELECT url FROM user_calendars WHERE user_id = ?1 AND url IS NOT NULL ORDER BY position, created_at LIMIT 1) AS url FROM user_calendars WHERE user_id = ?1').bind(u.id).first();
   // Feed URLs are secrets: the page only learns which host the first one points at.
   return json({ user: { name: u.name, email: u.email, avatar: u.avatar, avatarImg: img || '', bio: u.bio, since: u.created,
-    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0, busyPolls: !!u.busyPolls,
+    calendar: cal.url ? icalHost(cal.url) : '', calendars: cal.n || 0, calendarsAuto: cal.auto || 0, busyPolls: !!u.busyPolls, contactNames: u.contactNames || 'mine',
     friendRequests: (await friendRequestCount(env, u)) || 0 } });
 }
-// Body: { name?, bio? (one line, shown only to the person), avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or ''), busyPolls? (grey out busy hours from my other polls) }. A new name also renames the account's answers.
+// Body: { name?, bio? (one line, shown only to the person), avatar? (emoji or ''), avatarImg? (data URL or ''), icalUrl? (iCal feed or ''), busyPolls? (grey out busy hours from my other polls), contactNames? ('mine' | 'theirs': which name saved contacts show under) }. A new name also renames the account's answers.
 async function updateProfile(request, env) {
   const user = requireUser(request);
   const b = await body(request), u = {};
@@ -893,6 +893,10 @@ async function updateProfile(request, env) {
   if (b.avatar !== undefined) u.avatar = emojiIcon(b.avatar, 'Avatar');
   if (b.avatarImg !== undefined) u.avatar_img = imageData(b.avatarImg, 'Picture');
   if (b.busyPolls !== undefined) u.busy_polls = b.busyPolls ? 1 : 0;
+  if (b.contactNames !== undefined) {
+    if (b.contactNames !== 'mine' && b.contactNames !== 'theirs') throw new HttpError(400, 'Pick which name to use');
+    u.contact_names = b.contactNames;
+  }
   if (b.icalUrl !== undefined) u.ical_url = b.icalUrl === '' || b.icalUrl === null ? null : icalUrl(b.icalUrl);
   // Older pages save a single link here: it becomes one of the account's calendars too.
   if (u.ical_url) await insertIcal(env, user.id, u.ical_url, '');
@@ -1010,7 +1014,7 @@ async function verifyEmailChange(request, env, url) {
 // Deletion runs top to bottom in one batch, so tables found through participants / owned polls come before those.
 // Every ? is the user id (the number is counted from the SQL); MINE = my participant rows (my answers in any poll), OWNED = polls I own.
 // After adding a migration: cover its tables / columns here, then bump USER_DATA_REVIEWED to its number.
-const USER_DATA_REVIEWED = '0042';
+const USER_DATA_REVIEWED = '0043';
 const MINE = 'SELECT id FROM participants WHERE user_id = ?';
 const OWNED = 'SELECT id FROM polls WHERE owner_id = ?';
 const USER_DATA = {
@@ -1338,8 +1342,8 @@ async function deleteFriend(request, env, fid) {
 }
 // ---------- favourites (shown as "Contacts") ----------
 // A private saved list (name + email + note) per account, shown first when adding people. Nobody is told.
-// The email is the key (one row per address). name_pref: '' = ask when they go by another name in my polls,
-// 'mine' = keep my name (also shown for them in polls I manage, contactNames), 'theirs' = follow their name.
+// The email is the key (one row per address). name_pref: '' = follow the account's toggle (users.contact_names),
+// 'mine' = keep my name (also shown for them in polls I manage, contactNames), 'theirs' = follow their name (saved name updated).
 const MAX_FAVOURITES = 500;
 const NAME_PREFS = ['', 'mine', 'theirs'];
 const favNote = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -5638,14 +5642,16 @@ async function participantRows(env, pollId, instId) {
      WHERE p.poll_id = ? GROUP BY p.id ORDER BY p.name COLLATE NOCASE`).bind(instId || '', pollId).all();
   return results.map((p) => ({ ...p, mail_to: (p.ue || (p.re !== null ? p.re : p.email) || '').trim() }));
 }
-// My names for people in a poll (saved contacts set to "keep my name"), for people whose address I may see anyway (manage).
+// My names for people in a poll (saved contacts set to "keep my name", or left on the default while the account's toggle
+// says "my contacts"), for people whose address I may see anyway (manage).
 // Keys: participant id, "r:<response id>" and "u:<user id>" (chat authors). Only names that differ from theirs.
 async function contactNames(env, user, pollId, responses) {
   if (!user) return null;
   const { results } = await env.DB.prepare(
     `SELECT pa.id, pa.user_id, pa.name AS theirs, f.name FROM participants pa LEFT JOIN users u ON u.id = pa.user_id
-     JOIN favourites f ON f.user_id = ? AND f.name_pref = 'mine' AND f.email = LOWER(TRIM(COALESCE(u.email, pa.email)))
-     WHERE pa.poll_id = ?`).bind(user.id, pollId).all();
+     JOIN favourites f ON f.user_id = ?1 AND (f.name_pref = 'mine' OR (f.name_pref = '' AND ?3 = 'mine'))
+       AND f.email = LOWER(TRIM(COALESCE(u.email, pa.email)))
+     WHERE pa.poll_id = ?2`).bind(user.id, pollId, user.contactNames === 'theirs' ? 'theirs' : 'mine').all();
   if (!results.length) return null;
   const out = {}, byPid = new Map(results.map((r) => [r.id, r.name]));
   for (const r of results) {

@@ -166,9 +166,7 @@
   .pd-list .acts{flex:none;display:flex;gap:2px} .pd-list .help{padding-top:12px;margin:0}
   .pd-list .qb.fav[aria-pressed=true],.pplist .qb.fav[aria-pressed=true],.acct-list .qb.fav[aria-pressed=true]{background:none;border-color:transparent;color:var(--accent)}
   .ct-note{font-style:italic}
-  .ct-ask{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:12.5px;color:var(--muted)}
-  .ct-ask .btn{min-height:26px;padding:2px 8px;font-size:12px}
-  .ct-ask b{color:var(--text)}
+  .ct-nm{display:inline-flex;align-items:center;gap:4px} .ct-nm[hidden]{display:none}
   .pd-add.ct-add,.dlg .padd.cal-f{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
   .dlg-act{display:flex;justify-content:flex-end} .dlg-act .btn{min-width:110px;justify-content:center}
   .dlg-s{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:6px;margin-top:4px}
@@ -684,7 +682,7 @@
   /* phones: tighter rows, the search takes its own line above the filter */
   @media (max-width:560px){
     .acct-list .list li{padding:6px 4px;gap:8px}
-    .acct-tools .pd-q{flex-basis:100%} .acct-tools .seg{display:flex;flex-wrap:nowrap;width:100%} .acct-tools .seg button{flex:1 1 auto;min-width:0;justify-content:center;white-space:nowrap;padding:6px 8px;font-size:12.5px} .acct-tools .seg button>span:last-child{overflow:hidden;text-overflow:ellipsis} .acct-tools .seg .segic{display:none}
+    .acct-tools .pd-q{flex-basis:100%} .acct-tools .seg{display:flex;flex-wrap:nowrap;width:100%} .acct-tools .seg button{flex:1 1 auto;min-width:0;justify-content:center;white-space:nowrap;padding:6px 8px;font-size:12.5px} .acct-tools .seg button>span:last-child{overflow:hidden;text-overflow:ellipsis} .acct-tools .seg .segic{display:none} .acct-tools .ct-nm{flex-basis:100%} .acct-tools .ct-nm .seg{flex:1;width:auto}
   }
   /* contact groups: a rail of tiles in the Contacts card, the group editor, and group rows in Add people */
   .acct-list.grp-wrap{max-height:none;overflow:visible} .grp-wrap:empty{display:none} .grp-wrap .cgrp{position:static}
@@ -5123,15 +5121,18 @@ function contactKeep(q,skip){
   const seen=new Set(); q=String(q||'').trim().toLowerCase();
   return f=>{ const k=f.email?f.email.toLowerCase():'n:'+f.name.toLowerCase();
     if(seen.has(k)||isMe(f.email)||(skip&&skip(f,k))) return false;
-    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)&&!(f.note||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
+    if(q&&!(f.name||'').toLowerCase().includes(q)&&!(f.ownName||'').toLowerCase().includes(q)&&!(f.email||'').toLowerCase().includes(q)&&!(f.note||'').toLowerCase().includes(q)) return false; seen.add(k); return true; };
 }
 // [{ic,title,list,imp}]: Contacts (saved), From your polls, Imported (imported = this page's list).
 function contactGroups(imported,keep){
   const F=FRIENDS||{};
-  return [{ic:'usercheck',title:t('Saved'),list:(F.favourites||[]).map(f=>({id:f.id,saved:true,name:f.name,email:f.email,note:f.note||'',namePref:f.namePref||'',other:f.other||'',avatar:f.avatar,avatarImg:f.avatarImg}))},
+  return [{ic:'usercheck',title:t('Saved'),list:(F.favourites||[]).map(f=>({id:f.id,saved:true,name:ctPref(f)==='theirs'&&f.other?f.other:f.name,ownName:f.name,email:f.email,note:f.note||'',namePref:f.namePref||'',other:f.other||'',avatar:f.avatar,avatarImg:f.avatarImg}))},
     {ic:'users',title:t('From your polls'),list:[...(F.friends||[]).map(f=>({...f,name:displayName(f),friend:true})),...(F.contacts||[])]},
     {ic:'upload',title:t('Imported'),list:imported,imp:true}].map(g=>({...g,list:g.list.filter(keep)})).map(cgDedup());
 }
+// Which name a saved contact shows under: its own choice (✎), else the account's toggle (Contacts card). 'mine' | 'theirs'.
+const ctNames=()=>ME.user&&ME.user.contactNames==='theirs'?'theirs':'mine';
+const ctPref=f=>f.namePref||ctNames();
 // One email = one person: a contact already shown in an earlier section is left out of later ones (its avatar fills gaps).
 function cgDedup(){ const seen=new Map();
   return g=>({...g,list:g.list.filter(f=>{ const k=f.email?String(f.email).toLowerCase():''; if(!k) return true;
@@ -5201,7 +5202,7 @@ async function importContacts(k,btn,st,render,fileId,ret){
 
 // Account page Contacts card: the people you have (saved contacts + people from your polls), narrowed by the filter and the search.
 // Its ＋ opens the Add-contacts popup: type someone in (saved) or import and save who to keep. ✎ on a saved one = ctEdit.
-// A saved contact who goes by another name in your polls (`other`) asks which name to use (ctAsk → namePref).
+// Saved contacts show my name or the one they use in my polls (`other`): toggle in the tools (setContactNames), ✎ overrides per contact.
 const CT={q:'',filter:'all',imported:[],items:[],dItems:[],busy:''};
 try{ const f=localStorage.getItem('ct_filter'); if(f==='fav'||f==='polls') CT.filter=f; }catch(e){}
 function renderContactsCard(){
@@ -5210,7 +5211,8 @@ function renderContactsCard(){
   if(!box.dataset.ready){ box.dataset.ready='1';
     const seg=[['all','',t('All')],['fav','usercheck',t('Saved')],['polls','users',t('From your polls')]];
     box.innerHTML=`<div class="acct-tools" id="ct_tools" hidden><label class="pd-q">${ICON.search||''}<input type="search" id="ct_q" placeholder="${t('Search contacts')}" aria-label="${t('Search contacts')}" autocomplete="off"></label>
-        <div class="seg" role="group">${seg.map(([k,ic,l])=>`<button type="button" data-ctf="${k}" aria-pressed="false">${ic?`<span class="segic">${ICON[ic]}</span>`:''}<span>${esc(l)}</span></button>`).join('')}</div></div>
+        <div class="seg" role="group">${seg.map(([k,ic,l])=>`<button type="button" data-ctf="${k}" aria-pressed="false">${ic?`<span class="segic">${ICON[ic]}</span>`:''}<span>${esc(l)}</span></button>`).join('')}</div>
+        <span class="ct-nm" id="ct_nm" hidden><div class="seg" role="group" aria-label="${t('Names')}">${[['mine','usercheck',t('My contacts')],['theirs','users',t('Poll entry')]].map(([k,ic,l])=>`<button type="button" data-ctnm="${k}" aria-pressed="false"><span class="segic">${ICON[ic]}</span><span>${esc(l)}</span></button>`).join('')}</div>${tip(t('Which name saved contacts show under: the one you saved (also in polls you manage) or the one they use in your polls. ✎ on a contact can override it.'),'right')}</span></div>
       <div id="ct_grps" class="acct-list grp-wrap"></div><div id="ct_list" class="acct-list"></div>`; }
   const list=$('ct_list'); if(!FRIENDS){ list.innerHTML=`<p class="help">${t('Loading…')}</p>`; loadFriends().then(r=>{ if(r) renderContactsCard(); else if($('ct_list')) $('ct_list').innerHTML=`<p class="err">${t('Couldn’t load your contacts.')}</p>`; }); return; }
   const n=contactGroups([],contactKeep('')).slice(0,2).reduce((s,g)=>s+g.list.length,0), q=CT.q.trim();
@@ -5218,26 +5220,20 @@ function renderContactsCard(){
   $('ct_tools').hidden=!n&&!grpList().length;
   $('ct_grps').innerHTML=n||grpList().length?grpRailHtml(q):'';
   box.querySelectorAll('[data-ctf]').forEach(b=>{ const on=b.dataset.ctf===CT.filter; b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
+  $('ct_nm').hidden=!((FRIENDS.favourites||[]).length);
+  box.querySelectorAll('[data-ctnm]').forEach(b=>{ const on=b.dataset.ctnm===ctNames(); b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); });
   if(!n){ list.innerHTML=`<div class="acct-empty">${ICON.users}<span>${t('No contacts yet. Add people or import them from your phone or mail account.')}</span>
     <button type="button" class="btn sm primary withic" data-ctopen>${ICON.plus}<span>${t('Add contacts')}</span></button></div>`; return; }
   const all=contactGroups([],contactKeep(q)).slice(0,2), groups=CT.filter==='fav'?[all[0]]:CT.filter==='polls'?[all[1]]:all, favs=favEmails();
   CT.items=[];
-  const h=contactListHtml(groups,CT.items,f=>!f.email?'':f.saved?pqb('edit',t('Edit {name}',{name:f.name}),`data-ctedit="${esc(f.id)}"`)+grpBtn(f):favBtn(f,favs)+grpBtn(f),null,ctAsk);
+  const h=contactListHtml(groups,CT.items,f=>!f.email?'':f.saved?pqb('edit',t('Edit {name}',{name:f.name}),`data-ctedit="${esc(f.id)}"`)+grpBtn(f):favBtn(f,favs)+grpBtn(f));
   list.innerHTML=h||`<p class="help">${q?t('Nobody found.'):CT.filter==='fav'?t('No saved contacts yet. Save people to keep them here.'):t('Nobody from your polls yet.')}</p>`;
 }
-// "Goes by X in your polls": Use X (follow their name) / Keep mine (and show it for them in polls you manage).
-function ctAsk(f){
-  if(!f.saved||!f.other||f.namePref) return '';
-  return `<span class="ct-ask"><span>${t('Goes by <b>{name}</b> in your polls',{name:esc(f.other)})}</span>
-    <button type="button" class="btn sm" data-ctname="theirs" data-ctid="${esc(f.id)}">${esc(t('Use “{name}”',{name:f.other}))}</button>
-    <button type="button" class="btn sm" data-ctname="mine" data-ctid="${esc(f.id)}">${esc(t('Keep “{name}”',{name:f.name}))}</button>
-    ${tip(t('Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.'),'right')}</span>`;
-}
-async function ctNamePref(id,pref,btn){
-  const f=((FRIENDS&&FRIENDS.favourites)||[]).find(x=>x.id===id); if(!f) return; if(btn) btn.disabled=true;
-  try{ await api('PATCH','/me/favourites/'+encodeURIComponent(id),pref==='theirs'&&f.other?{namePref:pref,name:f.other}:{namePref:pref});
-    await loadFriends(true); renderContactsCard(); if(PEOPLE&&PEOPLE.parts) loadParts(); }
-  catch(ex){ toast(ex.message); if(btn) btn.disabled=false; }
+// The Contacts card's name toggle (account setting users.contact_names): my saved names or the names they use in my polls.
+async function setContactNames(v){
+  if(!ME.user||ctNames()===v) return; const was=ME.user.contactNames; ME.user.contactNames=v; renderContactsCard();
+  try{ await api('PATCH','/me',{contactNames:v}); if(PEOPLE&&PEOPLE.parts) loadParts(); }
+  catch(ex){ ME.user.contactNames=was; renderContactsCard(); toast(ex.message); }
 }
 // Edit a saved contact: name, email (the key: must not be saved already), note, which name to use, remove.
 function ctEdit(id){
@@ -5245,8 +5241,8 @@ function ctEdit(id){
   let d=$('cedlg');
   if(!d){ d=document.createElement('dialog'); d.id='cedlg'; d.className='dlg'; d.setAttribute('aria-labelledby','ce_h'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
-  const pref=f.namePref||'', seg=f.other||pref?`<div class="dlg-s">${ICON.user}${t('Name in your polls')}${tip(t('Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.'),'right')}</div>
-      <div class="seg" role="group">${[['mine',t('Keep my name')],['theirs',f.other?t('Use “{name}”',{name:f.other}):t('Use theirs')]].map(([k,l])=>`<button type="button" data-cepref="${k}" aria-pressed="${pref===k}" class="${pref===k?'on':''}"><span>${esc(l)}</span></button>`).join('')}</div>`:'';
+  const pref=f.namePref||'', seg=f.other||pref?`<div class="dlg-s">${ICON.user}${t('Name in your polls')}${tip(t('Default: follows the Contacts toggle. Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.'),'right')}</div>
+      <div class="seg" role="group">${[['',t('Default: {x}',{x:ctNames()==='theirs'?t('Poll entry'):t('My contacts')})],['mine',t('Keep my name')],['theirs',f.other?t('Use “{name}”',{name:f.other}):t('Use theirs')]].map(([k,l])=>`<button type="button" data-cepref="${k}" aria-pressed="${pref===k}" class="${pref===k?'on':''}"><span>${esc(l)}</span></button>`).join('')}</div>`:'';
   d.innerHTML=`<div class="dlg-h"><h2 id="ce_h">${t('Edit contact')}</h2>${pqb('x',t('Close'),'data-ceclose=""')}</div>
     <div class="dlg-b">
       <div class="pd-add ct-add"><input type="text" id="ce_n" maxlength="60" value="${esc(f.name)}" placeholder="${t('Name')}" aria-label="${t('Name')}" autocomplete="off">
@@ -5257,7 +5253,7 @@ function ctEdit(id){
       <div class="dlg-act"><button type="button" class="btn danger withic" data-cedel>${ICON.trash}<span>${t('Remove contact')}</span></button><span class="grow"></span>
         <button type="button" class="btn primary withic" data-cesave>${ICON.check}<span>${t('Save')}</span></button></div>
     </div>`;
-  d.dataset.id=id; d.dataset.pref=pref;
+  d.dataset.id=id; d.dataset.pref=pref; d.dataset.seg=seg?'1':'';
   if(!d.open) d.showModal(); if(!TOUCH) $('ce_n').focus();
 }
 async function ctEditSave(btn){
@@ -5265,7 +5261,7 @@ async function ctEditSave(btn){
   const mail=$('ce_e').value.trim().toLowerCase(), name=$('ce_n').value.trim().slice(0,60)||(EMAIL_RE.test(mail)?nameFromEmail(mail):'');
   if(!EMAIL_RE.test(mail)){ err.textContent=mail?t("That email address doesn't look right."):t('Every person needs an email address.'); $('ce_e').focus(); return; }
   if(isMe(mail)){ err.textContent=t('That’s your own address'); $('ce_e').focus(); return; }
-  const b={name,email:mail,note:$('ce_note').value}; if(d.dataset.pref) b.namePref=d.dataset.pref;
+  const b={name,email:mail,note:$('ce_note').value}; if(d.dataset.seg) b.namePref=d.dataset.pref||'';
   btn.disabled=true;
   try{ await api('PATCH','/me/favourites/'+encodeURIComponent(d.dataset.id),b); d.close(); await loadFriends(true); renderContactsCard(); toast(t('Contact saved')); if(PEOPLE&&PEOPLE.parts) loadParts(); }
   catch(ex){ err.textContent=ex.message; }
@@ -5327,13 +5323,13 @@ async function ctStarAll(btn){
   await loadFriends(true); renderContactsCard(); if(n) toast(t('{n} saved to contacts',{n}));
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-ctadd],[data-ctimp],[data-ctf],[data-ctopen],[data-ctclose],[data-ctstarall],[data-ctedit],[data-ctname],[data-ceclose],[data-cesave],[data-cedel],[data-cepref]'); if(!b) return; const d=b.dataset;
+  const b=e.target.closest('[data-ctadd],[data-ctimp],[data-ctf],[data-ctopen],[data-ctclose],[data-ctstarall],[data-ctedit],[data-ctnm],[data-ceclose],[data-cesave],[data-cedel],[data-cepref]'); if(!b) return; const d=b.dataset;
   if(d.ctedit) ctEdit(d.ctedit);
-  else if(d.ctname) ctNamePref(d.ctid,d.ctname,b);
+  else if(d.ctnm) setContactNames(d.ctnm);
   else if(d.ceclose!==undefined) $('cedlg').close();
   else if(d.cesave!==undefined) ctEditSave(b);
   else if(d.cedel!==undefined) ctEditDel(b);
-  else if(d.cepref){ $('cedlg').dataset.pref=d.cepref; b.parentElement.querySelectorAll('[data-cepref]').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-pressed',String(on)); }); }
+  else if(d.cepref!==undefined){ $('cedlg').dataset.pref=d.cepref; b.parentElement.querySelectorAll('[data-cepref]').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-pressed',String(on)); }); }
   else if(d.ctopen!==undefined) ctOpen();
   else if(d.ctclose!==undefined) $('ctdlg').close();
   else if(d.ctf){ CT.filter=d.ctf; try{ localStorage.setItem('ct_filter',CT.filter); }catch(ex){} renderContactsCard(); }
@@ -13575,10 +13571,12 @@ function germanText(){ return {
 "New contact": "Neuer Kontakt",
 "no email": "keine E-Mail",
 "Edit {name}": "{name} bearbeiten",
-"Goes by <b>{name}</b> in your polls": "Heißt in deinen Umfragen <b>{name}</b>",
 "Use “{name}”": "„{name}“ übernehmen",
-"Keep “{name}”": "„{name}“ behalten",
-"Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.": "Behalten: Umfragen, die du verwaltest, zeigen die Person mit deinem Namen (ihr eigener Name im Tipp). Übernehmen: Dein Kontakt folgt dem Namen, den die Person verwendet.",
+"My contacts": "Meine Kontakte",
+"Poll entry": "Umfrage-Eintrag",
+"Default: {x}": "Standard: {x}",
+"Which name saved contacts show under: the one you saved (also in polls you manage) or the one they use in your polls. ✎ on a contact can override it.": "Unter welchem Namen gespeicherte Kontakte erscheinen: dem, den du gespeichert hast (auch in Umfragen, die du verwaltest), oder dem, den sie in deinen Umfragen verwenden. ✎ an einem Kontakt kann das einzeln ändern.",
+"Default: follows the Contacts toggle. Keep: polls you manage show them with your name (their own name in a tip). Use: your contact follows the name they use.": "Standard: folgt dem Schalter bei Kontakte. Behalten: Umfragen, die du verwaltest, zeigen die Person mit deinem Namen (ihr eigener Name im Tipp). Übernehmen: Dein Kontakt folgt dem Namen, den die Person verwendet.",
 "Name in your polls": "Name in deinen Umfragen",
 "Keep my name": "Meinen Namen behalten",
 "Use theirs": "Ihren Namen übernehmen",

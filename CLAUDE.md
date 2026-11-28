@@ -102,7 +102,7 @@ Availability polls ("when is everyone free?") with recurring poll series, meetin
   **Contacts** = the `favourites` table (name kept for the table and `/api/me/favourites`; the UI says Contacts / Saved): one row per
   address (the key), editable via `PATCH /api/me/favourites/:id { name, email, note, namePref }` (Contacts card ✎ → `ctEdit`; 0037 `note`,
   `name_pref`). `GET /api/me/friends` adds `other` = the name the address goes by in polls I own (account name, else newest answer name);
-  the card asks Use theirs / Keep mine (`ctAsk`). `theirs` follows their name; `mine` relabels them for me in polls I manage:
+  which name shows = the contact's own `name_pref` (✎ Edit contact: Default / Keep my name / Use theirs) ?? the account toggle on the Contacts card (`users.contact_names` 0043, `'mine'` default, `setContactNames`, page `ctPref`). `theirs` follows their name (per contact: saved name updated; by toggle: display only); `mine` relabels them for me in polls I manage:
   `cnames` (`contactNames`, manage only, never to viewers) in `GET /api/polls/:id` / `.../participants`, applied by `cnSet` / `cnPoll`
   (answers, busy, People tab, chat), their own name kept in `theirName`.
 - `contact_groups` (0019): private named sets of people per account (`name`, `icon` emoji, `members` JSON `[{name,email}]`; max 50 groups,
