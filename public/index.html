@@ -573,6 +573,13 @@
   .cv-ki{display:inline-flex;flex:none;line-height:0} .cv-ki svg{width:14px;height:14px}
   .cv-f .cv-ki{color:var(--muted)}
   .cv-addcal{margin-top:8px}
+  .cv-grp+.cv-grp{margin-top:var(--s3)}
+  .cv-g{font-weight:650} .cv-g label{font-weight:650}
+  .cv-gx{flex:none;border:0;background:none;padding:0;width:20px;height:24px;display:grid;place-items:center;color:var(--muted);cursor:pointer;border-radius:6px}
+  .cv-gx svg{width:14px;height:14px;transition:transform .15s} .cv-grp.shut .cv-gx svg{transform:rotate(-90deg)}
+  .cv-g .cv-gn{flex:none;color:var(--muted);font-size:12px;font-weight:500}
+  .cv-gi{padding-left:26px} .cv-grp.shut .cv-gi{display:none}
+  .cv-gm{display:flex;align-items:center;gap:8px;font-size:13px;margin:0 4px 8px;color:var(--text)} .cv-gm span.grow{min-width:0}
   .dd.cv-sty{margin:0;flex:none}
   .dd.cv-sty>summary{padding:0;min-height:0;width:24px;height:24px;border:0;border-radius:7px;background:var(--c);display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
   .dd.cv-sty>summary::after{display:none}
@@ -4099,9 +4106,16 @@ const cvKind=k=>({meeting:t('Meetings'),proposed:t('To vote on'),deadline:t('Rep
 const cvHash=s=>{ let h=0; for(const c of String(s)) h=(h*31+c.codePointAt(0))|0; return Math.abs(h); };
 const cvFilt=()=>{ const f=store.get('calvf',{})||{}; return {off:new Set(Array.isArray(f.off)?f.off:[]),kinds:new Set(Array.isArray(f.kinds)?f.kinds:[])}; };
 const cvFiltSave=f=>store.set('calvf',{off:[...f.off],kinds:[...f.kinds]});
+// Poll groups bundle polls in the filter panel (collapsed ones in `calgs`); with Colour by group (`calgm`) a poll takes the
+// colour of its first group (FD.list order): picked per device in `calgc`, else a palette colour by group id.
+const cvGroups=()=>Array.isArray(FD.list)?FD.list:[];
+const cvByGroup=()=>store.get('calgm','')==='1'&&cvGroups().length>0;
+const cvGroupOf=pid=>cvGroups().find(g=>(g.polls||[]).includes(pid));
+const cvPick=(key,id)=>{ const pc=store.get(key,{})||{}; return /^#[0-9a-f]{6}$/i.test(pc[id]||'')?pc[id]:CV_PAL[cvHash(id)%CV_PAL.length]; };
 function cvColor(src){
   const id=src.slice(2);
-  if(src[0]==='p'){ const pc=store.get('calpc',{})||{}; return /^#[0-9a-f]{6}$/i.test(pc[id]||'')?pc[id]:CV_PAL[cvHash(id)%CV_PAL.length]; }
+  if(src[0]==='g') return cvPick('calgc',id);
+  if(src[0]==='p'){ const g=cvByGroup()&&cvGroupOf(id); return g?cvPick('calgc',g.id):cvPick('calpc',id); }
   const c=CALV.cals.find(x=>x.id===id); return c&&/^#[0-9a-f]{6}$/i.test(c.color||'')?c.color:CV_PAL[cvHash(id)%CV_PAL.length];
 }
 const cvToday=()=>isoL(new Date());
@@ -4124,7 +4138,7 @@ async function cvLoad(force){
   if(!force&&c&&Date.now()-c.at<300000){ CALV.key=key; Object.assign(CALV,{items:c.items,errs:c.errs}); c.polls.forEach((p,id)=>CALV.polls.set(id,p)); cvDraw(); return; }
   if(CALV.busy===key) return; CALV.busy=key; CALV.key=key; CALV.items=[]; cvDraw(true);
   if(force){ CALS.list=null; }
-  const r=await loadCals(); CALV.cals=r?r.calendars:[];
+  const [r]=await Promise.all([loadCals(),fdLoad().catch(()=>null)]); CALV.cals=r?r.calendars:[];
   const fromMs=parseD(from).getTime(), toMs=parseD(addDaysL(to,1)).getTime();
   const res=await Promise.allSettled([api('GET',`/me/upcoming?from=${from}&to=${to}`),api('GET','/me/todo'),api('GET',`/me/poll-busy?from=${from}&to=${to}`),
     ...CALV.cals.map(c=>calendarEvents(c,fromMs,toMs,true))]);
@@ -4235,13 +4249,26 @@ function cvSideHtml(){
   const f=cvFilt(), inItems=new Set(CALV.items.map(e=>e.src));
   const kinds=CV_KINDS.map(k=>`<label class="cv-f"><input type="checkbox" data-cvkind="${k}" ${f.kinds.has(k)?'':'checked'}><span class="cv-ki">${ICON[CV_KICON[k]]}</span><span class="grow">${esc(cvKind(k))}</span></label>`).join('');
   const pollIds=[...new Set([...inItems].filter(s=>s[0]==='p').map(s=>s.slice(2)))].sort((a,b)=>(CALV.polls.get(a)?.title||'').localeCompare(CALV.polls.get(b)?.title||''));
+  const byG=cvByGroup();
   const prow=id=>{ const p=CALV.polls.get(id)||{id,title:''}, src='p:'+id;
-    return `<div class="cv-f"><label class="grow"><input type="checkbox" data-cvsrcon="${esc(src)}" ${f.off.has(src)?'':'checked'}>${pollTile(p,'sm')}<span class="grow ell">${esc(p.title)}</span></label>${cvStyleDd(src,null)}</div>`; };
+    return `<div class="cv-f"><label class="grow"><input type="checkbox" data-cvsrcon="${esc(src)}" ${f.off.has(src)?'':'checked'}>${pollTile(p,'sm')}<span class="grow ell">${esc(p.title)}</span></label>${byG&&cvGroupOf(id)?'':cvStyleDd(src,null)}</div>`; };
+  // Poll groups with polls in this range, each a collapsible header whose checkbox switches all its polls; the rest under Other polls.
+  const gs=cvGroups().map(g=>({g,ids:pollIds.filter(id=>(g.polls||[]).includes(id))})).filter(x=>x.ids.length);
+  const shut=new Set(store.get('calgs',[])||[]);
+  const grow=({g,ids})=>{ const on=ids.filter(id=>!f.off.has('p:'+id)).length, sh=shut.has(g.id);
+    return `<div class="cv-grp${sh?' shut':''}"><div class="cv-f cv-g"><button type="button" class="cv-gx" data-cvgshut="${esc(g.id)}" aria-expanded="${!sh}" title="${sh?t('Expand'):t('Collapse')}" aria-label="${sh?t('Expand'):t('Collapse')}">${ICON.chevd}</button>
+      <label class="grow" title="${t('Show or hide this group')}"><input type="checkbox" data-cvgrp="${esc(g.id)}" ${on?'checked':''} ${on&&on<ids.length?'data-cvmix="1"':''}>${fdTile(g)}<span class="grow ell">${esc(g.name)}</span><span class="cv-gn">${ids.length}</span></label>${byG?cvStyleDd('g:'+g.id,null):''}</div>
+      <div class="cv-gi">${ids.map(prow).join('')}</div></div>`; };
+  const rest=gs.length?pollIds.filter(id=>!cvGroupOf(id)):[];
+  const pollsHtml=!pollIds.length?`<p class="help">${t('No poll items in this range.')}</p>`
+    :!gs.length?pollIds.map(prow).join('')
+    :`<label class="cv-gm"><span class="grow">${t('Colour by group')}</span><span class="sw"><input type="checkbox" data-cvgm ${byG?'checked':''} aria-label="${t('Colour by group')}"><span></span></span></label>`
+      +gs.map(grow).join('')+(rest.length?`<div class="cv-grp"><div class="ddh cv-oh">${t('Other polls')}</div>${rest.map(prow).join('')}</div>`:'');
   const crow=c=>{ const src='c:'+c.id;
     return `<div class="cv-f"><label class="grow"><input type="checkbox" data-cvsrcon="${esc(src)}" ${f.off.has(src)?'':'checked'}><span class="grow ell">${esc(c.name)}</span></label>${cvStyleDd(src,c)}</div>`; };
   const allNone=g=>`<span class="cv-an"><button type="button" class="ddb" data-cvall="${g}" data-on="1">${t('All')}</button> · <button type="button" class="ddb" data-cvall="${g}" data-on="0">${t('None')}</button></span>`;
   return `<div class="cv-sec"><div class="ddh">${t('Show')}</div>${kinds}</div>
-    <div class="cv-sec"><div class="ddh">${t('Polls')}${pollIds.length>1?allNone('p'):''}</div>${pollIds.length?pollIds.map(prow).join(''):`<p class="help">${t('No poll items in this range.')}</p>`}</div>
+    <div class="cv-sec"><div class="ddh">${t('Polls')}${pollIds.length>1?allNone('p'):''}</div>${pollsHtml}</div>
     <div class="cv-sec"><div class="ddh">${t('Linked calendars')}${CALV.cals.length>1?allNone('c'):''}</div>${CALV.cals.length?CALV.cals.map(crow).join(''):`<p class="help">${t('No calendars yet.')}</p>`}
       <a class="btn sm ghost withic cv-addcal" href="?account">${ICON.plus}<span>${t('Add calendar')}</span></a></div>`;
 }
@@ -4255,7 +4282,7 @@ function cvDraw(loading){
     <h3 class="cv-lab">${esc(cvLabel())}${loading||CALV.busy?` <span class="muted small">${t('Loading…')}</span>`:''}</h3>
     <div class="seg cv-seg" role="group" aria-label="${t('View')}">${segs}</div>
     ${narrow?`<button type="button" class="btn sm withic cv-fbtn${CALV.side?' on':''}" data-cvside aria-pressed="${CALV.side}">${ICON.filter}<span>${t('Filter')}</span>${nf?`<span class="pill">${nf}</span>`:''}</button>`:''}`;
-  const sd=$('cv_side'); sd.hidden=!side; if(side) sd.innerHTML=cvSideHtml();
+  const sd=$('cv_side'); sd.hidden=!side; if(side){ sd.innerHTML=cvSideHtml(); sd.querySelectorAll('[data-cvmix]').forEach(x=>{ x.indeterminate=true; }); }
   const v=$('cv_view'); v.hidden=narrow&&CALV.side;
   const keep=$('cv_wkb')?.scrollTop;
   v.innerHTML=cvTimed()?cvWeekHtml(vis):cv==='list'?cvListHtml(vis):cvMonthHtml(vis);
@@ -4273,7 +4300,7 @@ function calvOpen(day){
   let d=$('calvdlg');
   if(!d){ d=document.createElement('dialog'); d.id='calvdlg'; d.className='dlg cvdlg'; d.setAttribute('aria-labelledby','cv_h'); document.body.appendChild(d);
     d.addEventListener('click',e=>{ if(e.target===d) d.close(); }); }
-  d.innerHTML=`<div class="dlg-h"><h2 id="cv_h">${ICON.cal}<span>${t('Calendar')}</span></h2>${tip(t('Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour; the icon shows the kind. Tap a poll item to open it.'),'right')}${pqb('x',t('Close'),'data-cvclose=""')}</div>
+  d.innerHTML=`<div class="dlg-h"><h2 id="cv_h">${ICON.cal}<span>${t('Calendar')}</span></h2>${tip(t('Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour (or one per poll group); the icon shows the kind. Polls in a poll group are bundled in the filter. Tap a poll item to open it.'),'right')}${pqb('x',t('Close'),'data-cvclose=""')}</div>
     <div class="cv-bar" id="cv_bar"></div><div class="cv-main"><aside class="cv-side" id="cv_side"></aside><div class="cv-view" id="cv_view"></div></div><div class="cv-pop" id="cv_pop" hidden></div>`;
   CALV.anchor=day||cvToday(); CALV.day=''; CALV.side=false; CALV.pop=null;
   d.setAttribute('tabindex','-1'); d.showModal(); d.focus(); cvDraw(true); cvLoad();
@@ -4296,7 +4323,7 @@ async function cvCalPatch(id,body){
 document.addEventListener('click',e=>{
   const op=e.target.closest('[data-calvopen]'); if(op){ calvOpen(); return; }
   if(!e.target.closest('#calvdlg,#calbox')) return;
-  const b=e.target.closest('[data-cvclose],[data-cvgo],[data-cvview],[data-cvday],[data-cvallm],[data-cvside],[data-cvev],[data-cvpopx],[data-cvall],[data-cvcol],[data-cvicon],[data-cviconany]');
+  const b=e.target.closest('[data-cvclose],[data-cvgo],[data-cvview],[data-cvday],[data-cvallm],[data-cvside],[data-cvev],[data-cvpopx],[data-cvall],[data-cvcol],[data-cvicon],[data-cviconany],[data-cvgshut]');
   if(!b){ if(CV_NARROW.matches&&CALV.view==='month'){ const c=e.target.closest('[data-cvcell]'); if(c&&!e.target.closest('.cv-ev')){ CALV.view='list'; CALV.day=c.dataset.cvcell; cvDraw(); } } return; }
   const ds=b.dataset;
   if(ds.cvclose!==undefined) $('calvdlg').close();
@@ -4312,15 +4339,21 @@ document.addEventListener('click',e=>{
   else if(ds.cvpopx!==undefined){ CALV.pop=null; cvPopDraw(); }
   else if(ds.cvall){ const f=cvFilt(), on=ds.on==='1', srcs=ds.cvall==='p'?[...new Set(CALV.items.filter(x=>x.src[0]==='p').map(x=>x.src))]:CALV.cals.map(c=>'c:'+c.id);
     srcs.forEach(s=>on?f.off.delete(s):f.off.add(s)); cvFiltSave(f); cvDraw(); }
+  else if(ds.cvgshut){ const s=new Set(store.get('calgs',[])||[]); s.has(ds.cvgshut)?s.delete(ds.cvgshut):s.add(ds.cvgshut);
+    store.set('calgs',[...s].filter(id=>cvGroups().some(g=>g.id===id))); cvDraw(); }
   else if(ds.cvcol!==undefined){ const src=ds.cvsrc; b.closest('details')?.removeAttribute('open');
-    if(src[0]==='p'){ const pc=store.get('calpc',{})||{}; if(ds.cvcol) pc[src.slice(2)]=ds.cvcol; else delete pc[src.slice(2)]; store.set('calpc',pc); cvDraw(); }
+    if(src[0]==='p'||src[0]==='g'){ const key=src[0]==='g'?'calgc':'calpc', pc=store.get(key,{})||{}; if(ds.cvcol) pc[src.slice(2)]=ds.cvcol; else delete pc[src.slice(2)]; store.set(key,pc); cvDraw(); }
     else cvCalPatch(src.slice(2),{color:ds.cvcol}); }
   else if(ds.cvicon!==undefined){ b.closest('details')?.removeAttribute('open'); cvCalPatch(ds.cvsrc.slice(2),{icon:ds.cvicon}); }
   else if(ds.cviconany){ const inp=b.parentElement.querySelector('[data-cvany]'), v=(inp?.value||'').trim(); if(!v) return; b.closest('details')?.removeAttribute('open'); cvCalPatch(ds.cviconany.slice(2),{icon:v}); }
 });
 document.addEventListener('change',e=>{ const x=e.target; if(!x.closest||!x.closest('#calvdlg')) return;
   if(x.dataset.cvkind){ const f=cvFilt(); x.checked?f.kinds.delete(x.dataset.cvkind):f.kinds.add(x.dataset.cvkind); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); }
-  else if(x.dataset.cvsrcon){ const f=cvFilt(); x.checked?f.off.delete(x.dataset.cvsrcon):f.off.add(x.dataset.cvsrcon); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); } });
+  else if(x.dataset.cvsrcon){ const f=cvFilt(); x.checked?f.off.delete(x.dataset.cvsrcon):f.off.add(x.dataset.cvsrcon); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); }
+  // A group's checkbox switches all its polls, also those not in this range, so other months match.
+  else if(x.dataset.cvgrp){ const g=cvGroups().find(y=>y.id===x.dataset.cvgrp); if(!g) return; const f=cvFilt();
+    (g.polls||[]).forEach(id=>x.checked?f.off.delete('p:'+id):f.off.add('p:'+id)); cvFiltSave(f); CALV.keepScroll=true; cvDraw(); }
+  else if(x.dataset.cvgm!==undefined){ store.set('calgm',x.checked?'1':''); CALV.keepScroll=true; cvDraw(); } });
 // Swipe left / right on the calendar (phones) = next / previous. The view follows the finger once the move is clearly sideways,
 // so the week's hour list still scrolls up and down.
 (()=>{ let x0=0, y0=0, ax='', el=null;
@@ -11468,7 +11501,11 @@ function germanText(){ return {
   'Filter':'Filter',
   'Open the calendar':'Kalender öffnen',
   'Grid':'Raster',
-  'Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour; the icon shows the kind. Tap a poll item to open it.':'Alles mit Datum aus deinen Umfragen, dazu die Kalender, die du auf deiner Kontoseite verknüpft hast (im Browser gelesen, nie gespeichert). Jede Umfrage und jeder Kalender hat eine eigene Farbe; das Symbol zeigt die Art. Tippe auf einen Umfrage-Eintrag, um ihn zu öffnen.',
+  'Colour by group':'Nach Gruppe färben',
+  'Show or hide this group':'Gruppe ein- oder ausblenden',
+  'Collapse':'Einklappen',
+  'Expand':'Ausklappen',
+  'Everything with a date from your polls, plus the calendars linked on your Account page (read in your browser, never stored). Each poll and calendar has its own colour (or one per poll group); the icon shows the kind. Polls in a poll group are bundled in the filter. Tap a poll item to open it.':'Alles mit Datum aus deinen Umfragen, dazu die Kalender, die du auf deiner Kontoseite verknüpft hast (im Browser gelesen, nie gespeichert). Jede Umfrage und jeder Kalender hat eine eigene Farbe (oder eine pro Umfragegruppe); das Symbol zeigt die Art. Umfragen einer Umfragegruppe sind im Filter gebündelt. Tippe auf einen Umfrage-Eintrag, um ihn zu öffnen.',
   'See everything in a calendar: meetings, votes, reply-by dates, To do items, the hours you marked free and your linked calendars, each poll and calendar in its own colour. Filter what shows and pick colours and icons.':'Alles in einem Kalender: Termine, Abstimmungen, Antwortfristen, To-dos, die Stunden, in denen du Zeit hast, und deine verknüpften Kalender, jede Umfrage und jeder Kalender in eigener Farbe. Filtere, was angezeigt wird, und wähle Farben und Symbole.',
   'Reset info popups':'Infofenster zurücksetzen',
   'Show the tour, tips and hints you closed or skipped again':'Tour, Tipps und Hinweise, die du geschlossen oder übersprungen hast, wieder zeigen',
